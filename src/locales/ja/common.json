@@ -329,11 +329,14 @@
       "title": "モデルを変換中",
       "phases": {
         "resolve": "ソースを解決中",
-        "download": "重みを取得中",
         "load": "MLX に読み込み中",
         "quantize": "{bits} ビット g{group} に量子化中",
-        "shard": "シャーディングと safetensors の書き込み",
-        "verify": "出力を検証中"
+        "shard": "シャーディングと safetensors の書き込み"
+      },
+      "detail": {
+        "files": null,
+        "written": null,
+        "writtenOfAbout": null
       }
     },
     "varies": "変動",
@@ -424,10 +427,17 @@
       "title": "ベンチマーク実行中",
       "phases": {
         "load": "モデルをメモリに読み込み中",
-        "warm": "KV キャッシュをウォームアップ中",
-        "prompt": "プロンプトを処理中",
-        "generate": "{tokens} トークンを生成中",
-        "measure": "統計を測定中"
+        "datasetPerplexity": null,
+        "datasetAccuracy": null,
+        "evaluatingPerplexity": null,
+        "evaluatingAccuracy": null,
+        "generating": null,
+        "saving": null
+      },
+      "detail": {
+        "samples": null,
+        "questions": null,
+        "generating": null
       }
     },
     "modelLabel": "ベンチマークモデル",

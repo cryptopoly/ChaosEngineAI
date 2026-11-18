@@ -329,11 +329,14 @@
       "title": "正在转换模型",
       "phases": {
         "resolve": "正在解析来源",
-        "download": "正在获取权重",
         "load": "正在加载到 MLX",
         "quantize": "正在量化为 {bits} 位 g{group}",
-        "shard": "正在分片并写入 safetensors",
-        "verify": "正在验证输出"
+        "shard": "正在分片并写入 safetensors"
+      },
+      "detail": {
+        "files": null,
+        "written": null,
+        "writtenOfAbout": null
       }
     },
     "varies": "因情况而异",
@@ -424,10 +427,17 @@
       "title": "正在运行基准测试",
       "phases": {
         "load": "正在将模型加载到内存",
-        "warm": "正在预热 KV 缓存",
-        "prompt": "正在处理提示词",
-        "generate": "正在生成 {tokens} 个 token",
-        "measure": "正在测量统计数据"
+        "datasetPerplexity": null,
+        "datasetAccuracy": null,
+        "evaluatingPerplexity": null,
+        "evaluatingAccuracy": null,
+        "generating": null,
+        "saving": null
+      },
+      "detail": {
+        "samples": null,
+        "questions": null,
+        "generating": null
       }
     },
     "modelLabel": "基准模型",

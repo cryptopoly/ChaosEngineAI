@@ -329,11 +329,14 @@
       "title": "Convirtiendo modelo",
       "phases": {
         "resolve": "Resolviendo fuente",
-        "download": "Obteniendo pesos",
         "load": "Cargando en MLX",
         "quantize": "Cuantizando a {bits} bits g{group}",
-        "shard": "Fragmentando y escribiendo safetensors",
-        "verify": "Verificando salida"
+        "shard": "Fragmentando y escribiendo safetensors"
+      },
+      "detail": {
+        "files": null,
+        "written": null,
+        "writtenOfAbout": null
       }
     },
     "varies": "Varía",
@@ -424,10 +427,17 @@
       "title": "Ejecutando benchmark",
       "phases": {
         "load": "Cargando modelo en memoria",
-        "warm": "Calentando caché KV",
-        "prompt": "Procesando indicación",
-        "generate": "Generando {tokens} tokens",
-        "measure": "Midiendo estadísticas"
+        "datasetPerplexity": null,
+        "datasetAccuracy": null,
+        "evaluatingPerplexity": null,
+        "evaluatingAccuracy": null,
+        "generating": null,
+        "saving": null
+      },
+      "detail": {
+        "samples": null,
+        "questions": null,
+        "generating": null
       }
     },
     "modelLabel": "Modelo de benchmark",

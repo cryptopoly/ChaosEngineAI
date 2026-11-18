@@ -329,11 +329,14 @@
       "title": "Конвертация модели",
       "phases": {
         "resolve": "Определение источника",
-        "download": "Загрузка весов",
         "load": "Загрузка в MLX",
         "quantize": "Квантизация в {bits} бит g{group}",
-        "shard": "Шардирование и запись safetensors",
-        "verify": "Проверка вывода"
+        "shard": "Шардирование и запись safetensors"
+      },
+      "detail": {
+        "files": null,
+        "written": null,
+        "writtenOfAbout": null
       }
     },
     "varies": "Варьируется",
@@ -424,10 +427,17 @@
       "title": "Запуск бенчмарка",
       "phases": {
         "load": "Загрузка модели в память",
-        "warm": "Прогрев KV cache",
-        "prompt": "Обработка запроса",
-        "generate": "Генерация {tokens} токенов",
-        "measure": "Измерение статистики"
+        "datasetPerplexity": null,
+        "datasetAccuracy": null,
+        "evaluatingPerplexity": null,
+        "evaluatingAccuracy": null,
+        "generating": null,
+        "saving": null
+      },
+      "detail": {
+        "samples": null,
+        "questions": null,
+        "generating": null
       }
     },
     "modelLabel": "Модель для бенчмарка",

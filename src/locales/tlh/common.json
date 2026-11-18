@@ -329,11 +329,14 @@
       "title": "yab choHlI'",
       "phases": {
         "resolve": "Hal SamlI'",
-        "download": "ngI' qemlI'",
         "load": "MLXDaq chu'lI'",
         "quantize": "{bits}-bit g{group} quant chenmoHlI'",
-        "shard": "safetensors chev 'ej ghItlhlI'",
-        "verify": "ngoD 'ollI'"
+        "shard": "safetensors chev 'ej ghItlhlI'"
+      },
+      "detail": {
+        "files": null,
+        "written": null,
+        "writtenOfAbout": null
       }
     },
     "varies": "pIm",
@@ -424,10 +427,17 @@
       "title": "waH QaptaH",
       "phases": {
         "load": "qawHaqDaq yab chu'lI'",
-        "warm": "KV cache tujmoHlI'",
-        "prompt": "QIn nuDlI'",
-        "generate": "{tokens} token chenmoHlI'",
-        "measure": "De' juvlI'"
+        "datasetPerplexity": null,
+        "datasetAccuracy": null,
+        "evaluatingPerplexity": null,
+        "evaluatingAccuracy": null,
+        "generating": null,
+        "saving": null
+      },
+      "detail": {
+        "samples": null,
+        "questions": null,
+        "generating": null
       }
     },
     "modelLabel": "waH yab",

@@ -329,11 +329,14 @@
       "title": "Converting model",
       "phases": {
         "resolve": "Resolving source",
-        "download": "Fetching weights",
         "load": "Loading into MLX",
         "quantize": "Quantizing to {bits}-bit g{group}",
-        "shard": "Sharding & writing safetensors",
-        "verify": "Verifying output"
+        "shard": "Sharding & writing safetensors"
+      },
+      "detail": {
+        "files": "downloading the source: {done} of {total} files",
+        "written": "{written} GB written",
+        "writtenOfAbout": "{written} GB written, about {expected} GB expected (estimate)"
       }
     },
     "varies": "Varies",
@@ -424,10 +427,17 @@
       "title": "Running benchmark",
       "phases": {
         "load": "Loading model into memory",
-        "warm": "Warming up KV cache",
-        "prompt": "Processing prompt",
-        "generate": "Generating {tokens} tokens",
-        "measure": "Measuring stats"
+        "datasetPerplexity": "Loading the evaluation text",
+        "datasetAccuracy": "Loading the questions",
+        "evaluatingPerplexity": "Scoring text samples",
+        "evaluatingAccuracy": "Answering questions",
+        "generating": "Generating up to {tokens} tokens",
+        "saving": "Saving the result"
+      },
+      "detail": {
+        "samples": "{done} of {total} samples",
+        "questions": "{done} of {total} questions, {correct} correct",
+        "generating": "running; the engine reports the token count when it finishes"
       }
     },
     "modelLabel": "Benchmark model",

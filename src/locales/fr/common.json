@@ -329,11 +329,14 @@
       "title": "Conversion du modèle",
       "phases": {
         "resolve": "Résolution de la source",
-        "download": "Récupération des poids",
         "load": "Chargement dans MLX",
         "quantize": "Quantification en {bits} bits g{group}",
-        "shard": "Partitionnement et écriture des safetensors",
-        "verify": "Vérification de la sortie"
+        "shard": "Partitionnement et écriture des safetensors"
+      },
+      "detail": {
+        "files": null,
+        "written": null,
+        "writtenOfAbout": null
       }
     },
     "varies": "Variable",
@@ -424,10 +427,17 @@
       "title": "Benchmark en cours",
       "phases": {
         "load": "Chargement du modèle en mémoire",
-        "warm": "Préchauffage du cache KV",
-        "prompt": "Traitement de l'invite",
-        "generate": "Génération de {tokens} tokens",
-        "measure": "Mesure des statistiques"
+        "datasetPerplexity": null,
+        "datasetAccuracy": null,
+        "evaluatingPerplexity": null,
+        "evaluatingAccuracy": null,
+        "generating": null,
+        "saving": null
+      },
+      "detail": {
+        "samples": null,
+        "questions": null,
+        "generating": null
       }
     },
     "modelLabel": "Modèle de benchmark",

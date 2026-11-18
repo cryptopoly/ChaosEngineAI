@@ -14,6 +14,8 @@ import type { TensorfoldLaunchControls } from "../../components/tensorfoldSuppor
 import { BENCHMARK_PROMPTS } from "../../constants";
 import { number, sizeLabel, signedDelta } from "../../utils";
 import { latestRunSpeedComparison } from "../../utils/benchmarkCompare";
+import { benchmarkPhaseIds, countedItems } from "../../utils/jobProgress";
+import { useGenerationProgress } from "../../hooks/useGenerationProgress";
 
 export interface BenchmarkRunTabProps {
   workspace: {
@@ -104,6 +106,37 @@ export function BenchmarkRunTab({
 }: BenchmarkRunTabProps) {
   const { t } = useTranslation("common");
   const [benchmarkPickerSearch, setBenchmarkPickerSearch] = useState("");
+  const benchmarkRunning = busyAction === "Running benchmark..." && Boolean(benchmarkStartedAt);
+  // The run's own progress: phase and items done. Nothing in the dialog is timed.
+  const benchmarkProgress = useGenerationProgress("benchmark", benchmarkRunning);
+  const runMode = benchmarkDraft.mode ?? "throughput";
+  const progressPhaseLabels: Record<string, string> = {
+    loading: t("benchmarkTab.progress.phases.load", { defaultValue: "Loading model into memory" }),
+    dataset: runMode === "perplexity"
+      ? t("benchmarkTab.progress.phases.datasetPerplexity", { defaultValue: "Loading the evaluation text" })
+      : t("benchmarkTab.progress.phases.datasetAccuracy", { defaultValue: "Loading the questions" }),
+    evaluating: runMode === "perplexity"
+      ? t("benchmarkTab.progress.phases.evaluatingPerplexity", { defaultValue: "Scoring text samples" })
+      : t("benchmarkTab.progress.phases.evaluatingAccuracy", { defaultValue: "Answering questions" }),
+    generating: t("benchmarkTab.progress.phases.generating", { tokens: benchmarkDraft.maxTokens, defaultValue: "Generating up to {tokens} tokens" }),
+    saving: t("benchmarkTab.progress.phases.saving", { defaultValue: "Saving the result" }),
+  };
+  const counted = countedItems(benchmarkProgress);
+  const benchmarkProgressDetail =
+    benchmarkProgress?.phase === "evaluating" && counted
+      ? runMode === "perplexity"
+        ? t("benchmarkTab.progress.detail.samples", { done: counted.done, total: counted.total, defaultValue: "{done} of {total} samples" })
+        : t("benchmarkTab.progress.detail.questions", {
+            done: counted.done,
+            total: counted.total,
+            correct: benchmarkProgress.detail?.correct ?? 0,
+            defaultValue: "{done} of {total} questions, {correct} correct",
+          })
+      : benchmarkProgress?.phase === "generating"
+        ? t("benchmarkTab.progress.detail.generating", { defaultValue: "running; the engine reports the token count when it finishes" })
+        : benchmarkProgress?.phase === "loading" && benchmarkProgress.message
+          ? benchmarkProgress.message
+          : null;
   const latestRun = workspace.benchmarks[0] ?? null;
   const selectedPrompt = BENCHMARK_PROMPTS.find((p) => p.id === benchmarkPromptId) ?? BENCHMARK_PROMPTS[0];
   // Speed is compared only between speed runs: an accuracy run stores 0 tok/s and used to
@@ -460,12 +493,11 @@ export function BenchmarkRunTab({
                     subtitle={benchmarkOption?.model ?? undefined}
                     startedAt={benchmarkStartedAt}
                     accent="benchmark"
+                    measuredOnly
+                    realProgress={benchmarkProgress}
+                    activeDetail={benchmarkProgressDetail}
                     phases={[
-                      { id: "load", label: t("benchmarkTab.progress.phases.load", { defaultValue: "Loading model into memory" }), estimatedSeconds: 12 },
-                      { id: "warm", label: t("benchmarkTab.progress.phases.warm", { defaultValue: "Warming up KV cache" }), estimatedSeconds: 4 },
-                      { id: "prompt", label: t("benchmarkTab.progress.phases.prompt", { defaultValue: "Processing prompt" }), estimatedSeconds: 3 },
-                      { id: "generate", label: t("benchmarkTab.progress.phases.generate", { tokens: benchmarkDraft.maxTokens, defaultValue: `Generating ${benchmarkDraft.maxTokens} tokens` }), estimatedSeconds: Math.max(8, benchmarkDraft.maxTokens / 25) },
-                      { id: "measure", label: t("benchmarkTab.progress.phases.measure", { defaultValue: "Measuring stats" }), estimatedSeconds: 2 },
+                      ...benchmarkPhaseIds(runMode).map((id) => ({ id, label: progressPhaseLabels[id] ?? id, estimatedSeconds: 0 })),
                     ] as LiveProgressPhase[]}
                   />
                   <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>

@@ -324,6 +324,110 @@ test("Benchmark run: a backend error is shown in the dialog, not lost", async ({
   await expect(page.getByText("No benchmark runs yet.")).toBeVisible();
 });
 
+/** A progress snapshot as GET /api/benchmarks/progress and /api/models/convert/progress answer it. */
+function progress(kind: string, overrides: Record<string, unknown>) {
+  return {
+    progress: {
+      kind, active: true, phase: "loading", message: "", step: 0, totalSteps: 0, startedAt: 1, updatedAt: 1,
+      elapsedSeconds: 1, runLabel: null, cancelRequested: false, thumbnail: null, warning: null, detail: {},
+      ...overrides,
+    },
+  };
+}
+
+test("Benchmark run: Cancel stops the run in the backend, nothing is saved, the dialog says what happened", async ({ page }) => {
+  // Cancel used to stop only the wait: the backend finished the run, saved it and kept the model loaded.
+  await mockWorkspace(page, [SPEED_OLD]);
+  let release: () => void = () => {};
+  const cancelled = new Promise<void>((resolve) => { release = resolve; });
+  let cancelCalls = 0;
+  await page.route("**/api/benchmarks/run", async (route) => {
+    await cancelled;
+    await route.fulfill({
+      json: {
+        cancelled: true, modelUnloaded: true, result: null, benchmarks: [SPEED_OLD], runtime: lastWorkspace?.runtime,
+        message: "Benchmark cancelled. Nothing was saved. The model was unloaded.",
+      },
+    });
+  });
+  await page.route("**/api/benchmarks/cancel", async (route) => {
+    cancelCalls += 1;
+    await route.fulfill({ json: { cancelled: true } });
+    release();
+  });
+  await goTo(page, "Benchmarks", "Run");
+  await page.getByRole("button", { name: /Run benchmark/ }).click();
+  const modal = page.locator(".benchmark-result-modal");
+  await expect(modal.getByRole("heading", { name: "Running benchmark" })).toBeVisible();
+  await modal.getByRole("button", { name: "Cancel benchmark" }).click();
+  await expect(modal.getByRole("heading", { name: "Benchmark cancelled" })).toBeVisible();
+  await expect(modal.getByTestId("benchmark-cancelled")).toContainText("Nothing was saved to the history.");
+  await expect(modal.getByTestId("benchmark-cancelled")).toContainText("The model was unloaded.");
+  await expect(modal.getByRole("heading", { name: "Benchmark failed" })).toHaveCount(0);
+  expect(cancelCalls).toBe(1);
+  await shot(page, "27-benchmark-cancelled");
+  await modal.getByRole("button", { name: "Close" }).click();
+  // The run on the card is still the old one.
+  await expect(page.locator(".benchmark-last-run-card")).toContainText("100.5");
+  await openTab(page, "Benchmarks", "History");
+  await expect(page.locator(".benchmark-history-list button")).toHaveCount(1);
+});
+
+test("Benchmark run: the dialog shows the run's own progress, a percentage only for counted items", async ({ page }) => {
+  await mockWorkspace(page, []);
+  let release: () => void = () => {};
+  const finished = new Promise<void>((resolve) => { release = resolve; });
+  let snapshot = progress("benchmark", { phase: "loading", message: "Loading weights into MLX" });
+  await page.route("**/api/benchmarks/progress", (route) => route.fulfill({ json: snapshot }));
+  await page.route("**/api/benchmarks/run", async (route) => {
+    await finished;
+    await route.fulfill({ json: { result: ACCURACY, benchmarks: [ACCURACY], runtime: lastWorkspace?.runtime } });
+  });
+  await goTo(page, "Benchmarks", "Run");
+  await page.locator(".benchmark-run-mode-stack select").first().selectOption("task_accuracy");
+  await page.getByRole("button", { name: /Run benchmark/ }).click();
+  const modal = page.locator(".benchmark-result-modal");
+  const bar = modal.getByRole("progressbar");
+  // A model load cannot be counted: the loader's own text, no percentage.
+  await expect(modal.locator(".live-progress__phase--active")).toContainText("Loading weights into MLX");
+  await expect(bar).not.toHaveAttribute("aria-valuenow", /.*/);
+  // An accuracy run answers questions; it never "generates N tokens".
+  await expect(modal.locator(".live-progress__phases")).not.toContainText("Generating");
+  await expect(modal.locator(".live-progress__phases")).toContainText("Answering questions");
+
+  snapshot = progress("benchmark", { phase: "evaluating", step: 12, totalSteps: 100, detail: { correct: 5 } });
+  await expect(modal.locator(".live-progress__phase--active")).toContainText("12 of 100 questions, 5 correct");
+  await expect(bar).toHaveAttribute("aria-valuenow", "12");
+  await shot(page, "27-benchmark-progress");
+
+  snapshot = progress("benchmark", { phase: "saving" });
+  await expect(modal.locator(".live-progress__phase--active")).toContainText("Saving the result");
+  await expect(bar).not.toHaveAttribute("aria-valuenow", /.*/);
+  release();
+  await expect(modal.getByRole("heading", { name: "Benchmark complete" })).toBeVisible();
+});
+
+test("Benchmark run: a throughput run says it cannot count tokens while it generates", async ({ page }) => {
+  await mockWorkspace(page, []);
+  let release: () => void = () => {};
+  const finished = new Promise<void>((resolve) => { release = resolve; });
+  await page.route("**/api/benchmarks/progress", (route) =>
+    route.fulfill({ json: progress("benchmark", { phase: "generating", message: "Generating up to 4096 tokens" }) }),
+  );
+  await page.route("**/api/benchmarks/run", async (route) => {
+    await finished;
+    await route.fulfill({ json: { result: SPEED_NEW, benchmarks: [SPEED_NEW], runtime: lastWorkspace?.runtime } });
+  });
+  await goTo(page, "Benchmarks", "Run");
+  await page.getByRole("button", { name: /Run benchmark/ }).click();
+  const modal = page.locator(".benchmark-result-modal");
+  await expect(modal.locator(".live-progress__phase--active")).toContainText("Generating up to 4096 tokens");
+  await expect(modal.locator(".live-progress__phase--active")).toContainText("the engine reports the token count when it finishes");
+  await expect(modal.getByRole("progressbar")).not.toHaveAttribute("aria-valuenow", /.*/);
+  release();
+  await expect(modal.getByRole("heading", { name: "Benchmark complete" })).toBeVisible();
+});
+
 test("Benchmarks at 375 px: Run and History have no sideways scroll", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 800 });
   await mockWorkspace(page, [ACCURACY, SPEED_NEW, SPEED_GGUF, SPEED_OLD]);
@@ -466,6 +570,46 @@ test("Conversion: Cancel stops the run and the dialog says it was cancelled", as
   expect(cancelCalls).toBe(1);
   await modal.getByRole("button", { name: /Close|OK/ }).click();
   await expect(page.getByRole("button", { name: "Convert to MLX" })).toBeEnabled();
+});
+
+test("Conversion: the dialog shows the converter's own progress, bytes written and no made-up percentage", async ({ page }) => {
+  await mockWorkspace(page, []);
+  let release: () => void = () => {};
+  const cancelled = new Promise<void>((resolve) => { release = resolve; });
+  let snapshot = progress("conversion", { phase: "preparing", message: "Checking the source" });
+  await page.route("**/api/models/convert/progress", (route) => route.fulfill({ json: snapshot }));
+  await page.route("**/api/models/convert", async (route) => {
+    await cancelled;
+    await route.fulfill({ status: 400, json: { detail: "Conversion cancelled. Nothing was kept at /mock/Models/Mock-Model-4B-mlx." } });
+  });
+  await page.route("**/api/models/convert/cancel", async (route) => {
+    await route.fulfill({ json: { cancelled: true } });
+    release();
+  });
+  await goTo(page, "Tools", "Conversion");
+  await page.getByRole("button", { name: "Select a model to convert..." }).click();
+  await page.locator(".model-select-item", { hasText: TRANSFORMERS_ITEM.name }).click();
+  await page.getByRole("button", { name: "Convert to MLX" }).click();
+  const modal = page.locator(".conversion-result-modal");
+  const bar = modal.getByRole("progressbar");
+  const active = modal.locator(".live-progress__phase--active");
+  await expect(active).toContainText("Resolving source");
+  await expect(bar).not.toHaveAttribute("aria-valuenow", /.*/);
+  // The old dialog always listed "Fetching weights" and "Verifying output", whatever the run did.
+  await expect(modal.locator(".live-progress__phases")).not.toContainText("Verifying output");
+
+  // A Hub source: files are counted, so the bar has a value.
+  snapshot = progress("conversion", { phase: "downloading", step: 5, totalSteps: 11 });
+  await expect(active).toContainText("5 of 11 files");
+  await expect(bar).toHaveAttribute("aria-valuenow", "45");
+
+  // Writing: bytes on disk are measured, the final size is an estimate and is called one.
+  snapshot = progress("conversion", { phase: "saving", detail: { bytesWritten: 1024 ** 3, expectedBytes: 2 * 1024 ** 3, bitsPerWeight: 4.5 } });
+  await expect(active).toContainText("1.00 GB written, about 2.0 GB expected (estimate)");
+  await expect(bar).not.toHaveAttribute("aria-valuenow", /.*/);
+  await shot(page, "27-conversion-progress");
+  await modal.getByRole("button", { name: "Cancel conversion" }).click();
+  await expect(modal).toContainText("Conversion cancelled");
 });
 
 test("Conversion at 375 px: no sideways scroll", async ({ page }) => {

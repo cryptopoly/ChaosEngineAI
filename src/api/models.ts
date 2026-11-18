@@ -15,6 +15,7 @@
 
 import { deleteJson, fetchJson, postJson } from "./index";
 import type {
+  GenerationProgressSnapshot,
   BenchmarkResult,
   BenchmarkRunPayload,
   BenchmarkRunResponse,
@@ -146,6 +147,18 @@ export async function runBenchmark(
   // `cancelled: true`. `options.signal` only stops the wait when the
   // backend cannot be reached to confirm the cancel.
   return await postJson<BenchmarkRunResponse>("/api/benchmarks/run", payload, null, options?.signal);
+}
+
+/** What the running benchmark is doing (phase, items done of total). ``active`` is false when none runs. */
+export async function getBenchmarkProgress(): Promise<GenerationProgressSnapshot> {
+  const result = await fetchJson<{ progress: GenerationProgressSnapshot }>("/api/benchmarks/progress", 5000);
+  return result.progress;
+}
+
+/** What the running conversion is doing (phase, files downloaded of total, bytes written). */
+export async function getConversionProgress(): Promise<GenerationProgressSnapshot> {
+  const result = await fetchJson<{ progress: GenerationProgressSnapshot }>("/api/models/convert/progress", 5000);
+  return result.progress;
 }
 
 /** Ask the backend to stop the benchmark in progress; the waiting run request then answers ``cancelled: true``. */

@@ -7,6 +7,8 @@ import { ModelPicker } from "../../components/ModelPicker";
 import { SliderField } from "../../components/SliderField";
 import type { ConversionResult, LibraryItem, ModelVariant, NativeBackendStatus, PreviewMetrics } from "../../types";
 import { number, sizeLabel, libraryItemFormat } from "../../utils";
+import { conversionDialogPhase, conversionPhaseIds, conversionProgressNumbers } from "../../utils/jobProgress";
+import { useGenerationProgress } from "../../hooks/useGenerationProgress";
 
 export interface ConversionDraft {
   modelRef: string;
@@ -80,6 +82,22 @@ export function ConversionTab({
   onRevealPath,
 }: ConversionTabProps) {
   const { t } = useTranslation("common");
+  // The converter's own progress: its phase, files downloaded, bytes written. Nothing in the dialog is timed.
+  const conversionProgress = useGenerationProgress("conversion", busyAction === "Converting model..." && Boolean(conversionStartedAt));
+  const conversionPhaseLabels: Record<string, string> = {
+    preparing: t("conversionTab.progress.phases.resolve", { defaultValue: "Resolving source" }),
+    loading: t("conversionTab.progress.phases.load", { defaultValue: "Loading into MLX" }),
+    quantizing: t("conversionTab.progress.phases.quantize", { bits: conversionDraft.qBits, group: conversionDraft.qGroupSize, defaultValue: "Quantizing to {bits}-bit g{group}" }),
+    saving: t("conversionTab.progress.phases.shard", { defaultValue: "Sharding & writing safetensors" }),
+  };
+  const conversionNumbers = conversionProgressNumbers(conversionProgress);
+  const conversionProgressDetail = conversionNumbers.files
+    ? t("conversionTab.progress.detail.files", { done: conversionNumbers.files.done, total: conversionNumbers.files.total, defaultValue: "downloading the source: {done} of {total} files" })
+    : conversionNumbers.writtenGb !== null
+      ? conversionNumbers.expectedGb !== null
+        ? t("conversionTab.progress.detail.writtenOfAbout", { written: number(conversionNumbers.writtenGb, 2), expected: number(conversionNumbers.expectedGb, 1), defaultValue: "{written} GB written, about {expected} GB expected (estimate)" })
+        : t("conversionTab.progress.detail.written", { written: number(conversionNumbers.writtenGb, 2), defaultValue: "{written} GB written" })
+      : null;
   const beforeSize = conversionSource?.sizeGb ?? lastConversion?.sourceSizeGb ?? null;
   const estimatedContext = lastConversion?.contextWindow ?? conversionVariant?.contextWindow ?? t("conversionTab.varies", { defaultValue: "Varies" });
 
@@ -461,13 +479,11 @@ export function ConversionTab({
                   subtitle={conversionSource?.name ?? conversionDraft.modelRef ?? undefined}
                   startedAt={conversionStartedAt}
                   accent="convert"
+                  measuredOnly
+                  realProgress={conversionDialogPhase(conversionProgress)}
+                  activeDetail={conversionProgressDetail}
                   phases={[
-                    { id: "resolve", label: t("conversionTab.progress.phases.resolve", { defaultValue: "Resolving source" }), estimatedSeconds: 3 },
-                    { id: "download", label: t("conversionTab.progress.phases.download", { defaultValue: "Fetching weights" }), estimatedSeconds: 60 },
-                    { id: "load", label: t("conversionTab.progress.phases.load", { defaultValue: "Loading into MLX" }), estimatedSeconds: 15 },
-                    { id: "quantize", label: t("conversionTab.progress.phases.quantize", { bits: conversionDraft.qBits, group: conversionDraft.qGroupSize, defaultValue: `Quantizing to ${conversionDraft.qBits}-bit g${conversionDraft.qGroupSize}` }), estimatedSeconds: 45 },
-                    { id: "shard", label: t("conversionTab.progress.phases.shard", { defaultValue: "Sharding & writing safetensors" }), estimatedSeconds: 10 },
-                    { id: "verify", label: t("conversionTab.progress.phases.verify", { defaultValue: "Verifying output" }), estimatedSeconds: 5 },
+                    ...conversionPhaseIds(conversionDraft.quantize).map((id) => ({ id, label: conversionPhaseLabels[id] ?? id, estimatedSeconds: 0 })),
                   ] as LiveProgressPhase[]}
                 />
                 <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>

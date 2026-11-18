@@ -329,11 +329,14 @@
       "title": "모델 변환 중",
       "phases": {
         "resolve": "소스 확인 중",
-        "download": "가중치 가져오는 중",
         "load": "MLX에 로드 중",
         "quantize": "{bits}비트 g{group}로 양자화 중",
-        "shard": "샤딩 및 safetensors 작성",
-        "verify": "출력 검증 중"
+        "shard": "샤딩 및 safetensors 작성"
+      },
+      "detail": {
+        "files": null,
+        "written": null,
+        "writtenOfAbout": null
       }
     },
     "varies": "다양함",
@@ -424,10 +427,17 @@
       "title": "벤치마크 실행 중",
       "phases": {
         "load": "모델을 메모리에 로드 중",
-        "warm": "KV cache 워밍업 중",
-        "prompt": "프롬프트 처리 중",
-        "generate": "{tokens} 토큰 생성 중",
-        "measure": "통계 측정 중"
+        "datasetPerplexity": null,
+        "datasetAccuracy": null,
+        "evaluatingPerplexity": null,
+        "evaluatingAccuracy": null,
+        "generating": null,
+        "saving": null
+      },
+      "detail": {
+        "samples": null,
+        "questions": null,
+        "generating": null
       }
     },
     "modelLabel": "벤치마크 모델",

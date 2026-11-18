@@ -98,6 +98,7 @@ from backend_service.inference.conversion import (
     _resolve_local_model_dir,
     _summarise_convert_failure,
 )
+from backend_service.inference.conversion_progress import parse_bits_per_weight
 from backend_service.inference.jsonrpc import JsonRpcProcess
 from backend_service.inference.llama_cpp_engine import (
     LlamaCppEngine,
@@ -1475,22 +1476,23 @@ class RuntimeController:
         return payload
 
     def _run_converter(self, command: list[str], env: dict[str, str]) -> subprocess.CompletedProcess:
-        """Run ``mlx_lm convert`` and keep a handle on it so ``cancel_conversion`` can stop it."""
+        """Run ``mlx_lm convert``, keep a handle on it so ``cancel_conversion`` can stop it, and report its progress."""
+        from backend_service.inference.conversion_progress import ConverterWatch, run_watched
+        from backend_service.progress import CONVERSION_PROGRESS
+
         process = subprocess.Popen(
             command,
             cwd=str(WORKSPACE_ROOT),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True,
-            env=env,
+            # The converter's "[INFO]" lines are the phase signal: without this they sit in its buffer until it exits.
+            env={**env, "PYTHONUNBUFFERED": "1"},
         )
         self._convert_process = process
+        output_dir, expected_bytes = getattr(self, "_convert_watch_target", (None, None))
+        watch = ConverterWatch(CONVERSION_PROGRESS, output_dir=output_dir, expected_bytes=expected_bytes)
         try:
-            stdout, stderr = process.communicate(timeout=3600)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.communicate()
-            raise
+            stdout, stderr = run_watched(process, watch, timeout=3600)
         finally:
             self._convert_process = None
         return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
@@ -1505,6 +1507,9 @@ class RuntimeController:
         if not getattr(self, "_convert_active", False):
             return False
         self._convert_cancel_requested = True
+        from backend_service.progress import CONVERSION_PROGRESS
+
+        CONVERSION_PROGRESS.request_cancel()
         process = getattr(self, "_convert_process", None)
         if process is not None and process.poll() is None:
             process.terminate()
@@ -1522,8 +1527,12 @@ class RuntimeController:
         dtype: str,
         q_group_size: int = 64,
     ) -> dict[str, Any]:
+        from backend_service.progress import CONVERSION_PROGRESS
+
         self._convert_cancel_requested = False
         self._convert_active = True
+        self._convert_watch_target = (None, None)
+        CONVERSION_PROGRESS.begin(run_label=source_path or source_ref, phase="preparing", message="Checking the source")
         try:
             return self._convert_model(
                 source_ref=source_ref,
@@ -1537,6 +1546,7 @@ class RuntimeController:
             )
         finally:
             self._convert_active = False
+            CONVERSION_PROGRESS.finish()
 
     def _convert_model(
         self,
@@ -1737,6 +1747,8 @@ class RuntimeController:
         cancelled_message = f"Conversion cancelled. Nothing was kept at {target_output}."
         if getattr(self, "_convert_cancel_requested", False):
             raise RuntimeError(cancelled_message)
+        # What the progress watcher measures: bytes in a folder this run creates (never one that was already there).
+        self._convert_watch_target = (None if output_existed else target_output, needed_bytes)
         try:
             completed = self._run_converter(command, convert_env)
         except (OSError, subprocess.TimeoutExpired) as exc:
@@ -1834,6 +1846,8 @@ class RuntimeController:
             "sourceSizeGb": _bytes_to_gb(_path_size_bytes(size_source)) if size_source else None,
             "outputSizeGb": _bytes_to_gb(_path_size_bytes(target_output)),
             "ggufMetadata": gguf_metadata,
+            # Measured by the converter itself; None for a run without quantization.
+            "bitsPerWeight": parse_bits_per_weight(completed.stdout or ""),
             "log": (completed.stdout or "").strip(),
         }
 

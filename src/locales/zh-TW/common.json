@@ -329,11 +329,14 @@
       "title": "正在轉換模型",
       "phases": {
         "resolve": "正在解析來源",
-        "download": "正在取得權重",
         "load": "正在載入到 MLX",
         "quantize": "正在量化為 {bits} 位元 g{group}",
-        "shard": "正在分片並寫入 safetensors",
-        "verify": "正在驗證輸出"
+        "shard": "正在分片並寫入 safetensors"
+      },
+      "detail": {
+        "files": null,
+        "written": null,
+        "writtenOfAbout": null
       }
     },
     "varies": "視情況而定",
@@ -424,10 +427,17 @@
       "title": "正在執行基準測試",
       "phases": {
         "load": "正在將模型載入到記憶體",
-        "warm": "正在預熱 KV cache",
-        "prompt": "正在處理提示詞",
-        "generate": "正在生成 {tokens} 個 token",
-        "measure": "正在測量統計資料"
+        "datasetPerplexity": null,
+        "datasetAccuracy": null,
+        "evaluatingPerplexity": null,
+        "evaluatingAccuracy": null,
+        "generating": null,
+        "saving": null
+      },
+      "detail": {
+        "samples": null,
+        "questions": null,
+        "generating": null
       }
     },
     "modelLabel": "基準測試模型",

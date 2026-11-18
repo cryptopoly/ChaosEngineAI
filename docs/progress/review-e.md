@@ -14,3 +14,4 @@ Order (coordinator, 07:40): backend events, collapsed connect block, timeline an
 | 07:59 | E2E phase 21 (`scripts/e2e_phases/phase_21_server_activity.py`, registered as `PHASES[21]`) | WRITTEN | run pending the model lock |
 | 08:03 | Overview screenshots (dark, light emulation, 390 px) | DONE | `docs/progress/review-e/server-overview-*.png`. The app has one (dark) theme; the light shot shows it ignores `prefers-color-scheme` |
 | 08:03 | Real model run | WAITING | model lock held by another stream since 07:51; backend 8904 (PID 6396) and Vite 8924 up |
+| 08:09 | Real model run | WAITING | lock held by review-f since 07:51; retrying every 60 s for up to 50 min; backend restarted on new code (PID 28291) |

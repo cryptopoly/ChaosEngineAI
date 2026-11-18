@@ -1,6 +1,6 @@
 # Podcast demo path (v0.10.0, Mac)
 
-Status: **rehearsed four times with real models on 2026-11-18; R3 and R4 ran the script below end to end, twice in a row, with no stumble left unfixed.** Stream F of the overnight review (`docs/plans/overnight-e2e-review.md`). Evidence and every stumble: `docs/progress/review-f.md`.
+Status: **rehearsed four times with real models on 2026-11-18; R3 and R4 ran the script below end to end, twice in a row, with no stumble left unfixed.** Stream F of the overnight review (`docs/plans/overnight-e2e-review.md`). Evidence and every stumble: `docs/progress/review-f.md`, screenshots in `docs/progress/review-f-shots/`.
 
 A six to eight minute live path on the M4 Max (64 GB) that shows ChaosEngineAI at its best: a fresh start, a fast local answer, a tool call, a film clip made from one sentence in chat, the sample film, a spoken line, and the OpenAI-compatible server. Nothing in the path downloads anything.
 

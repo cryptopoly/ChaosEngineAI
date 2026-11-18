@@ -6,6 +6,7 @@ import { useModelEvents } from "../../hooks/useModelEvents";
 import { ServerActivity } from "./ServerActivity";
 import { ServerOverview } from "./ServerOverview";
 import { useServerView, type ServerViewId } from "./serverView";
+import { tabKeyTarget } from "../../utils/keyboard";
 
 export interface ServerTabProps {
   serverStatus: "running" | "idle";
@@ -95,7 +96,7 @@ export function ServerTab(props: ServerTabProps) {
         className="span-2"
         actions={
           <div className="segmented server-view-switch" role="tablist" aria-label={t("serverActivity.views.label", { defaultValue: "Server views" })}>
-            {VIEWS.map((id) => (
+            {VIEWS.map((id, index) => (
               <button
                 key={id}
                 type="button"
@@ -103,8 +104,16 @@ export function ServerTab(props: ServerTabProps) {
                 id={`server-view-${id}`}
                 aria-selected={view === id}
                 aria-controls="server-view-panel"
+                tabIndex={view === id ? 0 : -1}
                 className={`segment${view === id ? " active" : ""}`}
                 onClick={() => setView(id)}
+                onKeyDown={(event) => {
+                  const next = tabKeyTarget(index, VIEWS.length, event.key);
+                  if (next === null) return;
+                  event.preventDefault();
+                  setView(VIEWS[next]);
+                  event.currentTarget.parentElement?.querySelectorAll<HTMLElement>('[role="tab"]')[next]?.focus();
+                }}
               >
                 {viewLabel(id)}
               </button>

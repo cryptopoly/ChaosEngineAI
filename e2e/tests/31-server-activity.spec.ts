@@ -169,9 +169,12 @@ test.describe("Server page and Activity", () => {
     await page.screenshot({ path: `${SHOTS_DIR}/31-server-activity.png`, fullPage: true });
   });
 
-  test("the chosen view is remembered", async ({ page }) => {
+  test("the chosen view is remembered, and the view tabs answer the arrow keys", async ({ page }) => {
     await openServer(page);
-    await page.getByRole("tab", { name: "Activity" }).click();
+    await page.getByRole("tab", { name: "Overview" }).focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(page.getByRole("tab", { name: "Activity" })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tab", { name: "Activity" })).toBeFocused();
     await page.reload();
     await openServer(page);
     await expect(page.getByRole("tab", { name: "Activity" })).toHaveAttribute("aria-selected", "true");

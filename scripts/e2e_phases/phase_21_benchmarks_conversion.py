@@ -8,7 +8,7 @@ Benchmarks
 2. a throughput run on the smallest local MLX text model and on the smallest local GGUF text model gives a
    speed above zero, generated tokens, and lands first in the saved history;
 3. a perplexity run (WikiText-2, 8 samples of 128 tokens) gives a finite perplexity above 1;
-4. a task-accuracy run (MMLU, 10 questions, zero-shot) answers every question and gives an accuracy
+4. a task-accuracy run (MMLU, 10 questions, five-shot) answers every question and gives an accuracy
    between 0 and 1;
 5. the saved history survives a fresh ``GET /api/workspace``, one run can be deleted, and every run this
    phase made is removed again.
@@ -164,7 +164,7 @@ def phase_21_benchmarks_conversion(cap: Any):
         item = state.get("speed_MLX")
         if item is None:
             return "skip", "no MLX model was benchmarked", {}
-        code, body = _run(item, mode="task_accuracy", taskName="mmlu", taskLimit=10, taskNumShots=0)
+        code, body = _run(item, mode="task_accuracy", taskName="mmlu", taskLimit=10, taskNumShots=5)
         if code != 200:
             skip = _dataset_skip(body)
             return ("skip", skip, {}) if skip else ("fail", f"HTTP {code}: {_detail(body)[:200]}", {})

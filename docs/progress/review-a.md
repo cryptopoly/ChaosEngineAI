@@ -19,7 +19,7 @@ Started 2026-11-18. Deadline shortened by the coordinator to about 3.5 hours.
 | 1 | Benchmark, throughput, MLX (`mlx-community/Qwen3-0.6B-4bit`), API | PASS | 322.9 tok/s, 90 tokens, load 3.05 s; `POST /api/benchmarks/run {"mode":"throughput",...}` |
 | 2 | Benchmark, throughput, GGUF (`lmstudio-community/Qwen3-0.6B-GGUF`), API and UI | PASS | API 327.5 tok/s; UI run 324.8 tok/s, modal shows phases then the result card |
 | 3 | Benchmark, perplexity, MLX | FAIL (fixed later, see Fixes) | HTTP 400 `Dataset 'wikitext/wikitext-2-raw-v1' doesn't exist on the Hub or cannot be accessed.` Fails for every model: the dataset id is wrong |
-| 4 | Benchmark, task accuracy MMLU, MLX | FAIL (method) | 0/10 in 0.37 s. Raw outputs with 3 tokens: `"Let's analyze"`, `'\nA.'`, `'__________\n'`. A reply starting "Based on" scores as answer B. Numbers are noise for chat models |
+| 4 | Benchmark, task accuracy, MLX | PASS at the defaults, FAIL at zero-shot | Defaults (5-shot, 100 questions): MMLU 41/100, HellaSwag 43/100 on Qwen3-0.6B-4bit, in line with next-token scoring (39/100). Zero-shot: 9/100 (0/10 in the first try), below chance, because the model writes "Let's analyze" in its 3 tokens; next-token scoring gives 29/100 there. A reply starting "Based on" scored as answer B (fixed) |
 | 5 | Benchmark history, compare (UI) | PASS | 5 runs listed, stat cards, selected vs baseline table with deltas, scatter chart |
 | 6 | Benchmark history export and delete | FAIL (missing) | No export, delete or clear exists in the UI or the API (`routes/benchmarks.py` has one route, `POST /api/benchmarks/run`) |
 | 7 | Benchmark result honesty | FAIL | "Cache footprint 4.0 GB" for a 0.6B model at 8K (the preview next to it says 0.3 GB): `state/benchmarks.py` falls back to `paramsB = 7.0` when the model is not in the catalog. "Quality 100%" is a constant |
@@ -53,6 +53,7 @@ Started 2026-11-18. Deadline shortened by the coordinator to about 3.5 hours.
 | `8a2eab44` | Conversion: free-space check, partial output removed, missing path and repo named, dtype validated. Benchmarks: perplexity dataset, answer scoring, speed delta | `tests/test_conversion_helpers.py`, `tests/test_benchmark_eval.py`, `src/utils/__tests__/benchmarkCompare.test.ts` |
 | `62688aed` | Result dialog in the run's own mode, History cards, narrow Run layout, GGUF source card, `DELETE /api/benchmarks/{id}`, mode check, phase 211, spec 27 | `tests/test_route_contracts.py`, `src/utils/__tests__/conversionSource.test.ts`, `e2e/tests/27-benchmarks-conversion.spec.ts` |
 | `7d7efc7f` | Benchmark cache size from the model's own layout, GGUF note on the Conversion page, docs | `tests/test_benchmark_eval.py`, spec 27 |
+| `5d21f48a` | Delete run in History (asks first) | `src/api.test.ts`, spec 27 |
 
 ## Commands
 
@@ -61,6 +62,32 @@ Started 2026-11-18. Deadline shortened by the coordinator to about 3.5 hours.
 - Browser: `cd e2e && E2E_PYTHON=/Users/dan/ChaosEngineAI/.venv/bin/python E2E_WEB_PORT=8960 E2E_API_PORT=8961 npx playwright test tests/27-benchmarks-conversion.spec.ts --workers=1`
 - Real phase: `HOME=<throwaway home> CHAOSENGINE_PORT=8900 CHAOSENGINE_API_TOKEN=review-a-dummy ./scripts/e2e_test_suite.py --phases 211 --report-dir <scratchpad>/review-a/e2e-report` (needs the model lock)
 
-## Waiting
+## Real runs after the fixes (model lock held 08:18 to 08:26)
 
-- 08:11 to now: model lock held by other streams; the real perplexity run, the phase 211 run and the mid-write disk-full run wait for it.
+| # | Check | Result | Evidence |
+|---|---|---|---|
+| 29 | Perplexity, MLX, WikiText-2 | PASS | 8 x 128: 64.86 +/- 7.38; default 64 x 512: 31.49 +/- 0.60, the same value on a second run (3.6 s) |
+| 30 | Perplexity on a GGUF model | FAIL (left) | 400 "Perplexity evaluation is not supported by the llama.cpp backend." The Run tab offers the mode for GGUF models anyway |
+| 31 | Benchmark cache size after the fix | PASS | Qwen3-0.6B at 8K: 0.88 GB (was 4.0 GB from the 7B guess) |
+| 32 | Cancel a benchmark | FAIL (left) | the client stops waiting, the UI says "Benchmark cancelled.", but the backend finishes the run, saves it (history went 12 to 13 with my label `cancelled-by-client`) and keeps the model loaded |
+| 33 | E2E phase 211 with real models | PASS | 10 checks, 55 s: MLX 245.7 tok/s (Qwen2.5-0.5B), GGUF 161.8 tok/s, perplexity 41.7, MMLU 3/10, history 12 before and 12 after, Qwen3.5-4B converted (8.7 to 2.22 GB), second run refused, converted model answered at 178.7 tok/s. Report: `<scratchpad>/review-a/e2e-report/e2e-20261118-082340.md` |
+| 34 | UI, real conversion in the browser | PASS | progress dialog, then "Conversion complete", `.../Models/Qwen3-5-4B-mlx-2`, 8.7 GB to 2.2 GB. The dialog has no Cancel and its phases are timed, not real |
+| 35 | Full suites on the branch | PASS | pytest 4637 run, 0 failed, 17 skipped (tree at `7d7efc7f`, no Python change after it except the phase file); vitest 1822 passed; `tsc --noEmit` clean; `i18n:validate` OK; Playwright spec 27: 12 passed |
+
+## Incident (cleaned up)
+
+The throwaway home linked the real `datasets--Salesforce--wikitext` cache folder. The dataset loader wrote through that link: a README blob, three `.no_exist` markers and four links (train and validation parquet) whose targets sat in the throwaway cache, so they dangled in the real one. I removed exactly those entries (all created 07:41 or 08:20 today) and the link; the real folder is back to its one test-split file from April. No model folder was written to (checked with `find -newer`). Lesson for the other streams: link model folders only, never dataset folders, and let datasets download into the throwaway cache.
+
+## State at the end
+
+- Backend (8900) and Vite (8930) still run for the integrator; stop with `kill $(cat <scratchpad>/review-a/backend.pid) $(cat <scratchpad>/review-a/vite.pid)`.
+- Model lock released 08:26. No model loaded.
+- Throwaway home holds three converted folders under `Models/` (about 8.6 GB) and a stub `models--LiquidAI--LFM3-1.7B-Base` (100 KB, the stalled download); delete the home when done.
+
+## Not tested
+
+- GGUF to MLX end to end (the base-repo download stalled; not retried).
+- A mid-write disk-full run after the fix (the free-space check now stops it first; the clean-up path is covered by a unit test only).
+- Conversion of a gated repo, of a model over 10 GB, and with a real Hugging Face token.
+- The packaged app window, Windows and Linux, other locales in the browser.
+- `./scripts/e2e_test_suite.py --smoke` and the full suite (stream G).

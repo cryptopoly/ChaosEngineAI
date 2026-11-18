@@ -130,6 +130,43 @@ describe("findCatalogVariantForLibraryItem()", () => {
     const matched = findCatalogVariantForLibraryItem([makeFamily([qwen9, qwen35])], item);
     expect(matched?.id).toBe(qwen9.id);
   });
+
+  it("does not match a row that shares only format and quantization", () => {
+    // A 0.6B GGUF used to borrow a 39.8B coding model's size and badges in the Chat model picker.
+    const flint = makeVariant({
+      id: "bartowski/RecursiveSI_flint-GGUF-q4km",
+      name: "Flint GGUF Q4_K_M",
+      repo: "bartowski/RecursiveSI_flint-GGUF",
+      paramsB: 39.8,
+      format: "GGUF",
+      quantization: "Q4_K_M",
+    });
+    const item = makeItem({
+      name: "lmstudio-community/Qwen3-0.6B-GGUF",
+      path: "/hf/hub/models--lmstudio-community--Qwen3-0.6B-GGUF",
+      sizeGb: 0.45,
+    });
+
+    expect(findCatalogVariantForLibraryItem([makeFamily([flint])], item)).toBeNull();
+  });
+
+  it("does not match the same family at a different parameter scale", () => {
+    const qwen27 = makeVariant({
+      id: "unsloth/Qwen3.8-27B-GGUF",
+      name: "Qwen3.8 27B GGUF",
+      repo: "unsloth/Qwen3.8-27B-GGUF",
+      paramsB: 27,
+      format: "GGUF",
+      quantization: "Q4_K_M",
+    });
+    const item = makeItem({
+      name: "lmstudio-community/Qwen3-0.6B-GGUF",
+      path: "/hf/hub/models--lmstudio-community--Qwen3-0.6B-GGUF",
+      sizeGb: 0.45,
+    });
+
+    expect(findCatalogVariantForLibraryItem([makeFamily([qwen27])], item)).toBeNull();
+  });
 });
 
 describe("isChatLibraryItem()", () => {

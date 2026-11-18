@@ -27,7 +27,8 @@ _MATH_FUNCTIONS = {
     "round": round,
     "min": min,
     "max": max,
-    "sum": sum,
+    # Models write both sum([1, 2]) and sum(1, 2); take either.
+    "sum": lambda *args: sum(args[0]) if len(args) == 1 and isinstance(args[0], (list, tuple)) else sum(args),
     "sqrt": math.sqrt,
     "log": math.log,
     "log2": math.log2,
@@ -98,7 +99,9 @@ class CalculatorTool(BaseTool):
         }
 
     def execute(self, **kwargs: Any) -> str:
-        expression = str(kwargs.get("expression", "")).strip()
+        # A model that sends the expression as a bare string (not JSON) arrives as {"raw": "..."}; it is
+        # still the expression, the only argument this tool takes.
+        expression = str(kwargs.get("expression") or kwargs.get("raw") or "").strip()
         if not expression:
             return "Error: no expression provided."
 

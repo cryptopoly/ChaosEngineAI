@@ -360,7 +360,15 @@
     "duplicateNote": "Dasselbe Modell in mehreren Slots ausgewählt; nützlich für Runtime-Profil-A/B-Tests.",
     "promptPlaceholder": "Prompt zum Vergleichen eingeben...",
     "cancel": "Abbrechen",
-    "compareButton": "Vergleichen"
+    "compareButton": "Vergleichen",
+    "loading": "Wird geladen...",
+    "generating": "Wird generiert...",
+    "waiting": "Wartet...",
+    "waitingFor": "Wartet, bis {slot} fertig ist...",
+    "pickerTitleForSlot": "{slot} auswählen",
+    "pickerTitle": "Modell auswählen",
+    "useForSlot": "Für {slot} verwenden",
+    "useModel": "Modell verwenden"
   },
   "voice": {
     "heardNothing": "Es wurde keine Sprache erkannt. Versuche es näher am Mikrofon noch einmal.",
@@ -403,7 +411,7 @@
   },
   "emptyBanner": {
     "welcomeTitle": "Willkommen im ChaosEngineAI-Chat",
-    "welcomeBody": "Wähle unter Chat > Modelle ein Chat-Modell aus, um loszulegen. Für den ersten Start empfehlen wir eine kleine Qwen3- oder Llama-3-Variante — sie ist in ein bis zwei Minuten heruntergeladen und läuft auf jedem Laptop.",
+    "welcomeBody": "Wähle unter Chat > Modelle ein Chat-Modell aus, um loszulegen. Für den ersten Start eignet sich eines der kleinen Modelle (1 bis 2 GB): Sie sind in ein bis zwei Minuten heruntergeladen und laufen auf jedem Laptop.",
     "browseDiscover": "Modelle durchsuchen",
     "noModelLoaded": "Zum Chatten muss zuerst ein Modell geladen sein. Wähle eines aus deiner Bibliothek, um es in den Speicher zu laden.",
     "loadModel": "Modell laden",
@@ -595,7 +603,7 @@
       "app_restart": "die App wurde während des Laufs neu gestartet.",
       "studio_off": "die Studio-Werkzeuge wurden ausgeschaltet.",
       "gpu_reload_failed": "das Chat-Modell ließ sich nach einem Rendering nicht erneut laden: {detail}",
-      "job_stalled": null
+      "job_stalled": "ein Auftrag macht seit {minutes} Minuten keinen Fortschritt: {detail}"
     },
     "gpu": {
       "label": "GPU-Speicher beim Rendern freigeben",
@@ -604,6 +612,6 @@
       "always": "Immer",
       "never": "Nie"
     },
-    "waitingOn": null
+    "waitingOn": "wartet auf {label} ({minutes} Min.)"
   }
 }

@@ -360,7 +360,15 @@
     "duplicateNote": "Même modèle sélectionné dans plusieurs slots ; utile pour les tests A/B de profil d'exécution.",
     "promptPlaceholder": "Saisir une invite à comparer...",
     "cancel": "Annuler",
-    "compareButton": "Comparer"
+    "compareButton": "Comparer",
+    "loading": "Chargement...",
+    "generating": "Génération...",
+    "waiting": "En attente...",
+    "waitingFor": "En attente de la fin de {slot}...",
+    "pickerTitleForSlot": "Sélectionner {slot}",
+    "pickerTitle": "Sélectionner un modèle",
+    "useForSlot": "Utiliser pour {slot}",
+    "useModel": "Utiliser ce modèle"
   },
   "voice": {
     "heardNothing": "Aucune parole détectée. Réessayez plus près du micro.",
@@ -403,7 +411,7 @@
   },
   "emptyBanner": {
     "welcomeTitle": "Bienvenue dans le chat ChaosEngineAI",
-    "welcomeBody": "Choisissez un modèle de chat dans Discussion > Modèles pour commencer. Nous recommandons une petite variante de Qwen3 ou de Llama 3 pour un premier essai : elle se télécharge en une à deux minutes et tourne sur n'importe quel ordinateur portable.",
+    "welcomeBody": "Choisissez un modèle de chat dans Discussion > Modèles pour commencer. Pour un premier essai, prenez l'un des petits modèles (1 à 2 Go) : ils se téléchargent en une à deux minutes et tournent sur n'importe quel ordinateur portable.",
     "browseDiscover": "Parcourir les modèles",
     "noModelLoaded": "Un modèle doit être chargé avant de pouvoir discuter. Choisissez-en un dans votre bibliothèque pour le charger en mémoire.",
     "loadModel": "Charger le modèle",
@@ -595,7 +603,7 @@
       "app_restart": "l'application a redémarré pendant son exécution.",
       "studio_off": "Les outils Studio ont été désactivés.",
       "gpu_reload_failed": "le modèle de discussion n'a pas pu être rechargé après un rendu : {detail}",
-      "job_stalled": null
+      "job_stalled": "une tâche n'a fait aucun progrès depuis {minutes} minutes : {detail}"
     },
     "gpu": {
       "label": "Libérer la mémoire GPU pendant les rendus",
@@ -604,6 +612,6 @@
       "always": "Toujours",
       "never": "Jamais"
     },
-    "waitingOn": null
+    "waitingOn": "en attente de {label} ({minutes} min)"
   }
 }

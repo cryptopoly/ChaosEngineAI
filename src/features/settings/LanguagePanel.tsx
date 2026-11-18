@@ -103,7 +103,7 @@ export function LanguagePanel({
 
   return (
     <Panel
-      title={t("languagePanel.title", { defaultValue: "Settings" })}
+      title={t("languagePanel.title", { defaultValue: "Language and time" })}
       subtitle={t("languagePanel.subtitle", {
         defaultValue:
           "Choose the language used across the app and how clock times are shown. New choices apply immediately and save with your other settings.",
@@ -140,27 +140,32 @@ export function LanguagePanel({
           })}
         </p>
 
-        <div
-          className="segmented"
-          role="radiogroup"
-          aria-label={t("languagePanel.clockFormatAria", { defaultValue: "Clock format" })}
-        >
-          {(["system", "12h", "24h"] as const).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              role="radio"
-              aria-checked={settingsDraft.clockFormat === mode}
-              className={settingsDraft.clockFormat === mode ? "segment active" : "segment"}
-              onClick={() => handleClockChange(mode)}
-            >
-              {mode === "system"
-                ? t("languagePanel.clockSystem", { defaultValue: "System" })
-                : mode === "12h"
-                  ? t("languagePanel.clock12h", { defaultValue: "12-hour" })
-                  : t("languagePanel.clock24h", { defaultValue: "24-hour" })}
-            </button>
-          ))}
+        <div className="field">
+          <span id="settings-clock-format-label">
+            {t("languagePanel.clockFormatAria", { defaultValue: "Clock format" })}
+          </span>
+          <div
+            className="segmented"
+            role="radiogroup"
+            aria-labelledby="settings-clock-format-label"
+          >
+            {(["system", "12h", "24h"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                role="radio"
+                aria-checked={settingsDraft.clockFormat === mode}
+                className={settingsDraft.clockFormat === mode ? "segment active" : "segment"}
+                onClick={() => handleClockChange(mode)}
+              >
+                {mode === "system"
+                  ? t("languagePanel.clockSystem", { defaultValue: "System" })
+                  : mode === "12h"
+                    ? t("languagePanel.clock12h", { defaultValue: "12-hour" })
+                    : t("languagePanel.clock24h", { defaultValue: "24-hour" })}
+              </button>
+            ))}
+          </div>
         </div>
         <p className="help-text">
           {t("languagePanel.clockHint", {

@@ -201,11 +201,11 @@
     "hours": "{value, plural, other {# rep}}"
   },
   "localeBanner": {
-    "detected": "{endonym} tu'lu'ta'.",
-    "prompt": "{endonym} yIlo''a'? SeHlaw → HolDaq reH DachoHlaH.",
-    "switch": "{endonym} yIwIv",
-    "keep": "DIvI' Hol yIratlh",
-    "ariaLabel": "Hol wIv"
+    "ariaLabel": "Hol wIv",
+    "inUse": null,
+    "changeHint": null,
+    "keepCurrent": null,
+    "useEnglish": null
   },
   "panels": {
     "mlxConversion": "MLX choH",
@@ -829,7 +829,7 @@
     }
   },
   "languagePanel": {
-    "title": "SeHlaw",
+    "title": null,
     "subtitle": "app HolDaj yIwIv 'ej chay' rep cha'lu' yIwIv. SIbI' Qap wIv chu' 'ej latlh wIvlIj je pollu'.",
     "label": "Hol",
     "systemDefault": "pat motlh",

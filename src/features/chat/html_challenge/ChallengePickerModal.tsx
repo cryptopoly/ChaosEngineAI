@@ -14,7 +14,7 @@ import type { LaunchPreferences, StrategyInstallLog, SystemStats } from "../../.
 import type { ChatModelOption } from "../../../types/chat";
 import type { MtplxJobState } from "../../../api";
 import type { TensorfoldLaunchControls } from "../../../components/tensorfoldSupport";
-import { compareTargetLabels, type CompareTarget, cloneLaunchSettings, useLaunchPreview } from "../CompareView";
+import { compareSlotLabels, type CompareTarget, cloneLaunchSettings, useLaunchPreview } from "../CompareView";
 
 interface ChallengePickerModalProps {
   target: CompareTarget | null;
@@ -90,10 +90,10 @@ export function ChallengePickerModal({
     <ModelLaunchModal
       open={target != null}
       title={target
-        ? t("htmlChallenge.picker.titleForSlot", { defaultValue: "Select {slot}", slot: compareTargetLabels[target] })
+        ? t("htmlChallenge.picker.titleForSlot", { defaultValue: "Select {slot}", slot: compareSlotLabels(t)[target] })
         : t("htmlChallenge.picker.title", { defaultValue: "Select Model" })}
       confirmLabel={target
-        ? t("htmlChallenge.picker.confirmForSlot", { defaultValue: "Use for {slot}", slot: compareTargetLabels[target] })
+        ? t("htmlChallenge.picker.confirmForSlot", { defaultValue: "Use for {slot}", slot: compareSlotLabels(t)[target] })
         : t("htmlChallenge.picker.confirm", { defaultValue: "Use model" })}
       selectedKey={draftKey}
       collapseOnOpen={Boolean(draftKey)}

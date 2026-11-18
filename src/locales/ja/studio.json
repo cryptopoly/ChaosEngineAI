@@ -1305,7 +1305,7 @@
     "size": "サイズ",
     "resolution": "解像度",
     "overLimit": "このモデルのサイズ上限を超えています。",
-    "underLimit": null,
+    "underLimit": "このモデルの最小サイズ（{min} px）を下回っています。",
     "current": "現在のサイズ：{width} x {height}（{megapixels} MP）"
   },
   "estimate": {

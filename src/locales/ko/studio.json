@@ -1305,7 +1305,7 @@
     "size": "크기",
     "resolution": "해상도",
     "overLimit": "이 모델의 크기 한도를 넘었습니다.",
-    "underLimit": null,
+    "underLimit": "이 모델의 최소 크기({min} px)보다 작습니다.",
     "current": "현재 크기: {width} x {height}({megapixels} MP)"
   },
   "estimate": {

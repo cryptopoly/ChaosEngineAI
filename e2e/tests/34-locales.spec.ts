@@ -73,8 +73,13 @@ test.describe("first launch on a German system", () => {
     const banner = page.locator(".locale-banner");
     await expect(banner).toBeVisible();
     await expect(banner).toContainText("Deutsch");
-    // The app already starts in the detected language.
+    // The app already starts in the detected language, so the banner says so in that language and does not
+    // ask whether to switch to it (L-1: it read "App auf Deutsch umstellen?" on an app already in German).
     await expect(page.locator("html")).toHaveAttribute("lang", "de");
+    await expect(banner.locator("strong")).toHaveText("Die App verwendet Deutsch, die Sprache des Systems.");
+    await expect(banner).not.toContainText("?");
+    await expect(banner).not.toContainText("umstellen");
+    await expect(banner.getByRole("button")).toHaveText(["Deutsch beibehalten", "Use English"]);
 
     const bar = (await banner.boundingBox())!;
     const sidebar = (await page.locator("aside.sidebar").boundingBox())!;
@@ -91,7 +96,7 @@ test.describe("first launch on a German system", () => {
     await expect(banner.getByRole("button").first()).toHaveClass(/primary-button/);
     await expect(banner.getByRole("button").last()).toHaveClass(/secondary-button/);
 
-    // "Keep English" switches at once and is saved.
+    // "Use English" (always written in English) switches at once and is saved.
     const saved = page.waitForRequest((r) => r.method() === "PATCH" && r.url().endsWith("/api/settings"));
     await banner.getByRole("button").last().click();
     expect((await saved).postDataJSON()).toEqual({ locale: "en" });
@@ -99,12 +104,31 @@ test.describe("first launch on a German system", () => {
     await expect(page.locator("html")).toHaveAttribute("lang", "en", { timeout: 2000 });
     await expect(page.locator("aside.sidebar nav .nav-button").first()).toContainText("Dashboard");
   });
+
+  test("keeping the detected language saves it and the app stays in German", async ({ page, request }) => {
+    await saveLocale(request, "system");
+    await page.goto("/");
+    const banner = page.locator(".locale-banner");
+    await expect(banner).toBeVisible();
+    const saved = page.waitForRequest((r) => r.method() === "PATCH" && r.url().endsWith("/api/settings"));
+    await banner.getByRole("button", { name: "Deutsch beibehalten" }).click();
+    expect((await saved).postDataJSON()).toEqual({ locale: "de" });
+    await expect(banner).toBeHidden();
+    await expect(page.locator("html")).toHaveAttribute("lang", "de");
+    // Answered once: it does not come back on the next load.
+    await page.reload();
+    await expect(page.locator("aside.sidebar")).toBeVisible();
+    await expect(page.locator(".locale-banner")).toHaveCount(0);
+  });
 });
 
 for (const locale of LOCALES) {
   test(`${locale}: boots with no raw keys, no leftover placeholders and no sideways scroll`, async ({ page, request }) => {
+    // In English first, so the terms are accepted when this spec runs on its own: their button is not
+    // "I agree" in this language, and with the dialog up every locale test ran into its 180 s timeout.
+    await openApp(page);
     await saveLocale(request, locale);
-    await openApp(page).catch(() => undefined); // the terms button is not "I agree" in this language; they are accepted already
+    await openApp(page).catch(() => undefined);
     await expect(page.locator("aside.sidebar")).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute("lang", locale, { timeout: 15_000 });
     await expect(page.locator(".error-boundary")).toHaveCount(0);

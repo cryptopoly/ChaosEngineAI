@@ -219,23 +219,28 @@ export function SettingsTab({
                 "Off by default. Lists pages that are not finished yet in the sidebar. Their pages and routes stay either way.",
             })}
           </p>
-          <div
-            className="segmented"
-            role="radiogroup"
-            aria-label={t("settingsTab.appearance.uiScaleAria", { defaultValue: "UI scale" })}
-          >
-            {UI_SCALES.map((scale) => (
-              <button
-                key={scale}
-                type="button"
-                role="radio"
-                aria-checked={uiScale === scale}
-                className={uiScale === scale ? "segment active" : "segment"}
-                onClick={() => onUiScaleChange(scale)}
-              >
-                {Math.round(scale * 100)}%
-              </button>
-            ))}
+          <div className="field">
+            <span id="settings-ui-scale-label">
+              {t("settingsTab.appearance.uiScaleAria", { defaultValue: "UI scale" })}
+            </span>
+            <div
+              className="segmented"
+              role="radiogroup"
+              aria-labelledby="settings-ui-scale-label"
+            >
+              {UI_SCALES.map((scale) => (
+                <button
+                  key={scale}
+                  type="button"
+                  role="radio"
+                  aria-checked={uiScale === scale}
+                  className={uiScale === scale ? "segment active" : "segment"}
+                  onClick={() => onUiScaleChange(scale)}
+                >
+                  {Math.round(scale * 100)}%
+                </button>
+              ))}
+            </div>
           </div>
           <p className="help-text">
             {t("settingsTab.appearance.uiScaleHelp", {

@@ -40,6 +40,15 @@ export const compareTargetLabels: Record<CompareTarget, string> = {
   d: "Model D",
 };
 
+/** The slot names in the app's language; ``t`` is the chat namespace's (keys ``compareView.slot.*``). */
+export function compareSlotLabels(
+  t: (key: string, options: { defaultValue: string }) => string,
+): Record<CompareTarget, string> {
+  return Object.fromEntries(
+    compareTargets.map((id) => [id, t(`compareView.slot.${id}`, { defaultValue: compareTargetLabels[id] })]),
+  ) as Record<CompareTarget, string>;
+}
+
 interface CompareSlot {
   id: CompareTarget;
   modelKey: string;
@@ -608,9 +617,12 @@ export function CompareView({
     setPickerTarget(target);
   }
 
+  const slotLabels = compareSlotLabels(t);
+  const slotName = (id: CompareTarget) => slotLabels[id];
+
   function renderModelCard(slot: CompareSlot) {
     const option = selectedBySlot[slot.id];
-    const slotLabel = t(`compareView.slot.${slot.id}`, { defaultValue: compareTargetLabels[slot.id] });
+    const slotLabel = slotName(slot.id);
     return (
       <div key={slot.id}>
         <span className="eyebrow">{slotLabel}</span>
@@ -683,13 +695,17 @@ export function CompareView({
     );
     const subtitle = modelState.done
       ? `${number(modelState.tokS)} tok/s | ${number(modelState.responseSeconds)}s`
-      : modelState.loading ? "Loading..." : modelState.text ? "Generating..." : "";
-    const waitingLabel = index === 0 ? "Waiting..." : `Waiting for ${compareTargetLabels[slots[index - 1]?.id ?? "a"]} to finish...`;
+      : modelState.loading
+        ? t("compareView.loading", { defaultValue: "Loading..." })
+        : modelState.text ? t("compareView.generating", { defaultValue: "Generating..." }) : "";
+    const waitingLabel = index === 0
+      ? t("compareView.waiting", { defaultValue: "Waiting..." })
+      : t("compareView.waitingFor", { defaultValue: "Waiting for {slot} to finish...", slot: slotName(slots[index - 1]?.id ?? "a") });
 
     return (
       <Panel
         key={slot.id}
-        title={compareTargetLabels[slot.id]}
+        title={slotName(slot.id)}
         subtitle={subtitle}
         actions={showLatestButton ? (
           <button className="secondary-button" type="button" onClick={() => scrollResultToBottom(slot.id)}>
@@ -816,8 +832,12 @@ export function CompareView({
 
       <ModelLaunchModal
         open={pickerTarget != null}
-        title={pickerTarget ? `Select ${compareTargetLabels[pickerTarget]}` : "Select Model"}
-        confirmLabel={pickerTarget ? `Use for ${compareTargetLabels[pickerTarget]}` : "Use model"}
+        title={pickerTarget
+          ? t("compareView.pickerTitleForSlot", { defaultValue: "Select {slot}", slot: slotName(pickerTarget) })
+          : t("compareView.pickerTitle", { defaultValue: "Select Model" })}
+        confirmLabel={pickerTarget
+          ? t("compareView.useForSlot", { defaultValue: "Use for {slot}", slot: slotName(pickerTarget) })
+          : t("compareView.useModel", { defaultValue: "Use model" })}
         selectedKey={pickerDraftKey}
         collapseOnOpen={Boolean(pickerDraftKey)}
         search={pickerSearch}

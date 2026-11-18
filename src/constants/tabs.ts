@@ -59,6 +59,5 @@ export const tabs: TabConfig[] = [
   { id: "finetuning", label: "Fine-Tuning", labelKey: "tabs.fineTuning", caption: "LoRA adapters and training", captionKey: "tabCaptions.fineTuning", group: "tools", shortLabel: "Fine-Tuning", shortLabelKey: "tabShortLabels.fineTuning" },
   { id: "prompt-library", label: "Prompts", labelKey: "tabs.promptLibrary", caption: "Reusable prompt templates", captionKey: "tabCaptions.promptLibrary", group: "tools", shortLabel: "Prompts", shortLabelKey: "tabShortLabels.promptLibrary" },
   { id: "plugins", label: "Plugins", labelKey: "tabs.plugins", caption: "Extensions and plugin system", captionKey: "tabCaptions.plugins", group: "tools", shortLabel: "Plugins", shortLabelKey: "tabShortLabels.plugins" },
-  { id: "logs", label: "Logs", labelKey: "tabs.logs", caption: "Runtime events", captionKey: "tabCaptions.logs" },
   { id: "settings", label: "Settings", labelKey: "tabs.settings", caption: "Directories and defaults", captionKey: "tabCaptions.settings" },
 ];

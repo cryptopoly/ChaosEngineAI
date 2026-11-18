@@ -139,8 +139,6 @@ export interface AppTabContext {
   setShowRemoteTest: Dispatch<SetStateAction<boolean>>;
   testModelId: string | null;
   setTestModelId: Dispatch<SetStateAction<string | null>>;
-  logQuery: string;
-  setLogQuery: Dispatch<SetStateAction<string>>;
 
   // Voice state
   voiceRuntime: VoiceRuntime | null;

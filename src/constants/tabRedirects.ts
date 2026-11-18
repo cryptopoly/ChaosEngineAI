@@ -12,6 +12,9 @@
  * (D-65). Their ids open that entry with a route: the list, or the last
  * open project on its Storyboard or Mixer tab.
  *
+ * The Logs page became the Server page's Activity view (D-88): ``logs``
+ * opens Server on Activity.
+ *
  * App applies ``resolveTabRequest`` in the single wrapper around its tab
  * setter, and ``useSidebarPrefs`` applies ``normalizeStoredTabId`` when it
  * reads ``lastChildByGroup`` from localStorage.
@@ -20,6 +23,7 @@
 import type { TabId } from "../types";
 import type { ModelsArea } from "../components/models/modelEntry";
 import type { ProjectTabId } from "../features/storyboard/projectRoute";
+import type { ServerViewId } from "../features/server/serverView";
 
 /** Tab ids that no longer exist. */
 export type LegacyTabId =
@@ -29,7 +33,8 @@ export type LegacyTabId =
   | "video-discover"
   | "story-projects"
   | "story-board"
-  | "story-mixer";
+  | "story-mixer"
+  | "logs";
 
 /** Availability filter a navigation can preset on a Models page. */
 export type ModelsPreset = "installed" | "available";
@@ -47,6 +52,8 @@ export interface TabNavigation {
   modelsPreset?: ModelsPreset;
   /** Applied to the Projects view's route before it shows. */
   storyboard?: StoryboardNavigation;
+  /** The Server page's view (D-88). */
+  serverView?: ServerViewId;
 }
 
 /** What a tab setter accepts: a tab id, a legacy id, or an explicit
@@ -69,6 +76,7 @@ export const LEGACY_TAB_REDIRECTS: Record<LegacyTabId, TabNavigation> = {
   "story-projects": { tab: "storyboard", storyboard: { projectId: null } },
   "story-board": { tab: "storyboard", storyboard: { tab: "storyboard" } },
   "story-mixer": { tab: "storyboard", storyboard: { tab: "mixer" } },
+  logs: { tab: "server", serverView: "activity" },
 };
 
 export function isLegacyTabId(value: unknown): value is LegacyTabId {
@@ -90,10 +98,16 @@ export function modelsAreaForTab(tab: TabId): ModelsArea | null {
   return null;
 }
 
-function navigation(tab: TabId, modelsPreset?: ModelsPreset, storyboard?: StoryboardNavigation): TabNavigation {
+function navigation(
+  tab: TabId,
+  modelsPreset?: ModelsPreset,
+  storyboard?: StoryboardNavigation,
+  serverView?: ServerViewId,
+): TabNavigation {
   const result: TabNavigation = { tab };
   if (modelsPreset) result.modelsPreset = modelsPreset;
   if (storyboard) result.storyboard = { ...storyboard };
+  if (serverView) result.serverView = serverView;
   return result;
 }
 
@@ -109,13 +123,18 @@ export function resolveTabRequest(request: TabRequest | null | undefined): TabNa
     const tab: string = request.tab;
     if (isLegacyTabId(tab)) {
       const redirect = LEGACY_TAB_REDIRECTS[tab];
-      return navigation(redirect.tab, request.modelsPreset ?? redirect.modelsPreset, request.storyboard ?? redirect.storyboard);
+      return navigation(
+        redirect.tab,
+        request.modelsPreset ?? redirect.modelsPreset,
+        request.storyboard ?? redirect.storyboard,
+        request.serverView ?? redirect.serverView,
+      );
     }
-    return navigation(request.tab, request.modelsPreset, request.storyboard);
+    return navigation(request.tab, request.modelsPreset, request.storyboard, request.serverView);
   }
   if (isLegacyTabId(request)) {
     const redirect = LEGACY_TAB_REDIRECTS[request];
-    return navigation(redirect.tab, redirect.modelsPreset, redirect.storyboard);
+    return navigation(redirect.tab, redirect.modelsPreset, redirect.storyboard, redirect.serverView);
   }
   return { tab: request };
 }

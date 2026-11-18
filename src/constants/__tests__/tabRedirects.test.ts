@@ -40,6 +40,15 @@ describe("resolveTabRequest", () => {
     expect(resolveTabRequest(staleWithPreset)).toEqual({ tab: "chat-models", modelsPreset: "available" });
   });
 
+  it("opens the Server page on Activity for the old Logs id (D-88)", () => {
+    expect(resolveTabRequest("logs")).toEqual({ tab: "server", serverView: "activity" });
+    const stale = { tab: "logs" } as unknown as TabRequest;
+    expect(resolveTabRequest(stale)).toEqual({ tab: "server", serverView: "activity" });
+    expect(resolveTabRequest({ tab: "server", serverView: "overview" })).toEqual({ tab: "server", serverView: "overview" });
+    expect(isLegacyTabId("logs")).toBe(true);
+    expect(tabs.some((tab) => tab.id === ("logs" as string))).toBe(false);
+  });
+
   it("ignores an empty request", () => {
     expect(resolveTabRequest(null)).toBeNull();
     expect(resolveTabRequest(undefined)).toBeNull();
@@ -83,6 +92,7 @@ describe("persisted sidebar ids", () => {
     expect(normalizeStoredTabId("story-board")).toBe("storyboard");
     expect(normalizeStoredTabId("story-mixer")).toBe("storyboard");
     expect(normalizeStoredTabId("story-projects")).toBe("storyboard");
+    expect(normalizeStoredTabId("logs")).toBe("server");
     // The retired storyboard group's memory is dropped.
     expect(migrateLastChildByGroup({ music: "music-library", storyboard: "story-board" })).toEqual({ music: "music-library" });
     expect(normalizeStoredTabId(42)).toBeNull();

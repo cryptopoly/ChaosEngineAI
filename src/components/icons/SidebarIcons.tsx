@@ -199,6 +199,5 @@ export const standaloneTabIcon: Partial<Record<TabId, ComponentType<IconProps>>>
   dashboard: DashboardIcon,
   storyboard: StoryboardIcon,
   server: ServerIcon,
-  logs: LogsIcon,
   settings: SettingsIcon,
 };

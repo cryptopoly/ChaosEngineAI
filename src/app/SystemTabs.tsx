@@ -2,7 +2,6 @@ import { stopIdleModelProcesses, stopModelProcess } from "../api";
 import { serverOriginFromBase } from "../utils";
 import { DashboardTab } from "../features/dashboard/DashboardTab";
 import { ServerTab } from "../features/server/ServerTab";
-import { LogsTab } from "../features/logs/LogsTab";
 import { SettingsTab } from "../features/settings/SettingsTab";
 import { FineTuningTab } from "../features/finetuning/FineTuningTab";
 import { PromptLibraryTab } from "../features/prompts/PromptLibraryTab";
@@ -43,7 +42,6 @@ export function ServerView({ ctx }: { ctx: AppTabContext }) {
     openModelSelector, handleLoadModel, handleUnloadWarmModel,
   } = ctx;
   const { settingsDraft, setSettingsDraft, handleRestartServer, handleStopServer, handleSaveSettings } = ctx.settings;
-  const serverLogEntries = workspace.logs.slice(0, 120).reverse();
   const remoteAccessRequested = settingsDraft.allowRemoteConnections;
   const remoteAccessActive = workspace.server.remoteAccessActive ?? false;
   const serverLanUrls = workspace.server.lanUrls ?? [];
@@ -79,7 +77,7 @@ export function ServerView({ ctx }: { ctx: AppTabContext }) {
       engineLabel={workspace.runtime.engineLabel}
       activeGenerations={workspace.system.activeGenerations}
       settingsDraft={settingsDraft}
-      serverLogEntries={serverLogEntries}
+      logEntries={workspace.logs}
       showRemoteTest={showRemoteTest}
       testModelId={testModelId}
       apiToken={apiToken}
@@ -100,15 +98,6 @@ export function ServerView({ ctx }: { ctx: AppTabContext }) {
       onTestModelIdChange={setTestModelId}
     />
   );
-}
-
-export function LogsView({ ctx }: { ctx: AppTabContext }) {
-  const { workspace, logQuery, setLogQuery } = ctx;
-  const filteredLogs = workspace.logs.filter((entry) => {
-    const haystack = `${entry.ts} ${entry.source} ${entry.level} ${entry.message}`.toLowerCase();
-    return haystack.includes(logQuery.toLowerCase());
-  });
-  return <LogsTab filteredLogs={filteredLogs} logQuery={logQuery} onLogQueryChange={setLogQuery} />;
 }
 
 export function SettingsView({ ctx }: { ctx: AppTabContext }) {

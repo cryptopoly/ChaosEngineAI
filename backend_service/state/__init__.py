@@ -44,6 +44,7 @@ from backend_service.state._helpers import (
     _title_variant_pattern,
 )
 from backend_service.state.logs import LogManager, _time_label
+from backend_service.model_events import ModelEventLog
 
 if TYPE_CHECKING:
     from backend_service.image_runtime import ImageRuntimeManager
@@ -173,6 +174,9 @@ class ChaosEngineState:
             self._persist_sessions()
         self.benchmark_runs = _load_benchmark_runs(self._benchmarks_path)
         self._log_manager = LogManager()
+        # One event per step of a model's life, for the Server page's Activity view (D-88).
+        self.model_events = ModelEventLog(Path(self._settings_path).parent / "logs" / "model-events.jsonl")
+        self.runtime.events = self.model_events
         self.requests_served = 0
         self.active_requests = 0
         self._loading_state: dict[str, Any] | None = None

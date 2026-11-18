@@ -324,6 +324,135 @@
       "musicBare": "Music engine busy"
     }
   },
+  "serverActivity": {
+    "views": {
+      "label": "Server views",
+      "overview": "Overview",
+      "activity": "Activity"
+    },
+    "summary": {
+      "requested": "Load requested ({backend})",
+      "resolving": "Choosing an engine",
+      "loading": "Loading on {engine} ({size})",
+      "loaded": "Loaded in {seconds}, {memory} in memory",
+      "loadedWarm": "Switched to the warm copy",
+      "parked": "Kept warm for a quick switch back",
+      "firstToken": "First token after {seconds}",
+      "generation": "{tokens} tokens at {rate} tok/s in {seconds}",
+      "idle": "Idle",
+      "unloaded": "Unloaded ({reason})"
+    },
+    "reason": {
+      "user": "by you",
+      "swap": "another model",
+      "memory": "to free memory",
+      "idle": "idle",
+      "error": "error"
+    },
+    "kind": {
+      "requested": "Requested",
+      "resolving": "Resolving",
+      "loading": "Loading",
+      "loaded": "Loaded",
+      "load_failed": "Load failed",
+      "parked": "Kept warm",
+      "first_token": "First token",
+      "generation": "Generation",
+      "generation_failed": "Generation failed",
+      "idle": "Idle",
+      "unloaded": "Unloaded"
+    },
+    "phase": {
+      "loading": "Loading",
+      "ready": "Ready",
+      "generating": "Generating",
+      "idle": "Idle",
+      "warm": "Warm",
+      "failed": "Failed"
+    },
+    "timeline": {
+      "title": "Model timeline",
+      "window": "Time window",
+      "windows": {
+        "15m": "15 min",
+        "1h": "1 hour",
+        "24h": "24 hours",
+        "all": "All"
+      },
+      "empty": "No model activity in this window. Load a model to see its timeline.",
+      "live": "now",
+      "legend": "Legend"
+    },
+    "list": {
+      "title": "Events",
+      "empty": "No events match. Model loads, answers and unloads show here.",
+      "select": "Select {kind} at {time}"
+    },
+    "detail": {
+      "request": "Request",
+      "modelRef": "Model id",
+      "engine": "Engine",
+      "cache": "Cache strategy",
+      "speculative": "Speculative decoding",
+      "message": "Message",
+      "error": "Error",
+      "command": "Command line",
+      "stderr": "Last engine output",
+      "env": "Environment"
+    },
+    "copyEvent": "Copy event",
+    "paused": "{count, plural, =0 {Paused} one {Paused, # new} other {Paused, # new}}",
+    "live": "Live",
+    "offline": "Reconnecting",
+    "filter": {
+      "model": "Model",
+      "allModels": "All models",
+      "level": "Level",
+      "allLevels": "All levels",
+      "request": "Request id",
+      "search": "Search events"
+    },
+    "level": {
+      "info": "Info",
+      "warning": "Warning",
+      "error": "Error"
+    },
+    "pause": "Pause",
+    "resume": "Resume",
+    "latestFailure": "Latest failure",
+    "selectAll": "Select shown",
+    "selectNone": "Clear selection",
+    "copySelected": "Copy selected ({count})",
+    "exportSelected": "Export selected ({count})",
+    "lines": {
+      "title": "Log lines",
+      "filter": "Filter log lines",
+      "noMatch": "No log lines match the filter."
+    },
+    "recent": {
+      "title": "Recent activity",
+      "open": "Open Activity",
+      "empty": "Nothing yet. Model loads, answers and unloads show here."
+    },
+    "field": {
+      "seconds": "Seconds",
+      "totalSeconds": "Total seconds",
+      "memoryBytes": "Memory",
+      "contextTokens": "Context",
+      "warm": "From warm pool",
+      "bytes": "Weights",
+      "prefillSeconds": "Prefill",
+      "tokS": "Tokens per second",
+      "promptTokens": "Prompt tokens",
+      "completionTokens": "Completion tokens",
+      "finishReason": "Finish reason",
+      "streaming": "Streaming",
+      "reason": "Reason",
+      "backend": "Backend",
+      "speculativeDecoding": "Speculative decoding",
+      "source": "Source"
+    }
+  },
   "conversionTab": {
     "progress": {
       "title": "Converting model",

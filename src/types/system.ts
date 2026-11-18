@@ -29,7 +29,6 @@ export type TabId =
   | "finetuning"
   | "prompt-library"
   | "plugins"
-  | "logs"
   | "settings";
 
 export type SidebarGroupId =

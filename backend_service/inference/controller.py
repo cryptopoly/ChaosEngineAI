@@ -40,6 +40,7 @@ from backend_service.helpers.request_guards import (
     strip_json_fence,
 )
 from backend_service.model_resolution import resolve_dflash_target_ref
+from backend_service import model_event_hooks as _events
 
 from backend_service.inference._constants import (
     CAPABILITY_CACHE_TTL_SECONDS,
@@ -207,6 +208,8 @@ class RuntimeController:
         self._recent_orphaned_workers: list[dict[str, Any]] = []
         self._capability_probe_thread: Thread | None = None
         self._capability_probe_lock = Lock()
+        # Structured model events (D-88); ``ChaosEngineState`` attaches the log.
+        self.events: _events.ModelEventLog | None = None
         if background_probe:
             self.start_capability_probe()
 
@@ -358,6 +361,7 @@ class RuntimeController:
                 self.engine.unload_model()
             except Exception:
                 pass
+            _events.emit_unloaded(self.events, self.loaded_model, "swap", message="Reloading with new settings.")
             return
         self._purge_warm_entries_for_identity(current_identity, keep_key=current_key)
         if not keep_warm_previous:
@@ -365,14 +369,17 @@ class RuntimeController:
                 self.engine.unload_model()
             except Exception:
                 pass
+            _events.emit_unloaded(self.events, self.loaded_model, "swap")
             return
         if not self._make_room_keeping_active(required_free_bytes):
             try:
                 self.engine.unload_model()
             except Exception:
                 pass
+            _events.emit_unloaded(self.events, self.loaded_model, "memory")
             return
         self._warm_pool[current_key] = (self.engine, self.loaded_model)
+        _events.emit_parked(self.events, self.loaded_model)
 
     def _tracked_process_pids(self) -> set[int]:
         tracked: set[int] = set()
@@ -592,6 +599,7 @@ class RuntimeController:
             engine.unload_model()
         except Exception:
             pass
+        _events.emit_unloaded(self.events, _info, "user")
         self.prune_stale_backend_children()
         return True
 
@@ -605,6 +613,7 @@ class RuntimeController:
                 engine.unload_model()
             except Exception:
                 pass
+            _events.emit_unloaded(self.events, _info, "swap", message="Warm pool cleared for a large load.")
         if entries:
             self.prune_stale_backend_children()
         return len(entries)
@@ -998,6 +1007,7 @@ class RuntimeController:
             old_engine.unload_model()
         except Exception:
             pass
+        _events.emit_unloaded(self.events, old_info, "memory", message="Unloaded to make room.")
         return freed
 
     def _make_room_keeping_active(self, required_free_bytes: int) -> bool:
@@ -1019,6 +1029,7 @@ class RuntimeController:
             free += self._pop_oldest_warm_entry()
         return free >= required_free_bytes
 
+    @_events.traced_load
     def load_model(self, **kwargs: Any) -> LoadedModelInfo:
         # FU-030: the dropped ChaosEngine and RotorQuant ids load as TurboQuant, and say so, on every engine.
         if isinstance(kwargs.get("cache_strategy"), str):
@@ -1101,6 +1112,7 @@ class RuntimeController:
         keep_warm_previous: bool = True,
         progress_callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> LoadedModelInfo:
+        _events.emit_resolving(self, model_ref=model_ref, model_name=model_name, cache_strategy=cache_strategy)
         self.refresh_capabilities()
         self._loading_progress = None
         self._loading_log_tail = []
@@ -1186,6 +1198,10 @@ class RuntimeController:
         )
 
         self.engine = selected_engine
+        _events.emit_loading(
+            self, engine=selected_engine, model_ref=model_ref, model_name=resolved_name,
+            cache_strategy=cache_strategy, weights_bytes=incoming_load_bytes,
+        )
         _load_kwargs: dict[str, Any] = dict(
             model_ref=model_ref,
             model_name=resolved_name,
@@ -1299,6 +1315,7 @@ class RuntimeController:
             self._load_lock.acquire()
         try:
             self.engine.unload_model()
+            _events.emit_unloaded(self.events, self.loaded_model, "user")
             self.loaded_model = None
             self._loaded_key = None
             self.runtime_note = None
@@ -1306,6 +1323,7 @@ class RuntimeController:
         finally:
             self._load_lock.release()
 
+    @_events.traced_generation
     def generate(
         self,
         *,
@@ -1383,6 +1401,7 @@ class RuntimeController:
         result.runtimeNote = merge_notes(result.runtimeNote, notes)
         return result
 
+    @_events.traced_stream
     def stream_generate(
         self,
         *,

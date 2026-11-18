@@ -63,6 +63,7 @@ import { modelsAreaForTab, resolveTabRequest, tabs } from "./constants";
 import type { TabRequest } from "./constants";
 import { HOME_STUDIO_ENABLED } from "./constants/features";
 import { applyStoryboardNavigation, readReopenProjects, writeLastAppTab } from "./features/storyboard/projectRoute";
+import { writeServerView } from "./features/server/serverView";
 import type { ModelAvailabilityFilter, ModelsArea } from "./components/models/modelEntry";
 import {
   firstDirectVariant,
@@ -146,6 +147,7 @@ export default function App() {
     const area = modelsAreaForTab(navigation.tab);
     if (area && navigation.modelsPreset) setAreaAvailability(area, navigation.modelsPreset);
     if (navigation.storyboard) applyStoryboardNavigation(navigation.storyboard);
+    if (navigation.serverView) writeServerView(navigation.serverView);
     setActiveTabState(navigation.tab);
   }, [setAreaAvailability]);
   const [apiToken, setApiToken] = useState<string | null>(null);
@@ -366,7 +368,6 @@ export default function App() {
   } = benchmarks;
 
   // ── Remaining cross-domain state ───────────────────────────
-  const [logQuery, setLogQuery] = useState("");
   const [showConversionPicker, setShowConversionPicker] = useState(false);
   const [showConversionModal, setShowConversionModal] = useState(false);
   const [conversionError, setConversionError] = useState<string | null>(null);
@@ -861,7 +862,7 @@ export default function App() {
     handleConvertModel, handleCancelConversion, handlePickConversionOutputDir, openModelSelector, handleDetailsToggle, copyText,
     conversionStartedAt, conversionError, showConversionPicker, setShowConversionPicker,
     showConversionModal, setShowConversionModal,
-    apiToken, showRemoteTest, setShowRemoteTest, testModelId, setTestModelId, logQuery, setLogQuery,
+    apiToken, showRemoteTest, setShowRemoteTest, testModelId, setTestModelId,
     voiceRuntime, voiceOpenRequest, setVoiceOpenRequest, refreshVoiceRuntime,
   };
 

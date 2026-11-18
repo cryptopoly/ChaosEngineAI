@@ -69,7 +69,7 @@ describe("sidebar sections and accordion", () => {
       // Projects is a standalone tab listed inside Make, after the groups (D-65).
       "#make", "images", "video", "voice", "music", "storyboard",
       "#run", "benchmarks", "tools",
-      "server", "logs", "settings",
+      "server", "settings",
     ]);
   });
 

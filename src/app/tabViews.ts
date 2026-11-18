@@ -13,7 +13,6 @@ import { BenchmarkRunView, BenchmarkHistoryView } from "./BenchmarkTabs";
 import {
   DashboardView,
   ServerView,
-  LogsView,
   SettingsView,
   FineTuningView,
   PromptLibraryView,
@@ -48,7 +47,6 @@ const TAB_VIEWS: Partial<Record<TabId, TabView>> = {
   finetuning: FineTuningView,
   "prompt-library": PromptLibraryView,
   plugins: PluginsView,
-  logs: LogsView,
   settings: SettingsView,
 };
 

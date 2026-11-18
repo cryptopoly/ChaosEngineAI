@@ -13,7 +13,7 @@ Two layers:
      tensorfold-install / tensorfold-status / mflux-install / mflux-status / ltx2-install / ltx2-status
      download / convert / search / hub-search / list-weights
      session-create / session-delete / session-fork / session-variant
-     server-start / server-stop / server-status / server-logs
+     server-start / server-stop / server-status / server-logs / server-events
      image-generate / image-progress / image-cancel / image-outputs
      video-generate / video-progress / video-cancel / video-outputs
      setup-install / setup-refresh / longlive-install / wan-install
@@ -720,6 +720,14 @@ def cmd_server_shutdown(args: argparse.Namespace) -> int:
 def cmd_server_logs(args: argparse.Namespace) -> int:
     """Stream server log SSE until interrupted."""
     for event in _stream(f"{_base_url(args)}/api/server/logs/stream", body=None, method="GET", timeout=args.timeout):
+        sys.stdout.write(json.dumps(event) + "\n")
+        sys.stdout.flush()
+    return 0
+
+
+def cmd_server_events(args: argparse.Namespace) -> int:
+    """Stream the structured model events (requested, loading, loaded, first token, generation, unloaded) until interrupted."""
+    for event in _stream(f"{_base_url(args)}/api/server/events/stream", body=None, method="GET", timeout=args.timeout):
         sys.stdout.write(json.dumps(event) + "\n")
         sys.stdout.flush()
     return 0
@@ -1732,6 +1740,8 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("server-shutdown").set_defaults(func=cmd_server_shutdown)
     s = sub.add_parser("server-logs", help="Stream server log events.")
     s.add_argument("--timeout", type=float, default=3600.0); s.set_defaults(func=cmd_server_logs)
+    s = sub.add_parser("server-events", help="Stream structured model events (load, answer, unload).")
+    s.add_argument("--timeout", type=float, default=3600.0); s.set_defaults(func=cmd_server_events)
 
     # -- Image --
     s = sub.add_parser("image-generate")

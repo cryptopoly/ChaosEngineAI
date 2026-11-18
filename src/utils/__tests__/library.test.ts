@@ -4,7 +4,9 @@ import {
   estimateLibraryItemCompressedGb,
   estimateLibraryItemResidentGb,
   findCatalogVariantForLibraryItem,
+  findLibraryItemForVariant,
   isChatLibraryItem,
+  libraryVariantMatchScore,
 } from "../library";
 import type { LibraryItem, ModelFamily, ModelVariant } from "../../types";
 
@@ -129,6 +131,69 @@ describe("findCatalogVariantForLibraryItem()", () => {
 
     const matched = findCatalogVariantForLibraryItem([makeFamily([qwen9, qwen35])], item);
     expect(matched?.id).toBe(qwen9.id);
+  });
+});
+
+describe("a Hugging Face cache folder is matched by its own repo name", () => {
+  const cache = "/Users/me/.cache/huggingface/hub";
+  const flashNext = makeVariant({
+    id: "Vontra/Qwen3.8-Flash-Next-MLX-4bit-MTP",
+    name: "Qwen3.8 Flash Next MLX 4-bit MTP",
+    repo: "Vontra/Qwen3.8-Flash-Next-MLX-4bit-MTP",
+    format: "MLX",
+    quantization: "4-bit",
+    backend: "tensorfold",
+  });
+  const qwen27 = makeVariant({
+    id: "lmstudio-community/Qwen3.8-27B-GGUF",
+    name: "Qwen3.8 27B GGUF",
+    repo: "lmstudio-community/Qwen3.8-27B-GGUF",
+    paramsB: 27,
+  });
+  const base27 = makeVariant({
+    id: "Qwen/Qwen3.6-27B",
+    name: "Qwen3.6 27B",
+    repo: "Qwen/Qwen3.6-27B",
+    paramsB: 27,
+    format: "Transformers",
+    quantization: "BF16",
+    launchMode: "convert",
+    backend: "mlx",
+  });
+  const families = [makeFamily([flashNext, qwen27, base27])];
+  const mlxItem = (repo: string) => makeItem({
+    name: repo,
+    path: `${cache}/models--${repo.replace("/", "--")}`,
+    format: "MLX",
+    quantization: "4-bit",
+    backend: "mlx",
+  });
+
+  it("does not hand a small Qwen the repo of another Qwen row that only shares words, format and bits", () => {
+    for (const repo of ["mlx-community/Qwen3-0.6B-4bit", "mlx-community/Qwen2.5-0.5B-Instruct-4bit", "mlx-community/Qwen3-8B-4bit"]) {
+      const item = mlxItem(repo);
+      expect(libraryVariantMatchScore(item, flashNext), repo).toBe(0);
+      expect(findCatalogVariantForLibraryItem(families, item), repo).toBeNull();
+      expect(findLibraryItemForVariant([item], flashNext), repo).toBeNull();
+    }
+  });
+
+  it("still matches the same repo", () => {
+    const item = mlxItem("Vontra/Qwen3.8-Flash-Next-MLX-4bit-MTP");
+    expect(findCatalogVariantForLibraryItem(families, item)?.id).toBe(flashNext.id);
+  });
+
+  it("still matches the same model under another uploader, and a conversion of a base repo", () => {
+    const gguf = makeItem({ name: "unsloth/Qwen3.8-27B-GGUF", path: `${cache}/models--unsloth--Qwen3.8-27B-GGUF` });
+    expect(findCatalogVariantForLibraryItem(families, gguf)?.id).toBe(qwen27.id);
+    const converted = mlxItem("mlx-community/Qwen3.6-27B-4bit");
+    expect(findCatalogVariantForLibraryItem(families, converted)?.id).toBe(base27.id);
+    expect(findLibraryItemForVariant([converted], base27)?.path).toBe(converted.path);
+  });
+
+  it("keeps the looser match for a file outside the cache, which names no repo", () => {
+    const loose = makeItem({ name: "Qwen3.8-27B-Q4_K_M", path: "/models/qwen/Qwen3.8-27B-Q4_K_M.gguf" });
+    expect(findCatalogVariantForLibraryItem(families, loose)?.id).toBe(qwen27.id);
   });
 });
 

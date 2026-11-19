@@ -1190,6 +1190,7 @@
       "addon": {
         "chinese": "中国語（北京語）のクイックボイス（8 種、約 60 MB）",
         "speech-gpu": "音声 GPU アドオン: NVIDIA GPU 上の Chatterbox、VoxCPM2、Orpheus（数 GB）",
+        "stt-gpu": null,
         "kokoro": "Kokoro のクイックボイス（約 330 MB）"
       },
       "addons": "アドオン",

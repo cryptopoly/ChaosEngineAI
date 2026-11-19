@@ -110,10 +110,12 @@ export function InstallLog({ pack }: { pack: VoicePackJob }) {
 // i18n-extract: voice.runtime.addon.kokoro
 // i18n-extract: voice.runtime.addon.chinese
 // i18n-extract: voice.runtime.addon.speech-gpu
+// i18n-extract: voice.runtime.addon.stt-gpu
 const ADDON_LABELS: Record<string, string> = {
   kokoro: "Kokoro quick voices (about 330 MB)",
   chinese: "Mandarin Chinese quick voices (8 voices, about 60 MB)",
   "speech-gpu": "Speech GPU add-on: Chatterbox, VoxCPM2 and Orpheus on the NVIDIA GPU (several GB)",
+  "stt-gpu": "Speech-to-text GPU add-on: Qwen3-ASR, Parakeet, Nemotron and Granite on the NVIDIA GPU (about 3 GB)",
 };
 
 /** The add-ons as tick boxes. Before install they choose what the install adds; after it, ticking installs the add-on

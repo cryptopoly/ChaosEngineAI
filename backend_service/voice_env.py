@@ -116,6 +116,8 @@ EXTRAS: dict[str, tuple[tuple[str, ...], list[str], str]] = {
     "kokoro": (("mlx", "portable"), [], "Kokoro quick voices"),
     "chinese": (("mlx",), ["misaki[zh]>=0.9.4,<0.10"], "Mandarin Chinese voices"),
     "speech-gpu": (("portable",), [], "More speech models on the NVIDIA GPU (Qwen3-TTS, Chatterbox, VoxCPM2, Orpheus)"),
+    # Installs with its own commands (``voice_env_asr.stt_gpu_commands``).
+    "stt-gpu": (("portable",), [], "More speech-to-text models on the NVIDIA GPU (Qwen3-ASR, Parakeet, Nemotron, Granite)"),
 }
 
 # Speech GPU add-on (D-70 Phase 6, FU-149). NOT VERIFIED: written on a Mac; the RTX 4090 session runs it
@@ -619,6 +621,14 @@ def _run_install(extras: list[str]) -> None:
             if not ok:
                 raise RuntimeError(why)
             for command in speech_gpu_commands(str(venv_python())):
+                _run(command)
+        if "stt-gpu" in extras and lane_name == "portable":
+            from backend_service import voice_env_asr  # noqa: PLC0415 - it imports this module
+
+            ok, why = speech_gpu_supported()
+            if not ok:
+                raise RuntimeError(why.replace("speech GPU add-on", "speech-to-text GPU add-on"))
+            for command in voice_env_asr.stt_gpu_commands(str(venv_python())):
                 _run(command)
 
         _set_phase("downloading-voice")

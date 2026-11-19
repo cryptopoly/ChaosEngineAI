@@ -95,12 +95,51 @@ _STT_MODELS: list[dict[str, Any]] = [
 ]
 
 
+def _merge_gpu_rows() -> None:
+    """Speech-to-text on an NVIDIA GPU (``catalog.voice_stt_cuda``): Qwen3-ASR first, a GPU source for Parakeet and
+    Nemotron ASR, Granite Speech and Nemotron Transcribe last."""
+    from backend_service.catalog import voice_stt_cuda as gpu  # noqa: PLC0415
+
+    for entry in _STT_MODELS:
+        extra = gpu.GPU_STT_SOURCES.get(entry["key"])
+        if extra is not None:
+            entry["sources"][gpu.BACKEND] = extra["source"]
+            entry["gpu"] = extra["gpu"]
+    _STT_MODELS[:0] = [row for row in gpu.GPU_STT_MODELS if row["key"].startswith("qwen3-asr")]
+    _STT_MODELS.extend(row for row in gpu.GPU_STT_MODELS if not row["key"].startswith("qwen3-asr"))
+
+
+_merge_gpu_rows()
+GPU_BACKEND = "transformers-asr"
+
+
 class UnknownSttModelError(ValueError):
     """The requested STT model id isn't in the catalog (HTTP 400)."""
 
 
 def _lane_backends() -> tuple[str, ...]:
-    return ("parakeet-mlx", "nemotron-asr-mlx", "mlx-whisper") if voice_env.lane() == "mlx" else ("faster-whisper",)
+    if voice_env.lane() == "mlx":
+        return ("parakeet-mlx", "nemotron-asr-mlx", "mlx-whisper")
+    from backend_service import voice_env_asr  # noqa: PLC0415
+
+    # The GPU models first when the speech-to-text GPU add-on is in; faster-whisper always (Whisper, and the fallback).
+    return (GPU_BACKEND, "faster-whisper") if voice_env_asr.stt_gpu_ready() else ("faster-whisper",)
+
+
+def _gpu_row(entry: dict[str, Any], repo: str) -> dict[str, Any]:
+    """What ``voice_gpu`` checks for a GPU source: the row's name and its memory and compute needs."""
+    gpu = entry.get("gpu") or {}
+    return {"name": entry["name"], "repo": repo, "minVramGb": gpu.get("minVramGb"), "minComputeCap": gpu.get("minComputeCap")}
+
+
+def stt_repo_allow_patterns(repo: str) -> list[str] | None:
+    """The files a GPU speech-to-text row downloads from its repo (not the .nemo archive, GGUF or pictures beside
+    them), else None (the whole repo, as before)."""
+    for entry in _STT_MODELS:
+        source = entry["sources"].get(GPU_BACKEND)
+        if source is not None and source[0] == repo and entry.get("gpu", {}).get("files"):
+            return [*entry["gpu"]["files"], "README.md", "LICENSE*"]
+    return None
 
 
 def _hf_snapshot_path(repo_id: str) -> Path | None:
@@ -119,7 +158,7 @@ def list_stt_models() -> list[dict[str, Any]]:
             if source is None:
                 continue
             repo, size_gb = source
-            rows.append({
+            row = {
                 "id": repo,
                 "key": entry["key"],
                 "name": entry["name"],
@@ -130,10 +169,24 @@ def list_stt_models() -> list[dict[str, Any]]:
                 "translate": entry["translate"],
                 "backend": backend,
                 "backendInstalled": installed,
-            })
+            }
+            if backend == GPU_BACKEND:
+                from backend_service import voice_gpu  # noqa: PLC0415
+
+                gpu = entry["gpu"]
+                row.update(licence=gpu["licence"], note=gpu.get("note"), minVramGb=gpu["minVramGb"],
+                           gpuFacts=voice_gpu.facts(_gpu_row(entry, repo)))
+            rows.append(row)
             break
-    if rows:
-        next(r for r in rows if r["key"] in {e["key"] for e in _STT_MODELS if e["default"]})["default"] = True
+    defaults = {e["key"] for e in _STT_MODELS if e["default"]}
+    # A GPU row is the default only once it is downloaded and fits this GPU; until then Whisper stays the default.
+    chosen = next(
+        (r for r in rows if r["key"] in defaults
+         and (r["backend"] != GPU_BACKEND or (r["installed"] and not r.get("gpuFacts")))),
+        None,
+    )
+    if chosen is not None:
+        chosen["default"] = True
     return rows
 
 
@@ -346,7 +399,7 @@ def get_voice_capabilities() -> dict[str, Any]:
         "extras": [
             {"id": name, "label": label, "installed": name in voice_env.installed_extras()}
             for name, (lanes, _specs, label) in voice_env.EXTRAS.items()
-            if lane in lanes and (name != "speech-gpu" or voice_env.speech_gpu_supported()[0])
+            if lane in lanes and (name not in ("speech-gpu", "stt-gpu") or voice_env.speech_gpu_supported()[0])
         ],
         "installedAt": marker.get("installedAt") if installed else None,
         "workerPid": worker_pid(),
@@ -372,7 +425,7 @@ def transcribe_file(
 
     ``task`` "translate" gives English text (Whisper models only).
     """
-    from backend_service.voice_client import get_worker  # noqa: PLC0415
+    from backend_service.voice_client import stt_worker_for  # noqa: PLC0415
     from backend_service.voice_transcript import assign_speakers  # noqa: PLC0415
 
     backend, repo = resolve_stt_model(model_id)
@@ -381,12 +434,14 @@ def transcribe_file(
     if speakers and not voice_env.diarize_installed():
         raise RuntimeError("Speaker labels need a voice runtime update. Update it from Voice > Models.")
     snapshot = _hf_snapshot_path(repo)
+    family = _check_gpu_source(backend, repo, snapshot)
 
     def run(language_code: str | None) -> dict[str, Any]:
-        return get_worker().request(
+        return stt_worker_for(backend).request(
             "transcribe",
             timeout=1800.0,
             backend=backend,
+            family=family,
             source=str(snapshot or repo),
             path=str(path),
             language=language_code,
@@ -431,6 +486,22 @@ def transcribe_file(
         "seconds": round(seconds, 3),
         "note": " ".join(notes) or None,
     }
+
+
+def _check_gpu_source(backend: str, repo: str, snapshot: Path | None) -> str | None:
+    """The model family of a GPU row, after checking it can run: downloaded (the ASR worker is offline and never
+    fetches 2 to 68 GB inside a request) and within this GPU's memory and compute. None for other backends."""
+    if backend != GPU_BACKEND:
+        return None
+    from backend_service import voice_gpu  # noqa: PLC0415
+
+    entry = next(e for e in _STT_MODELS if e["sources"].get(GPU_BACKEND, ("",))[0] == repo)
+    if snapshot is None:
+        raise RuntimeError(f"{entry['name']} is not downloaded. Download it under Voice > Models > Dictation models.")
+    problem = voice_gpu.problem(_gpu_row(entry, repo))
+    if problem:
+        raise RuntimeError(problem)
+    return str(entry["gpu"]["family"])
 
 
 def _can_translate(repo: str) -> bool:

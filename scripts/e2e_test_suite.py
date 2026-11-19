@@ -2556,24 +2556,65 @@ def phase_8(cap: Capability) -> PhaseResult:
         synth_result["wav"] = body
         return "pass", "", {"wavBytes": len(body)}
 
-    # The mlx-audio Nemotron 3.5 ASR row belongs to the MLX lane only; a Mac must
-    # list it, Windows / Linux must not offer an id they cannot run.
+    # The mlx-audio Nemotron 3.5 ASR row belongs to the MLX lane; Windows / Linux
+    # offer it only through the speech-to-text GPU add-on (transformers-asr) and
+    # must not offer an id they cannot run.
     def _nemotron_asr_listed():
         models = runtime_payload.get("sttModels") or []
         row = next((m for m in models if m.get("key") == "nemotron-3.5-asr"), None)
         on_mlx_lane = any(m.get("backend") in ("parakeet-mlx", "mlx-whisper") for m in models)
         if on_mlx_lane and row is None:
             return "fail", "Nemotron 3.5 ASR missing from the MLX voice lane", {}
-        if not on_mlx_lane and row is not None:
+        if not on_mlx_lane and row is not None and row.get("backend") != "transformers-asr":
             return "fail", "Nemotron 3.5 ASR offered on a lane that cannot run it", {}
-        return ("pass" if row else "skip"), ("" if row else "portable lane has no Nemotron ASR"), {}
+        return ("pass" if row else "skip"), ("" if row else "portable lane without the speech-to-text GPU add-on"), {}
+
+    # Speech-to-text on the NVIDIA GPU (stt-gpu add-on): Qwen3-ASR, Parakeet,
+    # Nemotron ASR, Granite Speech and Nemotron Transcribe through Transformers
+    # in the ASR worker. Transcribes the Kokoro clip with the first downloaded
+    # GPU row that fits this GPU; skips with the reason when any part is absent.
+    def _stt_gpu():
+        if runtime_payload.get("lane") == "mlx":
+            return "skip", "MLX lane: dictation runs on MLX here", {}
+        addon = next((e for e in runtime_payload.get("extras") or [] if e.get("id") == "stt-gpu"), None)
+        if addon is None:
+            return "skip", "speech-to-text GPU add-on not offered here (no NVIDIA GPU)", {}
+        if not addon.get("installed"):
+            return "skip", "speech-to-text GPU add-on not installed", {}
+        rows = runtime_payload.get("sttModels") or []
+        gpu_rows = [m for m in rows if m.get("backend") == "transformers-asr"]
+        keys = {m.get("key") for m in gpu_rows}
+        missing = {"qwen3-asr-1.7b", "qwen3-asr-0.6b", "parakeet-tdt-v3", "nemotron-3.5-asr"} - keys
+        if missing:
+            return "fail", f"GPU dictation rows missing: {sorted(missing)}", {}
+        if not any(m.get("backend") == "faster-whisper" for m in rows):
+            return "fail", "Whisper (faster-whisper) is no longer offered beside the GPU rows", {}
+        ready = [m for m in gpu_rows if m.get("installed") and not m.get("gpuFacts")]
+        if not ready:
+            return "skip", "no GPU dictation model downloaded (won't pull one in a test run)", {}
+        wav = synth_result["wav"]
+        if wav is None:
+            return "skip", "no Kokoro clip to transcribe", {}
+        boundary = "----chaosengine-e2e-stt-gpu"
+        started = time.time()
+        code, resp = _voice_http(
+            "POST", "/api/voice/transcribe", body=_multipart(boundary, wav, {"model": ready[0]["id"]}),
+            content_type=f"multipart/form-data; boundary={boundary}", timeout=600.0,
+        )
+        if code != 200:
+            return "fail", f"GPU transcribe HTTP {code}: {resp[:200]!r}", {}
+        payload = json.loads(resp.decode("utf-8"))
+        text = str(payload.get("text") or "")
+        if payload.get("model") != ready[0]["id"] or "voice" not in text.lower():
+            return "fail", f"GPU transcribe answered {payload.get('model')!r}: {text[:80]!r}", {}
+        return "pass", "", {"model": ready[0]["id"], "transcript": text[:60], "wallS": round(time.time() - started, 1)}
 
     def _transcribe():
         if not runtime_payload.get("sttAvailable"):
             return "skip", "STT backend not installed", {}
         installed = [
             m for m in (runtime_payload.get("sttModels") or [])
-            if m.get("installed") and m.get("backendInstalled") is not False
+            if m.get("installed") and m.get("backendInstalled") is not False and not m.get("gpuFacts")
         ]
         if not installed:
             return "skip", "no STT model downloaded (won't pull one in a test run)", {}
@@ -3021,7 +3062,8 @@ def phase_8(cap: Capability) -> PhaseResult:
         ("voice call turn detector", _vad_turn),
         ("stt rejects unknown model", _stt_rejects_unknown_model),
         ("synthesize smoke", _synthesize),
-        ("Nemotron 3.5 ASR listed", _nemotron_asr_listed), ("transcribe smoke", _transcribe), ("library with speaker labels", _library),
+        ("Nemotron 3.5 ASR listed", _nemotron_asr_listed), ("transcribe smoke", _transcribe),
+        ("stt on the NVIDIA GPU", _stt_gpu), ("library with speaker labels", _library),
         ("translate to English", _translate),
     ]:
         phase.checks.append(_check(name, fn))

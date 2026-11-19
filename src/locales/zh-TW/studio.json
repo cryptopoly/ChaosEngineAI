@@ -1190,6 +1190,7 @@
       "addon": {
         "chinese": "國語快速語音(8 種語音,約 60 MB)",
         "speech-gpu": "語音 GPU 附加元件:在 NVIDIA GPU 上執行 Chatterbox、VoxCPM2 與 Orpheus(數 GB)",
+        "stt-gpu": null,
         "kokoro": "Kokoro 快速語音(約 330 MB)"
       },
       "addons": "附加元件",

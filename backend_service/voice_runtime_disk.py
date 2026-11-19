@@ -103,8 +103,13 @@ def _extra_requirements(package: str, extra: str) -> list[str]:
 def extra_packages_to_remove(name: str) -> list[str]:
     if name == "chinese":
         return _extra_requirements("misaki", "zh")
+    # PyTorch is shared by the two GPU add-ons: it stays while the other one is installed.
+    others = set(voice_env.installed_extras()) - {name}
     if name == "speech-gpu":
-        return list(_SPEECH_GPU_REMOVE)
+        shared = {"torch", "torchaudio"} if "stt-gpu" in others else set()
+        return [p for p in _SPEECH_GPU_REMOVE if p not in shared]
+    if name == "stt-gpu":
+        return [] if "speech-gpu" in others else ["torch", "torchaudio"]
     return []
 
 
@@ -172,6 +177,8 @@ def remove_extra(name: str) -> dict[str, Any]:
             raise RuntimeError(f"Removing {voice_env.EXTRAS[name][2]} failed: {result.stdout[-400:]}{result.stderr[-400:]}")
     if name == "speech-gpu":
         remove_qwen_site()
+    if name == "stt-gpu":
+        remove_asr_site()
     _drop_from_marker(name)
     return {"removed": name, "packages": packages}
 
@@ -181,6 +188,18 @@ def remove_qwen_site() -> None:
     ``qwen-site`` (the add-on's packages are uninstalled by pip, this folder is not one of them)."""
     folder = voice_env.qwen_site_dir()
     if folder.parent != voice_env.VOICE_VENV_DIR or folder.name != "qwen-site":
+        raise RuntimeError(f"Refusing to delete {folder}.")
+    if folder.is_dir():
+        shutil.rmtree(folder)
+
+
+def remove_asr_site() -> None:
+    """Delete the speech-to-text GPU add-on's Transformers folder, checked first: directly inside the voice venv and
+    named ``asr-site``."""
+    from backend_service import voice_env_asr  # noqa: PLC0415
+
+    folder = voice_env_asr.asr_site_dir()
+    if folder.parent != voice_env.VOICE_VENV_DIR or folder.name != "asr-site":
         raise RuntimeError(f"Refusing to delete {folder}.")
     if folder.is_dir():
         shutil.rmtree(folder)

@@ -286,7 +286,10 @@ def quantized_variants(
 @router.post("/api/models/download")
 def download_model(request: Request, body: DownloadModelRequest) -> dict[str, Any]:
     state = request.app.state.chaosengine
-    return {"download": state.start_download(body.repo)}
+    from backend_service.voice_runtime import stt_repo_allow_patterns  # noqa: PLC0415
+
+    # A GPU dictation row fetches only the files it loads (the Parakeet repo also holds a 2.5 GB .nemo and a GGUF).
+    return {"download": state.start_download(body.repo, allow_patterns=stt_repo_allow_patterns(body.repo))}
 
 
 @router.get("/api/models/download/status")

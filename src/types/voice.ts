@@ -8,12 +8,18 @@ export interface SttModel {
   sizeGb: number;
   installed: boolean;
   default: boolean;
-  /** "parakeet-mlx" | "nemotron-asr-mlx" | "mlx-whisper" | "faster-whisper". */
+  /** "parakeet-mlx" | "nemotron-asr-mlx" | "mlx-whisper" | "faster-whisper" | "transformers-asr" (NVIDIA GPU). */
   backend?: string;
   /** Can translate speech into English. */
   translate?: boolean;
   /** False until the voice pack is installed. */
   backendInstalled?: boolean;
+  /** GPU rows: the weights' licence, a note in English ("Untested here."), the GPU memory they need. */
+  licence?: string;
+  note?: string | null;
+  minVramGb?: number;
+  /** GPU rows: why this GPU cannot run it (memory or compute capability), or null. */
+  gpuFacts?: { kind: "memory" | "compute"; need: number; have: number } | null;
 }
 
 export interface TtsVoice {

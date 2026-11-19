@@ -1190,6 +1190,7 @@
       "addon": {
         "chinese": "Voces rápidas en mandarín (8 voces, unos 60 MB)",
         "speech-gpu": "Complemento de GPU de habla: Chatterbox, VoxCPM2 y Orpheus en la GPU NVIDIA (varios GB)",
+        "stt-gpu": null,
         "kokoro": "Voces rápidas de Kokoro (unos 330 MB)"
       },
       "addons": "Complementos",

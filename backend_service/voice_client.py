@@ -315,8 +315,40 @@ def speech_worker_for(engine: str, family: str) -> VoiceWorker:
     return wanted
 
 
+_ASR_WORKER: VoiceWorker | None = None
+
+
+def get_asr_worker() -> VoiceWorker:
+    """The worker that runs speech-to-text on the GPU through Transformers 5.23 (``voice_env_asr``): the main worker's
+    Python with the add-on's Transformers first on the path."""
+    global _ASR_WORKER
+    from backend_service import voice_env_asr  # noqa: PLC0415
+
+    minutes = _speech_idle_minutes()
+    with _WORKER_LOCK:
+        if _ASR_WORKER is None:
+            _ASR_WORKER = VoiceWorker(log_name="asr-worker.log", env_extra=voice_env_asr.asr_worker_env())
+            _ASR_WORKER.idle_minutes = minutes
+            atexit.register(_ASR_WORKER.stop)
+        return _ASR_WORKER
+
+
+def stt_worker_for(backend: str) -> VoiceWorker:
+    """The worker that transcribes with ``backend``. The other one's speech-to-text model is unloaded first, so two
+    dictation models never sit in GPU memory together (speech models are left alone: a voice call needs both)."""
+    if backend == "transformers-asr":
+        wanted, other = get_asr_worker(), _WORKER
+    else:
+        wanted, other = get_worker(), _ASR_WORKER
+    if other is not None and other.pid is not None and other.loaded.get("stt"):
+        if other.busy:
+            raise VoiceWorkerError("Another transcription is running. Try again when it has finished.")
+        other.request("unload", timeout=60.0, what="stt")
+    return wanted
+
+
 def _speech_workers() -> list[VoiceWorker]:
-    return [w for w in (_WORKER, _QWEN_WORKER) if w is not None]
+    return [w for w in (_WORKER, _QWEN_WORKER, _ASR_WORKER) if w is not None]
 
 
 def stop_all() -> None:

@@ -1190,6 +1190,7 @@
       "addon": {
         "chinese": null,
         "speech-gpu": null,
+        "stt-gpu": null,
         "kokoro": null
       },
       "addons": null,

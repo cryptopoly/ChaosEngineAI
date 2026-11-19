@@ -214,6 +214,10 @@ def transcribe(request: dict[str, Any]) -> dict[str, Any]:
     ``task`` "translate" turns the speech into English (Whisper only).
     """
     backend = str(request["backend"])
+    if backend == "transformers-asr":
+        # Speech-to-text on the NVIDIA GPU (the ASR worker's own Transformers); one STT model in memory at a time.
+        _stt["key"], _stt["model"] = None, None
+        return _asr_module().transcribe(request, decode_audio)
     source = str(request["source"])
     path = str(request["path"])
     language = request.get("language") or None
@@ -404,6 +408,15 @@ def _models_module():
         import voice_worker_models as module  # type: ignore[import-not-found]
     except ImportError:
         from backend_service import voice_worker_models as module
+    return module
+
+
+def _asr_module():
+    # Speech-to-text on the NVIDIA GPU through Transformers; a sibling like the watermark module.
+    try:
+        import voice_worker_asr as module  # type: ignore[import-not-found]
+    except ImportError:
+        from backend_service import voice_worker_asr as module
     return module
 
 
@@ -621,6 +634,8 @@ def unload(request: dict[str, Any]) -> dict[str, Any]:
         _watermark_module().unload()
     if what in ("stt", "all"):
         _stt["key"], _stt["model"] = None, None
+        if {"voice_worker_asr", "backend_service.voice_worker_asr"} & set(sys.modules):
+            _asr_module().unload()
     if what in ("tts", "all"):
         _free_tts()
         if {"voice_worker_torch", "backend_service.voice_worker_torch"} & set(sys.modules):

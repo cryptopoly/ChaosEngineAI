@@ -1190,6 +1190,7 @@
       "addon": {
         "chinese": "Mandarin Chinese quick voices (8 voices, about 60 MB)",
         "speech-gpu": "Speech GPU add-on: Chatterbox, VoxCPM2 and Orpheus on the NVIDIA GPU (several GB)",
+        "stt-gpu": "Speech-to-text GPU add-on: Qwen3-ASR, Parakeet, Nemotron and Granite on the NVIDIA GPU (about 3 GB)",
         "kokoro": "Kokoro quick voices (about 330 MB)"
       },
       "addons": "Add-ons",

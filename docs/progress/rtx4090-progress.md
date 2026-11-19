@@ -1700,3 +1700,19 @@ Live against a throwaway backend (Storyboard projects), once in a short home fol
 | File lock while deleting a project | **PASS** | With a file held open in the project folder the delete answered 200 "The project was deleted, but 1 file(s) could not be removed (probably in use), for example held.bin", and a second delete after the file closed answered 404 (gone). |
 
 Test servers stopped; the temp folders under `E:	mp` are removed.
+
+## 2026-11-19: shown against real time on the 4090 (row 8, FU-165)
+
+One run per case through the app's own routes (`/api/images/generate`, `/api/video/generate`), seed 7, warm model; "shown" is the figure the plan card prices for the same settings (`/api/chat/studio/price`). The first case of each model includes the cold load and is not counted.
+
+| Case | Shown | Real | Error |
+|---|---|---|---|
+| FLUX.2 Klein 4B 512x512 | 4 s | 40.0 s (cold load) | not counted |
+| Klein 1024x1024 (twice) | 6 s | 6.8 s | shown 12 % low |
+| Klein 2048x2048 | 13 s | 21.4 s | shown 39 % low |
+| LTX-2.5 (4-bit) 768x512, 49 frames | 26 s | 120.0 s (cold load) | not counted |
+| LTX-2.5 768x512, 97 frames | 62 s | 61.3 s | shown 1 % high |
+| LTX-2.5 1024x576, 97 frames | 110 s | 90.0 s | shown 22 % high |
+| LTX-2.5 1280x704, 97 frames | 211 s | 158.1 s | shown 33 % high |
+
+Reading: the Klein figure is within the 20 % bar at 1024 and 39 % low at 2048, so its `quad` term is too small on CUDA; the LTX figure is exact at the reference size and 22 to 33 % high above it, so its `quad` term is too large (the Mac fit's `1e9`). Not changed: one run per case is not enough to refit `fixed` and `quad`, and the 49-frame case needs a warm repeat. Next: repeat each case three times warm, then set the constants per row and add the cases to `tests/fixtures/time_estimate_cases.json`. The new tier times (Final 1152x768, 3 min) inherit this error.

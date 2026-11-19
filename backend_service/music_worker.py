@@ -394,10 +394,32 @@ def handle(request: dict[str, Any]) -> None:
     reply({"id": request_id, "ok": True, **simple(request)})
 
 
+def protocol_input() -> Any:
+    """The request stream. On Windows it is moved off the process's standard input first.
+
+    A thread blocked in ``ReadFile`` on a synchronous pipe blocks every other call on that handle, and a DLL
+    that starts its own C runtime queries the standard handles while it loads (numpy's, inside ``import
+    torch``). With the main thread waiting for the next request, the engine thread's ``import torch`` then
+    hangs until a line arrives: the first load timed out after 300 s on Windows (FU-139). So the pipe is
+    read through a duplicate and standard input is pointed at ``NUL``.
+    """
+    if os.name != "nt":
+        return sys.stdin
+    import msvcrt
+
+    protocol_fd = os.dup(0)
+    null_fd = os.open(os.devnull, os.O_RDONLY)
+    os.dup2(null_fd, 0)
+    ctypes.windll.kernel32.SetStdHandle(-10, msvcrt.get_osfhandle(0))  # STD_INPUT_HANDLE
+    sys.stdin = open(0, encoding="utf-8", closefd=False)  # noqa: SIM115 - NUL, for libraries that read it
+    return open(protocol_fd, encoding="utf-8")  # noqa: SIM115 - lives as long as the worker
+
+
 def main() -> None:
+    requests = protocol_input()
     threading.Thread(target=engine_thread, name="music-engine", daemon=True).start()
     reply({"id": None, "ok": True, "ready": True, "pid": os.getpid(), "engine_version": ENGINE_VERSION})
-    for line in sys.stdin:
+    for line in requests:
         line = line.strip()
         if not line:
             continue

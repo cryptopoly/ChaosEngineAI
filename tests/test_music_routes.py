@@ -249,6 +249,9 @@ class MusicRouteTests(_RouteBox):
         runtime = self.client.get("/api/music/runtime").json()["runtime"]
         for key in ("lane", "installed", "workerRunning", "loadedModel", "install", "engineVersion", "embedTag"):
             self.assertIn(key, runtime)
+        lane = mock.patch.object(music_env, "lane", return_value="mlx")  # the Mac table below, on any host
+        lane.start()
+        self.addCleanup(lane.stop)
         cold = self.client.post("/api/music/estimate", json={"seconds": 60}).json()
         self.assertFalse(cold["estimate"]["warm"])
         self.assertEqual(cold["estimate"]["basis"], "measured")

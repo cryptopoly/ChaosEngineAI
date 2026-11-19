@@ -199,6 +199,27 @@ class DownloadBranchTests(unittest.TestCase):
 
 
 class EstimateTests(unittest.TestCase):
+    def setUp(self) -> None:
+        host = mock.patch.object(music_env, "lane", return_value="mlx")  # the Mac table, whatever this host is
+        host.start()
+        self.addCleanup(host.stop)
+
+    def test_on_cuda_the_estimate_reads_the_nvidia_table(self) -> None:
+        """FU-139: on the CUDA lane a row with a measured ``estimates.cuda`` table is estimated from it."""
+        from backend_service.music_runtime import estimate_run
+
+        cuda = _variant(TURBO)["estimates"]["cuda"]
+        with mock.patch.object(music_env, "lane", return_value="cuda"):
+            warm60 = estimate_run(TURBO, 60, 1, warm=True)
+            cold30 = estimate_run(TURBO, 30, 1, warm=False)
+            xl = estimate_run(XL, 60, 1, warm=True)
+        self.assertEqual((warm60["seconds"], warm60["peakGb"], warm60["lane"]), (1.3, cuda["peakGb"], "cuda"))
+        self.assertIn("RTX 4090", warm60["measuredOn"])
+        self.assertEqual(cold30["seconds"], round(0.97 + cuda["coldStartSeconds"], 1))
+        xl_cuda = _variant(XL)["estimates"]["cuda"]
+        if not xl_cuda.get("wallSecondsAt"):
+            self.assertEqual(xl["peakGb"], 47.0)  # no NVIDIA table yet: the Mac figures stand
+
     def test_reads_the_catalog_table(self) -> None:
         from backend_service.music_runtime import estimate_run
 

@@ -182,6 +182,20 @@ class WorkerProtocolTests(unittest.TestCase):
         self.assertIsNone(self.proc.until(34)[1]["model"])
 
 
+class NativeImportOnTheEngineThreadTests(unittest.TestCase):
+    def test_a_load_that_imports_numpy_answers_without_another_request(self) -> None:
+        """FU-139: on Windows ``import torch`` (numpy's DLL) hung on the engine thread while the main thread waited
+        on stdin, so the first load timed out after 300 s. Only the load line is sent here, nothing after it."""
+        with MusicSandbox() as box:
+            proc = Proc({**box.env, "FAKE_MUSIC_IMPORT_ON_LOAD": "numpy"}, box.data)
+            try:
+                self.assertTrue(proc.next()["ready"])
+                proc.send({"id": 1, "cmd": "load", "engine": "acestep", "model": "m", "lm": None})
+                self.assertTrue(proc.until(1, 60)[1]["ok"])
+            finally:
+                proc.close()
+
+
 class EngineUnavailableTests(unittest.TestCase):
     def test_reports_the_reason_and_keeps_running(self) -> None:
         with MusicSandbox() as box:

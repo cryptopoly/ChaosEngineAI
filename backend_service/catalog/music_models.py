@@ -131,8 +131,21 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
                     # FLAC 24-bit 48 kHz stereo as the worker writes it: 8.9 MB/min (lo-fi) to 11.5
                     # (orchestral) measured in the P1 real check, 2026-11-07; the higher figure is used.
                     "outputMbPerMinute": 11.5,
-                    # No CUDA lane yet and no peak figure on the card for the 2B: fit says "unknown" there.
-                    "cuda": {"peakGb": None, "basis": "estimated", "source": "not measured; no peak figure on the model card"},
+                    # FU-139: measured through the app's routes on Windows 11, warm worker, bf16, no offload, one
+                    # variation, 8 steps. peakGb is torch's reserved VRAM peak (allocated 7.6 to 7.9 GB); hostPeakGb
+                    # is the worker's working set, which the memory gate checks on CUDA instead of the Mac figure.
+                    "cuda": {
+                        "basis": "measured",
+                        "measuredOn": "NVIDIA RTX 4090 24 GB, Windows 11, 2026-11-19",
+                        "wallSecondsAt": [[30, 0.97], [60, 1.32], [180, 3.1], [600, 10.6]],
+                        "secondsPer10sAudio": 0.2,
+                        "coldStartSeconds": 15.0,
+                        "vaeSecondsPerAudioSecond": 0.007,
+                        "peakGb": 8.6,
+                        "idleGb": 7.9,
+                        "hostPeakGb": 2.7,
+                        "hostIdleGb": 1.0,
+                    },
                 },
                 "defaultSettings": dict(_TURBO_DEFAULTS),
                 "note": "Default music model. About 1 s per 10 s of audio warm; about 22 GB while generating, 15 GB idle.",

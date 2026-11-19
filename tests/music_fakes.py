@@ -37,6 +37,8 @@ class Engine:
 
     def load(self, model, lm=None):
         time.sleep(float(os.environ.get("FAKE_MUSIC_LOAD_S") or 0))
+        if os.environ.get("FAKE_MUSIC_IMPORT_ON_LOAD"):  # a native extension loaded on the engine thread
+            __import__(os.environ["FAKE_MUSIC_IMPORT_ON_LOAD"])
         self.model = model
         return {"model": model, "step_hook": True}
 

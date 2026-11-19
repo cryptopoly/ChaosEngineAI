@@ -3586,7 +3586,7 @@ def phase_11(cap: Capability) -> PhaseResult:
             return "fail", f"peak footprint {peak} GB is above the 26 GB guard", {}
         vram = (body.get("timings") or {}).get("vram_peak_gb")
         if runtime.get("lane") == "cuda" and not (isinstance(vram, (int, float)) and 0 < vram <= 24):
-            # FU-139: the CUDA lane reports the torch VRAM peak; the 2B turbo measured 9.4 GB on a 4090.
+            # FU-139: the CUDA lane reports the torch VRAM peak; the 2B turbo measured 8.6 GB on a 4090.
             return "fail", f"CUDA VRAM peak missing or above 24 GB: {vram!r}", {}
         return "pass", "", {"wallSeconds": round(time.perf_counter() - started, 1), "jobSeconds": body.get("seconds"),
                             "peakFootprintGb": peak, "vramPeakGb": vram, "lane": runtime.get("lane"), "bytes": len(data)}

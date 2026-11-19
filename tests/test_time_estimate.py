@@ -129,7 +129,8 @@ class CatalogRefTest(unittest.TestCase):
         image = _image_model_payloads([])
         rows = {v["id"]: v for family in video + image for v in family["variants"]}
         self.assertEqual(rows["Wan-AI/Wan2.2-TI2V-5B-Diffusers"]["estimateRef"]["steps"], 20)
-        self.assertEqual(rows["speridlabs/iris-3b-mflux"]["estimateRef"]["width"], 1024)
+        if "speridlabs/iris-3b-mflux" in rows:  # the mflux rows are listed on Apple Silicon only
+            self.assertEqual(rows["speridlabs/iris-3b-mflux"]["estimateRef"]["width"], 1024)
 
 
 if __name__ == "__main__":

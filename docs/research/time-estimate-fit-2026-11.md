@@ -159,3 +159,31 @@ The distilled schedule ignores steps (`ignoresSteps`). Best fit `fixed 0.47`, `q
 ## Not measured
 
 FLUX.1 schnell answered in 0.3 s at every size (the run did not use the real model: nothing was fitted), FLUX.2 dev, the bf16 LTX-2.5 row and the other LTX rows keep their old figures. The new cases are in `tests/fixtures/time_estimate_cases.json` (Python and TypeScript both return the expected figures).
+
+## New rows on the RTX 4090 (FU-259, 2026-11-19)
+
+Same machine, method and fit as the CUDA section above: backend from this branch on its own port with a throwaway home, runs through `POST /api/images/generate` and `POST /api/video/generate`, seed 7, wall time from submit to response, the median of three runs after the model was loaded. Raw rows: `E:\tmp\img-e2e\bench.jsonl` on the 4090 (not in the repo). sd.cpp starts a new process for every image, so its figures include loading the GGUF from the OS file cache.
+
+| Row | Case | Runs (s) | Median | Fit | Error |
+|---|---|---|---|---|---|
+| FLUX 3 Klein (diffusers), catalogue 7.0 s, `fixed 0.57`, `quad 2512` | 1024 px, 8 steps | 7.07, 7.03, 6.87 | 7.03 | 7.0 | 0 % |
+| | 1024 px, 16 steps | 10.03, 10.16, 10.11 | 10.11 | 10.0 | -1 % |
+| | 768 px, 16 steps | 6.86, 6.84, 6.65 | 6.84 | 6.9 | +1 % |
+| | 1280x768, 12 steps | 8.20, 8.29, 8.31 | 8.29 | 8.1 | -2 % |
+| | 1536 px, 16 steps | 21.95, 21.86, 22.20 | 21.95 | 22.4 | +2 % |
+| FLUX 3 Klein sd.cpp Q8_0, catalogue 5.5 s, `fixed 0.58`, `quad 2818` | 1024 px, 8 steps | 5.49, 5.35, 5.64 | 5.49 | 5.5 | 0 % |
+| | 1024 px, 16 steps | 7.75, 7.73, 7.53 | 7.73 | 7.8 | +1 % |
+| | 768 px, 8 steps | 4.29, 4.26, 4.33 | 4.29 | 4.3 | 0 % |
+| | 1536 px, 8 steps | 9.97, 9.89, 10.04 | 9.97 | 10.1 | +1 % |
+| Qwen-Image-2.1 Turbo sd.cpp Q4_K_M, catalogue 7.5 s, `fixed 0.37`, `quad 14125`, `ignoresSteps` | 1024 px | 7.47, 7.49, 7.63 | 7.49 | 7.5 | 0 % |
+| | 768 px | 5.54, 5.40, 5.42 | 5.42 | 5.4 | 0 % |
+| | 1280x768 | 7.29, 7.61, 7.31 | 7.31 | 7.2 | -2 % |
+| | 1536 px | 14.42, 14.43, 14.59 | 14.43 | 14.3 | -1 % |
+| MOSS-Image SFT (vendored pipeline, 4-bit text encoder), catalogue 53.0 s, `fixed 0.02`, `quad 1995` | 1024 px, 50 steps | 52.99, 53.01, 52.94 | 52.99 | 53.0 | 0 % |
+| | 1024 px, 25 steps | 27.03, 27.12, 27.15 | 27.12 | 27.0 | 0 % |
+| | 768 px, 50 steps | 25.77, 25.66, 25.77 | 25.77 | 25.9 | +1 % |
+| Kandinsky 6.0 Lite (video), catalogue 109.8 s, `fixed 0.17`, `quad 17783` | 864x480 x 121 | 109.80, 108.81, 109.83 | 109.80 | 109.8 | 0 % |
+| | 640x352 x 121 | 51.64, 51.64, 51.55 | 51.64 | 51.6 | 0 % |
+| | 864x480 x 49 | 39.53, 40.61, 39.61 | 39.61 | 39.5 | 0 % |
+
+The FLUX 3 Klein diffusers figures are after the placement fix in `flux3_modular.place_on_cuda`: with the text encoder left on the card (diffusers' automatic offload), 1024 px at 16 steps took 15.6 s, because the fp32 VAE decode spilled past the 24 GB card (6 s instead of 0.3 s); 1536 px was refused by the memory gate. Kandinsky's three points fit almost exactly with two constants, so the fit says little beyond these sizes. The new fixture cases are in `tests/fixtures/time_estimate_cases.json`.

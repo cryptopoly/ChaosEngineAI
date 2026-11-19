@@ -4,8 +4,8 @@ The repo's ``model_index.json`` names classes from its own ``pipeline_moss_image
 with ``trust_remote_code``. The app never does that: ``moss_image_pipeline.py`` is that file copied at a pinned commit
 and reviewed, and this module builds the pipeline from the snapshot's folders with those classes (the text encoder is
 a stock ``Qwen3_5Model`` in transformers; the VAE is diffusers' ``AutoencoderKLFlux2``). Defaults follow the model
-card: 50 steps, guidance 3, the negative branch skips block 22. The 9B text encoder runs once per image, so it moves
-to the card for the prompt only (model CPU offload) on cards that cannot hold every part.
+card: 50 steps, guidance 3, the negative branch skips block 22. On a card below ``FULL_BF16_GB`` the 9B text encoder
+loads in 4-bit so the whole pipeline stays on the card.
 """
 
 from __future__ import annotations
@@ -16,8 +16,12 @@ from typing import Any
 
 MOSS_REPO = "OpenMOSS-Team/MOSS-Image-SFT"
 MOSS_REVISION = "f972bd4b4b9e3852133cc5da954d87bc32cd8fb9"
-# Room the transformer needs beside every part on the card before CPU offload is skipped.
-ACTIVATION_HEADROOM_GB = 8.0
+# Card size that holds the bf16 pipeline (16.8 GB encoder, 10.2 GB transformer, 0.25 GB VAE) plus activations.
+FULL_BF16_GB = 36.0
+
+
+def _cuda_total_gb(torch: Any) -> float:
+    return torch.cuda.get_device_properties(torch.cuda.current_device()).total_memory / 1024**3
 
 
 def is_moss_repo(repo: str | None) -> bool:
@@ -38,22 +42,29 @@ def load_pipeline(local_path: str, torch: Any, device: str) -> tuple[Any, list[s
     root = Path(local_path)
     transformer = MOSSImageTransformer.from_pretrained(root / "transformer", torch_dtype=torch.bfloat16, local_files_only=True)
     tokenizer = AutoTokenizer.from_pretrained(root / "tokenizer", local_files_only=True)
-    text_encoder = AutoModel.from_pretrained(root / "text_encoder", dtype=torch.bfloat16, local_files_only=True).eval()
+    notes: list[str] = []
+    encoder_kwargs: dict[str, Any] = {"dtype": torch.bfloat16, "local_files_only": True}
+    if device == "cuda" and _cuda_total_gb(torch) < FULL_BF16_GB:
+        # The bf16 encoder (16.8 GB) and transformer (10.2 GB) do not fit a smaller card together, and moving the
+        # encoder off the card after the prompt crashed the process on the 4090 (an access violation in .to("cpu"),
+        # host RAM under pressure). In 4-bit the whole pipeline stays on the card.
+        from transformers import BitsAndBytesConfig  # type: ignore
+
+        encoder_kwargs["quantization_config"] = BitsAndBytesConfig(
+            load_in_4bit=True, bnb_4bit_quant_type="nf4", bnb_4bit_compute_dtype=torch.bfloat16,
+        )
+        encoder_kwargs["device_map"] = {"": 0}
+        notes.append("Text encoder in 4-bit (NF4) so the whole pipeline fits the card.")
+    text_encoder = AutoModel.from_pretrained(root / "text_encoder", **encoder_kwargs).eval()
     vae = AutoencoderKLFlux2.from_pretrained(root / "vae", torch_dtype=torch.float32, local_files_only=True).eval()
     scheduler = MOSSImageScheduler.from_config(MOSSImageScheduler.load_config(root / "scheduler"))
     pipeline = MOSSImagePipeline(transformer.eval(), scheduler, text_encoder, tokenizer, vae)
     pipeline.set_progress_bar_config(disable=True)
-    notes: list[str] = []
     if device == "cuda":
-        parts_gb = sum(
-            float(part.get_memory_footprint()) / 1024**3 for part in (transformer, text_encoder, vae)
-        )
-        total_gb = torch.cuda.get_device_properties(torch.cuda.current_device()).total_memory / 1024**3
-        if total_gb >= parts_gb + ACTIVATION_HEADROOM_GB:
-            pipeline.to("cuda")
-        else:
-            pipeline.enable_model_cpu_offload()
-            notes.append(f"Parts moved to the card in turn ({total_gb:.0f} GB card, about {parts_gb:.0f} GB of weights).")
+        for part in (transformer, vae):
+            part.to("cuda")
+        if "quantization_config" not in encoder_kwargs:
+            text_encoder.to("cuda")
     elif device != "cpu":
         pipeline.to(device)
     return pipeline, notes

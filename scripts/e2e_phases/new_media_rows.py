@@ -1,5 +1,6 @@
 """E2E checks for the image and video rows added on 2026-11-19 (FU-259): FLUX 3 Image Klein on diffusers (CUDA) and
-on stable-diffusion.cpp, Qwen-Image-2.1 Turbo on stable-diffusion.cpp, and Kandinsky 6.0 Lite (video with sound).
+on stable-diffusion.cpp, Qwen-Image-2.1 Turbo on stable-diffusion.cpp, MOSS-Image SFT (vendored pipeline) and
+Kandinsky 6.0 Lite (video with sound).
 
 Each check asserts the row is listed and routed to its engine, then, when the row's weights are on this machine,
 renders one small picture or clip through the app's own route. A row whose weights are absent, or whose engine is
@@ -17,6 +18,7 @@ IMAGE_ROWS = {
     "black-forest-labs/flux-3-image-klein": (None, "Diffusers", True),
     "leejet/flux-3-image-klein-GGUF-q8": ("sdcpp", "stable-diffusion.cpp", False),
     "unsloth/Qwen-Image-2.1-Turbo-GGUF-q4km": ("sdcpp", "stable-diffusion.cpp", False),
+    "OpenMOSS-Team/MOSS-Image-SFT": (None, "Diffusers", True),
 }
 VIDEO_ROW = "kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers"
 

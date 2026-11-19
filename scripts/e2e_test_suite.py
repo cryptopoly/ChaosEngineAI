@@ -1945,7 +1945,7 @@ def phase_4(cap: Capability) -> PhaseResult:
         ("memory returns after unload; a second generation is not refused", _memory_returns_after_unload),
         ("generate via mflux (FU-096)", _generate_mflux),
         ("generate via sd.cpp FLUX.1 (FU-096)", _generate_flux_sdcpp),
-        ("FLUX 3 Klein (diffusers, sd.cpp) and Qwen-Image-2.1 Turbo rows (FU-259; live when installed)", lambda: _new_media_rows.image_rows(sys.modules[__name__])),
+        ("FLUX 3 Klein (diffusers, sd.cpp), Qwen-Image-2.1 Turbo and MOSS-Image rows (FU-259; live when installed)", lambda: _new_media_rows.image_rows(sys.modules[__name__])),
     ]:
         phase.checks.append(_check(name, fn))
     fails = [c for c in phase.checks if c.status == "fail"]

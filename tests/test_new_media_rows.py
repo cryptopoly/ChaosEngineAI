@@ -279,6 +279,20 @@ class MossVendoredCodeTests(unittest.TestCase):
             self.assertFalse(marker in code, marker)
         self.assertIsNone(re.search(r"(?<![.\w])(exec|eval|__import__)\(", code))  # module.eval() is fine
 
+    def test_catalog_row(self) -> None:
+        row = _variant(IMAGE_MODEL_FAMILIES, "OpenMOSS-Team/MOSS-Image-SFT")
+        self.assertNotIn("engine", row)
+        self.assertTrue(row["cudaOnly"])
+        self.assertIn("Apache 2.0", row["note"])
+        self.assertEqual((row["defaultSteps"], row["cfgOverride"]), (50, 3.0))
+
+    def test_downloads_skip_the_repo_code_at_the_root(self) -> None:
+        from backend_service.helpers.images import _image_repo_allow_patterns
+
+        patterns = _image_repo_allow_patterns("OpenMOSS-Team/MOSS-Image-SFT")
+        self.assertNotIn("*.py", patterns)
+        self.assertNotIn("pipeline_moss_image.py", patterns)
+
     def test_routing(self) -> None:
         from backend_service.image_runtime.moss_image import is_moss_repo
 

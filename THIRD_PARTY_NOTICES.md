@@ -269,6 +269,16 @@ output). No model weights are bundled. The clips are shipped as the model wrote 
   once an mlx-lm release carries the architecture. The weights keep their own
   licence (LFM Open License v1.0, Liquid AI).
 
+### MOSS-Image pipeline (vendored)
+
+- **Upstream:** `pipeline_moss_image.py` in <https://huggingface.co/OpenMOSS-Team/MOSS-Image-SFT>,
+  commit `f972bd4b4b9e3852133cc5da954d87bc32cd8fb9` (OpenMOSS)
+- **Licence:** Apache 2.0 (the repo's LICENSE)
+- **Location:** `backend_service/image_runtime/moss_image_pipeline.py`, copied unmodified below a
+  provenance header; a test checks its sha256
+- **Usage:** the MOSS-Image SFT row loads its classes from this copy instead of running the
+  repo's code with `trust_remote_code`. The weights keep their own licence (Apache 2.0).
+
 ## Test tooling (dev only, never shipped)
 
 ### Playwright (browser E2E)

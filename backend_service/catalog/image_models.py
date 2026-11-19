@@ -868,6 +868,55 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
         ],
     },
     {
+        # FU-259: MOSS-Image SFT (OpenMOSS, Apache-2.0, released 2026-10-11). Its repo ships the pipeline as its own
+        # Python file; the app runs a reviewed copy pinned to one commit (image_runtime/moss_image_pipeline.py) and
+        # never loads the repo's code.
+        "id": "moss-image",
+        "name": "MOSS-Image",
+        "provider": "OpenMOSS",
+        "headline": "A fully open (Apache 2.0) 5B text-to-image model with strong text rendering and layout prompts.",
+        "summary": (
+            "MOSS-Image SFT: a 5B diffusion transformer with a Qwen3.5 9B text encoder and the FLUX.2 VAE. Takes plain "
+            "prompts, tag lists or JSON layouts. 50 steps with guidance, so slower than the distilled models."
+        ),
+        "updatedLabel": "Oct 2026",
+        "badges": ["New", "Apache 2.0", "NVIDIA"],
+        "defaultVariantId": "OpenMOSS-Team/MOSS-Image-SFT",
+        "variants": [
+            {
+                "id": "OpenMOSS-Team/MOSS-Image-SFT",
+                "familyId": "moss-image",
+                "name": "MOSS-Image SFT",
+                "provider": "OpenMOSS",
+                "repo": "OpenMOSS-Team/MOSS-Image-SFT",
+                "link": "https://huggingface.co/OpenMOSS-Team/MOSS-Image-SFT",
+                "runtime": "diffusers MOSSImagePipeline (vendored)",
+                "styleTags": ["photoreal", "typography", "detailed"],
+                "taskSupport": ["txt2img"],
+                "cudaOnly": True,
+                # transformer 10.17 + Qwen3.5 text encoder 16.79 + VAE 0.25 GB (Hub file list, 2026-11-19).
+                "sizeGb": 27.2,
+                # RTX 4090, 2026-11-19: 23.0 GB peak on the card at 1024 px with 0.8 GB of desktop (4-bit encoder).
+                "runtimeFootprintCudaGb": 22.2,
+                "footprintBasis": "measured",
+                "footprintMeasuredOn": "cuda",
+                "defaultSteps": 50,
+                "cfgOverride": 3.0,
+                "recommendedResolution": "1024x1024",
+                "note": (
+                    "NVIDIA GPUs. 5B MOSS-Image with the settings of its model card (50 steps, guidance 3). On cards "
+                    "below 36 GB the 9B text encoder loads in 4-bit so everything stays on the card (bf16 on bigger "
+                    "cards is untested here). 27 GB download. Apache 2.0."
+                ),
+                # RTX 4090, three warm runs per case through /api/images/generate (median): 1024 px 50 steps 53.0 s,
+                # 25 steps 27.1, 768 px 50 steps 25.8; fit within 1 %. Nearly all of it is per step (two passes each).
+                "estimatedGenerationSeconds": 53.0,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 50, "fixed": 0.02, "quad": 1995},
+                "releaseDate": "2026-10",
+            },
+        ],
+    },
+    {
         "id": "flux-3",
         "name": "FLUX 3 Image Klein",
         "provider": "Black Forest Labs",

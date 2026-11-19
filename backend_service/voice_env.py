@@ -628,6 +628,11 @@ def _run_install(extras: list[str]) -> None:
             ok, why = speech_gpu_supported()
             if not ok:
                 raise RuntimeError(why.replace("speech GPU add-on", "speech-to-text GPU add-on"))
+            from backend_service import voice_client  # noqa: PLC0415
+
+            # Windows keeps a running ASR worker's .pyd files locked, so an update of asr-site failed (RTX 4090 run).
+            if voice_client._ASR_WORKER is not None:
+                voice_client._ASR_WORKER.stop()
             for command in voice_env_asr.stt_gpu_commands(str(venv_python())):
                 _run(command)
 

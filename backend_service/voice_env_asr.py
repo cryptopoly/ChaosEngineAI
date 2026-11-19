@@ -6,7 +6,7 @@ Chatterbox, and 5.23 needs newer tokenizers and safetensors, so, as for Qwen3-TT
 into its own folder inside the voice venv (``asr-site``, ``--no-deps``) and only the ASR worker puts it first on
 ``PYTHONPATH``. PyTorch (the same CUDA 12.8 build as the speech GPU add-on, shared when both are ticked) and its
 torchaudio (Granite's feature extractor) go into the venv itself. huggingface-hub, numpy, tqdm, pyyaml, packaging and
-filelock come from the base voice pack. All Apache-2.0 except regex (Apache-2.0 AND CNRI-Python) and torch (BSD-3).
+filelock come from the base voice pack. All Apache-2.0 except regex (Apache-2.0 AND CNRI-Python), torch and psutil (BSD-3-Clause).
 """
 
 from __future__ import annotations
@@ -17,10 +17,14 @@ from backend_service import voice_env
 
 # Checked on the RTX 4090 run (2026-11-19). transformers 5.23.0 requires tokenizers >=0.23.1,<0.24, safetensors >=0.8
 # and regex >=2025.10.22; huggingface-hub >=1.31,<3 is the venv's own (2.x on a base pack, 1.33 once the speech GPU
-# add-on's Transformers 5.2 has pulled it below 2.0).
-ASR_SITE_PACKAGES = ["transformers==5.23.0", "tokenizers==0.23.3", "safetensors==0.8.0", "regex==2026.11.19"]
+# add-on's Transformers 5.2 has pulled it below 2.0). accelerate (and its psutil, BSD-3-Clause) because Transformers
+# 5.23 refuses ``device_map`` without it (the RTX 4090 run: every load failed until it was added).
+ASR_SITE_PACKAGES = [
+    "transformers==5.23.0", "tokenizers==0.23.3", "safetensors==0.8.0", "regex==2026.11.19", "accelerate==1.16.0",
+    "psutil==7.2.2",
+]
 _ASR_SITE_CHECK = (
-    "import sys; sys.path.insert(0, {site!r}); import transformers, torch, torchaudio; "
+    "import sys; sys.path.insert(0, {site!r}); import transformers, torch, torchaudio, accelerate; "
     "assert transformers.__version__ == '5.23.0', transformers.__version__; "
     "from transformers import AutoModelForMultimodalLM, AutoModelForTDT, AutoModelForRNNT; "
     "assert torch.cuda.is_available(), 'PyTorch cannot see the NVIDIA GPU'; print('asr ok')"

@@ -135,6 +135,7 @@ class VllmWslEngine(BaseInferenceEngine):
         model_arg: str,
         port: int,
         max_model_len: int,
+        served_model_name: str | None = None,
     ) -> list[str]:
         """Compose the ``wsl -- bash -c "<inner cmd>"`` argv.
 
@@ -179,12 +180,17 @@ class VllmWslEngine(BaseInferenceEngine):
         # ``--enforce-eager`` skips CUDA-graph compilation. Loses some
         # perf on long generations but avoids the second JIT path that
         # would otherwise need a system ``nvcc``.
+        # ``--served-model-name`` keeps the name chat requests use (the model ref) valid when vLLM was started from a
+        # local folder: vLLM otherwise serves the model under the folder path and answers 404 "model does not exist"
+        # (RTX 4090, 2026-11-19).
+        served = f"--served-model-name {shlex.quote(served_model_name)} " if served_model_name else ""
         inner = (
             f'export PATH="{bin_path}:$PATH" && '
             'export VLLM_USE_FLASHINFER_SAMPLER=0 && '
             'export VLLM_ATTENTION_BACKEND=TORCH_SDPA && '
             f"{bin_path}/python -m vllm.entrypoints.openai.api_server "
             f"--model {shlex.quote(model_arg)} "
+            f"{served}"
             f"--host 127.0.0.1 "
             f"--port {port} "
             f"--max-model-len {max_model_len} "
@@ -312,6 +318,7 @@ class VllmWslEngine(BaseInferenceEngine):
             model_arg=model_arg,
             port=self.port,
             max_model_len=context_tokens,
+            served_model_name=model_ref,
         )
 
         if progress_callback:

@@ -163,6 +163,18 @@ class VllmWslEngineCommandTests(unittest.TestCase):
         self.assertEqual(command[3], "-c")
         self.assertEqual(len(command), 5, "expected wsl -- bash -c <inner> shape")
 
+    def test_a_local_folder_is_served_under_the_name_chat_uses(self):
+        # vLLM serves a model under its --model value; from a folder that is the path, so chat (which sends the
+        # model ref) got 404 "model does not exist" (RTX 4090, 2026-11-19).
+        engine = VllmWslEngine(_make_caps())
+        with_name = engine._build_wsl_command(
+            model_arg="/mnt/e/AI Models/m/snapshots/abc", port=8000, max_model_len=4096,
+            served_model_name="Qwen/Qwen3-0.6B")[4]
+        self.assertIn("--served-model-name Qwen/Qwen3-0.6B ", with_name)
+        self.assertLess(with_name.index("--model "), with_name.index("--served-model-name"))
+        without = engine._build_wsl_command(model_arg="Qwen/Qwen3-0.6B", port=8000, max_model_len=4096)[4]
+        self.assertNotIn("--served-model-name", without)
+
     def test_inner_command_exports_path_and_runs_vllm(self):
         engine = VllmWslEngine(_make_caps())
         command = engine._build_wsl_command(

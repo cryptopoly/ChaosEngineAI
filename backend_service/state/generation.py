@@ -571,7 +571,7 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
     studio_gate = None
     if request.studioTools and app_request is not None:
         from backend_service.tools import registry as _base_registry
-        from backend_service.tools.studio import STUDIO_HINT, studio_registry as _studio_registry
+        from backend_service.tools.studio import STUDIO_HINT, studio_registry as _studio_registry, wants_storyboard
         from backend_service.tools.studio_gate import StudioGate
 
         studio_registry = _studio_registry(
@@ -582,6 +582,8 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
             defer=_keep_going_defer(chaosengine, session_id_for_cancel),
             # FU-207: a wait on a job without progress stops the run (only while a run drives this turn).
             watch=_keep_going_watch(chaosengine, session_id_for_cancel),
+            # FU-231: the Storyboard tools only for a film, so a plain question carries a shorter tool list.
+            storyboard=wants_storyboard(request.prompt, session["messages"], keep_going=keep_going is not None),
         )
         studio_gate = StudioGate(
             session_id_for_cancel,

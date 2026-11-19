@@ -27,6 +27,9 @@ _TRANSDUCER_FILES = [
 ]
 
 
+# ``minVramGb``: the worker's own PyTorch peak (reserved) on the RTX 4090 run, 2026-11-19, 9.4 s clip, plus about 1 GB
+# for the CUDA context and margin: Qwen3-ASR 1.7B 3.97 GiB, 0.6B 1.63, Parakeet 2.49, Nemotron ASR 2.55, Granite 4.38.
+# Nemotron 3.5 Transcribe is the 64.7 GB of bf16 weights (32.4B parameters, counted on the meta device) plus room.
 def _gpu(family: str, licence: str, min_vram_gb: float, files: list[str], note: str | None = None) -> dict[str, Any]:
     return {"family": family, "licence": licence, "minVramGb": min_vram_gb, "minComputeCap": _CAP, "files": files,
             "note": note}
@@ -43,7 +46,7 @@ GPU_STT_MODELS: list[dict[str, Any]] = [
         "translate": False,
         # The Transformers conversion of Qwen/Qwen3-ASR-1.7B (Apache-2.0), bf16.
         "sources": {BACKEND: ("Qwen/Qwen3-ASR-1.7B-hf", 4.09)},
-        "gpu": _gpu("qwen3-asr", "Apache-2.0", 6.0, _LLM_FILES),
+        "gpu": _gpu("qwen3-asr", "Apache-2.0", 5.0, _LLM_FILES),
     },
     {
         "key": "qwen3-asr-0.6b",
@@ -52,7 +55,7 @@ GPU_STT_MODELS: list[dict[str, Any]] = [
         "default": False,
         "translate": False,
         "sources": {BACKEND: ("Qwen/Qwen3-ASR-0.6B-hf", 1.58)},
-        "gpu": _gpu("qwen3-asr", "Apache-2.0", 3.0, _LLM_FILES),
+        "gpu": _gpu("qwen3-asr", "Apache-2.0", 2.5, _LLM_FILES),
     },
     {
         "key": "granite-speech-5.0-2b",
@@ -61,7 +64,7 @@ GPU_STT_MODELS: list[dict[str, Any]] = [
         "default": False,
         "translate": False,
         "sources": {BACKEND: ("ibm-granite/granite-speech-5.0-2b", 4.64)},
-        "gpu": _gpu("granite-speech", "Apache-2.0", 6.5, [
+        "gpu": _gpu("granite-speech", "Apache-2.0", 5.5, [
             "added_tokens.json", "chat_template.jinja", "config.json", "generation_config.json", "merges.txt",
             "model.safetensors", "preprocessor_config.json", "processor_config.json", "special_tokens_map.json",
             "tokenizer.json", "tokenizer_config.json", "vocab.json",
@@ -86,7 +89,7 @@ GPU_STT_MODELS: list[dict[str, Any]] = [
 GPU_STT_SOURCES: dict[str, dict[str, Any]] = {
     # NVIDIA's own Transformers weights (CC-BY-4.0), float32; the repo also holds the .nemo archive and a GGUF.
     "parakeet-tdt-v3": {"source": ("nvidia/parakeet-tdt-0.6b-v3", 2.51),
-                        "gpu": _gpu("parakeet-tdt", "CC-BY-4.0", 4.0, _TRANSDUCER_FILES)},
+                        "gpu": _gpu("parakeet-tdt", "CC-BY-4.0", 3.5, _TRANSDUCER_FILES)},
     "nemotron-3.5-asr": {"source": ("nvidia/nemotron-3.5-asr-streaming-0.6b", 2.55),
-                         "gpu": _gpu("nemotron-asr", "OpenMDW-1.1", 4.0, _TRANSDUCER_FILES)},
+                         "gpu": _gpu("nemotron-asr", "OpenMDW-1.1", 3.5, _TRANSDUCER_FILES)},
 }

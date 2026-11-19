@@ -435,6 +435,17 @@ def transcribe_file(
         raise RuntimeError("Speaker labels need a voice runtime update. Update it from Voice > Models.")
     snapshot = _hf_snapshot_path(repo)
     family = _check_gpu_source(backend, repo, snapshot)
+    notes: list[str] = []
+    # The GPU rows give no word timings: with speaker labels the speaker turns are found first and each turn is
+    # transcribed on its own, so every segment belongs to one speaker.
+    turns: dict[str, Any] | None = None
+    spans: list[list[float]] | None = None
+    if family is not None:
+        if words:
+            notes.append("This model gives segment times only; word timings need Whisper.")
+        if speakers:
+            turns = diarize_file(path, speaker_count)
+            spans = speaker_spans(turns["turns"])
 
     def run(language_code: str | None) -> dict[str, Any]:
         return stt_worker_for(backend).request(
@@ -448,9 +459,9 @@ def transcribe_file(
             task=task,
             # Speaker labels split segments at word boundaries.
             words=words or speakers,
+            spans=spans,
         )
 
-    notes: list[str] = []
     language = language or None
     try:
         reply = run(language)
@@ -471,7 +482,7 @@ def transcribe_file(
     segments = reply.get("segments", [])
     seconds = float(reply.get("seconds") or 0.0)
     if speakers:
-        turns = diarize_file(path, speaker_count)
+        turns = turns or diarize_file(path, speaker_count)
         seconds += float(turns.pop("seconds", 0.0))
         segments = assign_speakers(segments, turns["turns"], reply.get("language") or language)
         if not words:
@@ -486,6 +497,19 @@ def transcribe_file(
         "seconds": round(seconds, 3),
         "note": " ".join(notes) or None,
     }
+
+
+def speaker_spans(turns: list[dict[str, Any]]) -> list[list[float]]:
+    """``[[start, end], ...]`` seconds: one span per run of turns by the same speaker (a short gap stays inside it)."""
+    spans: list[list[float]] = []
+    last = None
+    for turn in sorted(turns, key=lambda t: t["start"]):
+        if spans and turn["speaker"] == last:
+            spans[-1][1] = max(spans[-1][1], float(turn["end"]))
+        else:
+            spans.append([float(turn["start"]), float(turn["end"])])
+        last = turn["speaker"]
+    return spans
 
 
 def _check_gpu_source(backend: str, repo: str, snapshot: Path | None) -> str | None:

@@ -2607,7 +2607,22 @@ def phase_8(cap: Capability) -> PhaseResult:
         text = str(payload.get("text") or "")
         if payload.get("model") != ready[0]["id"] or "voice" not in text.lower():
             return "fail", f"GPU transcribe answered {payload.get('model')!r}: {text[:80]!r}", {}
-        return "pass", "", {"model": ready[0]["id"], "transcript": text[:60], "wallS": round(time.time() - started, 1)}
+        detail = {"model": ready[0]["id"], "transcript": text[:60], "wallS": round(time.time() - started, 1)}
+        # Speaker labels: each speaker turn is transcribed on its own (no word timings on these rows).
+        two = _two_voice_clip() if runtime_payload.get("speakersAvailable") else None
+        if two is not None:
+            code, resp = _voice_http(
+                "POST", "/api/voice/transcribe",
+                body=_multipart(boundary, two, {"model": ready[0]["id"], "speakers": "true"}),
+                content_type=f"multipart/form-data; boundary={boundary}", timeout=600.0,
+            )
+            if code != 200:
+                return "fail", f"GPU transcribe with speakers HTTP {code}: {resp[:200]!r}", {}
+            labels = {s.get("speaker") for s in json.loads(resp.decode("utf-8")).get("segments", [])} - {None}
+            if len(labels) != 2:
+                return "fail", f"GPU transcribe with speakers: expected 2 speakers, got {sorted(labels)}", {}
+            detail["speakers"] = 2
+        return "pass", "", detail
 
     def _transcribe():
         if not runtime_payload.get("sttAvailable"):
@@ -2698,6 +2713,12 @@ def phase_8(cap: Capability) -> PhaseResult:
             return "fail", "could not synthesize the two-voice clip", {}
         boundary = "----chaosengine-e2e-library"
         fields = {"save": "true", "words": "true"}
+        # The GPU dictation rows give no word timings (segment times only): use Whisper here when it is downloaded.
+        rows = runtime_payload.get("sttModels") or []
+        default = next((m for m in rows if m.get("default")), {})
+        whisper = next((m for m in rows if m.get("backend") == "faster-whisper" and m.get("installed")), None)
+        if default.get("backend") == "transformers-asr" and whisper:
+            fields["model"] = whisper["id"]
         if speakers:
             fields["speakers"] = "true"
         code, resp = _voice_http(

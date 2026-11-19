@@ -125,6 +125,20 @@ def windows(samples: Any, seconds: float) -> list[tuple[int, int]]:
     return spans
 
 
+def _request_windows(samples: Any, seconds: float, spans: Any) -> list[tuple[int, int]]:
+    """The windows to transcribe: the whole recording, or (speaker labels) each given ``[start, end]`` span in
+    seconds, every span cut into windows of its own so a segment never mixes two speakers."""
+    if not spans:
+        return windows(samples, seconds)
+    out: list[tuple[int, int]] = []
+    for start_s, end_s in spans:
+        start = max(0, int(float(start_s) * SAMPLE_RATE))
+        end = min(len(samples), int(float(end_s) * SAMPLE_RATE))
+        if end - start >= SAMPLE_RATE // 10:  # under 100 ms holds no word
+            out.extend((start + a, start + b) for a, b in windows(samples[start:end], seconds))
+    return out
+
+
 def _qwen_language(language: str | None) -> str | None:
     if not language:
         return None
@@ -186,6 +200,22 @@ def _run_window(family: str, model: Any, processor: Any, device: str, audio: Any
         return (text[0] if isinstance(text, list) else str(text)).strip(), language
 
 
+def _log_peak(family: str, seconds: float) -> None:
+    """The process's own GPU peak since the model loaded, to the worker log (whole-card readings are useless while other
+    programs share the GPU)."""
+    try:
+        import sys
+
+        import torch  # type: ignore[import-not-found]
+
+        if torch.cuda.is_available():
+            gb = 1024 ** 3
+            print(f"asr: {family} {seconds:.1f}s audio, peak allocated {torch.cuda.max_memory_allocated() / gb:.2f} GiB, "
+                  f"peak reserved {torch.cuda.max_memory_reserved() / gb:.2f} GiB", file=sys.stderr, flush=True)
+    except Exception:  # noqa: BLE001 - a diagnostic only
+        pass
+
+
 def transcribe(request: dict[str, Any], decode_audio: Callable[..., Any]) -> dict[str, Any]:
     """Text and one segment per window. ``language`` is an ISO code or empty (detect, where the model can)."""
     family = str(request.get("family") or "")
@@ -200,11 +230,15 @@ def transcribe(request: dict[str, Any], decode_audio: Callable[..., Any]) -> dic
     seconds = _WINDOW_S.get(family, _LLM_WINDOW_S)
     segments: list[dict[str, Any]] = []
     detected: str | None = None
-    for start, end in windows(audio, seconds):
+    for start, end in _request_windows(audio, seconds, request.get("spans")):
         text, found = _run_window(family, model, processor, device, audio[start:end], language)
         detected = detected or found
         if text:
             segments.append({"start": round(start / SAMPLE_RATE, 2), "end": round(end / SAMPLE_RATE, 2), "text": text})
+    _log_peak(family, duration)
     cjk = (detected or language or "") in ("zh", "ja", "yue")
+    if not cjk:  # Nemotron ASR joins its sentences with two spaces
+        for segment in segments:
+            segment["text"] = " ".join(segment["text"].split())
     text = ("" if cjk else " ").join(s["text"] for s in segments)
     return {"text": text.strip(), "language": detected or language, "segments": segments, "durationS": round(duration, 2)}

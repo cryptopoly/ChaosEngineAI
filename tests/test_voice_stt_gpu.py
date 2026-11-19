@@ -183,6 +183,16 @@ class GuardTests(unittest.TestCase):
         self.assertEqual(result["model"], "nvidia/parakeet-tdt-0.6b-v3")
         self.assertEqual(result["text"], "hello there")
 
+    def test_speaker_labels_send_the_speaker_turns_as_spans(self) -> None:
+        turns = {"turns": [{"start": 0.0, "end": 2.0, "speaker": 0}, {"start": 2.1, "end": 3.0, "speaker": 0},
+                           {"start": 3.2, "end": 6.0, "speaker": 1}], "seconds": 0.4}
+        with mock.patch.object(voice_env, "diarize_installed", return_value=True), \
+                mock.patch.object(voice_runtime, "diarize_file", return_value=turns) as diarize:
+            result, worker, _chooser = self._transcribe("qwen3-asr-1.7b", snapshot=Path("snap"), speakers=True, words=True)
+        diarize.assert_called_once()  # once, before the worker; not again afterwards
+        self.assertEqual(worker.request.call_args.kwargs["spans"], [[0.0, 3.0], [3.2, 6.0]])
+        self.assertIn("segment times only", result["note"])
+
     def test_whisper_requests_carry_no_family(self) -> None:
         _result, worker, chooser = self._transcribe("whisper-base", snapshot=None)
         chooser.assert_called_with("faster-whisper")
@@ -288,6 +298,13 @@ class WorkerHelperTests(unittest.TestCase):
         for (_a, end), (start, _b) in zip(spans, spans[1:]):
             self.assertEqual(end, start)
         self.assertTrue(all(b - a <= 30 * rate for a, b in spans))
+
+    def test_spans_become_windows_of_their_own(self) -> None:
+        rate = voice_worker_asr.SAMPLE_RATE
+        audio = np.ones(10 * rate, dtype=np.float32)
+        spans = voice_worker_asr._request_windows(audio, 30.0, [[0.0, 3.0], [3.2, 6.0], [9.99, 10.0]])
+        self.assertEqual(spans, [(0, 3 * rate), (int(3.2 * rate), 6 * rate)])  # the 10 ms span is dropped
+        self.assertEqual(voice_worker_asr._request_windows(audio, 30.0, None), [(0, 10 * rate)])
 
     def test_languages(self) -> None:
         self.assertIsNone(voice_worker_asr._qwen_language(None))

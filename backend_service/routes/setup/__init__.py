@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -241,6 +242,21 @@ _COMPANION_PINS: dict[str, tuple[str, ...]] = {
 _NO_DEPS_PACKAGES = frozenset({"kvpress"})
 
 
+# Packages pip cannot install on native Windows: tried on the RTX 4090 (2026-11-19), ``vllm`` stopped in 13 s on
+# the 260-character path limit while unpacking its sdist (it has no Windows build), and ``triattention`` in 58 s on
+# "No matching distribution found for triton". The button says so at once instead of running a pip that cannot work.
+_WINDOWS_UNSUPPORTED: dict[str, str] = {
+    "vllm": (
+        "vLLM has no Windows build, so it cannot be installed here. Use \"Install vLLM in WSL\" under the "
+        "Boost Pack (needs WSL2 and an NVIDIA driver), or run ChaosEngineAI on Linux."
+    ),
+    "triattention": (
+        "TriAttention needs triton, which has no Windows build, so it cannot be installed on native Windows. "
+        "Use it on Linux, or inside WSL2."
+    ),
+}
+
+
 class InstallPackageRequest(BaseModel):
     package: str
 
@@ -249,6 +265,8 @@ class InstallPackageRequest(BaseModel):
 def install_pip_package(request: Request, body: InstallPackageRequest) -> dict[str, Any]:
     """Install a whitelisted pip package into the backend's Python environment."""
     state = request.app.state.chaosengine
+    if sys.platform == "win32" and body.package in _WINDOWS_UNSUPPORTED:
+        raise HTTPException(status_code=400, detail=localized_detail(request, _WINDOWS_UNSUPPORTED[body.package]))
     pip_name = _INSTALLABLE_PIP_PACKAGES.get(body.package)
     if pip_name is None:
         manual_message = _MANUAL_INSTALL_MESSAGES.get(body.package)

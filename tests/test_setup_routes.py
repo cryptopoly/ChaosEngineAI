@@ -1,5 +1,6 @@
 """Tests for the setup routes — package installation, turbo update check."""
 
+import json
 import os
 import sys
 import tempfile
@@ -213,6 +214,20 @@ class SetupRouteTests(unittest.TestCase):
         self.assertLess(kv_cmd.index("--no-deps"), kv_cmd.index("kvpress>=0.5.3"))
         self.assertNotIn("--no-deps", other_cmd)
 
+    def test_windows_says_at_once_that_vllm_and_triattention_cannot_install(self):
+        """vLLM and triton have no Windows build: the route answers 400 with the way out and never runs pip."""
+        for package, hint in (("vllm", "Install vLLM in WSL"), ("triattention", "triton")):
+            with mock.patch("backend_service.routes.setup.sys.platform", "win32"),                  mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
+                resp = self.client.post("/api/setup/install-package", json={"package": package})
+            self.assertEqual(resp.status_code, 400, package)
+            self.assertIn(hint, json.dumps(resp.json()))
+            mock_run.assert_not_called()
+        with mock.patch("backend_service.routes.setup.sys.platform", "linux"),              mock.patch("backend_service.routes.setup.subprocess.run") as mock_run,              mock.patch("backend_service.routes.setup._extras_site_packages", return_value=Path("/tmp/x-extras")):
+            mock_run.return_value = mock.Mock(returncode=0, stdout="OK", stderr="")
+            resp = self.client.post("/api/setup/install-package", json={"package": "vllm"})
+        self.assertEqual(resp.status_code, 200)
+        mock_run.assert_called_once()
+
     def test_mlx_video_install_cannot_pull_a_newer_mlx(self):
         """mlx-video's unbounded mlx-vlm dependency is held to the app's mlx
         series by the constraint file, not by a fixed version that goes stale
@@ -279,7 +294,7 @@ class SetupRouteTests(unittest.TestCase):
     def test_install_pip_reports_failure(self):
         with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run:
             mock_run.return_value = mock.Mock(returncode=1, stdout="", stderr="ERROR: No matching distribution")
-            resp = self.client.post("/api/setup/install-package", json={"package": "vllm"})
+            resp = self.client.post("/api/setup/install-package", json={"package": "turboquant"})
         body = resp.json()
         self.assertFalse(body["ok"])
         self.assertIn("No matching distribution", body["output"])

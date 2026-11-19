@@ -1,13 +1,40 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 146 rows with work, decisions or watch items still open, newest first.
+summary: 149 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-261 · Run the stt-gpu add-on install end to end, and Nemotron 3.5 Transcribe on a large GPU — A good network line</summary>
+
+**Status or trigger:** A good network line; an 80 GB card
+
+**Notes:** 2026-11-19 RTX 4090: download.pytorch.org gave about 90 KB/s, so the add-on's torch 2.9.1 step did not run (the venv got torch 2.11.0+cu128 from the pip cache; the asr-site and import-check commands ran as written). Re-run `POST /api/voice/install {"extras":["kokoro","stt-gpu"]}` and the phase 8 check. Nemotron 3.5 Transcribe 30B-A4B (64.7 GB bf16) is listed fit-gated at 72 GB and untested; its processor and model class were checked on the meta device only. NVIDIA mentions FP8 / NVFP4 builds that might fit 32 to 48 GB cards.
+
+</details>
+
+<details>
+<summary>FU-260 · Pin revisions for the GPU dictation rows, and track Transformers 5.23 in asr-site — Before a release that ships the stt-gpu add-on</summary>
+
+**Status or trigger:** Before a release that ships the stt-gpu add-on
+
+**Notes:** The rows in `catalog/voice_stt_cuda.py` list files but no revision: `/api/models/download` takes none for dictation rows, so a repo change upstream reaches users unchecked (the Qwen3-TTS rows pin one). `voice_env_asr.ASR_SITE_PACKAGES` (transformers 5.23.0, tokenizers 0.23.3, safetensors 0.8.0, regex, accelerate 1.16.0, psutil 7.2.2) has no row in the CLAUDE.md upstream table or `check-upstreams.py`.
+
+</details>
+
+<details>
+<summary>FU-259 · Word timings for the GPU dictation rows (stt-gpu add-on) — Next voice pass on Windows / Linux</summary>
+
+**Status or trigger:** Next voice pass on Windows / Linux
+
+**Notes:** Qwen3-ASR, Parakeet, Nemotron ASR, Granite and Nemotron Transcribe (`voice_worker_asr.py`) return one segment per window (30 s for the audio LLMs, 120 s for the transducers) and no words; a request with `words` gets a note, speaker labels transcribe each speaker turn instead. Parakeet TDT has token timings in Transformers (`processor.decode(..., durations=output.durations)`); Qwen3-ASR has a separate forced aligner (`Qwen3ASRForTokenClassification`, Qwen3-ForcedAligner). Also not run: a recording longer than 30 s on these rows.
+
+</details>
 
 <details>
 <summary>FU-258 · /v1/chat/completions with stream: true drops tool calls — Done (2026-11-19, test/rtx4090), not run live</summary>

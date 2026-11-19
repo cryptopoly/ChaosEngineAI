@@ -8,13 +8,16 @@ summary: Every FU row from FOLLOW_UPS.md, split into open and closed.
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here.
 
-- [Open and live follow-ups](open.md): **146** rows.
+- [Open and live follow-ups](open.md): **149** rows.
 - [Closed follow-ups](closed.md): **110** rows.
 
 ## Newest ten
 
 | Row | Item | Status |
 |---|---|---|
+| [FU-261](open.md) | Run the stt-gpu add-on install end to end, and Nemotron 3.5 Transcribe on a large GPU | A good network line |
+| [FU-260](open.md) | Pin revisions for the GPU dictation rows, and track Transformers 5.23 in asr-site | Before a release that ships the stt-gpu add-on |
+| [FU-259](open.md) | Word timings for the GPU dictation rows (stt-gpu add-on) | Next voice pass on Windows / Linux |
 | [FU-258](open.md) | /v1/chat/completions with stream: true drops tool calls | Done (2026-11-19, test/rtx4090), not run live |
 | [FU-257](closed.md) | Tests that make symlinks fail on Windows without Developer Mode | Closed 2026-11-18: the owner turned Developer Mode on (D-96) |
 | [FU-256](open.md) | Host-bound tests that fail on Windows by design of the test | Next pass on the Windows or Linux box, or when each spec is touched |
@@ -22,6 +25,3 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 | [FU-254](open.md) | Native-speaker review of the review's 891 machine translations | Before the release notes claim the nine locales |
 | [FU-253](open.md) | npm run i18n:extract cannot be the "zero new keys" check | Before the next release checklist run |
 | [FU-252](open.md) | Backend-made text is not translated | When the activity feed or the catalogue labels are next touched (about half a day) |
-| [FU-251](open.md) | Copy, i18n and accessibility leftovers from the whole-app sweep | When each area is next touched |
-| [FU-250](closed.md) | Language banner asks to switch to the language the app is already in | Shipped 2026-11-18 (branch review/i18nfix, D-94) |
-| [FU-249](closed.md) | Settings > Diagnostics shows about 100 English strings in every language | Shipped 2026-11-18 (branch review/i18nfix, merged into review/integrate at ba1c5e4d) |

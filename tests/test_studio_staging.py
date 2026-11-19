@@ -17,6 +17,14 @@ class StoryboardStagingTests(unittest.TestCase):
         self.assertTrue(wants_storyboard("yes go on", [{"role": "user", "text": "Plan the trailer"}]))
         self.assertFalse(wants_storyboard("a filmy look", []))  # a whole word, not a part of one
 
+    def test_an_ad_with_music_or_a_stated_length_is_a_project(self) -> None:
+        # "Make a 12 second ad with music." opened a Keep going run whose first turn had no Storyboard tools.
+        self.assertTrue(wants_storyboard("Make a 12 second ad with music.", []))
+        self.assertTrue(wants_storyboard("a jingle for my bakery", []))
+        self.assertTrue(wants_storyboard("Make it 30 seconds", []))
+        self.assertFalse(wants_storyboard("Make a video of waves on rocks", []))
+        self.assertFalse(wants_storyboard("what is an adapter", []))
+
     def test_an_earlier_storyboard_call_or_a_keep_going_run_do(self) -> None:
         calls = [{"role": "assistant", "text": "ok", "toolCalls": [{"name": "storyboard_shot"}]}]
         old = [{"role": "user", "text": "x"}] * 8

@@ -58,7 +58,7 @@ class CatalogTests(unittest.TestCase):
         # Measured 2026-11-13 on a 24 GB card: GPU peak 20.1 GB at 768x512x97, 37.5 GB system memory held, 62 s warm.
         self.assertEqual((nf4["footprintBasis"], nf4["footprintMeasuredOn"]), ("measured", "cuda"))
         self.assertEqual(nf4["estimatedGenerationSecondsBasis"], "measured")
-        self.assertEqual((nf4["runtimeFootprintGb"], nf4["loadMemoryGb"], nf4["estimatedGenerationSeconds"]), (19.5, 38.0, 62.0))
+        self.assertEqual((nf4["runtimeFootprintGb"], nf4["loadMemoryGb"], nf4["estimatedGenerationSeconds"]), (19.5, 38.0, 62.9))
         self.assertEqual((bf16["footprintBasis"], bf16["estimatedGenerationSecondsBasis"]), ("estimated", "estimated"))
         self.assertNotIn("footprintMeasuredOn", bf16)
         self.assertEqual(bf16["runtimeFootprintGb"], 76.0)

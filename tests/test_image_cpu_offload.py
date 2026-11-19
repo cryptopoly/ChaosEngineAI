@@ -166,7 +166,15 @@ def _fake_torch(total_gb: float | None) -> ModuleType:
 class EnsurePipelineOffloadTests(unittest.TestCase):
     """``_ensure_pipeline`` with diffusers and torch faked out."""
 
-    def _load(self, *, total_gb, footprint_gb, nunchaku_result):
+    def _load(self, *, total_gb, footprint_gb, nunchaku_result, standard_transformer=True):
+        import tempfile
+        from pathlib import Path
+
+        snap = tempfile.TemporaryDirectory()
+        self.addCleanup(snap.cleanup)
+        (Path(snap.name) / "transformer").mkdir()
+        if standard_transformer:  # an older full download still has the bf16 transformer to fall back to
+            (Path(snap.name) / "transformer" / "model.safetensors").write_bytes(b"")
         engine = DiffusersTextToImageEngine()
         pipeline = _FakePipeline()
 
@@ -178,7 +186,7 @@ class EnsurePipelineOffloadTests(unittest.TestCase):
         diffusers.AutoPipelineForText2Image = SimpleNamespace(from_pretrained=_from_pretrained)
         nf4 = mock.Mock(return_value=(None, None))
         with mock.patch.dict(sys.modules, {"torch": _fake_torch(total_gb), "diffusers": diffusers}), \
-                mock.patch("backend_service.helpers.hf_local.local_snapshot_path", return_value="/snap"), \
+                mock.patch("backend_service.helpers.hf_local.local_snapshot_path", return_value=snap.name), \
                 mock.patch("backend_service.image_runtime.validate_local_diffusers_snapshot", return_value=None), \
                 mock.patch.object(engine, "_detect_device", return_value="cuda"), \
                 mock.patch.object(engine, "_try_load_nunchaku_transformer", return_value=nunchaku_result), \
@@ -231,6 +239,13 @@ class EnsurePipelineOffloadTests(unittest.TestCase):
         self.assertTrue(pipeline.offloaded)
         nf4.assert_called_once()
         self.assertEqual(engine._load_notes, [missing[1]])
+
+    def test_nunchaku_only_download_stops_with_the_reason_instead_of_falling_back(self):
+        # The Nunchaku download has no bf16 transformer, so there is nothing to fall back to.
+        missing = (None, "Nunchaku (SVDQuant) not installed. Falling back to the standard transformer.")
+        with self.assertRaises(RuntimeError) as caught:
+            self._load(total_gb=80.0, footprint_gb=NUNCHAKU_GB, nunchaku_result=missing, standard_transformer=False)
+        self.assertIn("no standard transformer to fall back to", str(caught.exception))
 
 
 if __name__ == "__main__":

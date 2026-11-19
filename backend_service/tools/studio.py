@@ -412,8 +412,11 @@ class StudioTool(BaseTool):
         if self.name in SINGLE_RENDERS and not (isinstance(self._tier, TierHolder) and self._tier.exempts(args)):
             from backend_service.mcp_bridge.tools import _state
 
-            args, tier_notes = apply_tier(current(self._tier), self.name, args,
-                                          variant_for(self.name, args.get("model"), _state(make_context(self._request))))
+            try:
+                args, tier_notes = apply_tier(current(self._tier), self.name, args,
+                                              variant_for(self.name, args.get("model"), _state(make_context(self._request))))
+            except Exception:  # noqa: BLE001 - a tier never blocks a render; without the app state the call runs as asked
+                tier_notes = []
         if self._defer is not None and needs_approval(self.name, args):
             kept = self._defer(self.name, args)
             if kept is not None:
@@ -490,7 +493,11 @@ def _own_jobs(args: dict[str, Any]) -> dict[str, Any]:
 
 _FILM_WORDS = re.compile(
     r"\b(film|films|movie|storyboard|shot|shots|scene|scenes|trailer|project|clip|clips|montage|sequence|"
-    r"episode|caption|captions|subtitle|subtitles|song|lyrics|narration|soundtrack)\b", re.IGNORECASE)
+    r"episode|caption|captions|subtitle|subtitles|song|lyrics|narration|soundtrack|"
+    # An ad or a piece with music or a voice-over is a multi-part project; so is anything with a stated length
+    # ("a 12 second ad"). A plain "make a video of ..." is one clip and does not need the Storyboard tools.
+    r"ad|ads|advert|adverts|advertisement|commercial|music|jingle|voiceover|voice-over|narrate|narrated)\b"
+    r"|\b\d+\s*(?:s|sec|secs|second|seconds|min|mins|minute|minutes)\b", re.IGNORECASE)
 
 
 def wants_storyboard(prompt: str, messages: list[dict[str, Any]] | None, *, keep_going: bool = False) -> bool:

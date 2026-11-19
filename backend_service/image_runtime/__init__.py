@@ -697,10 +697,8 @@ class DiffusersTextToImageEngine:
                 )
                 if quantized_transformer is not None:
                     pipeline_kwargs["transformer"] = quantized_transformer
-                elif nunchaku_note:
-                    # Say in the image's note why it did not run on Nunchaku.
-                    self._load_notes.append(nunchaku_note)
                 if nunchaku_note:
+                    # The image's note says whether it ran on Nunchaku, and why not when it did not.
                     self._load_notes.append(nunchaku_note)
                     IMAGE_PROGRESS.set_phase(PHASE_LOADING, message=nunchaku_note)
             # The footprint describes the variant's quantized transformer. If

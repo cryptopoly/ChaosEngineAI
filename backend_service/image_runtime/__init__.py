@@ -542,7 +542,6 @@ class DiffusersTextToImageEngine:
                     steps=config.steps,
                     generator=generator,
                     batch_size=config.batchSize,
-                    reference_paths=config.referenceImagePaths,
                     on_step=_on_step,
                 )
         IMAGE_PROGRESS.set_phase(PHASE_SAVING, message="Saving to gallery")

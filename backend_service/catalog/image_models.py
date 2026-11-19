@@ -949,8 +949,8 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "repo": "black-forest-labs/flux-3-image-klein",
                 "link": "https://huggingface.co/black-forest-labs/flux-3-image-klein",
                 "runtime": "diffusers Flux3DistilledModularPipeline",
-                "styleTags": ["photoreal", "general", "typography", "multi-reference"],
-                "taskSupport": ["txt2img", "img2img"],
+                "styleTags": ["photoreal", "general", "typography"],
+                "taskSupport": ["txt2img"],
                 "cudaOnly": True,
                 # transformer 11.10 + Qwen3-VL-4B text encoder 8.88 + VAE 0.34 GB (Hub file list, 2026-11-19).
                 "sizeGb": 20.3,
@@ -964,9 +964,9 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "cfgOverride": 1.0,
                 "recommendedResolution": "1024x1024",
                 "note": (
-                    "NVIDIA GPUs. The distilled 5.6B FLUX 3 Klein through diffusers: text to image, or an edit "
-                    "from up to four reference pictures (the model takes ten; the app stops at four). No "
-                    "guidance or negative prompt. BFL's 9B prompt upsampler is not run, so write a full scene "
+                    "NVIDIA GPUs. The distilled 5.6B FLUX 3 Klein through diffusers: text to image (editing from "
+                    "reference pictures is not offered on this engine yet; the Mac row has it). No guidance or "
+                    "negative prompt. BFL's 9B prompt upsampler is not run, so write a full scene "
                     "description rather than a few words. 20 GB download in bf16; on a card below about 28 GB the "
                     "text encoder waits in system RAM between prompts (cards below 24 GB untested). Gated: accept the FLUX "
                     "Kommunity licence on Hugging Face first (free for non-commercial use; commercial use of "

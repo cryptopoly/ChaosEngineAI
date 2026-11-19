@@ -20,8 +20,6 @@ from typing import Any
 FLUX3_MODULAR_REPOS: dict[str, bool] = {
     "black-forest-labs/flux-3-image-klein": True,
 }
-# The model takes up to ten reference images; the app's request schema (and the mflux edit lane) stop at four.
-MAX_REFERENCE_IMAGES = 4
 # Components the modular index lists that this app does not load (the prompt upsampler lives in another repo).
 UNUSED_COMPONENTS = frozenset({"prompt_upsampler", "prompt_upsampler_processor"})
 
@@ -105,17 +103,6 @@ def load_pipeline(local_path: str, torch: Any, device: str) -> tuple[Any, list[s
     return pipeline, notes
 
 
-def load_references(paths: list[str] | None) -> list[Any]:
-    """The reference pictures as RGB PIL images, at most ``MAX_REFERENCE_IMAGES``."""
-    from PIL import Image  # type: ignore
-
-    pictures = []
-    for path in list(paths or [])[:MAX_REFERENCE_IMAGES]:
-        with Image.open(path) as picture:
-            pictures.append(picture.convert("RGB"))
-    return pictures
-
-
 def generate(
     pipeline: Any,
     *,
@@ -126,7 +113,6 @@ def generate(
     steps: int,
     generator: Any,
     batch_size: int,
-    reference_paths: list[str] | None,
     on_step: Any,
 ) -> tuple[list[Any], float]:
     """``(PIL images, seconds)`` for one request. ``on_step(done, total)`` runs before each transformer pass."""
@@ -149,9 +135,6 @@ def generate(
         "num_images_per_prompt": max(1, int(batch_size)),
         "generator": generator,
     }
-    references = load_references(reference_paths)
-    if references:
-        kwargs["image"] = references if len(references) > 1 else references[0]
     started = time.perf_counter()
     try:
         images = pipeline(output="images", **kwargs)

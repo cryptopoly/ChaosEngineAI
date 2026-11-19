@@ -38,7 +38,7 @@ class CatalogRowTests(unittest.TestCase):
         self.assertIn("FLUX Kommunity", row["note"])
         self.assertIn("US$5M", row["note"])
         self.assertEqual(row["footprintMeasuredOn"], "cuda")
-        self.assertIn("img2img", row["taskSupport"])
+        self.assertEqual(row["taskSupport"], ["txt2img"])  # editing did not follow the prompt here (FU-259)
         self.assertIsInstance(row["runtimeFootprintCudaGb"], float)
 
     def test_flux3_sdcpp_row_pins_its_files(self) -> None:
@@ -102,16 +102,15 @@ class RoutingTests(unittest.TestCase):
         from backend_service.helpers.images import _image_variant_inputs
 
         inputs = _image_variant_inputs(_variant(IMAGE_MODEL_FAMILIES, FLUX3))
-        self.assertEqual(inputs, {"acceptsGuidance": False, "acceptsNegativePrompt": False, "maxReferenceImages": 4})
+        self.assertEqual(inputs, {"acceptsGuidance": False, "acceptsNegativePrompt": False, "maxReferenceImages": 0})
         self.assertEqual(_image_variant_inputs(_variant(IMAGE_MODEL_FAMILIES, FLUX3_SDCPP))["maxReferenceImages"], 0)
 
-    def test_flux3_reference_limit_is_enforced(self) -> None:
+    def test_flux3_cuda_rows_refuse_reference_images(self) -> None:
         from backend_service.helpers.media_input import InputImageError, checked_reference_images
 
-        with self.assertRaisesRegex(InputImageError, "takes 4 reference images"):
-            checked_reference_images(["a", "b", "c", "d", "e"], _variant(IMAGE_MODEL_FAMILIES, FLUX3))
-        with self.assertRaisesRegex(InputImageError, "cannot take a reference image"):
-            checked_reference_images(["a"], _variant(IMAGE_MODEL_FAMILIES, FLUX3_SDCPP))
+        for variant_id in (FLUX3, FLUX3_SDCPP):
+            with self.assertRaisesRegex(InputImageError, "cannot take a reference image"):
+                checked_reference_images(["a"], _variant(IMAGE_MODEL_FAMILIES, variant_id))
 
     def test_downloads_fetch_the_modular_index(self) -> None:
         from backend_service.helpers.images import _image_repo_allow_patterns
@@ -224,7 +223,7 @@ class Flux3LoaderTests(unittest.TestCase):
         self.assertIsNone(note)
         pipeline.to.assert_called_once_with("cuda")
 
-    def test_generate_reports_steps_and_passes_references(self) -> None:
+    def test_generate_reports_steps(self) -> None:
         from backend_service.image_runtime import flux3_modular
 
         transformer = _FakeTransformer()
@@ -240,21 +239,16 @@ class Flux3LoaderTests(unittest.TestCase):
         pipeline = mock.Mock(side_effect=run)
         pipeline.transformer = transformer
         steps: list[tuple[int, int]] = []
-        with tempfile.TemporaryDirectory() as tmp:
-            from PIL import Image
-
-            ref = Path(tmp) / "ref.png"
-            Image.new("RGBA", (8, 8)).save(ref)
-            images, seconds = flux3_modular.generate(
-                pipeline, repo=FLUX3, prompt="p", width=512, height=768, steps=4, generator="g",
-                batch_size=1, reference_paths=[str(ref)], on_step=lambda d, t: steps.append((d, t)),
-            )
+        images, seconds = flux3_modular.generate(
+            pipeline, repo=FLUX3, prompt="p", width=512, height=768, steps=4, generator="g",
+            batch_size=1, on_step=lambda d, t: steps.append((d, t)),
+        )
         self.assertEqual(images, ["img"])
         self.assertGreater(seconds, 0)
         self.assertEqual(steps, [(0, 4), (1, 4), (2, 4), (3, 4)])
         self.assertEqual(seen["output"], "images")
         self.assertEqual((seen["width"], seen["height"], seen["num_inference_steps"]), (512, 768, 4))
-        self.assertEqual(seen["image"].mode, "RGB")
+        self.assertNotIn("image", seen)
         self.assertEqual(transformer.hooks, [])  # the hook is removed after the run
 
 

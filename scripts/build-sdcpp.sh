@@ -81,7 +81,7 @@ case "$(uname -s)" in
     ;;
   Linux)
     if command -v nvcc &>/dev/null; then
-      CMAKE_FLAGS+=(-DSD_CUBLAS=ON)
+      CMAKE_FLAGS+=(-DSD_CUDA=ON)
     fi
     ;;
 esac

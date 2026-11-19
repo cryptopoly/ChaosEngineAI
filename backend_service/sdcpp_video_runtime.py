@@ -107,11 +107,14 @@ def _resolve_sd_binary() -> Path | None:
         if candidate.exists():
             return candidate
 
-    home = os.environ.get("HOME")
+    # Windows has no HOME in a normal session and names the binary ``sd.exe`` (found on the RTX 4090, 2026-11-19:
+    # only CHAOSENGINE_SDCPP_BIN located a Windows build).
+    home = os.environ.get("HOME") or os.environ.get("USERPROFILE")
     if home:
-        managed = Path(home) / ".chaosengine" / "bin" / "sd"
-        if managed.exists():
-            return managed
+        for name in ("sd.exe", "sd"):
+            managed = Path(home) / ".chaosengine" / "bin" / name
+            if managed.exists():
+                return managed
 
     return None
 

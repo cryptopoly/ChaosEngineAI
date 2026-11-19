@@ -94,7 +94,24 @@ class SdCppImageResolveBinaryTests(unittest.TestCase):
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("CHAOSENGINE_SDCPP_BIN", None)
             os.environ.pop("HOME", None)
+            os.environ.pop("USERPROFILE", None)
             self.assertIsNone(_resolve_sd_binary())
+
+    def test_finds_sd_exe_under_userprofile_without_home(self):
+        # A Windows session has no HOME, and the binary is sd.exe (RTX 4090, 2026-11-19).
+        import tempfile
+
+        from backend_service import sdcpp_video_runtime
+
+        with tempfile.TemporaryDirectory() as tmp:
+            binary = Path(tmp) / ".chaosengine" / "bin" / "sd.exe"
+            binary.parent.mkdir(parents=True)
+            binary.write_text("")
+            with patch.dict(os.environ, {"USERPROFILE": tmp}, clear=False):
+                os.environ.pop("CHAOSENGINE_SDCPP_BIN", None)
+                os.environ.pop("HOME", None)
+                self.assertEqual(_resolve_sd_binary(), binary)
+                self.assertEqual(sdcpp_video_runtime._resolve_sd_binary(), binary)
 
     def test_returns_env_path_when_set(self):
         with patch.dict(os.environ, {}, clear=False):

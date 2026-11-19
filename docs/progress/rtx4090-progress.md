@@ -1732,3 +1732,16 @@ Downloaded from the ggml-org release (`llama-b12441-bin-win-cuda-12.4-x64.zip` 3
 ## 2026-11-19: review changes never run on Windows (handover section 3, last bullet)
 
 Live against a throwaway backend. **Process-stop guard: PASS** (`POST /api/models/processes/stop` for a foreign python process and for the calling script both answer 409 "That is not a model process started by ChaosEngineAI."; the foreign process stayed alive). **Conversion refuses cleanly: PASS** (`POST /api/models/convert` answers 400 "MLX conversion is unavailable in this environment."; progress reads idle; cancel answers `cancelled: false`). Model event log: covered by row 45. The composer's "loading" placeholder was not looked at.
+
+## 2026-11-19: packaged build of `test/rtx4090` (built, not installed)
+
+`./build.sh` (the release recipe: clean `.venv-release` from `release-constraints.txt`, `npm ci`, `npx tauri build --bundles nsis`, release staging) from `d2cc7a8a`-plus: `ChaosEngineAI_0.10.0_x64-setup.exe`, **111.9 MB** (the November 18 build was 136.6 MB; the difference was not investigated). Manifest: `mode: release`, `llamaServer: bin/llama-server.exe`, `warnings: []`. **Not installed**: the installed 0.9.9 and its uninstall entry were left alone. To run the build anyway, the exe and the `embedded` runtime were copied beside each other in a temp folder (the layout the installer lays down), started with a throwaway home, and removed afterwards.
+
+| Check | Result | Evidence |
+|---|---|---|
+| Packaged app starts, runtime unpacks, backend answers | **PASS** | `/api/health` ok, session token present, runtime unpacked under `%TEMP%\chaosengine-embedded-runtime\windows-x86_64-9a4b8b92`. |
+| Bundled llama-server loads and answers a GGUF | **PASS** | Qwen3-0.6B Q4_K_M, engine llama.cpp, HTTP 200 chat (the packaged `bin\llama-server.exe` ran it). |
+| Backend force-killed (Task Manager's End task) with a model loaded | **PASS** | llama-server count 1 before, **0** after the kill: the Job Object fix holds inside Tauri's process tree. The desktop shell stayed up and did not restart the backend within 15 s (the page's offline notice covers that case). |
+| Webview checks of rows 46, 47, 51 (restart persistence, OS clipboard, offline notice in the real window) | **NOT RUN** | WebView2 ignores the debug-port setting under Tauri, and no tool here can click in the native window. These need a person at the keyboard. |
+
+Build lesson: starting `build.sh` as a background job inside another command left a `tauri build` running after the launcher returned; a later `npm ci` then failed on the locked Tauri CLI file and left `node_modules` half deleted (restored with `npm ci`). Run the build as one background command and start nothing else beside it.

@@ -146,6 +146,16 @@ def _image_variant_inputs(variant: dict[str, Any]) -> dict[str, Any]:
                 "acceptsNegativePrompt": family.takes_negative_prompt,
                 "maxReferenceImages": reference_image_limit(str(variant.get("repo") or "")),
             }
+    from backend_service.image_runtime.flux3_modular import FLUX3_MODULAR_REPOS, MAX_REFERENCE_IMAGES
+
+    repo = str(variant.get("repo") or "")
+    if not variant.get("engine") and repo in FLUX3_MODULAR_REPOS:
+        # FLUX.3 on diffusers: the distilled checkpoint takes no guidance, neither takes a negative prompt.
+        return {
+            "acceptsGuidance": not FLUX3_MODULAR_REPOS[repo],
+            "acceptsNegativePrompt": False,
+            "maxReferenceImages": MAX_REFERENCE_IMAGES,
+        }
     return {"acceptsGuidance": True, "acceptsNegativePrompt": True, "maxReferenceImages": 0}
 
 
@@ -785,6 +795,7 @@ def _image_download_repo_ids() -> set[str]:
 # 57+ GB. Mirrors ``_VIDEO_DIFFUSERS_ALLOW_PATTERNS`` in ``helpers/video.py``.
 _IMAGE_DIFFUSERS_ALLOW_PATTERNS: list[str] = [
     "model_index.json",
+    "modular_model_index.json",  # FLUX.3 ships a modular pipeline index instead
     "scheduler/**",
     "text_encoder/**",
     "text_encoder_2/**",

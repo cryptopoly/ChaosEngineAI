@@ -57,18 +57,27 @@ def image_size(path: Path) -> tuple[int, int] | None:
 def checked_reference_images(raw_paths: list[str] | None, variant: dict) -> list[str]:
     """Resolve reference images for an image model, or raise ``InputImageError`` naming what works.
 
-    Only mflux models take them; the same variant on another engine would drop the image silently.
+    Only mflux models and FLUX 3 Klein on diffusers take them; another engine would drop the image silently.
     """
     if not raw_paths:
         return []
     from backend_service.image_runtime.mflux_engine import reference_image_limit
 
+    from backend_service.image_runtime.flux3_modular import FLUX3_MODULAR_REPOS, MAX_REFERENCE_IMAGES
+
     name = variant.get("name") or variant.get("id")
-    limit = reference_image_limit(str(variant.get("repo") or "")) if (variant.get("engine") or "").lower() == "mflux" else 0
+    engine = (variant.get("engine") or "").lower()
+    repo = str(variant.get("repo") or "")
+    if engine == "mflux":
+        limit = reference_image_limit(repo)
+    elif not engine and repo in FLUX3_MODULAR_REPOS:
+        limit = MAX_REFERENCE_IMAGES  # FLUX 3 Klein on diffusers (CUDA) edits from its references
+    else:
+        limit = 0
     if limit == 0:
         raise InputImageError(
             f"{name} cannot take a reference image. Use FLUX.1, FLUX.2 Klein, Qwen Image 2.1 or FLUX 3 Klein "
-            "on the mflux (MLX) engine."
+            "on the mflux (MLX) engine, or FLUX 3 Klein on diffusers (NVIDIA)."
         )
     if len(raw_paths) > limit:
         raise InputImageError(f"{name} takes {limit} reference image{'s' if limit != 1 else ''}; got {len(raw_paths)}.")

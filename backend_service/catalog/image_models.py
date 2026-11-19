@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 
+
 IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
     {
         "id": "flux-fast",
@@ -656,6 +657,57 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 40},  # FU-165 reference: row defaultSteps
                 "releaseDate": "2026-09",
             },
+            {
+                # FU-259: the 8-step Qwen-Image-2.1 Turbo (released 2026-10-09) as unsloth's Q4_K_M GGUF through
+                # stable-diffusion.cpp, with the base row's VAE and Qwen3-VL-8B encoder. Turbo needs the sampling
+                # schedule it ships (``sample_sigmas`` in its model_index.json); sd.cpp takes it as --sigmas, which
+                # fixes the run at 8 steps whatever the steps setting says.
+                "id": "unsloth/Qwen-Image-2.1-Turbo-GGUF-q4km",
+                "familyId": "qwen-image",
+                "name": "Qwen-Image-2.1 Turbo · sd.cpp Q4_K_M",
+                "provider": "Alibaba Qwen · unsloth",
+                "repo": "unsloth/Qwen-Image-2.1-Turbo-GGUF",
+                "engine": "sdcpp",
+                "ggufRepo": "unsloth/Qwen-Image-2.1-Turbo-GGUF",
+                "ggufFile": "qwen-image-2.1-turbo-Q4_K_M.gguf",
+                "sdcppAux": {
+                    "--vae": {
+                        "repo": "Comfy-Org/Qwen-Image-2.1",
+                        "file": "vae/qwen_image_2.1_vae_bf16.safetensors",
+                    },
+                    "--llm": {
+                        "repo": "Qwen/Qwen3-VL-8B-Instruct-GGUF",
+                        "file": "Qwen3VL-8B-Instruct-Q4_K_M.gguf",
+                    },
+                },
+                "sdcppArgs": [
+                    "--sampling-method", "euler", "--fa",
+                    "--sigmas", "1.0,0.978453,0.95418,0.926626,0.89508,0.845148,0.704534,0.414568,0.0",
+                ],
+                "defaultSteps": 8,
+                "cfgOverride": 1.0,
+                "link": "https://huggingface.co/Qwen/Qwen-Image-2.1-Turbo",
+                "runtime": "stable-diffusion.cpp (subprocess)",
+                "styleTags": ["photoreal", "typography", "fast", "gguf", "cross-platform"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 4.2,
+                # RTX 4090, 2026-11-19: peak above the idle card at 1024 px.
+                "runtimeFootprintCudaGb": 14.5,
+                "footprintBasis": "measured",
+                "footprintMeasuredOn": "cuda",
+                "recommendedResolution": "1024x1024",
+                "note": (
+                    "The 8-step distilled Qwen-Image-2.1 as a 4-bit GGUF through stable-diffusion.cpp: about three "
+                    "times faster than the 40-step base row (7.5 s against 21 s at 1024 px on an RTX 4090). Runs its own "
+                    "8-step schedule (the steps setting does "
+                    "not apply) with no guidance. The first run also fetches the Qwen3-VL-8B text encoder (5 GB) "
+                    "and the VAE (0.7 GB). Qwen Research licence: non-commercial use only."
+                ),
+                # RTX 4090, three runs per size through /api/images/generate (median wall, a fresh sd.cpp process each): 1024 px 7.5 s, 768 px 5.4, 1280x768 7.3, 1536 px 14.4; fit within 2 %.
+                "estimatedGenerationSeconds": 7.5,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 8, "ignoresSteps": True, "fixed": 0.37, "quad": 14125},
+                "releaseDate": "2026-10",
+            },
         ],
     },
     {
@@ -883,6 +935,92 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "steerable and the one to fine-tune. Gated: accept the FLUX Kommunity licence "
                     "on Hugging Face first."
                 ),
+                "releaseDate": "2026-10",
+            },
+            {
+                # FU-259: the distilled checkpoint through diffusers' modular pipeline (Flux3DistilledModularPipeline,
+                # diffusers 0.42), loaded by image_runtime/flux3_modular.py without the 9B prompt upsampler. The
+                # download is the diffusers folders only (the root model.safetensors, ae.safetensors and the fp8 /
+                # nvfp4 variants are for BFL's reference code and are skipped).
+                "id": "black-forest-labs/flux-3-image-klein",
+                "familyId": "flux-3",
+                "name": "FLUX 3 Image Klein (diffusers)",
+                "provider": "Black Forest Labs",
+                "repo": "black-forest-labs/flux-3-image-klein",
+                "link": "https://huggingface.co/black-forest-labs/flux-3-image-klein",
+                "runtime": "diffusers Flux3DistilledModularPipeline",
+                "styleTags": ["photoreal", "general", "typography", "multi-reference"],
+                "taskSupport": ["txt2img", "img2img"],
+                "cudaOnly": True,
+                # transformer 11.10 + Qwen3-VL-4B text encoder 8.88 + VAE 0.34 GB (Hub file list, 2026-11-19).
+                "sizeGb": 20.3,
+                # RTX 4090, 2026-11-19: 20.6 GB peak on the card at 1536 px with about 0.6 GB of desktop (the text
+                # encoder visits the card only to read the prompt: flux3_modular.place_on_cuda).
+                "runtimeFootprintCudaGb": 20.0,
+                "footprintBasis": "measured",
+                "footprintMeasuredOn": "cuda",
+                # The maker's default is 16; 8 looked the same on the lighthouse test and takes 7.0 s against 10.1 s.
+                "defaultSteps": 8,
+                "cfgOverride": 1.0,
+                "recommendedResolution": "1024x1024",
+                "note": (
+                    "NVIDIA GPUs. The distilled 5.6B FLUX 3 Klein through diffusers: text to image, or an edit "
+                    "from up to four reference pictures (the model takes ten; the app stops at four). No "
+                    "guidance or negative prompt. BFL's 9B prompt upsampler is not run, so write a full scene "
+                    "description rather than a few words. 20 GB download in bf16; on a card below about 28 GB the "
+                    "text encoder waits in system RAM between prompts (cards below 24 GB untested). Gated: accept the FLUX "
+                    "Kommunity licence on Hugging Face first (free for non-commercial use; commercial use of "
+                    "outputs only below US$5M annual revenue)."
+                ),
+                # RTX 4090, three warm runs per size through /api/images/generate (median): 1024 px 8 steps 7.0 s,
+                # 16 steps 10.1, 768 px 16 steps 6.8, 1280x768 12 steps 8.3, 1536 px 16 steps 22.0. Fit within 3 %
+                # (docs/research/time-estimate-fit-2026-11.md).
+                "estimatedGenerationSeconds": 7.0,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 8, "fixed": 0.57, "quad": 2512},
+                "releaseDate": "2026-10",
+            },
+            {
+                # FU-259: leejet's GGUF of the distilled checkpoint through stable-diffusion.cpp (flux3 support at the
+                # pinned 532d2c1). The text encoder is Qwen3-VL-4B (GGUF) and the VAE the FLUX.2 one that BFL ships
+                # as ae.safetensors in the gated repo, so the licence step still applies.
+                "id": "leejet/flux-3-image-klein-GGUF-q8",
+                "familyId": "flux-3",
+                "name": "FLUX 3 Image Klein · sd.cpp Q8_0",
+                "provider": "Black Forest Labs · sd.cpp",
+                "repo": "leejet/flux-3-image-klein-GGUF",
+                "engine": "sdcpp",
+                "ggufRepo": "leejet/flux-3-image-klein-GGUF",
+                "ggufFile": "flux3-image-klein-Q8_0.gguf",
+                "sdcppAux": {
+                    "--vae": {"repo": "black-forest-labs/flux-3-image-klein", "file": "ae.safetensors"},
+                    "--llm": {"repo": "Qwen/Qwen3-VL-4B-Instruct-GGUF", "file": "Qwen3VL-4B-Instruct-Q4_K_M.gguf"},
+                },
+                "sdcppArgs": ["--sampling-method", "euler", "--fa"],
+                "cfgOverride": 1.0,
+                # Distilled for 16; 8 gives the same picture here, as on the diffusers and mflux rows.
+                "defaultSteps": 8,
+                "link": "https://huggingface.co/leejet/flux-3-image-klein-GGUF",
+                "runtime": "stable-diffusion.cpp (subprocess)",
+                "styleTags": ["photoreal", "general", "gguf", "cross-platform"],
+                "taskSupport": ["txt2img"],
+                "sizeGb": 6.2,
+                # RTX 4090, 2026-11-19: 11.1 GB above the idle card at 1024 px, 15.3 GB at 1536 px.
+                "runtimeFootprintCudaGb": 11.5,
+                "footprintBasis": "measured",
+                "footprintMeasuredOn": "cuda",
+                "recommendedResolution": "1024x1024",
+                "note": (
+                    "The distilled FLUX 3 Klein as an 8-bit GGUF through stable-diffusion.cpp: text to image "
+                    "(no reference pictures on this engine). The first run also fetches the Qwen3-VL-4B text "
+                    "encoder (2.5 GB) and the VAE (0.3 GB) from the gated BFL repo. Gated: accept the FLUX "
+                    "Kommunity licence on Hugging Face first (free for non-commercial use; commercial use of "
+                    "outputs only below US$5M annual revenue)."
+                ),
+                # RTX 4090, three runs per case through /api/images/generate (median wall; every sd.cpp run starts
+                # its own process, so this includes loading from the OS file cache): 1024 px 8 steps 5.5 s, 16 steps
+                # 7.7, 768 px 8 steps 4.3, 1536 px 8 steps 10.0. Fit within 2 %.
+                "estimatedGenerationSeconds": 5.5,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 8, "fixed": 0.58, "quad": 2818},
                 "releaseDate": "2026-10",
             },
         ],

@@ -80,6 +80,15 @@ def _mflux_only_repo(repo_id: str) -> bool:
     return bool(engines) and all(engine == "mflux" for engine in engines)
 
 
+def _has_mflux_row(repo_id: str) -> bool:
+    return any(
+        variant.get("engine") == "mflux"
+        for family in IMAGE_MODEL_FAMILIES
+        for variant in family["variants"]
+        if str(variant.get("repo") or "") == repo_id
+    )
+
+
 def _mflux_snapshot_error(snapshot_dir: Path, repo_id: str) -> str | None:
     missing = [
         name for name in _MFLUX_COMPONENT_DIRS
@@ -148,6 +157,10 @@ def _image_repo_runtime_ready(repo_id: str) -> bool:
         return all((Path(snapshot_dir) / name).is_file() for name in pinned)
     if _mflux_only_repo(repo_id):
         return _mflux_snapshot_error(Path(snapshot_dir), repo_id) is None
+    if _has_mflux_row(repo_id) and _mflux_snapshot_error(Path(snapshot_dir), repo_id) is None:
+        # FLUX 3 Klein has an mflux row and a diffusers row: an mflux download made before the
+        # modular index was fetched still counts.
+        return True
     if validate_local_diffusers_snapshot(snapshot_dir, repo_id) is not None:
         return False
     # A Nunchaku download leaves the base repo without its own transformer weights.

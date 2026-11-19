@@ -592,6 +592,188 @@
    "measured": 214.55,
    "tolerancePct": 20,
    "expected": 196.9
+  },
+  {
+   "name": "FLUX 3 Klein diffusers, 1536 px at 16 steps (RTX 4090 measured 22.0 s)",
+   "kind": "image",
+   "catalog": 7.0,
+   "ref": {
+    "width": 1024,
+    "height": 1024,
+    "frames": 1,
+    "steps": 8,
+    "fixed": 0.57,
+    "quad": 2512
+   },
+   "request": {
+    "width": 1536,
+    "height": 1536,
+    "frames": 1,
+    "steps": 16
+   },
+   "measured": 22.0,
+   "tolerancePct": 5,
+   "expected": 22.4
+  },
+  {
+   "name": "FLUX 3 Klein diffusers, 768 px at 16 steps (RTX 4090 measured 6.8 s)",
+   "kind": "image",
+   "catalog": 7.0,
+   "ref": {
+    "width": 1024,
+    "height": 1024,
+    "frames": 1,
+    "steps": 8,
+    "fixed": 0.57,
+    "quad": 2512
+   },
+   "request": {
+    "width": 768,
+    "height": 768,
+    "frames": 1,
+    "steps": 16
+   },
+   "measured": 6.8,
+   "tolerancePct": 5,
+   "expected": 6.9
+  },
+  {
+   "name": "Kandinsky 6.0 Lite, 640x352 x 121 frames (RTX 4090 measured 51.6 s)",
+   "kind": "video",
+   "catalog": 109.8,
+   "ref": {
+    "width": 864,
+    "height": 480,
+    "frames": 121,
+    "steps": 10,
+    "fixed": 0.17,
+    "quad": 17783
+   },
+   "request": {
+    "width": 640,
+    "height": 352,
+    "frames": 121,
+    "steps": 10
+   },
+   "measured": 51.6,
+   "tolerancePct": 5,
+   "expected": 51.6
+  },
+  {
+   "name": "Kandinsky 6.0 Lite, 864x480 x 49 frames (RTX 4090 measured 39.6 s)",
+   "kind": "video",
+   "catalog": 109.8,
+   "ref": {
+    "width": 864,
+    "height": 480,
+    "frames": 121,
+    "steps": 10,
+    "fixed": 0.17,
+    "quad": 17783
+   },
+   "request": {
+    "width": 864,
+    "height": 480,
+    "frames": 49,
+    "steps": 10
+   },
+   "measured": 39.6,
+   "tolerancePct": 5,
+   "expected": 39.5
+  },
+  {
+   "name": "FLUX 3 Klein sd.cpp Q8_0, 1536 px at 8 steps (RTX 4090 measured 10.0 s)",
+   "kind": "image",
+   "catalog": 5.5,
+   "ref": {
+    "width": 1024,
+    "height": 1024,
+    "frames": 1,
+    "steps": 8,
+    "fixed": 0.58,
+    "quad": 2818
+   },
+   "request": {
+    "width": 1536,
+    "height": 1536,
+    "frames": 1,
+    "steps": 8
+   },
+   "engine": "sdcpp",
+   "measured": 10.0,
+   "tolerancePct": 5,
+   "expected": 10.1
+  },
+  {
+   "name": "FLUX 3 Klein sd.cpp Q8_0, 1024 px at 16 steps (RTX 4090 measured 7.7 s)",
+   "kind": "image",
+   "catalog": 5.5,
+   "ref": {
+    "width": 1024,
+    "height": 1024,
+    "frames": 1,
+    "steps": 8,
+    "fixed": 0.58,
+    "quad": 2818
+   },
+   "request": {
+    "width": 1024,
+    "height": 1024,
+    "frames": 1,
+    "steps": 16
+   },
+   "engine": "sdcpp",
+   "measured": 7.7,
+   "tolerancePct": 5,
+   "expected": 7.8
+  },
+  {
+   "name": "Qwen-Image-2.1 Turbo sd.cpp, 1536 px (RTX 4090 measured 14.4 s; steps fixed by its schedule)",
+   "kind": "image",
+   "catalog": 7.5,
+   "ref": {
+    "width": 1024,
+    "height": 1024,
+    "frames": 1,
+    "steps": 8,
+    "ignoresSteps": true,
+    "fixed": 0.37,
+    "quad": 14125
+   },
+   "request": {
+    "width": 1536,
+    "height": 1536,
+    "frames": 1,
+    "steps": 30
+   },
+   "engine": "sdcpp",
+   "measured": 14.4,
+   "tolerancePct": 5,
+   "expected": 14.3
+  },
+  {
+   "name": "Qwen-Image-2.1 Turbo sd.cpp, 768 px (RTX 4090 measured 5.4 s)",
+   "kind": "image",
+   "catalog": 7.5,
+   "ref": {
+    "width": 1024,
+    "height": 1024,
+    "frames": 1,
+    "steps": 8,
+    "ignoresSteps": true,
+    "fixed": 0.37,
+    "quad": 14125
+   },
+   "request": {
+    "width": 768,
+    "height": 768,
+    "frames": 1,
+    "steps": 8
+   },
+   "engine": "sdcpp",
+   "measured": 5.4,
+   "tolerancePct": 5,
+   "expected": 5.4
   }
  ]
 }

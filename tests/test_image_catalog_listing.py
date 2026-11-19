@@ -57,7 +57,9 @@ class MfluxOnlyRepoTests(unittest.TestCase):
         import tempfile
         from pathlib import Path
 
-        self.assertTrue(iv._mflux_only_repo("black-forest-labs/flux-3-image-klein"))
+        # FLUX 3 Klein also has a diffusers (CUDA) row since FU-259; its mflux folders still count.
+        self.assertFalse(iv._mflux_only_repo("black-forest-labs/flux-3-image-klein"))
+        self.assertTrue(iv._has_mflux_row("black-forest-labs/flux-3-image-klein"))
         self.assertTrue(iv._mflux_only_repo("Qwen/Qwen-Image-2.1"))
         # Klein 4B also has a diffusers row, so it keeps the diffusers check.
         self.assertFalse(iv._mflux_only_repo("black-forest-labs/FLUX.2-klein-4B"))

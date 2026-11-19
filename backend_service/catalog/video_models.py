@@ -28,7 +28,9 @@ from backend_service.catalog.video_minimax_h3 import MINIMAX_H3_FAMILY
 #   reason         key the UI turns into a translated sentence: "pytorch-apple-gpu", "bf16-full-size",
 #                  "no-gpu-cpu".
 #   alternativeId  a faster catalog row that runs on that kind of machine (none for cpu-only).
-SLOW_ALTERNATIVE_APPLE = "dgrauet/ltx-2.3-mlx-q4"  # ltx-2-mlx runs on Apple Silicon only; 2.3 needs no licence step (2.5 is gated)
+KANDINSKY6_ID = "kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers"
+
+SLOW_ALTERNATIVE_APPLE ="dgrauet/ltx-2.3-mlx-q4"  # ltx-2-mlx runs on Apple Silicon only; 2.3 needs no licence step (2.5 is gated)
 
 # Wan runs through diffusers on the Apple GPU (MPS); not timed on these rows, so no number.
 SLOW_APPLE_WAN: dict[str, Any] = {
@@ -902,6 +904,62 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "slowOn": [SLOW_APPLE_WAN, SLOW_CPU_ONLY_EXPECTED],
                 "availableLocally": False,
                 "releaseDate": "2025-07",
+            },
+        ],
+    },
+    {
+        # FU-259: Kandinsky 6.0 Video Lite (3B, MIT, Sber's kandinskylab), the 10-step distilled checkpoint, on
+        # diffusers 0.42's Kandinsky6TI2VAPipeline: 5 s clips with 44.1 kHz sound made with the picture.
+        "id": "kandinsky-6",
+        "name": "Kandinsky 6.0 Lite",
+        "provider": "Kandinsky Lab",
+        "headline": "A small MIT-licensed video model that makes the sound with the picture, in 10 steps.",
+        "summary": (
+            "Kandinsky 6.0 Video Lite (3B) generates 5-second clips with synchronised 44.1 kHz sound, from text "
+            "or from a start picture. The distilled checkpoint samples in 10 steps without guidance. The 7B "
+            "Qwen2.5-VL text encoder is most of the 27 GB download."
+        ),
+        "updatedLabel": "Diffusers · NVIDIA",
+        "badges": ["Sound", "NVIDIA", "MIT"],
+        "defaultVariantId": KANDINSKY6_ID,
+        "variants": [
+            {
+                "id": KANDINSKY6_ID,
+                "familyId": "kandinsky-6",
+                "name": "Kandinsky 6.0 Lite · distilled",
+                "provider": "Kandinsky Lab",
+                "repo": KANDINSKY6_ID,
+                "link": "https://huggingface.co/kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers",
+                "runtime": "diffusers Kandinsky6TI2VAPipeline",
+                "styleTags": ["general", "fast", "motion", "audio"],
+                "taskSupport": ["txt2video", "img2video"],
+                # Not run on Apple Silicon here; the CUDA run is the only one measured.
+                "cudaOnly": True,
+                # transformer 6.4 + Qwen2.5-VL-7B text encoder 16.6 + CLIP-L 0.5 + video VAE 1.0 + audio VAE 1.7 +
+                # vocoder 0.5 GB (Hub file list, 2026-11-19).
+                "sizeGb": 26.7,
+                # RTX 4090, 2026-11-19: 17.4 GB peak on the card (about 1 GB of it the desktop) at 864x480, 121
+                # frames, model CPU offload (the 27 GB pipeline is larger than the card).
+                "runtimeFootprintCudaGb": 17.0,
+                "loadMemoryGb": 28.0,
+                "footprintBasis": "measured",
+                "footprintMeasuredOn": "cuda",
+                "recommendedResolution": "864x480",
+                "defaultDurationSeconds": 5.0,
+                "note": (
+                    "Text-to-video or image-to-video (start frame) with sound. The distilled checkpoint is made for "
+                    "10 steps at guidance 1 (the model card), the defaults here. Trained on 5-second clips at 24 fps "
+                    "(121 frames). "
+                    "Components are moved to an NVIDIA card as they are needed. MIT licence."
+                ),
+                # RTX 4090, three warm runs per case through /api/video/generate (median wall): 864x480 x 121 frames
+                # 109.8 s, 640x352 x 121 51.6 s, 864x480 x 49 39.6 s (each includes moving the 16.6 GB text encoder
+                # on and off the card). Fit within 1 % (docs/research/time-estimate-fit-2026-11.md).
+                "estimatedGenerationSeconds": 109.8,
+                "estimateRef": {"width": 864, "height": 480, "frames": 121, "steps": 10, "fixed": 0.17, "quad": 17783},
+                "slowOn": [SLOW_CPU_ONLY_EXPECTED],
+                "availableLocally": False,
+                "releaseDate": "2026-09",
             },
         ],
     },

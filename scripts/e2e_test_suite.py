@@ -1945,6 +1945,7 @@ def phase_4(cap: Capability) -> PhaseResult:
         ("memory returns after unload; a second generation is not refused", _memory_returns_after_unload),
         ("generate via mflux (FU-096)", _generate_mflux),
         ("generate via sd.cpp FLUX.1 (FU-096)", _generate_flux_sdcpp),
+        ("FLUX 3 Klein (diffusers, sd.cpp) and Qwen-Image-2.1 Turbo rows (FU-259; live when installed)", lambda: _new_media_rows.image_rows(sys.modules[__name__])),
     ]:
         phase.checks.append(_check(name, fn))
     fails = [c for c in phase.checks if c.status == "fail"]
@@ -2295,7 +2296,8 @@ def phase_5(cap: Capability) -> PhaseResult:
                       ("LTX-2.5 on diffusers, 4-bit on load (flags; live when the gated weights are present)", _ltx25_diffusers),
                       ("Wan 2.2 TI2V 5B image-to-video (flags, refusals, live when installed)", _wan_image_to_video),
                       ("Video diffusion cache strategy reaches the runtime (live when installed)", _video_cache_strategy),
-                      ("Wan is not burnt on MPS (FU-102)", _wan_not_burnt)]:
+                      ("Wan is not burnt on MPS (FU-102)", _wan_not_burnt),
+                      ("Kandinsky 6.0 Lite with sound (FU-259; live when installed)", lambda: _new_media_rows.video_row(sys.modules[__name__]))]:
         phase.checks.append(_check(name, fn))
     fails = [c for c in phase.checks if c.status == "fail"]
     phase.status = "fail" if fails else ("skip" if all(c.status == "skip" for c in phase.checks) else "pass")
@@ -3668,6 +3670,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from e2e_phases.phase_14 import phase_14  # noqa: E402
 from e2e_phases import time_estimate as _time_estimate  # noqa: E402
 from e2e_phases import territory_gate as _territory_gate  # noqa: E402
+from e2e_phases import new_media_rows as _new_media_rows  # noqa: E402
 from e2e_phases.phase_15 import phase_15  # noqa: E402
 
 PHASES[14] = phase_14

@@ -241,6 +241,8 @@ class PipelineRegistryTests(unittest.TestCase):
             "OzzyGT/LTX-2.3-Distilled-bnb-nf4",
             # LTX-2.5 (gated, Gemma 4 text encoder), distilled pipeline.
             "Lightricks/LTX-2.5-Diffusers",
+            # Kandinsky 6.0 Lite distilled (video with sound), FU-259.
+            "kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers",
         }
         self.assertEqual(set(PIPELINE_REGISTRY.keys()), expected)
         for entry in PIPELINE_REGISTRY.values():

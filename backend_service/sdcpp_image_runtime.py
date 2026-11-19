@@ -59,6 +59,8 @@ _SUPPORTED_REPOS: frozenset[str] = frozenset({
     "Qwen/Qwen-Image",
     "Qwen/Qwen-Image-2512",
     "leejet/Qwen-Image-2.1-GGUF",
+    "unsloth/Qwen-Image-2.1-Turbo-GGUF",
+    "leejet/flux-3-image-klein-GGUF",
     "leejet/FLUX.1-schnell-gguf",
     "leejet/FLUX.1-dev-gguf",
     "Tongyi-MAI/Z-Image",

@@ -337,6 +337,11 @@ def install_pip_package(request: Request, body: InstallPackageRequest) -> dict[s
                 f"{', '.join(unique)}"
             ).strip()
 
+    # The extras folder may not have existed when the backend started (a first install on a fresh profile): put it on
+    # sys.path now so the probe below, and the next import, see the package without a restart.
+    from backend_service.runtime_paths import ensure_extras_on_sys_path
+
+    ensure_extras_on_sys_path()
     importlib.invalidate_caches()
 
     # Re-probe capabilities after install

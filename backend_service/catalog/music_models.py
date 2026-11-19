@@ -188,11 +188,25 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "idleGb": 40.2,
                     "diskGb": 19.95,
                     "outputMbPerMinute": 11.5,
-                    # Supported by the model card on CUDA ("20 GB or more without offload"); not measured.
-                    "cuda": {"peakGb": 20.0, "basis": "estimated", "source": "ACE-Step XL model card"},
+                    # FU-139: measured on the 4090 like the turbo row (bf16, no offload). The card says "20 GB or
+                    # more without offload"; the run held 12.1 GB allocated, 12.4 GB reserved (14.3 GB at 600 s).
+                    # With another process holding 12 GB of the card, ACE-Step's own pre-flight refused every run.
+                    "cuda": {
+                        "basis": "measured",
+                        "measuredOn": "NVIDIA RTX 4090 24 GB, Windows 11, 2026-11-19",
+                        "wallSecondsAt": [[30, 1.12], [60, 1.64], [180, 4.1], [600, 15.8]],
+                        "secondsPer10sAudio": 0.27,
+                        "coldStartSeconds": 20.0,
+                        "vaeSecondsPerAudioSecond": 0.008,
+                        "peakGb": 14.3,
+                        "idleGb": 12.1,
+                        "hostPeakGb": 2.7,
+                        "hostIdleGb": 1.0,
+                    },
                 },
                 "defaultSettings": dict(_TURBO_DEFAULTS),
-                "note": "Opt-in large model for 64 GB Macs. About 2x slower than turbo; 47 GB peak, so everything else is unloaded first.",
+                "note": "Opt-in large model for 64 GB Macs (47 GB peak, everything else is unloaded first) or an NVIDIA GPU with about "
+                        "15 GB of free VRAM (measured on a 24 GB RTX 4090: 60 s in 1.6 s).",
             },
         ],
     },

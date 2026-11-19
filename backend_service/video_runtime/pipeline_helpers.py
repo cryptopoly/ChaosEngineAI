@@ -241,6 +241,9 @@ def build_pipeline_kwargs(
         if not config.startImagePath:
             raise RuntimeError("This run loaded the image-to-video pipeline but has no start image.")
         kwargs["image"] = load_start_image(config.startImagePath, config.width, config.height)
+    if pipeline_cls == "Kandinsky6TI2VAPipeline" and config.startImagePath:
+        # One class for both modes: a start picture conditions the first frame.
+        kwargs["image"] = load_start_image(config.startImagePath, config.width, config.height)
     if pipeline_cls in LTX2_PIPELINE_CLASSES:
         _shape_ltx2_kwargs(kwargs, config, pipeline_cls)
     kwargs["__cfg_decay"] = bool(config.cfgDecay) and pipeline_cls not in LTX2_PIPELINE_CLASSES
@@ -498,6 +501,8 @@ def invoke_pipeline(pipeline: Any, kwargs: dict[str, Any]) -> list[Any]:
         out.audio = audio
         vocoder = getattr(pipeline, "vocoder", None)
         rate = getattr(getattr(vocoder, "config", None), "output_sampling_rate", None)
+        # Kandinsky 6 states the rate on the pipeline (44.1 kHz), not in its vocoder config.
+        rate = rate or getattr(pipeline, "audio_sample_rate", None)
         out.audio_sample_rate = int(rate) if rate else None
     return out
 

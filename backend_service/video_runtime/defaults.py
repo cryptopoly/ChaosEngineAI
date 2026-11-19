@@ -48,6 +48,9 @@ _VIDEO_MODEL_FOOTPRINT_BF16_GB: dict[str, float] = {
     "OzzyGT/LTX-2.3-Distilled-bnb-nf4": 25.0,
     # LTX-2.5 (Gemma 4 12B text encoder): bf16 estimated from the 2.3 pack; unmeasured.
     "Lightricks/LTX-2.5-Diffusers": 76.0,
+    # Kandinsky 6.0 Lite: 6.4 GB transformer + 16.6 GB Qwen2.5-VL 7B text encoder + CLIP, video and audio VAEs and
+    # vocoder (3.7 GB), file sizes in bf16.
+    "kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers": 27.0,
     "hunyuanvideo-community/HunyuanVideo": 26.0,
     "genmo/mochi-1-preview": 22.0,
     "THUDM/CogVideoX-2b": 19.0,

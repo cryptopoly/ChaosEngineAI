@@ -26,6 +26,9 @@ LTX2_DIFFUSERS_REPOS: dict[str, bool] = {
 }
 
 
+KANDINSKY6_LITE_REPO = "kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers"
+
+
 def is_ltx2_diffusers_repo(repo: str) -> bool:
     return repo in LTX2_DIFFUSERS_REPOS
 
@@ -63,6 +66,8 @@ PIPELINE_REGISTRY: dict[str, dict[str, str]] = {
     # LTX-2.3 on diffusers (video with sound). Official bf16 packs for large GPUs and 4-bit (bitsandbytes NF4) packs
     # for 24 GB cards; every one is loaded by the same class, the quantisation lives in the component configs.
     **{repo: {"class_name": "LTX2Pipeline", "task": "txt2video"} for repo in LTX2_DIFFUSERS_REPOS},
+    # Kandinsky 6.0 Lite distilled (video with 44 kHz sound, MIT): one class for text and start-picture runs.
+    KANDINSKY6_LITE_REPO: {"class_name": "Kandinsky6TI2VAPipeline", "task": "txt2video"},
 }
 
 
@@ -82,6 +87,8 @@ IMAGE_TO_VIDEO_REGISTRY: dict[str, dict[str, Any]] = {
         }
         for repo in LTX2_DIFFUSERS_REPOS
     },
+    # The start picture conditions the first frame; the same class makes text-only clips.
+    KANDINSKY6_LITE_REPO: {"class_name": "Kandinsky6TI2VAPipeline", "endImage": False},
 }
 
 
@@ -178,6 +185,8 @@ _VIDEO_PIPELINE_DEFAULTS: dict[str, dict[str, Any]] = {
         repo: ({"steps": 8, "guidance": 1.0, "scheduler": None} if distilled else {"steps": 30, "guidance": 3.0, "scheduler": None})
         for repo, distilled in LTX2_DIFFUSERS_REPOS.items()
     },
+    # Kandinsky 6.0 Lite distilled: 10 steps, guidance 1.0 (model card), its own PiFlow scheduler.
+    KANDINSKY6_LITE_REPO: {"steps": 10, "guidance": 1.0, "scheduler": None},
 }
 
 # Schema-level defaults — must mirror ``VideoGenerationRequest`` in

@@ -63,6 +63,9 @@ from backend_service.image_runtime.repos import (
     _locate_sdxl_vae_fix_snapshot,
     _nunchaku_transformer_class_for_repo,  # noqa: F401 — re-exported for tests
 )
+from backend_service.image_runtime import flux3_modular, moss_image
+from backend_service.image_runtime.flux3_modular import is_flux3_modular_repo
+from backend_service.image_runtime.moss_image import is_moss_repo
 from backend_service.image_runtime.pipeline_helpers import (
     build_pipeline_kwargs,
     diffuse_message,
@@ -270,6 +273,8 @@ class DiffusersTextToImageEngine:
             # the T5/VAE passes.
             if IMAGE_PROGRESS.is_cancelled():
                 raise GenerationCancelled("Image generation cancelled by user")
+            if is_flux3_modular_repo(config.repo) or is_moss_repo(config.repo):
+                return self._generate_own_loader(pipeline, config)
             # Apply the user's sampler choice (SD1.5/SDXL only). Flow-matching
             # models (FLUX, SD3, Qwen-Image, Sana, HiDream) ship locked
             # schedulers — silently ignore the sampler there rather than
@@ -494,6 +499,72 @@ class DiffusersTextToImageEngine:
             self._trim_device_cache()
             IMAGE_PROGRESS.finish()
 
+    def _generate_own_loader(self, pipeline: Any, config: ImageGenerationConfig) -> list[GeneratedImage]:
+        """One request for a model with its own loader (FLUX.3 modular, MOSS-Image vendored): a transformer hook
+        reports the steps, since neither pipeline takes a step callback."""
+        torch = self._torch
+        if torch is None:
+            raise RuntimeError("PyTorch was not initialised for the diffusers runtime.")
+        base_seed = _resolve_base_seed(config.seed)
+        generator = torch.Generator(device="cpu" if self._device == "mps" else (self._device or "cpu")).manual_seed(base_seed)
+
+        def _on_step(done: int, total: int) -> None:
+            if done == 0:
+                IMAGE_PROGRESS.set_phase(PHASE_DIFFUSING, message=self._diffuse_message(config))
+            IMAGE_PROGRESS.set_step(done, total=total)
+            if IMAGE_PROGRESS.is_cancelled():
+                raise GenerationCancelled(IMAGE_PROGRESS.stall_message() or "Image generation cancelled by user")
+
+        IMAGE_PROGRESS.set_phase(PHASE_ENCODING, message="Encoding prompt")
+        from backend_service.helpers.step_watchdog import StepWatchdog
+
+        with StepWatchdog(IMAGE_PROGRESS, kind="image"):
+            if is_moss_repo(config.repo):
+                images, elapsed = moss_image.generate(
+                    pipeline,
+                    prompt=config.prompt,
+                    negative_prompt=config.negativePrompt,
+                    width=config.width,
+                    height=config.height,
+                    steps=config.steps,
+                    guidance=config.guidance,
+                    generator=generator,
+                    batch_size=config.batchSize,
+                    on_step=_on_step,
+                )
+            else:
+                images, elapsed = flux3_modular.generate(
+                    pipeline,
+                    repo=config.repo,
+                    prompt=config.prompt,
+                    width=config.width,
+                    height=config.height,
+                    steps=config.steps,
+                    generator=generator,
+                    batch_size=config.batchSize,
+                    on_step=_on_step,
+                )
+        IMAGE_PROGRESS.set_phase(PHASE_SAVING, message="Saving to gallery")
+        runtime_note = " · ".join(self._load_notes) or None
+        artifacts: list[GeneratedImage] = []
+        for index, image in enumerate(images):
+            buffer = io.BytesIO()
+            image.convert("RGB").save(buffer, format="PNG", optimize=True)
+            artifacts.append(
+                GeneratedImage(
+                    seed=base_seed + index,
+                    bytes=buffer.getvalue(),
+                    extension="png",
+                    mimeType="image/png",
+                    durationSeconds=round(elapsed / max(1, len(images)), 1),
+                    runtimeLabel=f"{self.runtime_label} ({self._device or 'cpu'})",
+                    runtimeNote=runtime_note,
+                )
+            )
+        if not artifacts:
+            raise RuntimeError(f"The {config.modelName} pipeline returned no images.")
+        return artifacts
+
     def _trim_device_cache(self) -> None:
         """Hand PyTorch's cached scratch memory back after a run; the pipeline stays loaded for the next one.
 
@@ -625,6 +696,24 @@ class DiffusersTextToImageEngine:
                 raise RuntimeError(validation_error)
             detected_device = self._detect_device(torch)
             device = self._preferred_execution_device(repo, detected_device)
+            own_loader = (
+                flux3_modular.load_pipeline if is_flux3_modular_repo(repo)
+                else moss_image.load_pipeline if is_moss_repo(repo)
+                else None
+            )
+            if own_loader is not None:
+                # FLUX.3 ships a modular pipeline only, MOSS-Image a pipeline in its own code (vendored here): each
+                # has its own loader and placement.
+                self._load_notes = []
+                pipeline, notes = own_loader(local_path, torch, device)
+                self._load_notes.extend(notes)
+                self._pipeline = pipeline
+                self._torch = torch
+                self._loaded_repo = repo
+                self._loaded_path = local_path
+                self._loaded_variant_key = variant_key
+                self._device = device
+                return pipeline
             # FU-017: probe the SDXL fp16-fix VAE before deciding dtype so
             # SDXL on MPS can stay on fp16 when the fix snapshot is cached.
             # Probe only fires for SDXL repos on devices that actually
@@ -1022,6 +1111,8 @@ class DiffusersTextToImageEngine:
 _NO_DIFFUSERS_PIPELINE: frozenset[str] = frozenset({
     "Qwen/Qwen-Image-2.1",
     "leejet/Qwen-Image-2.1-GGUF",
+    "unsloth/Qwen-Image-2.1-Turbo-GGUF",
+    "leejet/flux-3-image-klein-GGUF",
     "leejet/FLUX.1-schnell-gguf",
     "leejet/FLUX.1-dev-gguf",
 })

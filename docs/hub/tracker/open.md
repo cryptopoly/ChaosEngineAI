@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 160 rows with work, decisions or watch items still open, newest first.
+summary: 161 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-273 · New image and video rows from the 2026-11-19 landscape page — Done (2026-11-19, agent branch), measured on the 4090</summary>
+
+**Status or trigger:** **Done (2026-11-19, agent branch), measured on the 4090**
+
+**Notes:** Rows: FLUX 3 Klein on diffusers (CUDA, text to image, 7.0 s at 1024 px / 8 steps, 20 GB) and on sd.cpp Q8_0 (5.5 s, 11.5 GB); Qwen-Image-2.1 Turbo sd.cpp Q4_K_M (7.5 s, 14.5 GB); MOSS-Image SFT through a vendored, hash-pinned pipeline with a 4-bit text encoder (53 s at 50 steps, 22 GB); Kandinsky 6.0 Lite video with sound (110 s for 864x480 x 121, 17 GB). Open: Krea 2 Turbo (the owner must request gated access; no row), FLUX 3 Klein editing on CUDA (returned the reference unchanged without the prompt upsampler), FLUX 3 Klein Base CUDA row, the LTX-2.3 nf4 fallback (pin `OzzyGT` at `0b92179` or load the official pack in 4-bit), cards below 24 GB. `docs/progress/rtx4090-progress.md`, 2026-11-19 FU-273 section.
+
+</details>
 
 <details>
 <summary>FU-272 · Run the stt-gpu add-on install end to end, and Nemotron 3.5 Transcribe on a large GPU — A good network line</summary>

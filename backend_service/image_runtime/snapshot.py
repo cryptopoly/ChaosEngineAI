@@ -65,7 +65,16 @@ def _snapshot_visible_label(local_root: Path) -> str:
 # use it; the first real download failed validation on it): a snapshot without them is complete.
 OPTIONAL_COMPONENTS_BY_REPO: dict[str, frozenset[str]] = {
     "Lightricks/LTX-2.5-Diffusers": frozenset({"prompt_enhancer", "diffusion_decoder"}),
+    # FLUX.3's modular index names its 9B prompt upsampler, which lives in another repo and is not loaded.
+    "black-forest-labs/flux-3-image-klein": frozenset({"prompt_upsampler", "prompt_upsampler_processor"}),
 }
+
+
+def _component_folder(component_name: str, descriptor: list | tuple) -> str:
+    """The folder a component loads from: its name, or the ``subfolder`` a modular index spec gives it."""
+    if len(descriptor) >= 3 and isinstance(descriptor[2], dict):
+        return str(descriptor[2].get("subfolder") or component_name)
+    return component_name
 
 
 def validate_local_diffusers_snapshot(
@@ -74,6 +83,9 @@ def validate_local_diffusers_snapshot(
     ignored_weight_index_dirs: set[str] | None = None,
 ) -> str | None:
     model_index_path = local_root / "model_index.json"
+    if not model_index_path.exists() and (local_root / "modular_model_index.json").exists():
+        # A modular pipeline (FLUX.3): same layout, each component carries a loading spec as its third entry.
+        model_index_path = local_root / "modular_model_index.json"
     if not model_index_path.exists():
         visible_label = _snapshot_visible_label(local_root)
         return (
@@ -119,7 +131,7 @@ def validate_local_diffusers_snapshot(
             # models). Skip those — they aren't expected on disk.
             if descriptor[0] is None or descriptor[1] is None:
                 continue
-            component_dir = local_root / component_name
+            component_dir = local_root / _component_folder(component_name, descriptor)
             if not component_dir.is_dir():
                 missing_components.append(component_name)
                 continue

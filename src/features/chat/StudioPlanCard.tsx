@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatDuration } from "../../components/RunEstimateStrip";
 import type { StudioPlan, StudioPlanEstimate, StudioPlanItem, StudioTier } from "../../types";
-import { formatSeconds, submitPlanDecision, type PlanAction } from "./studioChat";
+import { priceStudioRender, type StudioPrice } from "../../api";
+import { expertOverrides, formatSeconds, submitPlanDecision, type PlanAction } from "./studioChat";
 
 interface StudioPlanCardProps {
   plan: StudioPlan;
@@ -23,18 +24,22 @@ const KIND_LABELS: Record<string, string> = {
 };
 
 /** Every argument that changes what gets made or what it costs, as short labelled facts. */
-function ItemFacts({ item, tier }: { item: StudioPlanItem; tier?: StudioTier }) {
+function ItemFacts({ item, tier, price }: { item: StudioPlanItem; tier?: StudioTier; price?: StudioPrice }) {
   const { t } = useTranslation("chat");
   // A tier picked on the card shows that tier's size and time; the rest of the call is unchanged.
-  const picked = tier && tier !== item.tier ? item.tierOptions?.[tier] : undefined;
-  const time = formatSeconds((picked ? picked.estimatedSeconds : item.estimatedSeconds) ?? null);
-  const size = picked?.size ?? item.size;
+  // Expert settings typed on the card come first, priced by the backend for exactly those values.
+  const picked = !price && tier && tier !== item.tier ? item.tierOptions?.[tier] : undefined;
+  const time = formatSeconds((price ? price.estimatedSeconds : picked ? picked.estimatedSeconds : item.estimatedSeconds) ?? null);
+  const size = price?.size ?? picked?.size ?? item.size;
+  const frames = price?.frames ?? item.frames;
+  const fps = price?.fps ?? item.fps;
+  const steps = price?.steps ?? item.steps;
   const facts: string[] = [];
   if (item.model) facts.push(item.model);
   if (size) facts.push(size);
-  if (typeof item.frames === "number") facts.push(t("studioChat.plan.frames", { count: item.frames, defaultValue: "{count} frames" }));
-  if (typeof item.fps === "number") facts.push(t("studioChat.plan.fps", { fps: item.fps, defaultValue: "{fps} fps" }));
-  if (typeof item.steps === "number") facts.push(t("studioChat.plan.steps", { count: item.steps, defaultValue: "{count} steps" }));
+  if (typeof frames === "number") facts.push(t("studioChat.plan.frames", { count: frames, defaultValue: "{count} frames" }));
+  if (typeof fps === "number") facts.push(t("studioChat.plan.fps", { fps, defaultValue: "{fps} fps" }));
+  if (typeof steps === "number") facts.push(t("studioChat.plan.steps", { count: steps, defaultValue: "{count} steps" }));
   if (typeof item.variations === "number" && item.variations > 1) {
     facts.push(t("studioChat.plan.variations", { count: item.variations, defaultValue: "{count} takes" }));
   }
@@ -44,7 +49,7 @@ function ItemFacts({ item, tier }: { item: StudioPlanItem; tier?: StudioTier }) 
   if (item.preview) facts.push(t("studioChat.plan.preview", { defaultValue: "preview" }));
   if (item.force) facts.push(t("studioChat.plan.force", { defaultValue: "includes locked shots" }));
   if (time) {
-    facts.push(item.estimateAtRecommended && !picked
+    facts.push(item.estimateAtRecommended && !picked && !price
       ? t("studioChat.plan.timeRecommended", { time, defaultValue: "about {time} at the recommended size" })
       : t("studioChat.plan.time", { time, defaultValue: "about {time}" }));
   }
@@ -63,12 +68,58 @@ function ItemFacts({ item, tier }: { item: StudioPlanItem; tier?: StudioTier }) 
 
 type TFn = (key: string, options: Record<string, unknown>) => string;
 
+const EXPERT_FIELDS = ["width", "height", "steps", "seed", "fps"] as const;
+
+/** FU-241 Expert: size, steps, seed, fps and model for one image or clip, typed instead of picked from a tier. */
+function ExpertFields({ item, fields, onChange, disabled }: {
+  item: StudioPlanItem;
+  fields: Record<string, string>;
+  onChange: (fields: Record<string, string>) => void;
+  disabled: boolean;
+}) {
+  const { t } = useTranslation("chat");
+  const labels: Record<string, string> = {
+    width: t("studioChat.plan.expertWidth", { defaultValue: "Width" }),
+    height: t("studioChat.plan.expertHeight", { defaultValue: "Height" }),
+    steps: t("studioChat.plan.expertSteps", { defaultValue: "Steps" }),
+    seed: t("studioChat.plan.expertSeed", { defaultValue: "Seed" }),
+    fps: t("studioChat.plan.expertFps", { defaultValue: "fps" }),
+  };
+  const set = (key: string, value: string) => onChange({ ...fields, [key]: value });
+  return (
+    <details className="studio-plan-card__expert">
+      <summary>{t("studioChat.plan.expertLabel", { defaultValue: "Expert settings" })}</summary>
+      <div className="studio-plan-card__expert-grid">
+        {EXPERT_FIELDS.filter((key) => key !== "fps" || item.tool === "generate_video").map((key) => (
+          <label key={key}>
+            <span>{labels[key]}</span>
+            <input type="number" inputMode="numeric" min={0} disabled={disabled} value={fields[key] ?? ""}
+              placeholder={t("studioChat.plan.expertDefault", { defaultValue: "as planned" })}
+              onChange={(e) => set(key, e.target.value)} />
+          </label>
+        ))}
+        {item.modelOptions && item.modelOptions.length > 1 ? (
+          <label>
+            <span>{t("studioChat.plan.expertModel", { defaultValue: "Model" })}</span>
+            <select disabled={disabled} value={fields.model ?? ""} onChange={(e) => set("model", e.target.value)}>
+              <option value="">{t("studioChat.plan.expertDefault", { defaultValue: "as planned" })}</option>
+              {item.modelOptions.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+          </label>
+        ) : null}
+      </div>
+    </details>
+  );
+}
+
 const TIERS: StudioTier[] = ["draft", "standard", "final"];
 
 /** FU-241: Draft, Standard or Final for the single images and clips on the card, with each one's size and time. */
-function QualityPicker({ item, tier, onPick, disabled }: {
+function QualityPicker({ item, tier, onPick, disabled, overridden }: {
   item: StudioPlanItem;
   tier: StudioTier;
+  /** Expert fields are typed: they run as typed, so no tier is marked. */
+  overridden: boolean;
   onPick: (tier: StudioTier) => void;
   disabled: boolean;
 }) {
@@ -84,8 +135,8 @@ function QualityPicker({ item, tier, onPick, disabled }: {
         const option = item.tierOptions?.[name];
         const time = formatSeconds(option?.estimatedSeconds ?? null);
         return (
-          <button key={name} type="button" role="radio" aria-checked={tier === name} disabled={disabled}
-            className={`secondary-button studio-plan-card__tier${tier === name ? " is-active" : ""}`}
+          <button key={name} type="button" role="radio" aria-checked={!overridden && tier === name} disabled={disabled}
+            className={`secondary-button studio-plan-card__tier${!overridden && tier === name ? " is-active" : ""}`}
             onClick={() => onPick(name)}>
             <strong>{labels[name]}</strong>
             <small>{[option?.size, time].filter(Boolean).join(" · ")}</small>
@@ -181,6 +232,8 @@ export function StudioPlanCard({ plan, sessionId, onEditByChat }: StudioPlanCard
   const rendered = plan.items.find((i) => i.tierOptions);
   const [tier, setTier] = useState<StudioTier>(rendered?.tier ?? "standard");
   const [keepTier, setKeepTier] = useState(false);
+  const [expert, setExpert] = useState<Record<string, Record<string, string>>>({});
+  const [priced, setPriced] = useState<Record<string, StudioPrice>>({});
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -194,11 +247,30 @@ export function StudioPlanCard({ plan, sessionId, onEditByChat }: StudioPlanCard
     if (plan.status === "pending") headingRef.current?.focus();
   }, [plan.planId, plan.status]);
 
+  // Typed Expert fields are priced by the backend (a short pause after the last key), so the card shows their time.
+  useEffect(() => {
+    const timers = plan.items.filter((item) => item.tierOptions).map((item) => {
+      const typed = expertOverrides(expert[item.callId]);
+      if (!Object.keys(typed).length) {
+        setPriced((prev) => (item.callId in prev ? Object.fromEntries(Object.entries(prev).filter(([id]) => id !== item.callId)) : prev));
+        return undefined;
+      }
+      return window.setTimeout(() => {
+        const asked = item.tool === "generate_video" && item.frames ? { frames: item.frames } : {};
+        priceStudioRender(item.tool, { prompt: item.prompt, ...(item.modelId ? { model: item.modelId } : {}), ...asked, ...typed })
+          .then((price) => setPriced((prev) => ({ ...prev, [item.callId]: price })))
+          .catch(() => undefined);
+      }, 400);
+    });
+    return () => timers.forEach((timer) => timer !== undefined && window.clearTimeout(timer));
+  }, [expert, plan.items]);
+
   async function choose(action: PlanAction) {
     setSending(true);
     setError(null);
     try {
-      await submitPlanDecision(plan, action, alwaysAllow, chatId, rendered ? { tier, keep: keepTier } : undefined);
+      const typed = Object.fromEntries(Object.entries(expert).map(([id, fields]) => [id, expertOverrides(fields)]));
+      await submitPlanDecision(plan, action, alwaysAllow, chatId, rendered ? { tier, keep: keepTier } : undefined, typed);
       setSent(true);
       if (action.type === "edit") onEditByChat?.();
     } catch (err) {
@@ -252,7 +324,7 @@ export function StudioPlanCard({ plan, sessionId, onEditByChat }: StudioPlanCard
                 <ItemPrompt item={item} />
               </div>
               <div className="studio-plan-card__meta">
-                <ItemFacts item={item} tier={tier} />
+                <ItemFacts item={item} tier={tier} price={priced[item.callId]} />
                 {decision ? (
                   <span className={`studio-plan-card__decision studio-plan-card__decision--${decision}`}>
                     {decision === "approve"
@@ -262,8 +334,12 @@ export function StudioPlanCard({ plan, sessionId, onEditByChat }: StudioPlanCard
                 ) : null}
               </div>
               {item.estimate ? <StoryboardEstimate estimate={item.estimate} /> : null}
-              {pending && item.tierOptions ? <QualityPicker item={item} tier={tier} onPick={setTier} disabled={sending} /> : null}
-              {item.qualityNotes?.length ? (
+              {pending && item.tierOptions ? <QualityPicker item={item} tier={tier} onPick={setTier} disabled={sending} overridden={item.callId in priced} /> : null}
+              {pending && item.tierOptions ? (
+                <ExpertFields item={item} fields={expert[item.callId] ?? {}} disabled={sending}
+                  onChange={(fields) => setExpert((prev) => ({ ...prev, [item.callId]: fields }))} />
+              ) : null}
+              {item.qualityNotes?.length && !(item.callId in priced) ? (
                 <ul className="studio-plan-card__quality-notes">{item.qualityNotes.map((note) => <li key={note}>{note}</li>)}</ul>
               ) : null}
               {pending && many ? (

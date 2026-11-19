@@ -270,3 +270,29 @@ for (const scale of [0.9, 1.25]) {
     expect(decisions[0]).toMatchObject({ decisions: { c1: "approve" }, tier: "draft", keepTier: true });
   });
 }
+
+test("plan card Expert settings: typed size is priced by the backend and sent on approve", async ({ page }) => {
+  const priced: unknown[] = [];
+  await page.route("**/api/chat/studio/price", async (route) => {
+    priced.push(route.request().postDataJSON());
+    await route.fulfill({ json: { size: "1280x704", frames: 96, fps: 24, steps: 30, estimatedSeconds: 140 } });
+  });
+  const { card, decisions } = await startStudioTurn(page, TIER_PLAN);
+  await card.evaluate((el) => {
+    for (let node = el.parentElement; node && node !== document.body; node = node.parentElement) {
+      const style = getComputedStyle(node);
+      if (/(auto|scroll|hidden)/.test(style.overflowY)) Object.assign(node.style, { height: "auto", maxHeight: "none", overflow: "visible" });
+    }
+  });
+  await card.getByText("Expert settings").click();
+  await card.getByLabel("Width").fill("1280");
+  await card.getByLabel("Height").fill("704");
+  await expect(card.locator(".studio-plan-card__meta")).toContainText("1280x704");
+  await expect(card.locator(".studio-plan-card__meta")).toContainText("about 2 min");
+  expect(priced.at(-1)).toMatchObject({ tool: "generate_video", arguments: { width: 1280, height: 704, frames: 96 } });
+  mkdirSync(SHOTS_DIR, { recursive: true });
+  await card.screenshot({ path: path.join(SHOTS_DIR, "chat-studio-expert.png") });
+  await card.getByRole("button", { name: "Approve", exact: true }).click();
+  await expect.poll(() => decisions.length).toBe(1);
+  expect(decisions[0]).toMatchObject({ decisions: { c1: "approve" }, overrides: { c1: { width: 1280, height: 704 } } });
+});

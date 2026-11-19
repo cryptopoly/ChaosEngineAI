@@ -57,3 +57,41 @@ class TierTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ExpertTests(unittest.TestCase):
+    def _plan(self):
+        from backend_service.tools import studio_gate
+
+        return studio_gate.PendingPlan(
+            id="p", session_id="s", memory=None,
+            items=[{"callId": "c1", "tool": "generate_video"}, {"callId": "c2", "tool": "speak"}],
+            call_args={"c1": {"prompt": "waves"}, "c2": {"text": "hi"}})
+
+    def test_valid_expert_fields_pass_and_empty_ones_are_dropped(self) -> None:
+        from backend_service.tools.studio_gate import clean_overrides
+
+        got = clean_overrides(self._plan(), {"c1": {"width": 1280, "height": 704, "fps": 30, "steps": "", "seed": None}}, None)
+        self.assertEqual(got, {"c1": {"width": 1280, "height": 704, "fps": 30}})
+
+    def test_bad_expert_fields_are_refused_with_a_sentence(self) -> None:
+        from backend_service.tools.studio_gate import clean_overrides
+
+        plan = self._plan()
+        for bad, text in [({"c1": {"width": 1280}}, "both the width and the height"),
+                          ({"c1": {"width": 99999, "height": 704}}, "Invalid Expert setting"),
+                          ({"c1": {"prompt": "x"}}, "no Expert setting 'prompt'"),
+                          ({"c2": {"seed": 1}}, "only apply to an image or a clip"),
+                          ({"c1": {"fps": 500}}, "Invalid Expert setting")]:
+            with self.assertRaises(ValueError) as caught:
+                clean_overrides(plan, bad, None)
+            self.assertIn(text, str(caught.exception))
+
+    def test_typed_settings_run_above_the_tier_and_a_model_call_does_not(self) -> None:
+        from backend_service.tools.studio_tiers import TierHolder
+
+        holder = TierHolder("standard")
+        typed = {"prompt": "x", "width": 1280, "height": 720}
+        holder.exempt.add(__import__("json").dumps(typed, sort_keys=True))
+        self.assertTrue(holder.exempts(typed))
+        self.assertFalse(holder.exempts({"prompt": "x", "width": 1920, "height": 1080}))

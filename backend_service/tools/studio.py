@@ -18,7 +18,7 @@ import threading
 from typing import Any, Callable
 
 from backend_service.tools import BaseTool, StructuredToolOutput, ToolRegistry
-from backend_service.tools.studio_tiers import SINGLE_RENDERS, apply_tier, current, variant_for
+from backend_service.tools.studio_tiers import SINGLE_RENDERS, TierHolder, apply_tier, current, variant_for
 
 # What the chat model may do. Never "files" (download links, uploads, exports), "download" or "clone".
 CHAT_SCOPES = frozenset({"read", "generate"})
@@ -409,7 +409,7 @@ class StudioTool(BaseTool):
         if refused:
             return self._error(refused)
         tier_notes: list[str] = []
-        if self.name in SINGLE_RENDERS:
+        if self.name in SINGLE_RENDERS and not (isinstance(self._tier, TierHolder) and self._tier.exempts(args)):
             from backend_service.mcp_bridge.tools import _state
 
             args, tier_notes = apply_tier(current(self._tier), self.name, args,

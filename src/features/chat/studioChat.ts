@@ -125,8 +125,19 @@ export function useStudioAutoApprove(sessionId: string | null | undefined): bool
 
 export type PlanAction = { type: "approveAll" } | { type: "approveOne"; callId: string } | { type: "deny" } | { type: "edit" };
 
+/** Expert fields as the card holds them (text boxes) to the numbers and ids the backend checks; blank boxes drop out. */
+export function expertOverrides(fields: Record<string, string> | undefined): Record<string, string | number> {
+  const out: Record<string, string | number> = {};
+  for (const [key, raw] of Object.entries(fields ?? {})) {
+    const text = raw.trim();
+    if (!text) continue;
+    out[key] = key === "model" ? text : Number(text);
+  }
+  return out;
+}
+
 /** The decision body for a plan card button. "Approve this" runs that call only and declines the rest. */
-export function planDecision(plan: StudioPlan, action: PlanAction, alwaysAllow: boolean, quality?: { tier: StudioTier; keep: boolean }) {
+export function planDecision(plan: StudioPlan, action: PlanAction, alwaysAllow: boolean, quality?: { tier: StudioTier; keep: boolean }, overrides?: Record<string, Record<string, string | number>>) {
   const decisions: Record<string, "approve" | "deny"> = {};
   for (const item of plan.items) {
     const approve = action.type === "approveAll" || (action.type === "approveOne" && action.callId === item.callId);
@@ -137,6 +148,10 @@ export function planDecision(plan: StudioPlan, action: PlanAction, alwaysAllow: 
   if (quality && anyApproved && action.type !== "edit") {
     body.tier = quality.tier;
     if (quality.keep) body.keepTier = true;
+  }
+  if (overrides && action.type !== "edit") {
+    const kept = Object.fromEntries(Object.entries(overrides).filter(([id, v]) => decisions[id] === "approve" && Object.keys(v).length));
+    if (Object.keys(kept).length) body.overrides = kept;
   }
   return body as typeof body & { alwaysAllow: boolean };
 }
@@ -151,8 +166,9 @@ export async function submitPlanDecision(
   alwaysAllow: boolean,
   sessionId: string | null | undefined,
   quality?: { tier: StudioTier; keep: boolean },
+  overrides?: Record<string, Record<string, string | number>>,
 ): Promise<ReturnType<typeof planDecision>> {
-  const body = planDecision(plan, action, alwaysAllow, quality);
+  const body = planDecision(plan, action, alwaysAllow, quality, overrides);
   await decideStudioPlan(plan.planId, body);
   if (body.alwaysAllow) writeStudioAutoApprove(sessionId, true);
   return body;

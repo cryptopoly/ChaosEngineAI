@@ -10,6 +10,7 @@ capped by the model's largest side.
 
 from __future__ import annotations
 
+import json
 import re
 from typing import Any
 
@@ -24,6 +25,12 @@ class TierHolder:
 
     def __init__(self, value: str = DEFAULT_TIER) -> None:
         self.value = value if value in TIERS else DEFAULT_TIER
+        # Calls whose settings the user typed under Expert on the card (FU-241), as canonical JSON: they run as
+        # typed, above the tier if so. The model never reaches this list.
+        self.exempt: set[str] = set()
+
+    def exempts(self, args: dict[str, Any]) -> bool:
+        return json.dumps(args, sort_keys=True, default=str) in self.exempt
 
 
 def current(tier: "TierHolder | str | None") -> str:

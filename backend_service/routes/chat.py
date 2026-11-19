@@ -209,13 +209,23 @@ class StudioPlanDecision(BaseModel):
     alwaysAllow: bool = False  # "Always allow renders in this chat"
     tier: Literal["draft", "standard", "final"] | None = None  # quality picked on the card (FU-241)
     keepTier: bool = False  # "use for the rest of this chat"
+    overrides: dict[str, dict[str, Any]] = Field(default_factory=dict)  # Expert fields per call id (FU-241)
 
 
 @router.post("/api/chat/studio/plans/{plan_id}/decision")
 def decide_studio_plan(request: Request, plan_id: str, body: StudioPlanDecision) -> dict[str, Any]:
-    from backend_service.tools.studio_gate import decide
+    from backend_service.tools.studio_gate import clean_overrides, decide, pending_plan
 
-    plan = decide(plan_id, dict(body.decisions), edit=body.edit, always_allow=body.alwaysAllow, tier=body.tier, keep_tier=body.keepTier)
+    overrides: dict[str, dict[str, Any]] = {}
+    if body.overrides and not body.edit:
+        waiting = pending_plan(plan_id)
+        if waiting is not None:
+            try:
+                overrides = clean_overrides(waiting, body.overrides, request.app.state.chaosengine)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from None
+    plan = decide(plan_id, dict(body.decisions), edit=body.edit, always_allow=body.alwaysAllow, tier=body.tier,
+                  keep_tier=body.keepTier, overrides=overrides)
     if plan is None:
         raise HTTPException(status_code=404, detail=localized_detail(
             request, "This plan is no longer waiting (answered, cancelled or timed out)."))
@@ -281,3 +291,16 @@ def studio_tiers(request: Request) -> dict[str, Any]:
     from backend_service.tools.studio_tiers import DEFAULT_TIER, TIERS, tiers_table
 
     return {"default": DEFAULT_TIER, "tiers": list(TIERS), "models": tiers_table(request.app.state.chaosengine)}
+
+
+class StudioPriceRequest(BaseModel):
+    tool: Literal["generate_image", "generate_video"]
+    arguments: dict[str, Any] = Field(default_factory=dict)
+
+
+@router.post("/api/chat/studio/price")
+def price_studio_render(request: Request, body: StudioPriceRequest) -> dict[str, Any]:
+    """Size, frames, fps, steps and a time for a single render as typed under Expert on the plan card."""
+    from backend_service.tools.studio_gate import price_call
+
+    return price_call(body.tool, dict(body.arguments), request.app.state.chaosengine)

@@ -75,6 +75,8 @@ class PendingPlan:
     always_allow: bool = False
     tier: str | None = None  # the quality the user picked on the card (FU-241)
     keep_tier: bool = False  # "use for the rest of this chat"
+    call_args: dict[str, dict[str, Any]] = field(default_factory=dict)  # what each listed call asked for
+    overrides: dict[str, dict[str, Any]] = field(default_factory=dict)  # Expert fields, checked by clean_overrides
 
     def payload(self) -> dict[str, Any]:
         return {"planId": self.id, "sessionId": self.session_id, "items": self.items, "memory": self.memory,
@@ -88,6 +90,13 @@ _PLANS: dict[str, PendingPlan] = {}
 def pending(plan_id: str) -> PendingPlan | None:
     with _LOCK:
         return _PLANS.get(plan_id)
+
+
+def pending_plan(plan_id: str) -> PendingPlan | None:
+    """The plan still waiting for a click, or None."""
+    with _LOCK:
+        plan = _PLANS.get(plan_id)
+        return None if plan is None or plan.event.is_set() else plan
 
 
 def pending_for_session(session_id: str) -> list[dict[str, Any]]:
@@ -120,7 +129,8 @@ def turn_running(session_id: str) -> bool:
 
 
 def decide(plan_id: str, decisions: dict[str, str], edit: bool = False, always_allow: bool = False,
-           tier: str | None = None, keep_tier: bool = False) -> PendingPlan | None:
+           tier: str | None = None, keep_tier: bool = False,
+           overrides: dict[str, dict[str, Any]] | None = None) -> PendingPlan | None:
     """Record the user's click. Unlisted calls are declined. None when the plan is unknown or already decided."""
     with _LOCK:
         plan = _PLANS.get(plan_id)
@@ -132,6 +142,7 @@ def decide(plan_id: str, decisions: dict[str, str], edit: bool = False, always_a
         plan.always_allow = bool(always_allow) and not edit
         plan.tier = tier if tier in ("draft", "standard", "final") and not edit else None
         plan.keep_tier = bool(keep_tier) and plan.tier is not None
+        plan.overrides = {} if edit else {cid: dict(v) for cid, v in (overrides or {}).items() if cid in listed and v}
         plan.event.set()
         return plan
 
@@ -347,9 +358,60 @@ def plan_item(tool_call: dict[str, Any], state: Any | None, tier: str | None = N
                     _price_settings(item, catalog_kind, row.get("id"), args)
                     if tier and name in ("generate_image", "generate_video"):
                         item["tierOptions"] = _tier_options(name, catalog_kind, row.get("id"), asked_args, state)
+                        item["modelOptions"] = _model_options(catalog_kind, state)
+                        item["modelId"] = row.get("id")
     except Exception:  # noqa: BLE001 - an estimate is a nicety; the plan shows without it
         pass
     return item
+
+
+EXPERT_KEYS = {"generate_image": ("width", "height", "steps", "seed", "model"),
+               "generate_video": ("width", "height", "steps", "seed", "fps", "model")}
+
+
+def clean_overrides(plan: PendingPlan, overrides: dict[str, dict[str, Any]], state: Any | None) -> dict[str, dict[str, Any]]:
+    """The Expert fields of a decision, checked: only a listed single render, only its Expert keys, every value
+    against the tool's own schema, a model among the installed ones. Raises ``ValueError`` with a plain sentence."""
+    from backend_service.mcp_bridge import models as bridge_models
+    from backend_service.mcp_bridge.tools import validate
+    from backend_service.tools.studio import _bridge, chat_schema
+
+    tools, _handlers = _bridge()
+    by_name = {t["name"]: t for t in tools}
+    tools_of = {item["callId"]: item["tool"] for item in plan.items}
+    cleaned: dict[str, dict[str, Any]] = {}
+    for call_id, typed in overrides.items():
+        name = tools_of.get(call_id)
+        if name not in EXPERT_KEYS:
+            raise ValueError("Expert settings only apply to an image or a clip.")
+        values = {k: v for k, v in typed.items() if v is not None and v != ""}
+        unknown = sorted(set(values) - set(EXPERT_KEYS[name]))
+        if unknown:
+            raise ValueError(f"{name} has no Expert setting '{unknown[0]}'.")
+        if ("width" in values) != ("height" in values):
+            raise ValueError("Give both the width and the height, or neither.")
+        problem = validate(chat_schema(by_name[name]), {**plan.call_args.get(call_id, {}), **values})
+        if problem:
+            raise ValueError(f"Invalid Expert setting: {problem}.")
+        if "model" in values and state is not None:
+            kind = "image" if name == "generate_image" else "video"
+            if str(values["model"]) not in {str(r.get("id")) for r in bridge_models.installed_models(state, kind)}:
+                raise ValueError(f"'{values['model']}' is not an installed {kind} model.")
+        if values:
+            cleaned[call_id] = values
+    return cleaned
+
+
+def price_call(name: str, args: dict[str, Any], state: Any | None) -> dict[str, Any]:
+    """Size, frames, fps, steps and time of a single render exactly as typed (no tier), for the Expert fields."""
+    item = plan_item({"id": "price", "function": {"name": name, "arguments": args}}, state)
+    return {k: item.get(k) for k in ("model", "size", "frames", "fps", "steps", "estimatedSeconds", "peakGb")}
+
+
+def _model_options(kind: str, state: Any) -> list[dict[str, Any]]:
+    from backend_service.mcp_bridge import models as bridge_models
+
+    return [{"id": r.get("id"), "name": r.get("name") or r.get("id")} for r in bridge_models.installed_models(state, kind)]
 
 
 def _tier_options(name: str, kind: str, model_id: Any, args: dict[str, Any], state: Any) -> dict[str, Any]:
@@ -481,6 +543,20 @@ class StudioGate:
         self.keepalive_seconds = keepalive_seconds
         self.resolved: list[dict[str, Any]] = []
 
+    def _apply_overrides(self, plan: PendingPlan, planned: list[dict[str, Any]], denials: dict[str, str]) -> None:
+        """Expert fields: the approved call runs with what the user typed (the model's history shows it too)."""
+        from backend_service.tools.studio_tiers import TierHolder
+
+        for tc in planned:
+            cid = str(tc.get("id"))
+            typed = plan.overrides.get(cid)
+            if not typed or cid in denials:
+                continue
+            merged = {**call_args(tc), **typed}
+            tc.setdefault("function", {})["arguments"] = json.dumps(merged)
+            if isinstance(self.tier, TierHolder):
+                self.tier.exempt.add(json.dumps(merged, sort_keys=True, default=str))
+
     def _auto_now(self) -> bool:
         return self.auto_approve and (self.auto_until is None or time.time() < self.auto_until)
 
@@ -521,7 +597,8 @@ class StudioGate:
 
         items = [plan_item(tc, self.state, current(self.tier)) for tc in planned]
         plan = PendingPlan(id=f"plan-{uuid.uuid4().hex[:10]}", session_id=self.session_id, items=items,
-                           memory=memory_note(items, self.state))
+                           memory=memory_note(items, self.state),
+                           call_args={str(tc.get("id")): dict(call_args(tc)) for tc in planned})
         with _LOCK:
             _PLANS[plan.id] = plan
         answered = True
@@ -560,6 +637,8 @@ class StudioGate:
                 if chat_tiers is None:
                     chat_tiers = self.state.chat_tiers = {}
                 chat_tiers[self.session_id] = plan.tier
+        if answered and plan.overrides:
+            self._apply_overrides(plan, planned, denials)
         if answered and plan.always_allow:
             self.auto_approve = True
             self.auto_until = None  # the user's own click on this card: the rest of the turn, as before

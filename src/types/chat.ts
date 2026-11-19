@@ -45,6 +45,9 @@ export interface StudioPlanItem {
   tier?: StudioTier;
   tierOptions?: Record<StudioTier, { size?: string | null; estimatedSeconds?: number | null }>;
   qualityNotes?: string[];
+  /** FU-241 Expert: the installed models the user may pick instead, and the one planned. */
+  modelOptions?: { id: string; name: string }[];
+  modelId?: string;
 }
 
 export type StudioTier = "draft" | "standard" | "final";

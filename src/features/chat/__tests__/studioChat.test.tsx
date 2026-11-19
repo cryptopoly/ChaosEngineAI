@@ -21,6 +21,7 @@ import {
   jobPercent,
   libraryTab,
   mediaKind,
+  expertOverrides,
   planDecision,
   readStudioAutoApprove,
   readStudioToolsEnabled,
@@ -189,6 +190,23 @@ describe("quality tiers on the plan card (FU-241)", () => {
     }
     expect(html).toMatch(/aria-checked="true"[^>]*>\s*<strong>Standard/);
     expect(html).toContain("size 1280x720 brought to 768x512");
+  });
+
+  it("lists the Expert settings for a clip (with fps) and for an image (without)", () => {
+    const html = renderToStaticMarkup(<StudioPlanCard plan={clip} sessionId="s1" />);
+    for (const text of ["Expert settings", "Width", "Height", "Steps", "Seed", "fps"]) expect(html).toContain(text);
+    const image = plan({ items: [{ ...clip.items[0], tool: "generate_image", kind: "image" }] });
+    expect(renderToStaticMarkup(<StudioPlanCard plan={image} sessionId="s1" />)).not.toContain("<span>fps</span>");
+  });
+
+  it("turns the typed boxes into numbers and drops blanks; an approved call carries them, a declined one does not", () => {
+    expect(expertOverrides({ width: "1280", height: "704", steps: " ", seed: "7", model: "m1" }))
+      .toEqual({ width: 1280, height: 704, seed: 7, model: "m1" });
+    const two = plan({ items: [clip.items[0], { ...clip.items[0], callId: "c2" }] });
+    const body = planDecision(two, { type: "approveOne", callId: "c1" }, false, undefined,
+      { c1: { width: 1280, height: 704 }, c2: { width: 64, height: 64 } });
+    expect(body.overrides).toEqual({ c1: { width: 1280, height: 704 } });
+    expect(planDecision(two, { type: "edit" }, false, undefined, { c1: { width: 1 } }).overrides).toBeUndefined();
   });
 
   it("has no tier row for a plan without single renders", () => {

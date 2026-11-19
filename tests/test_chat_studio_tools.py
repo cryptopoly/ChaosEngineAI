@@ -280,6 +280,34 @@ class GateTests(unittest.TestCase):
         resolved = events[-1]["studio_plan_resolved"]
         self.assertEqual((resolved["tier"], resolved["keepTier"]), ("draft", True))
 
+    def test_expert_fields_rewrite_the_approved_call_and_run_above_the_tier(self):
+        from backend_service.tools.studio_tiers import TierHolder
+
+        holder = TierHolder("standard")
+        gate = StudioGate("chat-2", poll_seconds=0.01, tier=holder)
+        tc = call("generate_video", {"prompt": "waves"}, "c1")
+        skipped = call("generate_video", {"prompt": "kept as asked"}, "c2")
+
+        def run():
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                with studio_gate._LOCK:
+                    plans = list(studio_gate._PLANS.values())
+                if plans:
+                    decide(plans[0].id, {"c1": "approve", "c2": "deny"},
+                           overrides={"c1": {"width": 1280, "height": 704}, "c2": {"width": 64, "height": 64}})
+                    return
+                time.sleep(0.01)
+
+        thread = threading.Thread(target=run, daemon=True)
+        thread.start()
+        _events, denials = self.run_review(gate, [tc, skipped])
+        thread.join(2)
+        self.assertEqual(json.loads(tc["function"]["arguments"]), {"prompt": "waves", "width": 1280, "height": 704})
+        self.assertTrue(holder.exempts({"prompt": "waves", "width": 1280, "height": 704}))
+        self.assertIn("c2", denials)  # a declined call keeps what the model asked and is never exempt
+        self.assertEqual(json.loads(skipped["function"]["arguments"]), {"prompt": "kept as asked"})
+
     def test_an_unknown_tier_or_an_edit_changes_nothing(self):
         plan = studio_gate.PendingPlan(id="p", session_id="s", items=[{"callId": "c1"}], memory=None)
         with studio_gate._LOCK:

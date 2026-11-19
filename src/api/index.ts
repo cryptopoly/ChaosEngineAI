@@ -702,6 +702,7 @@ export {
   cancelStudioJob,
   createSession,
   decideStudioPlan,
+  priceStudioRender,
   delveMessage,
   deleteSession,
   deleteSessionDocument,
@@ -726,6 +727,7 @@ export type {
   StreamCallbacks,
   KeepGoingGrant,
   StudioPlanDecisionBody,
+  StudioPrice,
   StudioTurn,
 } from "./chat";
 

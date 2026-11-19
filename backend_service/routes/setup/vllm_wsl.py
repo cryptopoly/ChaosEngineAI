@@ -15,7 +15,7 @@ The install runs three steps inside the user's default WSL distro:
   2. **pip upgrade** — ``pip install --upgrade pip setuptools wheel``.
      Stops pip falling back to ancient resolver shapes on Ubuntu 22.04.
   3. **vllm** — ``pip install vllm``. Pulls torch CUDA + flash-attn +
-     friends. ~2 GB download, ~5-15 min wall time on a warm box.
+     friends. ~9 GB download, ~10-15 min wall time on a warm box.
   4. **verify** — ``python -c "import vllm"`` confirms the install is
      functional (catches half-baked builds the way Phase 1's
      ``_safe_version`` does for the embedded runtime).
@@ -61,7 +61,7 @@ _PHASE_LABELS: dict[str, str] = {
     "preflight": "Check WSL + CUDA",
     "venv": "Create isolated venv",
     "pip-upgrade": "Upgrade pip / setuptools / wheel",
-    "pip-vllm": "Install vllm (~2 GB)",
+    "pip-vllm": "Install vllm (~9 GB, 10-15 min)",
     "verify": "Verify import",
 }
 
@@ -112,6 +112,8 @@ class _VllmWslJobState:
 
 _JOB = _VllmWslJobState()
 _LOCK = threading.Lock()
+# Set by the start route so the worker thread can refresh capabilities.
+_STATE: Any = None
 
 
 def _run_wsl_step(
@@ -160,7 +162,79 @@ def _advance(job: _VllmWslJobState, next_phase_index: int) -> None:
         job.message = f"Running: {job.package_current}"
 
 
+def _missing_build_pieces(
+    python_cmd: str, *, check_venv: bool = False
+) -> tuple[list[str], str]:
+    """Probe the distro for what a working vLLM + Triton needs to build.
+
+    Returns ``(missing_apt_packages, probe_log)``. Triton compiles a
+    small C shim on first use, so it needs a C compiler and the
+    interpreter's ``Python.h``; ``import vllm`` succeeds without either,
+    which is why it alone is not proof the install can serve.
+    ``check_venv`` adds the ensurepip probe (preflight only).
+    """
+    timeout = _STEP_TIMEOUTS_SEC["preflight"]
+    missing: list[str] = []
+    log: list[str] = []
+    if check_venv:
+        code, out = _run_wsl_step("python3 -c 'import ensurepip' 2>&1", timeout)
+        log.append(f"python3-venv probe:\n{out}")
+        if code != 0:
+            missing.append("python3-venv")
+    code, _out = _run_wsl_step(
+        'command -v cc >/dev/null 2>&1 || command -v gcc >/dev/null 2>&1 '
+        '|| [ -n "$CC" ]',
+        timeout,
+    )
+    log.append(f"C compiler probe: {'OK' if code == 0 else 'missing'}")
+    if code != 0:
+        missing.append("build-essential")
+    code, out = _run_wsl_step(
+        f"{python_cmd} -c 'import sysconfig,os;print(os.path.isfile("
+        "os.path.join(sysconfig.get_paths()[\"include\"],\"Python.h\")))'",
+        timeout,
+    )
+    has_header = code == 0 and out.strip().splitlines()[-1:] == ["True"]
+    log.append(f"Python.h probe: {'OK' if has_header else 'missing'}")
+    if not has_header:
+        missing.append("python3-dev")
+    return missing, "\n".join(log)
+
+
+def _missing_pieces_message(missing: list[str]) -> str:
+    labels = {
+        "python3-venv": "python3-venv",
+        "build-essential": "a C compiler (build-essential)",
+        "python3-dev": "the Python development headers (python3-dev, Python.h)",
+    }
+    names = ", ".join(labels[m] for m in missing)
+    return (
+        f"WSL is missing {names}. Open a WSL shell and run:\n"
+        f"    sudo apt update && sudo apt install -y {' '.join(missing)}\n"
+        "then retry this installer. (On a distro other than Debian or Ubuntu, "
+        "install the equivalent packages.)"
+    )
+
+
+def _refresh_capabilities() -> None:
+    """Re-probe capabilities so other screens see ``wslVllmAvailable`` now."""
+    state = _STATE
+    if state is None:
+        return
+    try:
+        state.runtime.refresh_capabilities(force=True)
+    except Exception:  # noqa: BLE001 — a failed re-probe must not break the job
+        pass
+
+
 def _job_worker() -> None:
+    try:
+        _run_install_steps()
+    finally:
+        _refresh_capabilities()
+
+
+def _run_install_steps() -> None:
     """Run the install steps sequentially, streaming each into ``job.attempts``.
 
     Any subprocess returning non-zero flips the job to ``error`` and
@@ -198,26 +272,15 @@ def _job_worker() -> None:
         job.done = True
         return
 
-    # python3-venv probe. ``python3 -c 'import ensurepip'`` exits 0 iff
-    # ensurepip is wired (i.e. python3-venv is installed). Cheaper than
-    # actually trying ``python3 -m venv /tmp/x`` and matching stderr.
-    code, venv_output = _run_wsl_step(
-        "python3 -c 'import ensurepip' 2>&1",
-        _STEP_TIMEOUTS_SEC["preflight"],
-    )
-    if code != 0:
+    # Build prerequisites: python3-venv (ensurepip), a C compiler and
+    # Python.h. Reported together so one sudo round fixes everything.
+    missing, probe_log = _missing_build_pieces("python3", check_venv=True)
+    if missing:
         _push_attempt(
-            job,
-            "preflight",
-            ok=False,
-            output=f"{output}\n\npython3-venv probe:\n{venv_output}",
+            job, "preflight", ok=False, output=f"{output}\n\n{probe_log}"
         )
         job.phase = "error"
-        job.error = (
-            "python3-venv isn't installed in WSL. Open a WSL shell and run:\n"
-            "    sudo apt update && sudo apt install -y python3-venv\n"
-            "then retry this installer."
-        )
+        job.error = _missing_pieces_message(missing)
         job.message = job.error
         job.finished_at = time.time()
         job.done = True
@@ -227,7 +290,7 @@ def _job_worker() -> None:
         job,
         "preflight",
         ok=True,
-        output=f"{output}\n\npython3-venv: OK",
+        output=f"{output}\n\n{probe_log}",
     )
     _advance(job, 1)
 
@@ -270,6 +333,9 @@ def _job_worker() -> None:
         job.done = True
         return
     _advance(job, 3)
+    job.message = (
+        "Installing vllm: this takes 10 to 15 minutes and downloads about 9 GB."
+    )
 
     # Step 4 — the actual pip install. Long step (~2 GB download +
     # extraction). The InstallLogPanel will show pip's progress lines
@@ -307,6 +373,18 @@ def _job_worker() -> None:
         job.done = True
         return
 
+    # ``import vllm`` passes without a compiler or Python.h, but model
+    # loads then fail inside Triton. Never end "ready" in that state.
+    missing, probe_log = _missing_build_pieces(f"{_WSL_VLLM_VENV_PATH}/bin/python")
+    if missing:
+        _push_attempt(job, "verify", ok=False, output=probe_log)
+        job.phase = "error"
+        job.error = _missing_pieces_message(missing)
+        job.message = job.error
+        job.finished_at = time.time()
+        job.done = True
+        return
+
     job.phase = "done"
     job.percent = 100.0
     job.message = f"vLLM ready in WSL ({output.strip() or 'version unknown'})."
@@ -330,6 +408,9 @@ def start_install_vllm_wsl(request: Request) -> dict[str, Any]:
                 "vLLM-in-WSL install only runs on Windows hosts.",
             ),
         )
+
+    global _STATE
+    _STATE = getattr(request.app.state, "chaosengine", None)
 
     with _LOCK:
         if _JOB.phase in {"preflight", "installing"}:

@@ -113,11 +113,28 @@ class MusicRouteTests(_RouteBox):
         self.assertEqual((response.status_code, response.json()["detail"]), (409, "The music pack is not installed."))
 
     def test_memory_gate_refuses_with_the_fix(self) -> None:
-        with mock.patch("backend_service.helpers.memory_gate.snapshot_memory_signals", return_value=(10.0, 60.0)):
+        with mock.patch("backend_service.helpers.memory_gate.snapshot_memory_signals", return_value=(10.0, 60.0)),                 mock.patch.object(music_env, "lane", return_value="mlx"):
             response = self.client.post("/api/music/generate", json=INSTRUMENTAL)
         self.assertEqual(response.status_code, 503)
         self.assertIn("about 23 GB", response.json()["detail"])
         self.assertIn("Unload", response.json()["detail"])
+
+    def test_on_cuda_the_memory_gate_reads_host_ram_not_the_mac_peak(self) -> None:
+        """FU-139: weights sit in VRAM, so 10 GB of free RAM is enough on CUDA; 2 GB is not."""
+        from backend_service.catalog.music_models import music_variants
+        from backend_service.routes.music import CUDA_HOST_PEAK_GB
+
+        cuda = music_variants()[0]["estimates"]["cuda"]
+        need = float(cuda.get("hostPeakGb") or CUDA_HOST_PEAK_GB)
+        self.assertLess(need, 10.0)
+        with mock.patch.object(music_env, "lane", return_value="cuda"):
+            with mock.patch("backend_service.helpers.memory_gate.snapshot_memory_signals", return_value=(2.0, 60.0)):
+                refused = self.client.post("/api/music/generate", json=INSTRUMENTAL)
+            self.assertEqual(refused.status_code, 503)
+            self.assertIn(f"about {need:.0f} GB", refused.json()["detail"])
+            with mock.patch("backend_service.helpers.memory_gate.snapshot_memory_signals", return_value=(10.0, 60.0)):
+                made = self.client.post("/api/music/generate", json=INSTRUMENTAL)
+            self.assertEqual(made.status_code, 200, made.text)
 
     def test_queue_note_and_cancel_of_a_waiting_studio_job(self) -> None:
         holder = HEAVY_JOBS.enqueue("image", "agent", "busy")
@@ -181,6 +198,7 @@ class MusicRouteTests(_RouteBox):
         for system, machine in (("Windows", "AMD64"), ("Linux", "x86_64")):
             with mock.patch.object(music_env.platform, "system", return_value=system), \
                     mock.patch.object(music_env.platform, "machine", return_value=machine), \
+                    mock.patch.object(music_env, "_nvidia_present", return_value=False), \
                     mock.patch.object(music_env, "lane_unavailable_reason", _REAL_LANE_REASON):
                 runtime = self.client.get("/api/music/runtime").json()["runtime"]
                 self.assertEqual(runtime["unavailableReason"], music_env.UNSUPPORTED_PLATFORM_REASON)
@@ -191,15 +209,37 @@ class MusicRouteTests(_RouteBox):
                     job = self.client.post("/api/music/install").json()
                 thread.assert_not_called()
                 self.assertEqual((job["phase"], job["error"]), ("error", music_env.UNSUPPORTED_PLATFORM_REASON))
-                families = self.client.get("/api/music/catalog").json()["families"]
-                for family in families:
-                    for variant in family["variants"]:
-                        self.assertNotIn("cuda", variant["platforms"])
                 with mock.patch.object(self.client.app.state.chaosengine, "start_download") as start:
                     refused = self.client.post("/api/music/download", json={"repo": "ACE-Step/Ace-Step1.5"})
                 start.assert_not_called()
                 self.assertEqual(refused.status_code, 409)
                 self.assertEqual(refused.json()["detail"], music_env.UNSUPPORTED_PLATFORM_REASON)
+
+    def test_on_an_nvidia_host_music_runs_and_sounds_say_why_not(self) -> None:
+        """FU-139: the CUDA lane opens music; the sounds lane stays Mac-only with its own sentence and code."""
+        from backend_service import music_sound_env
+
+        with mock.patch.object(music_env.platform, "system", return_value="Windows"), \
+                mock.patch.object(music_env.platform, "machine", return_value="AMD64"), \
+                mock.patch.object(music_env, "_nvidia_present", return_value=True), \
+                mock.patch.object(music_env, "lane_unavailable_reason", _REAL_LANE_REASON):
+            runtime = self.client.get("/api/music/runtime").json()["runtime"]
+            self.assertEqual((runtime["lane"], runtime["unavailableReason"], runtime["unavailableCode"]), ("cuda", None, None))
+            sound = runtime["sound"]
+            self.assertEqual((sound["lane"], sound["unavailableCode"]), ("unsupported", "music.soundUnsupportedPlatform"))
+            self.assertEqual(sound["unavailableReason"], music_sound_env.SOUND_UNSUPPORTED_REASON)
+            families = {f["id"]: f for f in self.client.get("/api/music/catalog").json()["families"]}
+            for variant in families["ace-step-1.5"]["variants"]:
+                self.assertIn("cuda", variant["platforms"])
+            for variant in families["stable-audio-open"]["variants"]:
+                self.assertNotIn("cuda", variant["platforms"])
+            with mock.patch.object(self.client.app.state.chaosengine, "start_download", return_value={"state": "downloading"}) as start:
+                refused = self.client.post("/api/music/download", json={"repo": "stabilityai/stable-audio-open-small"})
+                self.assertEqual((refused.status_code, refused.json()["detail"]), (409, music_sound_env.SOUND_UNSUPPORTED_REASON))
+                start.assert_not_called()
+                allowed = self.client.post("/api/music/download", json={"repo": "ACE-Step/Ace-Step1.5"})
+                self.assertEqual(allowed.status_code, 200)
+                start.assert_called_once_with("ACE-Step/Ace-Step1.5")
 
     def test_catalog_runtime_estimate_and_unload(self) -> None:
         families = self.client.get("/api/music/catalog").json()["families"]
@@ -209,6 +249,9 @@ class MusicRouteTests(_RouteBox):
         runtime = self.client.get("/api/music/runtime").json()["runtime"]
         for key in ("lane", "installed", "workerRunning", "loadedModel", "install", "engineVersion", "embedTag"):
             self.assertIn(key, runtime)
+        lane = mock.patch.object(music_env, "lane", return_value="mlx")  # the Mac table below, on any host
+        lane.start()
+        self.addCleanup(lane.stop)
         cold = self.client.post("/api/music/estimate", json={"seconds": 60}).json()
         self.assertFalse(cold["estimate"]["warm"])
         self.assertEqual(cold["estimate"]["basis"], "measured")

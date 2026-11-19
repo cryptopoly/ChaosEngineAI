@@ -1,13 +1,49 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 161 rows with work, decisions or watch items still open, newest first.
+summary: 165 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-277 · CUDA music lane: what is not tested — Linux NVIDIA box, a 12 to 16 GB card, or the planner turned on</summary>
+
+**Status or trigger:** Linux NVIDIA box, a 12 to 16 GB card, or the planner turned on
+
+**Notes:** Only Windows 11 + RTX 4090 was run. Not tested: Linux x86_64 (same pins plus the cu128 index), the CPU-offload path under 20 GB VRAM, the planner LM on the `pt` backend, Linux aarch64 (refused; needs the cu130 index), XL at 180 s and above. The same seed is not byte-identical on CUDA (FLAC sizes differ by about 200 bytes between runs; level and spectrum match).
+
+</details>
+
+<details>
+<summary>FU-276 · Windows weight mirror may copy 10 to 20 GB — A Windows user without Developer Mode whose HF cache is on another drive</summary>
+
+**Status or trigger:** A Windows user without Developer Mode whose HF cache is on another drive
+
+**Notes:** `music_env._place` tries symlink, then hard link, then copy. Symlinks worked on the test PC (Developer Mode), so the copy path was not hit; without symlink rights and with the cache on another volume than `~/.chaosengine/music`, every weight file is copied (disk doubled). Consider junctions or reading weights in place.
+
+</details>
+
+<details>
+<summary>FU-275 · Music download pause restarts from zero — Next touch of state/downloads.py</summary>
+
+**Status or trigger:** Next touch of `state/downloads.py`
+
+**Notes:** Pausing a music download (`POST /api/music/download/cancel`) and starting it again begins every file anew under a new `.incomplete` name; the old partials stay in the cache (3.3 GB left behind for ACE-Step 1.5 on 2026-11-19), and the progress meter counts them (`12.44 / 12.44 GB` for a 10.1 GB repo). Resume the existing partial or delete it.
+
+</details>
+
+<details>
+<summary>FU-274 · Sounds on CUDA, and Stable Audio 3 — When the CUDA sound lane is built, or Stability grants access to the SA3 repos</summary>
+
+**Status or trigger:** When the CUDA sound lane is built, or Stability grants access to the SA3 repos
+
+**Notes:** The sounds lane (Stable Audio Open, stable-audio-tools) is Mac-only; on CUDA it says so (`music.soundUnsupportedPlatform`). Stable Audio 3 (`stabilityai/stable-audio-3-medium` 9.2 GB + 1.2 GB T5Gemma, `-small-sfx` and `-small-music` 2.3 GB + 1.2 GB; Stability Community Licence plus Gemma Terms of Use; gated `auto`) is **not in the catalog**: the owner's token gets 403 on `model_config.json` for all three (2026-11-19), the model cards point to the new MIT `Stability-AI/stable-audio-3` library (torch 2.7.1, transformers >= 5.8; Medium needs flash-attn 2) rather than the pinned stable-audio-tools 0.0.20, so a row needs access, that library in its own venv, and a live test first.
+
+</details>
 
 <details>
 <summary>FU-273 · New image and video rows from the 2026-11-19 landscape page — Done (2026-11-19, agent branch), measured on the 4090</summary>
@@ -928,11 +964,11 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-139 · Music on CUDA (Windows and Linux) and XL on CUDA — Wording shipped 2026-11-14 (v0.10.0 R10, owner chose the wording route)</summary>
+<summary>FU-139 · Music on CUDA (Windows and Linux) and XL on CUDA — CUDA lane built and measured on the RTX 4090 (Windows 11), 2026-11-19, branch from test/rtx4090</summary>
 
-**Status or trigger:** **Wording shipped 2026-11-14 (v0.10.0 R10, owner chose the wording route); CUDA build still open, XL on CUDA unmeasured.**
+**Status or trigger:** **CUDA lane built and measured on the RTX 4090 (Windows 11), 2026-11-19, branch from `test/rtx4090`; Linux not tested.**
 
-**Notes:** P1 ships the MLX lane only: [music_env.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/music_env.py) refuses the install off Apple Silicon with a plain reason, and [music_worker_acestep.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/music_worker_acestep.py) answers "engine unavailable" there. The catalog marks both ACE-Step rows `platforms: ["apple-silicon", "cuda"]` per the model cards, and the fit badge on CUDA says "not measured" (XL: about 20 GB from the card's "20 GB or more without offload"; the 2B has no card figure, so its badge is "unknown"). **To build:** the PyTorch CUDA index (`--extra-index-url https://download.pytorch.org/whl/cu128`, the `uv.lock` markers already name `+cu128` / `+cu130` wheels), the torch DiT path instead of the MLX one (no MLX VAE chunk, cache limit or decoder drop; cancel then needs another hook than `dit_generate.tqdm`), and `proc_pid_rusage` replaced by an NVIDIA memory read. **Measure** on the 4090 (P7): speed and peak for the 2B and XL at 30, 60 and 180 s, then put the numbers into `estimates.cuda` in [music_models.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/catalog/music_models.py). **2026-11-14 (R10):** one sentence in one place, [music_env.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/music_env.py) `UNSUPPORTED_PLATFORM_REASON` ("Music generation runs on Apple Silicon Macs in this version. Windows and Linux support (NVIDIA GPUs) is planned; nothing is installed or downloaded on this computer."), code `music.unsupportedPlatform`, shared with the sounds lane and the worker (a test keeps the worker copy equal). `start_install()` off Apple Silicon starts nothing and answers `error` with the reason. `"cuda"` is out of both ACE-Step rows' `platforms` (the `estimates.cuda` notes stay), so the earlier sentence that the rows carry `platforms: ["apple-silicon", "cuda"]` no longer holds. Music Models shows the sentence once and a "Not available on this computer yet" chip per row; Studio and Sounds show it too. Release note: "Music and sound effects are Mac-only (Apple Silicon) in v0.10.0." Real screen on Windows and Linux not seen (4090 pass, plan row 11). **Still open:** the CUDA lane itself (above); `POST /api/music/download` in `routes/music_library.py` has no server-side refusal off Apple Silicon (the UI hides the buttons); the shared fit text in `helpers/music_fit.py` still reads "does not run on an NVIDIA GPU" on other pages.
+**Notes:** `music_env.lane()` is `cuda` on Windows or Linux x86_64 with `nvidia-smi` on PATH; the install adds `--extra-index-url .../whl/cu128` to the same uv.lock export (`torch==2.7.1+cu128` on win32 resolves on Python 3.12; no flash-attn or triton there, SDPA is used) and checks `torch.cuda.is_available()`; the marker records the lane. The worker runs the torch DiT in bf16, no offload from 20 GB (ACE-Step's CPU offload below, `CHAOSENGINE_MUSIC_OFFLOAD`), steps and cancel through forward hooks on `handler.model.decoder`, `timings.vram_peak_gb`; Windows RSS via `GetProcessMemoryInfo`. **Bug fixed on the way:** on Windows the worker's first load always hung (main thread blocked in `ReadFile` on stdin stalls numpy's DLL start-up inside `import torch` on the engine thread; 300 s timeout); requests are now read from a duplicate of the pipe and stdin is NUL (`tests/test_music_worker.py` regression). The memory gate reads host RAM (`estimates.cuda.hostPeakGb`) on CUDA, not the 47 GB Mac XL peak. Sounds stay Mac-only with their own sentence and code `music.soundUnsupportedPlatform`; a sound download is refused there (409). The D-80 wording ("Music generation runs on Apple Silicon Macs in this version...") is replaced by "Music generation needs an Apple Silicon Mac or an NVIDIA GPU on Windows or Linux; ..." (en only, other locales null). **Measured** (app routes, warm, 1 variation): turbo 30 s 0.97 s, 60 s 1.3 s, 180 s 3.1 s, 600 s 10.6 s, VRAM 8.6 GB, host 2.7 GB, load 9 to 15 s, cancel answered 409 in 0.5 s and the next run worked; venv 6.6 GB. XL: see `docs/progress/rtx4090-progress.md` 2026-11-19 FU-139. Follow-ups: FU-259 to FU-262.
 
 </details>
 

@@ -7,16 +7,23 @@ on an M4 Max with 64 GB.
 
 ## What you need
 
-- **Apple Silicon.** The engine runs on MLX. Music and sound effects are Mac-only (Apple Silicon) in v0.10.0.
-  On Windows and Linux every surface says one sentence ("Music generation runs on Apple Silicon Macs in this
-  version. Windows and Linux support (NVIDIA GPUs) is planned; nothing is installed or downloaded on this
-  computer."; `music_env.UNSUPPORTED_PLATFORM_REASON`, code `music.unsupportedPlatform`): `GET /api/music/runtime`
-  (`unavailableReason`, `unavailableCode`, also under `sound`), a refused `POST /api/music/install`, the worker's
-  "engine unavailable", and the Studio, Sounds and Models pages. The catalog rows list `platforms: ["apple-silicon"]`
-  only, so each row's fit chip reads "Not available on this computer yet". The CUDA lane is FU-139 and not built.
+- **Apple Silicon or an NVIDIA GPU.** `music_env.lane()` is `mlx` on Apple Silicon and `cuda` on Windows or
+  Linux x86_64 when `nvidia-smi` is on `PATH` (FU-139, built and measured on an RTX 4090 under Windows 11 on
+  2026-11-19; Linux and Linux aarch64 are not tested, aarch64 is refused because it needs the cu130 index).
+  On CUDA the same requirements file installs with `--extra-index-url https://download.pytorch.org/whl/cu128`
+  (the lock pins `torch==2.7.1+cu128` on Windows; Python 3.12 gets no flash-attn or triton, so attention is
+  PyTorch SDPA); the worker runs the DiT in bf16 with no offload on cards of 20 GB or more (ACE-Step's own CPU
+  offload below that, or `CHAOSENGINE_MUSIC_OFFLOAD=1`), reports steps and cancels through forward hooks on
+  `handler.model.decoder`, and returns `timings.vram_peak_gb`. The memory gate checks host RAM against
+  `estimates.cuda.hostPeakGb` there, not the Mac unified-memory peak. Sound effects (Stable Audio Open) stay
+  Apple Silicon only: on a CUDA host the sounds lane says "Sound effects run on Apple Silicon Macs in this
+  version. NVIDIA GPU support is planned; ..." (code `music.soundUnsupportedPlatform`) and a sound download is
+  refused (409). On a host with neither lane every surface says "Music generation needs an Apple Silicon Mac or
+  an NVIDIA GPU on Windows or Linux; nothing is installed or downloaded on this computer."
+  (`music_env.UNSUPPORTED_PLATFORM_REASON`, code `music.unsupportedPlatform`) and install is refused.
 - **The music pack** (Music > Models, `POST /api/music/install`): its own environment in
   `~/.chaosengine/music-venv`, built with plain pip from the app's own Python (3.11 or 3.12), with ACE-Step 1.5 at
-  a pinned commit. About 1.6 GB. If the folder already holds a working pack, the install only checks it.
+  a pinned commit. About 1.6 GB on a Mac, 6.6 GB on Windows with CUDA torch. If the folder already holds a working pack, the install only checks it.
 - **Weights**, downloaded through the app's downloader into the Hugging Face cache at pinned revisions:
 
 | Model | Download | While generating | Idle | Speed (loaded) |
@@ -24,8 +31,11 @@ on an M4 Max with 64 GB.
 | ACE-Step 1.5 turbo (default) | 10.1 GB | about 22 GB | about 15 GB | about 1 s per 10 s of audio (60 s in 5 to 6 s; 600 s in 82 s) |
 | ACE-Step 1.5 XL turbo (large) | 20.0 GB, plus turbo | about 47 GB | about 40 GB | about 2 s per 10 s; 64 GB Macs only, unloads every other model first |
 
-The first track after a start takes about 25 s more (the model loads). On an NVIDIA GPU the XL card says 20 GB
-or more; that is not measured here.
+The first track after a start takes about 25 s more (the model loads).
+
+On an RTX 4090 (24 GB, Windows 11, through the app's routes, warm, one variation): turbo makes 30 s in 0.97 s,
+60 s in 1.3 s, 180 s in 3.1 s and 600 s in 10.6 s (30 to 57 times real time), with a VRAM peak of 8.6 GB
+(torch reserved) and 2.7 GB of host RAM; a model load takes 9 to 15 s. The music venv is 6.6 GB on Windows.
 
 ## What a track is
 

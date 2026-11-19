@@ -6,8 +6,9 @@ Same family -> variants shape as the image and video catalogs, plus the fields t
 sections 3.2, 4.2 and 5); ``estimate_run`` in ``music_runtime`` reads this table and nothing else,
 so a new measurement is a change here. Weights are pinned to full Hugging Face revisions.
 
-``platforms`` lists only where a row actually runs. ``"cuda"`` stays out until the CUDA lane exists (FU-139);
-the ``estimates.cuda`` notes are kept for that day and are not read while it is absent.
+``platforms`` lists only where a row actually runs. The ACE-Step rows carry ``"cuda"`` since the CUDA lane was
+built and measured on an RTX 4090 (FU-139); ``estimate_run`` reads ``estimates.cuda`` on that lane once it holds a
+``wallSecondsAt`` table. The sound rows stay Apple Silicon only (the CUDA sound lane is not built).
 """
 
 from __future__ import annotations
@@ -84,7 +85,7 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
         "name": "ACE-Step 1.5",
         "provider": "ACE Studio and StepFun",
         "headline": "Songs with vocals and lyrics, or instrumentals, 10 s to 10 minutes.",
-        "summary": "Text to music with BPM, key and seed control. Runs on MLX on Apple Silicon.",
+        "summary": "Text to music with BPM, key and seed control. Runs on MLX on Apple Silicon and on PyTorch on NVIDIA GPUs.",
         "badges": ["MIT", "Songs", "Instrumental"],
         "defaultVariantId": "ACE-Step/Ace-Step1.5",
         "variants": [
@@ -98,9 +99,9 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "link": "https://huggingface.co/ACE-Step/Ace-Step1.5",
                 "engine": "acestep",
                 "engineModel": "acestep-v15-turbo",
-                "runtime": "ACE-Step 1.5 on MLX (isolated music venv)",
+                "runtime": "ACE-Step 1.5 on MLX or CUDA (isolated music venv)",
                 "makes": ["songs", "instrumental"],
-                "platforms": ["apple-silicon"],
+                "platforms": ["apple-silicon", "cuda"],
                 "taskSupport": ["txt2music"],
                 "sizeGb": 10.09,
                 "sizeNote": "Includes the 1.7B planner LM (3.7 GB) the library requires on disk; it is not loaded by default.",
@@ -130,8 +131,21 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
                     # FLAC 24-bit 48 kHz stereo as the worker writes it: 8.9 MB/min (lo-fi) to 11.5
                     # (orchestral) measured in the P1 real check, 2026-11-07; the higher figure is used.
                     "outputMbPerMinute": 11.5,
-                    # No CUDA lane yet and no peak figure on the card for the 2B: fit says "unknown" there.
-                    "cuda": {"peakGb": None, "basis": "estimated", "source": "not measured; no peak figure on the model card"},
+                    # FU-139: measured through the app's routes on Windows 11, warm worker, bf16, no offload, one
+                    # variation, 8 steps. peakGb is torch's reserved VRAM peak (allocated 7.6 to 7.9 GB); hostPeakGb
+                    # is the worker's working set, which the memory gate checks on CUDA instead of the Mac figure.
+                    "cuda": {
+                        "basis": "measured",
+                        "measuredOn": "NVIDIA RTX 4090 24 GB, Windows 11, 2026-11-19",
+                        "wallSecondsAt": [[30, 0.97], [60, 1.32], [180, 3.1], [600, 10.6]],
+                        "secondsPer10sAudio": 0.2,
+                        "coldStartSeconds": 15.0,
+                        "vaeSecondsPerAudioSecond": 0.007,
+                        "peakGb": 8.6,
+                        "idleGb": 7.9,
+                        "hostPeakGb": 2.7,
+                        "hostIdleGb": 1.0,
+                    },
                 },
                 "defaultSettings": dict(_TURBO_DEFAULTS),
                 "note": "Default music model. About 1 s per 10 s of audio warm; about 22 GB while generating, 15 GB idle.",
@@ -146,9 +160,9 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "link": "https://huggingface.co/ACE-Step/acestep-v15-xl-turbo",
                 "engine": "acestep",
                 "engineModel": "acestep-v15-xl-turbo",
-                "runtime": "ACE-Step 1.5 on MLX (isolated music venv)",
+                "runtime": "ACE-Step 1.5 on MLX or CUDA (isolated music venv)",
                 "makes": ["songs", "instrumental"],
-                "platforms": ["apple-silicon"],
+                "platforms": ["apple-silicon", "cuda"],
                 "taskSupport": ["txt2music"],
                 "sizeGb": 19.95,
                 "sizeNote": "Needs the ACE-Step 1.5 turbo pack too (VAE and text encoder).",
@@ -174,11 +188,25 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "idleGb": 40.2,
                     "diskGb": 19.95,
                     "outputMbPerMinute": 11.5,
-                    # Supported by the model card on CUDA ("20 GB or more without offload"); not measured.
-                    "cuda": {"peakGb": 20.0, "basis": "estimated", "source": "ACE-Step XL model card"},
+                    # FU-139: measured on the 4090 like the turbo row (bf16, no offload). The card says "20 GB or
+                    # more without offload"; the run held 12.1 GB allocated, 12.4 GB reserved (14.3 GB at 600 s).
+                    # With another process holding 12 GB of the card, ACE-Step's own pre-flight refused every run.
+                    "cuda": {
+                        "basis": "measured",
+                        "measuredOn": "NVIDIA RTX 4090 24 GB, Windows 11, 2026-11-19",
+                        "wallSecondsAt": [[30, 1.12], [60, 1.64], [180, 4.1], [600, 15.8]],
+                        "secondsPer10sAudio": 0.27,
+                        "coldStartSeconds": 20.0,
+                        "vaeSecondsPerAudioSecond": 0.008,
+                        "peakGb": 14.3,
+                        "idleGb": 12.1,
+                        "hostPeakGb": 2.7,
+                        "hostIdleGb": 1.0,
+                    },
                 },
                 "defaultSettings": dict(_TURBO_DEFAULTS),
-                "note": "Opt-in large model for 64 GB Macs. About 2x slower than turbo; 47 GB peak, so everything else is unloaded first.",
+                "note": "Opt-in large model for 64 GB Macs (47 GB peak, everything else is unloaded first) or an NVIDIA GPU with about "
+                        "15 GB of free VRAM (measured on a 24 GB RTX 4090: 60 s in 1.6 s).",
             },
         ],
     },

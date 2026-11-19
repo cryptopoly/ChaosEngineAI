@@ -2562,7 +2562,7 @@
       "statusSummary": "已安裝的優先"
     },
     "title": "音樂模型",
-    "unavailable": "音樂功能目前需要搭載 Apple 晶片的 Mac。",
+    "unavailable": null,
     "sounds": {
       "pack": {
         "failedTitle": "無法安裝音效元件包。",
@@ -2920,7 +2920,8 @@
     "alternative": "在此電腦上較快:{name}。"
   },
   "musicUnsupported": {
-    "reason": "此版本的音樂生成僅支援 Apple Silicon 的 Mac。Windows 與 Linux(NVIDIA GPU)的支援規劃中;此電腦上不會安裝或下載任何內容。",
+    "reason": null,
+    "soundReason": null,
     "badge": "此電腦目前尚無法使用"
   },
   "territoryGate": {

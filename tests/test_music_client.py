@@ -6,6 +6,7 @@ from __future__ import annotations
 import threading
 import time
 import unittest
+from unittest import mock
 
 from backend_service import music_client
 from tests.music_fakes import MusicSandbox
@@ -108,14 +109,20 @@ class MusicClientTests(unittest.TestCase):
         self.assertIsNone(self.worker.pid)
 
     def test_generate_timeout_scales_with_the_model_estimate(self) -> None:
+        from backend_service import music_env
         from backend_service.music_runtime import estimate_run
 
-        for model in ("ACE-Step/Ace-Step1.5", "ACE-Step/acestep-v15-xl-turbo"):
-            for seconds, variations in ((60, 1), (600, 1), (600, 4)):
-                warm = estimate_run(model, seconds, variations)["seconds"]
-                cold = estimate_run(model, seconds, variations, warm=False)["coldStartSeconds"]
-                timeout = music_client.generate_timeout_s(seconds, variations, model)
-                self.assertGreaterEqual(timeout, 3 * warm + cold, (model, seconds, variations))
+        for lane in ("cuda", "mlx"):  # FU-139: the CUDA lane estimates from its own table
+            with mock.patch.object(music_env, "lane", return_value=lane):
+                for model in ("ACE-Step/Ace-Step1.5", "ACE-Step/acestep-v15-xl-turbo"):
+                    for seconds, variations in ((60, 1), (600, 1), (600, 4)):
+                        warm = estimate_run(model, seconds, variations)["seconds"]
+                        cold = estimate_run(model, seconds, variations, warm=False)["coldStartSeconds"]
+                        timeout = music_client.generate_timeout_s(seconds, variations, model)
+                        self.assertGreaterEqual(timeout, 3 * warm + cold, (lane, model, seconds, variations))
+        lane = mock.patch.object(music_env, "lane", return_value="mlx")  # the Mac figures below
+        lane.start()
+        self.addCleanup(lane.stop)
         # XL is slower than turbo, so it gets longer: the old 210 s for XL 600 s was a 1.27x margin.
         self.assertGreater(music_client.generate_timeout_s(600, 1, "ACE-Step/acestep-v15-xl-turbo"),
                            music_client.generate_timeout_s(600, 1, "ACE-Step/Ace-Step1.5"))

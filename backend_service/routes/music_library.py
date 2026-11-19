@@ -178,9 +178,13 @@ def _music_repo(repo: str) -> str:
 
 @router.post("/api/music/download")
 def download_music_model(request: Request, body: MusicDownloadRequest) -> dict[str, Any]:
+    from backend_service import music_sound_env
+    from backend_service.helpers.music import find_music_variant
     from backend_service.music_env import lane_unavailable_reason
 
-    reason = lane_unavailable_reason()
+    variant = find_music_variant(body.repo)
+    sound = bool(variant and variant.get("kind") == "sound")
+    reason = music_sound_env.lane_unavailable_reason() if sound else lane_unavailable_reason()
     if reason:
         raise HTTPException(status_code=409, detail=reason)
     return {"download": request.app.state.chaosengine.start_download(_music_repo(body.repo))}

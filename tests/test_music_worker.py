@@ -182,6 +182,20 @@ class WorkerProtocolTests(unittest.TestCase):
         self.assertIsNone(self.proc.until(34)[1]["model"])
 
 
+class NativeImportOnTheEngineThreadTests(unittest.TestCase):
+    def test_a_load_that_imports_numpy_answers_without_another_request(self) -> None:
+        """FU-139: on Windows ``import torch`` (numpy's DLL) hung on the engine thread while the main thread waited
+        on stdin, so the first load timed out after 300 s. Only the load line is sent here, nothing after it."""
+        with MusicSandbox() as box:
+            proc = Proc({**box.env, "FAKE_MUSIC_IMPORT_ON_LOAD": "numpy"}, box.data)
+            try:
+                self.assertTrue(proc.next()["ready"])
+                proc.send({"id": 1, "cmd": "load", "engine": "acestep", "model": "m", "lm": None})
+                self.assertTrue(proc.until(1, 60)[1]["ok"])
+            finally:
+                proc.close()
+
+
 class EngineUnavailableTests(unittest.TestCase):
     def test_reports_the_reason_and_keeps_running(self) -> None:
         with MusicSandbox() as box:
@@ -198,15 +212,89 @@ class EngineUnavailableTests(unittest.TestCase):
             finally:
                 proc.close()
 
-    def test_the_acestep_engine_explains_itself_off_apple_silicon(self) -> None:
-        engine = music_worker_acestep.create_engine(Path("/tmp"))
+    def test_the_acestep_engine_explains_itself_without_a_lane(self) -> None:
         from backend_service import music_env
 
-        for system in ("Linux", "Windows"):
-            with mock.patch.object(music_worker_acestep.platform, "system", return_value=system):
-                reason = engine.unavailable_reason()
-            self.assertEqual(reason, music_env.UNSUPPORTED_PLATFORM_REASON)
+        with mock.patch.object(music_worker_acestep.platform, "system", return_value="Darwin"), \
+                mock.patch.object(music_worker_acestep.platform, "machine", return_value="x86_64"):
+            engine = music_worker_acestep.create_engine(Path("/tmp"))
+            self.assertEqual(engine.unavailable_reason(), music_env.UNSUPPORTED_PLATFORM_REASON)
         self.assertEqual(music_worker_acestep.UNSUPPORTED_PLATFORM_REASON, music_env.UNSUPPORTED_PLATFORM_REASON)
+
+    def test_on_windows_and_linux_the_engine_takes_the_cuda_path(self) -> None:
+        for system in ("Linux", "Windows"):
+            with mock.patch.object(music_worker_acestep.platform, "system", return_value=system), \
+                    mock.patch.object(music_worker_acestep.platform, "machine", return_value="x86_64"), \
+                    mock.patch("importlib.util.find_spec", return_value=None):
+                engine = music_worker_acestep.create_engine(Path("/tmp"))
+                self.assertTrue(engine.cuda)
+                # The backend venv has no ACE-Step: the CUDA path names the missing package, not MLX.
+                self.assertIn("'torch' is missing", engine.unavailable_reason())
+
+
+class CudaOffloadTests(unittest.TestCase):
+    def test_offload_follows_free_vram_per_model_and_the_setting(self) -> None:
+        offload = music_worker_acestep.cuda_offload
+        self.assertFalse(offload("acestep-v15-turbo", 22.0))
+        self.assertFalse(offload("acestep-v15-turbo", 11.5))
+        self.assertTrue(offload("acestep-v15-turbo", 6.0))
+        self.assertFalse(offload("acestep-v15-xl-turbo", 22.0))
+        self.assertTrue(offload("acestep-v15-xl-turbo", 12.0))  # another app holds half the card
+        self.assertTrue(offload("some-new-model", 18.0))
+        self.assertTrue(offload("acestep-v15-turbo", 22.0, "1"))
+        self.assertFalse(offload("acestep-v15-xl-turbo", 2.0, "0"))
+
+
+class DecoderHookTests(unittest.TestCase):
+    """FU-139: progress and cancel on the CUDA path come from forward hooks on the torch DiT decoder."""
+
+    class _Decoder:
+        def __init__(self) -> None:
+            self.pre: list = []
+            self.post: list = []
+
+        def register_forward_pre_hook(self, fn):
+            self.pre.append(fn)
+            return mock.Mock(remove=lambda: self.pre.remove(fn))
+
+        def register_forward_hook(self, fn):
+            self.post.append(fn)
+            return mock.Mock(remove=lambda: self.post.remove(fn))
+
+        def __call__(self) -> None:
+            for fn in list(self.pre):
+                fn(self, ())
+            for fn in list(self.post):
+                fn(self, (), None)
+
+    def tearDown(self) -> None:
+        music_worker_acestep._ACTIVE["before"] = music_worker_acestep._ACTIVE["after"] = None
+
+    def test_each_decoder_call_is_one_step_and_extra_calls_stop_at_the_total(self) -> None:
+        decoder, seen = self._Decoder(), []
+        music_worker_acestep._ACTIVE["before"] = lambda i, t: seen.append(("before", i, t))
+        music_worker_acestep._ACTIVE["after"] = lambda d, t: seen.append(("after", d, t))
+        handles = music_worker_acestep.attach_decoder_hooks(decoder, 2)
+        for _ in range(3):
+            decoder()
+        self.assertEqual(seen, [("before", 0, 2), ("after", 1, 2), ("before", 1, 2), ("after", 2, 2), ("before", 1, 2)])
+        for handle in handles:
+            handle.remove()
+        self.assertEqual((decoder.pre, decoder.post), ([], []))
+
+    def test_a_raising_before_hook_cancels_the_call(self) -> None:
+        decoder = self._Decoder()
+
+        def cancel(_i, _t):
+            raise RuntimeError("cancelled")
+
+        music_worker_acestep._ACTIVE["before"] = cancel
+        music_worker_acestep.attach_decoder_hooks(decoder, 8)
+        with self.assertRaises(RuntimeError):
+            decoder()
+
+    def test_no_hooks_without_a_hookable_decoder(self) -> None:
+        self.assertEqual(music_worker_acestep.attach_decoder_hooks(object(), 8), [])
 
 
 class WorkerImportTests(unittest.TestCase):

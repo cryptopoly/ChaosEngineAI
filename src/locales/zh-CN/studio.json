@@ -2562,7 +2562,7 @@
       "statusSummary": "已安装的优先"
     },
     "title": "音乐模型",
-    "unavailable": "音乐功能目前需要 Apple 芯片的 Mac。",
+    "unavailable": null,
     "sounds": {
       "pack": {
         "failedTitle": "无法安装音效组件包。",
@@ -2920,7 +2920,8 @@
     "alternative": "在此可以更快：{name}。"
   },
   "musicUnsupported": {
-    "reason": "本版本的音乐生成仅支持 Apple Silicon Mac。Windows 和 Linux（NVIDIA GPU）支持已在计划中；此电脑上不会安装或下载任何内容。",
+    "reason": null,
+    "soundReason": null,
     "badge": "此电脑暂不可用"
   },
   "territoryGate": {

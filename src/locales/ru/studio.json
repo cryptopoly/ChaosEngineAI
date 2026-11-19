@@ -2562,7 +2562,7 @@
       "statusSummary": "сначала установленные"
     },
     "title": "Музыкальные модели",
-    "unavailable": "Для музыки пока нужен Mac с Apple Silicon.",
+    "unavailable": null,
     "sounds": {
       "pack": {
         "failedTitle": "Не удалось установить пакет звуков.",
@@ -2920,7 +2920,8 @@
     "alternative": "Здесь быстрее: {name}."
   },
   "musicUnsupported": {
-    "reason": "В этой версии генерация музыки работает на Mac с Apple Silicon. Поддержка Windows и Linux (GPU NVIDIA) запланирована; на этом компьютере ничего не устанавливается и не загружается.",
+    "reason": null,
+    "soundReason": null,
     "badge": "Пока недоступно на этом компьютере"
   },
   "territoryGate": {

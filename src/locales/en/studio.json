@@ -2562,7 +2562,7 @@
       "statusSummary": "installed first"
     },
     "title": "Music and Audio Models",
-    "unavailable": "Music needs an Apple Silicon Mac for now.",
+    "unavailable": "Music needs an Apple Silicon Mac or an NVIDIA GPU.",
     "sounds": {
       "pack": {
         "failedTitle": "The sounds pack could not be installed.",
@@ -2920,7 +2920,8 @@
     "alternative": "Faster here: {name}."
   },
   "musicUnsupported": {
-    "reason": "Music generation runs on Apple Silicon Macs in this version. Windows and Linux support (NVIDIA GPUs) is planned; nothing is installed or downloaded on this computer.",
+    "reason": "Music generation needs an Apple Silicon Mac or an NVIDIA GPU on Windows or Linux; nothing is installed or downloaded on this computer.",
+    "soundReason": "Sound effects run on Apple Silicon Macs in this version. NVIDIA GPU support is planned; nothing is installed or downloaded for sounds on this computer.",
     "badge": "Not available on this computer yet"
   },
   "territoryGate": {

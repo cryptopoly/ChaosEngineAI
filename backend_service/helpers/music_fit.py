@@ -39,11 +39,13 @@ def music_need(variant: dict[str, Any], hardware: HardwareClass) -> tuple[float,
         cuda = estimates.get("cuda") or {}
         peak = _positive(cuda.get("peakGb"))
         if peak is None:
-            return "Not measured on an NVIDIA GPU, and the CUDA music lane is not built yet."
+            return "No VRAM figure for this model on an NVIDIA GPU yet."
+        if cuda.get("basis") == "measured":
+            where = cuda.get("measuredOn") or "an NVIDIA GPU"
+            return peak, f"Peak VRAM {peak:.1f} GB while generating, measured on {where}", "measured"
         return (
             peak,
-            f"Peak memory about {peak:.0f} GB on an NVIDIA GPU ({cuda.get('source') or 'model card'}; not measured). "
-            "The CUDA music lane is not built yet",
+            f"Peak VRAM about {peak:.0f} GB on an NVIDIA GPU ({cuda.get('source') or 'model card'}; not measured here)",
             "estimated",
         )
     return "Needs Apple Silicon (MLX) or an NVIDIA GPU."

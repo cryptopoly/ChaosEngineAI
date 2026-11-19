@@ -46,15 +46,29 @@ _VERIFY_CODE = (
 )
 
 
+SOUND_UNSUPPORTED_CODE = "music.soundUnsupportedPlatform"
+SOUND_UNSUPPORTED_REASON = (
+    "Sound effects run on Apple Silicon Macs in this version. NVIDIA GPU support is planned; "
+    "nothing is installed or downloaded for sounds on this computer."
+)
+
+
 def lane() -> str:
-    """``mps`` on Apple Silicon; ``unsupported`` elsewhere (the CPU and CUDA lanes are later work)."""
+    """``mps`` on Apple Silicon; ``unsupported`` elsewhere (the CPU and CUDA sound lanes are later work, FU-139)."""
     return "mps" if music_env.lane() == "mlx" else "unsupported"
 
 
 def lane_unavailable_reason() -> str | None:
+    """``None`` on a Mac; the sounds-only sentence where music runs on CUDA; else the music sentence."""
     if lane() == "mps":
         return None
-    return music_env.lane_unavailable_reason()
+    return SOUND_UNSUPPORTED_REASON if music_env.lane() == "cuda" else music_env.lane_unavailable_reason()
+
+
+def lane_unavailable_code() -> str | None:
+    if lane() == "mps":
+        return None
+    return SOUND_UNSUPPORTED_CODE if music_env.lane() == "cuda" else music_env.lane_unavailable_code()
 
 
 def _marker_path() -> Path:

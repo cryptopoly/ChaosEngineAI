@@ -267,6 +267,10 @@ def generate_music(request: Request, body: MusicGenerateRequest) -> dict[str, An
         raise HTTPException(status_code=409, detail="cancelled") from None
 
 
+# Host RAM a CUDA music run needs when the row has no measured figure (the model sits in VRAM).
+CUDA_HOST_PEAK_GB = 8.0
+
+
 def generate_music_locked(request: Request, body: MusicGenerateRequest, source: str = "ui") -> dict[str, Any]:
     """The model run; the caller holds the ``HEAVY_JOBS`` slot (the Studio route or an agent job)."""
     from backend_service import music_runtime
@@ -288,13 +292,21 @@ def generate_music_locked(request: Request, body: MusicGenerateRequest, source: 
     if variant.get("unloadsOthers"):
         _unload_other_heavy(request, f"making music with {variant['name']}")
     estimates = variant.get("estimates") or {}
+    peak_gb = max(MUSIC_GENERATION_GB, float(estimates.get("peakGb") or 0.0))
+    idle_gb = float(estimates.get("idleGb") or MUSIC_IDLE_GB)
+    if music_runtime.music_env.lane() == "cuda":
+        # FU-139: on an NVIDIA GPU the weights live in VRAM; the gate checks system RAM, so it uses the worker's
+        # measured host-RAM figures, not the Mac's unified-memory peak (47 GB for XL would refuse every PC).
+        cuda = estimates.get("cuda") or {}
+        peak_gb = float(cuda.get("hostPeakGb") or CUDA_HOST_PEAK_GB)
+        idle_gb = float(cuda.get("hostIdleGb") or min(idle_gb, peak_gb))
     try:
         available_gb, pressure = snapshot_memory_signals()
         refusal = gate_music_generation(
             available_gb,
             pressure,
-            peak_gb=max(MUSIC_GENERATION_GB, float(estimates.get("peakGb") or 0.0)),
-            idle_gb=float(estimates.get("idleGb") or MUSIC_IDLE_GB),
+            peak_gb=peak_gb,
+            idle_gb=idle_gb,
             resident=music_runtime.loaded_model() == variant["engineModel"],
             model_name=variant["name"],
             large=bool(variant.get("large")),

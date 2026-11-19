@@ -13,10 +13,12 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 import threading
 from typing import Any, Callable
 
 from backend_service.tools import BaseTool, StructuredToolOutput, ToolRegistry
+from backend_service.tools.studio_tiers import SINGLE_RENDERS, TierHolder, apply_tier, current, variant_for
 
 # What the chat model may do. Never "files" (download links, uploads, exports), "download" or "clone".
 CHAT_SCOPES = frozenset({"read", "generate"})
@@ -304,8 +306,10 @@ class StudioTool(BaseTool):
     def __init__(self, tool: dict[str, Any], handler: Any, app_request: Any,
                  is_cancelled: Callable[[], bool] | None = None, revisions: TurnRevisions | None = None,
                  defer: Callable[[str, dict[str, Any]], StructuredToolOutput | None] | None = None,
-                 watch: Any = None) -> None:
+                 watch: Any = None, tier: Any = "standard") -> None:
         self._tool = tool
+        # The chat's quality tier (FU-241): a single image or clip never runs above it.
+        self._tier = tier
         # Keep going's stall guard (FU-207, ``keep_going.stall.TurnWatch``): ends a wait on a job without progress.
         self._watch = watch
         # Keep going's "free GPU memory while rendering" (FU-191): an approved render may be kept for after the
@@ -404,6 +408,12 @@ class StudioTool(BaseTool):
         refused = _chat_input_problem(self.name, args) or _foreign_job_problem(self.name, args)
         if refused:
             return self._error(refused)
+        tier_notes: list[str] = []
+        if self.name in SINGLE_RENDERS and not (isinstance(self._tier, TierHolder) and self._tier.exempts(args)):
+            from backend_service.mcp_bridge.tools import _state
+
+            args, tier_notes = apply_tier(current(self._tier), self.name, args,
+                                          variant_for(self.name, args.get("model"), _state(make_context(self._request))))
         if self._defer is not None and needs_approval(self.name, args):
             kept = self._defer(self.name, args)
             if kept is not None:
@@ -432,6 +442,8 @@ class StudioTool(BaseTool):
             return self._error(f"{self.name} failed: {type(exc).__name__}: {exc}")
         finally:
             CURRENT_OWNER.reset(token)
+        if tier_notes and isinstance(payload, dict):
+            payload = {**payload, "qualityNotes": tier_notes}
         trimmed = trim_result(payload)
         return StructuredToolOutput(text=_text(trimmed), render_as="studio", data={"tool": self.name, **trimmed})
 
@@ -476,25 +488,48 @@ def _own_jobs(args: dict[str, Any]) -> dict[str, Any]:
     return {"jobs": [j.describe() for j in jobs[: int(args.get("limit", 20))]]}
 
 
+_FILM_WORDS = re.compile(
+    r"\b(film|films|movie|storyboard|shot|shots|scene|scenes|trailer|project|clip|clips|montage|sequence|"
+    r"episode|caption|captions|subtitle|subtitles|song|lyrics|narration|soundtrack)\b", re.IGNORECASE)
+
+
+def wants_storyboard(prompt: str, messages: list[dict[str, Any]] | None, *, keep_going: bool = False) -> bool:
+    """Whether this turn needs the seven Storyboard tools (7,814 of the 14,708 characters of the tool list, FU-231).
+
+    Yes for a Keep going run, when the user's message or one of the last six messages talks about a film, or when an
+    earlier reply already called a ``storyboard_*`` tool. Otherwise the model sees the core Studio tools only: a
+    shorter prompt is faster on a local model, and the next film word brings the Storyboard tools back.
+    """
+    if keep_going or _FILM_WORDS.search(prompt or ""):
+        return True
+    for message in (messages or [])[-6:]:
+        if _FILM_WORDS.search(str(message.get("text") or "")):
+            return True
+    return any(
+        str(call.get("name") or "").startswith("storyboard_")
+        for message in (messages or []) for call in (message.get("toolCalls") or []) if isinstance(call, dict))
+
+
 def studio_tools(app_request: Any, is_cancelled: Callable[[], bool] | None = None,
                  defer: Callable[[str, dict[str, Any]], StructuredToolOutput | None] | None = None,
-                 watch: Any = None) -> list[StudioTool]:
+                 watch: Any = None, storyboard: bool = True, tier: str = "standard") -> list[StudioTool]:
     tools, handlers = _bridge()
     by_name = {t["name"]: t for t in tools}
     revisions = TurnRevisions()  # one per chat turn, shared by its storyboard tools
-    return [StudioTool(by_name[n], handlers[n], app_request, is_cancelled, revisions, defer, watch)
-            for n in STUDIO_TOOL_NAMES if n in by_name and n in handlers]
+    return [StudioTool(by_name[n], handlers[n], app_request, is_cancelled, revisions, defer, watch, tier)
+            for n in STUDIO_TOOL_NAMES if n in by_name and n in handlers and (storyboard or not n.startswith("storyboard_"))]
 
 
 def studio_registry(app_request: Any, base: ToolRegistry, available: list[str] | None,
                     is_cancelled: Callable[[], bool] | None = None,
                     defer: Callable[[str, dict[str, Any]], StructuredToolOutput | None] | None = None,
-                    watch: Any = None) -> ToolRegistry:
-    """The chat tools (``available`` of ``base``, all when None) plus the studio tools."""
+                    watch: Any = None, storyboard: bool = True, tier: str = "standard") -> ToolRegistry:
+    """The chat tools (``available`` of ``base``, all when None) plus the studio tools (the Storyboard ones only
+    when ``storyboard``, see ``wants_storyboard``)."""
     registry = ToolRegistry()
     for tool in base.list_tools():
         if available is None or tool.name in available:
             registry.register(tool)
-    for tool in studio_tools(app_request, is_cancelled, defer, watch):
+    for tool in studio_tools(app_request, is_cancelled, defer, watch, storyboard, tier):
         registry.register(tool)
     return registry

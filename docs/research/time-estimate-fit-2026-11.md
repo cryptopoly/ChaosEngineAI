@@ -125,3 +125,37 @@ The strip was also checked in the browser (Vite dev build against this backend):
   other Macs and cards (FU-164).
 - Qwen-Image-2.1 size scaling; FLUX.1 / FLUX.2 mflux rows.
 - `quad` for images is fitted on at most three sizes per row; sizes above 1536 px are extrapolated.
+
+
+# CUDA fit on the RTX 4090 (FU-165, 2026-11-19)
+
+Machine: Windows 11, RTX 4090 24 GB, 64 GB RAM. Backend from `test/rtx4090` on its own port with a throwaway home, runs through `POST /api/images/generate` and `POST /api/video/generate`, seed 7, wall time from submit to response. Each case: one warm-up run (not counted), then three runs; the median is used. Raw rows: `docs/research/fit-cuda-4090-2026-11.jsonl`. Same model and fit method as the M4 Max section above (grid search of `fixed` 0 to 0.95 and `quad` 100 to 1e9, minimising the largest relative error, the catalogue figure set to the measured one at the reference size).
+
+## FLUX.2 Klein 4B (diffusers, `black-forest-labs/FLUX.2-klein-4B`), catalogue 6.9 s at 1024 px / 4 steps
+
+| Size | Steps | Runs (s) | Median | Fit | Error |
+|---|---|---|---|---|---|
+| 512 | 4 | 4.66, 4.65, 4.60 | 4.65 | 5.0 | +7 % |
+| 768 | 4 | 5.51, 5.41, 5.45 | 5.45 | 5.7 | +5 % |
+| 1024 | 4 | 6.86, 6.86, 6.83 | 6.86 | 6.9 | +1 % |
+| 1536 | 4 | 11.73, 11.80, 11.75 | 11.75 | 12.8 | +9 % |
+| 2048 | 4 | 21.74, 27.29, 28.14 | 27.3 | 26.9 | -1 % |
+| 1024 | 8 | 8.39, 8.89, 8.57 | 8.57 | 9.1 | +6 % |
+
+Doubling the steps adds only 25 % at 1024 px, so most of a small image is fixed cost (text encoder, VAE, scheduler set-up): best fit `fixed 0.68`, `quad 1000`. The row's old figure (5.5 s, no constants) was 12 % low at 1024 and 39 % low at 2048.
+
+## LTX-2.5 4-bit on load (diffusers, `Lightricks/LTX-2.5-Diffusers~nf4`), catalogue 62.9 s at 768x512, 97 frames
+
+| Size x frames | Runs (s) | Median | Fit | Error |
+|---|---|---|---|---|
+| 640x384, 97 | 41.71, 41.45, 41.57 | 41.6 | 43.2 | +4 % |
+| 768x512, 49 | 36.67, 36.32, 36.50 | 36.5 | 38.7 | +6 % |
+| 768x512, 97 | 61.04, 62.93, 65.75 | 62.9 | 62.9 | 0 % |
+| 1024x576, 97 | 94.94, 94.92, 92.79 | 94.9 | 102.6 | +8 % |
+| 1280x704, 97 | 287.5, 144.9, 214.6 | 214.6 | 196.9 | -8 % |
+
+The distilled schedule ignores steps (`ignoresSteps`). Best fit `fixed 0.47`, `quad 3162` (the Mac `ltx-2-mlx` row uses `fixed 0.1`, `quad 1e9`: a different engine). 1280x704 swings from 145 to 288 s between runs on this 24 GB card (the model is offloaded; peak memory is far above the card), so its median is a middle figure, not a promise; a fit without that point (`fixed 0.25`, `quad 1e5`) would give 162 s there. The old row (no constants) was 22 to 33 % high at 1024x576 and 1280x704.
+
+## Not measured
+
+FLUX.1 schnell answered in 0.3 s at every size (the run did not use the real model: nothing was fitted), FLUX.2 dev, the bf16 LTX-2.5 row and the other LTX rows keep their old figures. The new cases are in `tests/fixtures/time_estimate_cases.json` (Python and TypeScript both return the expected figures).

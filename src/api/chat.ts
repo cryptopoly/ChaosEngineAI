@@ -375,6 +375,25 @@ export interface StudioPlanDecisionBody {
   decisions: Record<string, "approve" | "deny">;
   edit?: boolean;
   alwaysAllow?: boolean;
+  /** FU-241: the quality picked on the card, and whether it stays for the rest of this chat. */
+  tier?: "draft" | "standard" | "final";
+  keepTier?: boolean;
+  /** Expert fields per call id: width, height, steps, seed, fps, model. */
+  overrides?: Record<string, Record<string, string | number>>;
+}
+
+/** What a single render would run and cost with these Expert fields typed in (size, frames, fps, steps, time). */
+export interface StudioPrice {
+  model?: string | null;
+  size?: string | null;
+  frames?: number | null;
+  fps?: number | null;
+  steps?: number | null;
+  estimatedSeconds?: number | null;
+}
+
+export async function priceStudioRender(tool: string, args: Record<string, unknown>): Promise<StudioPrice> {
+  return postJson<StudioPrice>("/api/chat/studio/price", { tool, arguments: args }, 10000);
 }
 
 export async function decideStudioPlan(planId: string, body: StudioPlanDecisionBody): Promise<void> {

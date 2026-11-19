@@ -89,7 +89,7 @@ async function mockJobs(page: Page) {
   return decisions;
 }
 
-async function startStudioTurn(page: Page) {
+async function startStudioTurn(page: Page, plan: typeof PLAN = PLAN) {
   await scriptChatStream(page);
   const workspace = await mockLoadedModel(page);
   const decisions = await mockJobs(page);
@@ -106,9 +106,10 @@ async function startStudioTurn(page: Page) {
   expect(payload.studioAutoApprove).toBeUndefined();
   await push(page, { phase: "prompt_eval" });
   await push(page, { phase: "generating", ttftSeconds: 1.2 });
-  await push(page, { studioPlan: PLAN });
+  await push(page, { studioPlan: plan });
   const card = page.getByRole("region", { name: "Plan to approve" });
   await expect(card).toBeVisible();
+  if (plan !== PLAN) return { card, decisions, payload, workspace };
   await expect(card).toContainText("Rose shop poster");
   await expect(card).toContainText("Tulip shop poster");
   await expect(card).toContainText("about 40 s");
@@ -216,4 +217,82 @@ test("plan card fits a 375 px window", async ({ page }) => {
   expect(overflow.wide).toBe(0);
   expect(overflow.scroll).toBeLessThanOrEqual(0);
   expect(overflow.cardRight).toBeLessThanOrEqual(overflow.viewport);
+});
+
+// FU-241: Draft, Standard and Final on the card, checked at the owner's 90 % UI scale and at 125 %.
+const TIER_PLAN = {
+  planId: "plan-e2e",
+  items: [
+    {
+      callId: "c1", tool: "generate_video", kind: "video", prompt: "Waves on black rocks", model: "LTX-2.5",
+      size: "768x512", frames: 96, fps: 24, estimatedSeconds: 55, peakGb: 20, tier: "standard",
+      tierOptions: {
+        draft: { size: "384x256", estimatedSeconds: 12 },
+        standard: { size: "768x512", estimatedSeconds: 55 },
+        final: { size: "1152x768", estimatedSeconds: 179 },
+      },
+      qualityNotes: ["Standard quality: size 1280x720 brought to 768x512."],
+    },
+  ],
+  memory: { chatModel: "Mock Chat 8B", freeGb: 30, totalGb: 64, level: "ok", advice: null },
+  status: "pending",
+} as unknown as typeof PLAN;
+
+for (const scale of [0.9, 1.25]) {
+  test(`plan card tiers: pick Draft and keep it, at ${Math.round(scale * 100)} % UI scale`, async ({ page }) => {
+    await page.addInitScript((value) => window.localStorage.setItem("chaosengine.uiScale.v1", String(value)), scale);
+    const { card, decisions } = await startStudioTurn(page, TIER_PLAN);
+    // At 125 % in a 1280x720 window the Chat thread pane is only a few lines tall (a layout issue of the Chat tab,
+    // as at 375 px), so its scroll boxes are opened up; the card's own width is checked below.
+    await card.evaluate((el) => {
+      for (let node = el.parentElement; node && node !== document.body; node = node.parentElement) {
+        const style = getComputedStyle(node);
+        if (/(auto|scroll|hidden)/.test(style.overflowY)) Object.assign(node.style, { height: "auto", maxHeight: "none", overflow: "visible" });
+      }
+    });
+    const quality = card.getByRole("radiogroup", { name: "Quality" });
+    await expect(quality.getByRole("radio", { name: /Standard/ })).toHaveAttribute("aria-checked", "true");
+    await expect(quality).toContainText("384x256 · 12 s");
+    await expect(quality).toContainText("1152x768 · 3 min");
+    mkdirSync(SHOTS_DIR, { recursive: true });
+    await card.screenshot({ path: path.join(SHOTS_DIR, `chat-studio-tiers-${Math.round(scale * 100)}.png`) });
+    const overflow = await card.evaluate((el) => {
+      const box = el.getBoundingClientRect();
+      return [...el.querySelectorAll("*")].filter((c) => c.getBoundingClientRect().right > box.right + 1).length;
+    });
+    expect(overflow).toBe(0);
+    await quality.getByRole("radio", { name: /Draft/ }).click();
+    await expect(card.locator(".studio-plan-card__meta")).toContainText("384x256");
+    await expect(card.locator(".studio-plan-card__meta")).toContainText("about 12 s");
+    await card.getByRole("checkbox", { name: "Use for the rest of this chat" }).check();
+    await card.getByRole("button", { name: "Approve", exact: true }).click();
+    await expect.poll(() => decisions.length).toBe(1);
+    expect(decisions[0]).toMatchObject({ decisions: { c1: "approve" }, tier: "draft", keepTier: true });
+  });
+}
+
+test("plan card Expert settings: typed size is priced by the backend and sent on approve", async ({ page }) => {
+  const priced: unknown[] = [];
+  await page.route("**/api/chat/studio/price", async (route) => {
+    priced.push(route.request().postDataJSON());
+    await route.fulfill({ json: { size: "1280x704", frames: 96, fps: 24, steps: 30, estimatedSeconds: 140 } });
+  });
+  const { card, decisions } = await startStudioTurn(page, TIER_PLAN);
+  await card.evaluate((el) => {
+    for (let node = el.parentElement; node && node !== document.body; node = node.parentElement) {
+      const style = getComputedStyle(node);
+      if (/(auto|scroll|hidden)/.test(style.overflowY)) Object.assign(node.style, { height: "auto", maxHeight: "none", overflow: "visible" });
+    }
+  });
+  await card.getByText("Expert settings").click();
+  await card.getByLabel("Width").fill("1280");
+  await card.getByLabel("Height").fill("704");
+  await expect(card.locator(".studio-plan-card__meta")).toContainText("1280x704");
+  await expect(card.locator(".studio-plan-card__meta")).toContainText("about 2 min");
+  expect(priced.at(-1)).toMatchObject({ tool: "generate_video", arguments: { width: 1280, height: 704, frames: 96 } });
+  mkdirSync(SHOTS_DIR, { recursive: true });
+  await card.screenshot({ path: path.join(SHOTS_DIR, "chat-studio-expert.png") });
+  await card.getByRole("button", { name: "Approve", exact: true }).click();
+  await expect.poll(() => decisions.length).toBe(1);
+  expect(decisions[0]).toMatchObject({ decisions: { c1: "approve" }, overrides: { c1: { width: 1280, height: 704 } } });
 });

@@ -21,6 +21,7 @@ import {
   jobPercent,
   libraryTab,
   mediaKind,
+  expertOverrides,
   planDecision,
   readStudioAutoApprove,
   readStudioToolsEnabled,
@@ -167,6 +168,59 @@ describe("plan decisions", () => {
     expect(resolved[0].status).toBe("decided");
     expect(upsertToolCall([toolCall()], toolCall({ result: "new" }))).toEqual([toolCall({ result: "new" })]);
     expect(upsertToolCall([toolCall()], toolCall({ id: "c2" }))).toHaveLength(2);
+  });
+});
+
+describe("quality tiers on the plan card (FU-241)", () => {
+  const options = {
+    draft: { size: "384x256", estimatedSeconds: 12 },
+    standard: { size: "768x512", estimatedSeconds: 55 },
+    final: { size: "1152x768", estimatedSeconds: 179 },
+  };
+  const clip = plan({
+    items: [{ callId: "c1", tool: "generate_video", kind: "video", prompt: "Waves", size: "768x512", estimatedSeconds: 55,
+      tier: "standard", tierOptions: options, qualityNotes: ["Standard quality: size 1280x720 brought to 768x512."] }],
+  });
+
+  it("shows three tier buttons with size and time, the chosen one marked, and the keep box", () => {
+    const html = renderToStaticMarkup(<StudioPlanCard plan={clip} sessionId="s1" />);
+    expect(html).toContain('role="radiogroup"');
+    for (const text of ["Draft", "Standard", "Final", "384x256 · 12 s", "1152x768 · 3 min", "Use for the rest of this chat"]) {
+      expect(html).toContain(text);
+    }
+    expect(html).toMatch(/aria-checked="true"[^>]*>\s*<strong>Standard/);
+    expect(html).toContain("size 1280x720 brought to 768x512");
+  });
+
+  it("lists the Expert settings for a clip (with fps) and for an image (without)", () => {
+    const html = renderToStaticMarkup(<StudioPlanCard plan={clip} sessionId="s1" />);
+    for (const text of ["Expert settings", "Width", "Height", "Steps", "Seed", "fps"]) expect(html).toContain(text);
+    const image = plan({ items: [{ ...clip.items[0], tool: "generate_image", kind: "image" }] });
+    expect(renderToStaticMarkup(<StudioPlanCard plan={image} sessionId="s1" />)).not.toContain("<span>fps</span>");
+  });
+
+  it("turns the typed boxes into numbers and drops blanks; an approved call carries them, a declined one does not", () => {
+    expect(expertOverrides({ width: "1280", height: "704", steps: " ", seed: "7", model: "m1" }))
+      .toEqual({ width: 1280, height: 704, seed: 7, model: "m1" });
+    const two = plan({ items: [clip.items[0], { ...clip.items[0], callId: "c2" }] });
+    const body = planDecision(two, { type: "approveOne", callId: "c1" }, false, undefined,
+      { c1: { width: 1280, height: 704 }, c2: { width: 64, height: 64 } });
+    expect(body.overrides).toEqual({ c1: { width: 1280, height: 704 } });
+    expect(planDecision(two, { type: "edit" }, false, undefined, { c1: { width: 1 } }).overrides).toBeUndefined();
+  });
+
+  it("has no tier row for a plan without single renders", () => {
+    const html = renderToStaticMarkup(<StudioPlanCard plan={plan()} sessionId="s1" />);
+    expect(html).not.toContain("radiogroup");
+    expect(html).not.toContain("Use for the rest of this chat");
+  });
+
+  it("the decision carries the tier and keep, only when something is approved", () => {
+    expect(planDecision(clip, { type: "approveAll" }, false, { tier: "draft", keep: true }))
+      .toEqual({ decisions: { c1: "approve" }, edit: false, alwaysAllow: false, tier: "draft", keepTier: true });
+    expect(planDecision(clip, { type: "approveAll" }, false, { tier: "final", keep: false }).keepTier).toBeUndefined();
+    expect(planDecision(clip, { type: "deny" }, false, { tier: "draft", keep: true }).tier).toBeUndefined();
+    expect(planDecision(clip, { type: "edit" }, false, { tier: "draft", keep: true }).tier).toBeUndefined();
   });
 });
 

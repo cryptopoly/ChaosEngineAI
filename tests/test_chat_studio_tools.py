@@ -249,6 +249,75 @@ class GateTests(unittest.TestCase):
         except StopIteration as stop:
             return events, stop.value or {}
 
+    def test_a_tier_picked_on_the_card_reaches_the_tools_and_can_be_kept_for_the_chat(self):
+        from backend_service.tools.studio_tiers import TierHolder
+
+        holder = TierHolder("standard")
+        state = SimpleNamespace(runtime=SimpleNamespace(loaded_model=None))
+        gate = StudioGate("chat-1", poll_seconds=0.01, tier=holder, state=state)
+
+        def click(plan):
+            decide(plan.id, {"c1": "approve"}, tier="draft", keep_tier=True)
+            return {"c1": "approve"}
+
+        def run():
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                with studio_gate._LOCK:
+                    plans = list(studio_gate._PLANS.values())
+                if plans:
+                    click(plans[0])
+                    return
+                time.sleep(0.01)
+
+        thread = threading.Thread(target=run, daemon=True)
+        thread.start()
+        events, denials = self.run_review(gate, [call("generate_image", {"prompt": "a fox"}, "c1")])
+        thread.join(2)
+        self.assertEqual(denials, {})
+        self.assertEqual(holder.value, "draft")
+        self.assertEqual(state.chat_tiers, {"chat-1": "draft"})
+        resolved = events[-1]["studio_plan_resolved"]
+        self.assertEqual((resolved["tier"], resolved["keepTier"]), ("draft", True))
+
+    def test_expert_fields_rewrite_the_approved_call_and_run_above_the_tier(self):
+        from backend_service.tools.studio_tiers import TierHolder
+
+        holder = TierHolder("standard")
+        gate = StudioGate("chat-2", poll_seconds=0.01, tier=holder)
+        tc = call("generate_video", {"prompt": "waves"}, "c1")
+        skipped = call("generate_video", {"prompt": "kept as asked"}, "c2")
+
+        def run():
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                with studio_gate._LOCK:
+                    plans = list(studio_gate._PLANS.values())
+                if plans:
+                    decide(plans[0].id, {"c1": "approve", "c2": "deny"},
+                           overrides={"c1": {"width": 1280, "height": 704}, "c2": {"width": 64, "height": 64}})
+                    return
+                time.sleep(0.01)
+
+        thread = threading.Thread(target=run, daemon=True)
+        thread.start()
+        _events, denials = self.run_review(gate, [tc, skipped])
+        thread.join(2)
+        self.assertEqual(json.loads(tc["function"]["arguments"]), {"prompt": "waves", "width": 1280, "height": 704})
+        self.assertTrue(holder.exempts({"prompt": "waves", "width": 1280, "height": 704}))
+        self.assertIn("c2", denials)  # a declined call keeps what the model asked and is never exempt
+        self.assertEqual(json.loads(skipped["function"]["arguments"]), {"prompt": "kept as asked"})
+
+    def test_an_unknown_tier_or_an_edit_changes_nothing(self):
+        plan = studio_gate.PendingPlan(id="p", session_id="s", items=[{"callId": "c1"}], memory=None)
+        with studio_gate._LOCK:
+            studio_gate._PLANS["p"] = plan
+        try:
+            decide("p", {"c1": "approve"}, tier="ultra")
+            self.assertIsNone(plan.tier)
+        finally:
+            studio_gate._PLANS.pop("p", None)
+
     def test_read_only_calls_skip_the_gate(self):
         events, denials = self.run_review(StudioGate("s"), [call("system_status", {}, "c1"), call("list_models", {"kind": "image"}, "c2")])
         self.assertEqual((events, denials), ([], {}))
@@ -324,6 +393,31 @@ class GateTests(unittest.TestCase):
         self.assertEqual(note["chatModel"], "Qwen3.8-27B")
         self.assertIsInstance(note["freeGb"], float)
         self.assertIn(note["level"], ("ok", "slower", "risky"))
+
+    def test_plan_prices_the_settings_that_will_run_not_the_recommended_size(self):
+        # FU-240: a 1280x720 clip was shown against the figure for the recommended size.
+        variant = {"id": "v", "repo": "x/y", "defaultDurationSeconds": 4, "recommendedResolution": "768x512",
+                   "estimatedGenerationSeconds": 90,
+                   "estimateRef": {"width": 768, "height": 512, "frames": 97, "steps": 30, "fixed": 0.1}}
+        row = {"id": "v", "name": "Clip model", "sizeGb": 20.0, "estimatedSeconds": 90,
+               "recommendedResolution": "768x512"}
+        state = SimpleNamespace(runtime=SimpleNamespace(loaded_model=None))
+
+        def plan(args):
+            with mock.patch("backend_service.mcp_bridge.models.installed_models", return_value=[row]),                     mock.patch("backend_service.mcp_bridge.models.default_model", return_value=row),                     mock.patch("backend_service.helpers.video._find_video_variant", return_value=variant),                     mock.patch("backend_service.mcp_bridge.tools._recommended", return_value={"steps": 30}),                     mock.patch("backend_service.helpers.generation_limits.align_video_frames",
+                               side_effect=lambda repo, frames: (frames, None)):
+                return studio_gate.plan_item(call("generate_video", {"prompt": "x", **args}, "c"), state)
+
+        plain = plan({"frames": 97})
+        big = plan({"frames": 97, "width": 1280, "height": 720})
+        self.assertEqual((plain["size"], plain["frames"], plain["fps"], plain["steps"]), ("768x512", 97, 24, 30))
+        self.assertEqual(plain["estimatedSeconds"], 90)
+        self.assertGreater(big["estimatedSeconds"], 150)
+        self.assertEqual(big["size"], "1280x720")
+        self.assertNotIn("estimateAtRecommended", big)
+        # No size, frames or steps given: the card still states what will run (4 s at 24 fps).
+        bare = plan({})
+        self.assertEqual((bare["size"], bare["frames"], bare["fps"], bare["steps"]), ("768x512", 96, 24, 30))
 
     def test_plan_shows_arguments_that_change_the_render(self):
         item = studio_gate.plan_item(call("generate_image", {

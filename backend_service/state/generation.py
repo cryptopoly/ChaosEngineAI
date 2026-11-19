@@ -571,9 +571,16 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
     studio_gate = None
     if request.studioTools and app_request is not None:
         from backend_service.tools import registry as _base_registry
-        from backend_service.tools.studio import STUDIO_HINT, studio_registry as _studio_registry
+        from backend_service.tools.studio import STUDIO_HINT, studio_registry as _studio_registry, wants_storyboard
+        from backend_service.tools.studio_tiers import DEFAULT_TIER, tier_from_text
         from backend_service.tools.studio_gate import StudioGate
 
+        from backend_service.tools.studio_tiers import TierHolder
+
+        # The message's own words win, then the tier the user kept for this chat on a card, then Standard.
+        chat_tier = TierHolder(tier_from_text(request.prompt)
+                               or (getattr(chaosengine, "chat_tiers", None) or {}).get(session_id_for_cancel)
+                               or DEFAULT_TIER)
         studio_registry = _studio_registry(
             app_request, _base_registry, available_tools if enable_tools else [],
             # Stop in the chat ends a wait_for_job at once (the job itself keeps running).
@@ -582,9 +589,14 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
             defer=_keep_going_defer(chaosengine, session_id_for_cancel),
             # FU-207: a wait on a job without progress stops the run (only while a run drives this turn).
             watch=_keep_going_watch(chaosengine, session_id_for_cancel),
+            # FU-231: the Storyboard tools only for a film, so a plain question carries a shorter tool list.
+            storyboard=wants_storyboard(request.prompt, session["messages"], keep_going=keep_going is not None),
+            # FU-241: the quality the message names ("a quick draft", "final quality"), else Standard.
+            tier=chat_tier,
         )
         studio_gate = StudioGate(
             session_id_for_cancel,
+            tier=chat_tier,
             # A Keep going run's grant approves renders until it expires (FU-191); the chat's own
             # "Always allow" (the app's flag on a user turn) keeps its old meaning.
             auto_approve=request.studioAutoApprove or kg_auto_until is not None,

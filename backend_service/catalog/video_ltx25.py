@@ -98,9 +98,12 @@ LTX25_NVIDIA_FAMILY: dict[str, Any] = {
             # pipeline peaks higher for a few seconds (51 GB private, commit 69 GB against a 68 GB limit: the
             # page file grew), so a 64 GB machine with ~49 GB free loads it and a 32 GB machine does not.
             "loadMemoryGb": 38.0,
-            # Warm, 768x512, 97 frames: 62.4 / 61.3 s denoise (62.2 s wall); the first load adds 107 to 124 s.
-            "estimatedGenerationSeconds": 62.0,
-            "estimateRef": {"width": 768, "height": 512, "frames": 97, "steps": 8, "ignoresSteps": True},  # FU-165 reference: measured at 768x512, 97 frames; distilled 8-step schedule
+            # Warm, 768x512, 97 frames: 62.4 / 61.3 s denoise (62.2 s wall); the first load adds 107 to 124 s. 2026-11-19
+            # (RTX 4090, three warm runs per size, docs/research/fit-cuda-4090-2026-11.jsonl): 640x384 41.6 s, 768x512 at
+            # 49 frames 36.5 s, at 97 frames 62.9 s, 1024x576 94.9 s, 1280x704 145 to 288 s (median 215: this size swings
+            # run to run on a 24 GB card). Fit fixed 0.47, quad 3162: within 8 % of every median.
+            "estimatedGenerationSeconds": 62.9,
+            "estimateRef": {"width": 768, "height": 512, "frames": 97, "steps": 8, "fixed": 0.47, "quad": 3162, "ignoresSteps": True},  # FU-165 reference: measured at 768x512, 97 frames; distilled 8-step schedule
             "estimatedGenerationSecondsBasis": "measured",
             "note": (
                 "Distilled LTX-2.5 converted to 4-bit (NF4) while it loads: the transformer and the language-model "

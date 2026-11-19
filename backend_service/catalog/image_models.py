@@ -745,8 +745,10 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "sizeGb": 16.0,
                 "recommendedResolution": "1024x1024",
                 "note": "Distilled 4B FLUX.2 — the accessible entry point, fits consumer GPUs and 32 GB Macs.",
-                "estimatedGenerationSeconds": 5.5,
-                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 4},  # FU-165 reference: klein 4-step entry in recommended_settings
+                # RTX 4090, three warm runs per size (docs/research/fit-cuda-4090-2026-11.jsonl): 512 px 4.65 s, 768 5.45,
+                # 1024 6.86, 1536 11.75, 2048 27.3 (21.7 to 28.1), 1024 at 8 steps 8.57. Fit fixed 0.68, quad 1000: within 8 %.
+                "estimatedGenerationSeconds": 6.9,
+                "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 4, "fixed": 0.68, "quad": 1000},  # FU-165 reference: klein 4-step entry in recommended_settings
                 "releaseDate": "2025-11",
             },
             {

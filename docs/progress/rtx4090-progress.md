@@ -1665,3 +1665,54 @@ The warm-up page load (`e2e/warmup.ts`) timed out twice at 180 s when Playwright
 - **Row 44 remainder: SKIP on this PC.** sd.cpp `532d2c1` needs cmake and a CUDA or MSVC toolchain (none installed; installing third-party tools needs the owner's yes). TensorFold 1.2.9 has no Windows archive (source build only). The CUDA 12.4 llama.cpp archive and the real caps fixture are not run.
 - `tests/test_mlx_worker.py` DFlash tests `test_load_model_prepares_a_hybrid_gdn_target` and `test_load_model_uses_dflash_runtime_bundle_api` fail here with "cannot load module more than once per process" (a native-module import; host-bound like FU-256, not touched by this change).
 - **FU-255 and FU-258 done** (tests added; FU-258 checked against a fake runtime only, no live llama-server stream).
+- **FU-231 part 2:** Storyboard tools staged by `wants_storyboard`; tests pass (staging, backend, Keep going integration). Effect on prompt time unmeasured (MLX).
+- **FU-240 part 1:** plan card prices the settings that will run (size, frames, fps, steps, time). Tests pass; the card layout was not looked at in the app (no frontend change).
+- **FU-241 backend (single renders):** tier module, endpoint, applied in Chat and on the card; live check on the 4090 through a throwaway backend (port 8910, stopped after): LTX-2.5 clip Draft 384x256 12 s, Standard 768x512 55 s, Final 1152x768 179 s (catalogue estimates, not renders). No UI buttons yet.
+- **FU-241 card buttons:** quality picker on the plan card with the keep-for-chat box; pytest, vitest (1939), i18n:validate, Playwright `15-chat-studio-tools` (new tier tests at 90 % and 125 %) pass; screenshots `e2e/screenshots/chat-studio-tiers-90.png` and `-125.png` looked at. Layout finding: at 125 % in a 1280x720 window the Chat thread pane is nearly closed (the same Chat-tab issue as at 375 px).
+- **FU-241 Expert fields:** typed size, steps, seed, fps and model on the card, priced and validated by the backend, run as typed. Live check on the 4090 (throwaway backend, port 8911, stopped): LTX-2.5 clip at 1280x704 priced 184 s against 55 s at 768x512 (the model's frame rule turned 96 frames into 89). pytest, vitest (1941), i18n:validate and Playwright `15-chat-studio-tools` (6 tests) pass; screenshot `e2e/screenshots/chat-studio-expert.png` looked at.
+
+## 2026-11-19: rows 45 to 51 of the Windows pass (handover section 4)
+
+Live checks against a throwaway backend (own port, token, throwaway home, `HF_HUB_CACHE=E:\AI Models`, CUDA llama.cpp b12441 through `CHAOSENGINE_LLAMA_SERVER`), plus the Playwright specs behind each row (Chromium).
+
+| Row | Result | Evidence |
+|---|---|---|
+| 45 Server page, real GGUF load on CUDA | **PASS** (API and Playwright) | Qwen3-0.6B Q4_K_M loaded (llama.cpp, native KV), answered "Hello!", unloaded; `/api/server/events` held resolving, requested, loading, loaded, generation, idle, unloaded; the `loaded` event carries the `llama-server` command line. First token is not a separate event kind: it sits in the generation event. Playwright `31-server-activity` 6 of 6 (the Logs entry is gone; Activity timeline). |
+| 46 Show experimental tabs | **PASS in Chromium; the desktop app restart not run** | `40-experimental-tabs` 2 of 2 (Windows lists Prompts only, the switch adds Fine-Tuning and Plugins, the choice is remembered). Surviving a restart of the packaged app needs the Tauri window. |
+| 47 API key masking | **PASS in Chromium; Windows clipboard not run** | `39-key-masking` 2 of 2 (dots and last 4 until Reveal; Copy copies the real key to the page's clipboard). The desktop webview and the OS clipboard were not exercised. |
+| 48 GGUF routing from files on NTFS | **PASS** | An MLX-style folder named `Fake-gguf-mlx-model` is refused with "load it with the MLX backend instead", not sent to llama.cpp; a folder with only `config.json` is refused naming the missing weights; `Qwen3-UPPER.GGUF` (hard link, upper case) loads on llama.cpp. |
+| 49 `canonicalRepo` | **PASS** | A load with `canonicalRepo` set to another uploader's repo loaded the folder's own model (`canonicalRepo` read back as the folder's repo). The full `e2e_test_suite.py` already passed (phases 211 to 216 skipped for want of the Mac's models). |
+| 50 Benchmarks on CUDA | **PASS, one wording note** | Throughput on the GGUF: 494.8 tok/s. Cancel while loading: the run answers `cancelled: true`, "Nothing was saved. The model was unloaded.", the progress poll showed phase `loading` with its message. Perplexity and accuracy refuse cleanly (HTTP 400) with "not supported by the llama.cpp backend", which does not say "needs an MLX model" as the plan expects. |
+| 51 Smallest window and backend offline | **PASS in Chromium; Task Manager kill not run** | `32-backend-offline` 3 of 3 and `33-window-sizes` (1100x760, 1400x920, 375x812) pass. Killing the real backend from Task Manager in the packaged app was not done. |
+
+Test servers stopped (nothing listens on the test ports). Left for the packaged app: restart persistence (46), the OS clipboard (47), Task Manager kill (51).
+
+## 2026-11-19: Windows risks of handover section 3 (projects, paths, NTFS)
+
+Live against a throwaway backend (Storyboard projects), once in a short home folder and once in a home of 208 characters.
+
+| Risk | Result | Evidence |
+|---|---|---|
+| Non-ASCII project name | **PASS** | "Café 東京 ★ Ünïcode": created, exported to `exports/Café-東京-Ünïcode-<time>.chaosfilm`, imported again with the same name. |
+| Names differing only in case | **PASS** | "Harbour" and "HARBOUR" are two projects with different ids (folders are named by id, so NTFS case-folding cannot merge them). |
+| Long project name | **PASS** | A 118-character name works; the longest path was 113 characters in a short home. |
+| Paths over 260 characters | **FAIL, fixed** | `LongPathsEnabled` is 0 on this PC. With a 208-character home, creating a project answered HTTP 500 (`WinError 206`, raw OSError). It now answers HTTP 400 "The path to the project folder is too long for Windows (over 260 characters). Move the data folder closer to the drive root in Settings > Storage, or turn on Windows long paths." (`_http` in `routes/storyboard.py`, `tests/test_storyboard_path_errors.py`; confirmed live). Not done: other routes that write under the data folder may still show the raw error; the packaged app's manifest long-path setting was not checked. |
+| File lock while deleting a project | **PASS** | With a file held open in the project folder the delete answered 200 "The project was deleted, but 1 file(s) could not be removed (probably in use), for example held.bin", and a second delete after the file closed answered 404 (gone). |
+
+Test servers stopped; the temp folders under `E:	mp` are removed.
+
+## 2026-11-19: shown against real time on the 4090 (row 8, FU-165)
+
+One run per case through the app's own routes (`/api/images/generate`, `/api/video/generate`), seed 7, warm model; "shown" is the figure the plan card prices for the same settings (`/api/chat/studio/price`). The first case of each model includes the cold load and is not counted.
+
+| Case | Shown | Real | Error |
+|---|---|---|---|
+| FLUX.2 Klein 4B 512x512 | 4 s | 40.0 s (cold load) | not counted |
+| Klein 1024x1024 (twice) | 6 s | 6.8 s | shown 12 % low |
+| Klein 2048x2048 | 13 s | 21.4 s | shown 39 % low |
+| LTX-2.5 (4-bit) 768x512, 49 frames | 26 s | 120.0 s (cold load) | not counted |
+| LTX-2.5 768x512, 97 frames | 62 s | 61.3 s | shown 1 % high |
+| LTX-2.5 1024x576, 97 frames | 110 s | 90.0 s | shown 22 % high |
+| LTX-2.5 1280x704, 97 frames | 211 s | 158.1 s | shown 33 % high |
+
+Reading: the Klein figure is within the 20 % bar at 1024 and 39 % low at 2048, so its `quad` term is too small on CUDA; the LTX figure is exact at the reference size and 22 to 33 % high above it, so its `quad` term is too large (the Mac fit's `1e9`). Not changed: one run per case is not enough to refit `fixed` and `quad`, and the 49-frame case needs a warm repeat. Next: repeat each case three times warm, then set the constants per row and add the cases to `tests/fixtures/time_estimate_cases.json`. The new tier times (Final 1152x768, 3 min) inherit this error.

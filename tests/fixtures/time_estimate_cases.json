@@ -345,6 +345,253 @@
    "measured": 210.7,
    "tolerancePct": 20,
    "expected": 197.2
+  },
+  {
+   "name": "FLUX.2 Klein 4B on an RTX 4090, 512x512 (measured 4.65 s)",
+   "kind": "image",
+   "catalog": 6.9,
+   "ref": {
+    "width": 1024,
+    "height": 1024,
+    "frames": 1,
+    "steps": 4,
+    "fixed": 0.68,
+    "quad": 1000
+   },
+   "request": {
+    "width": 512,
+    "height": 512,
+    "frames": 1,
+    "steps": 4
+   },
+   "measured": 4.65,
+   "tolerancePct": 10,
+   "expected": 5.0
+  },
+  {
+   "name": "FLUX.2 Klein 4B on an RTX 4090, 768x768 (measured 5.45 s)",
+   "kind": "image",
+   "catalog": 6.9,
+   "ref": {
+    "width": 1024,
+    "height": 1024,
+    "frames": 1,
+    "steps": 4,
+    "fixed": 0.68,
+    "quad": 1000
+   },
+   "request": {
+    "width": 768,
+    "height": 768,
+    "frames": 1,
+    "steps": 4
+   },
+   "measured": 5.45,
+   "tolerancePct": 10,
+   "expected": 5.7
+  },
+  {
+   "name": "FLUX.2 Klein 4B on an RTX 4090, 1024x1024 (measured 6.86 s)",
+   "kind": "image",
+   "catalog": 6.9,
+   "ref": {
+    "width": 1024,
+    "height": 1024,
+    "frames": 1,
+    "steps": 4,
+    "fixed": 0.68,
+    "quad": 1000
+   },
+   "request": {
+    "width": 1024,
+    "height": 1024,
+    "frames": 1,
+    "steps": 4
+   },
+   "measured": 6.86,
+   "tolerancePct": 10,
+   "expected": 6.9
+  },
+  {
+   "name": "FLUX.2 Klein 4B on an RTX 4090, 1536x1536 (measured 11.75 s)",
+   "kind": "image",
+   "catalog": 6.9,
+   "ref": {
+    "width": 1024,
+    "height": 1024,
+    "frames": 1,
+    "steps": 4,
+    "fixed": 0.68,
+    "quad": 1000
+   },
+   "request": {
+    "width": 1536,
+    "height": 1536,
+    "frames": 1,
+    "steps": 4
+   },
+   "measured": 11.75,
+   "tolerancePct": 10,
+   "expected": 12.8
+  },
+  {
+   "name": "FLUX.2 Klein 4B on an RTX 4090, 2048x2048 (measured 27.3 s)",
+   "kind": "image",
+   "catalog": 6.9,
+   "ref": {
+    "width": 1024,
+    "height": 1024,
+    "frames": 1,
+    "steps": 4,
+    "fixed": 0.68,
+    "quad": 1000
+   },
+   "request": {
+    "width": 2048,
+    "height": 2048,
+    "frames": 1,
+    "steps": 4
+   },
+   "measured": 27.3,
+   "tolerancePct": 15,
+   "expected": 26.9
+  },
+  {
+   "name": "FLUX.2 Klein 4B on an RTX 4090, 1024x1024 at 8 steps (measured 8.57 s)",
+   "kind": "image",
+   "catalog": 6.9,
+   "ref": {
+    "width": 1024,
+    "height": 1024,
+    "frames": 1,
+    "steps": 4,
+    "fixed": 0.68,
+    "quad": 1000
+   },
+   "request": {
+    "width": 1024,
+    "height": 1024,
+    "frames": 1,
+    "steps": 8
+   },
+   "measured": 8.57,
+   "tolerancePct": 10,
+   "expected": 9.1
+  },
+  {
+   "name": "LTX-2.5 4-bit on an RTX 4090, 640x384x97 (measured 41.57 s)",
+   "kind": "video",
+   "catalog": 62.9,
+   "ref": {
+    "width": 768,
+    "height": 512,
+    "frames": 97,
+    "steps": 8,
+    "fixed": 0.47,
+    "quad": 3162,
+    "ignoresSteps": true
+   },
+   "request": {
+    "width": 640,
+    "height": 384,
+    "frames": 97,
+    "steps": 8
+   },
+   "measured": 41.57,
+   "tolerancePct": 10,
+   "expected": 43.2
+  },
+  {
+   "name": "LTX-2.5 4-bit on an RTX 4090, 768x512x49 (measured 36.5 s)",
+   "kind": "video",
+   "catalog": 62.9,
+   "ref": {
+    "width": 768,
+    "height": 512,
+    "frames": 97,
+    "steps": 8,
+    "fixed": 0.47,
+    "quad": 3162,
+    "ignoresSteps": true
+   },
+   "request": {
+    "width": 768,
+    "height": 512,
+    "frames": 49,
+    "steps": 8
+   },
+   "measured": 36.5,
+   "tolerancePct": 10,
+   "expected": 38.7
+  },
+  {
+   "name": "LTX-2.5 4-bit on an RTX 4090, 768x512x97 (measured 62.93 s)",
+   "kind": "video",
+   "catalog": 62.9,
+   "ref": {
+    "width": 768,
+    "height": 512,
+    "frames": 97,
+    "steps": 8,
+    "fixed": 0.47,
+    "quad": 3162,
+    "ignoresSteps": true
+   },
+   "request": {
+    "width": 768,
+    "height": 512,
+    "frames": 97,
+    "steps": 8
+   },
+   "measured": 62.93,
+   "tolerancePct": 10,
+   "expected": 62.9
+  },
+  {
+   "name": "LTX-2.5 4-bit on an RTX 4090, 1024x576x97 (measured 94.92 s)",
+   "kind": "video",
+   "catalog": 62.9,
+   "ref": {
+    "width": 768,
+    "height": 512,
+    "frames": 97,
+    "steps": 8,
+    "fixed": 0.47,
+    "quad": 3162,
+    "ignoresSteps": true
+   },
+   "request": {
+    "width": 1024,
+    "height": 576,
+    "frames": 97,
+    "steps": 8
+   },
+   "measured": 94.92,
+   "tolerancePct": 10,
+   "expected": 102.6
+  },
+  {
+   "name": "LTX-2.5 4-bit on an RTX 4090, 1280x704x97 (measured 214.55 s; runs 145 to 288 s)",
+   "kind": "video",
+   "catalog": 62.9,
+   "ref": {
+    "width": 768,
+    "height": 512,
+    "frames": 97,
+    "steps": 8,
+    "fixed": 0.47,
+    "quad": 3162,
+    "ignoresSteps": true
+   },
+   "request": {
+    "width": 1280,
+    "height": 704,
+    "frames": 97,
+    "steps": 8
+   },
+   "measured": 214.55,
+   "tolerancePct": 20,
+   "expected": 196.9
   }
  ]
 }

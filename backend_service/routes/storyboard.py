@@ -100,6 +100,11 @@ def _http(exc: Exception) -> HTTPException:
         return HTTPException(status_code=409, detail=str(exc))
     if isinstance(exc, (store_module.StoreError, MediaError, ValueError)):
         return HTTPException(status_code=400, detail=str(exc))
+    if isinstance(exc, OSError) and getattr(exc, "winerror", None) in (3, 206):
+        # Windows stops a path at 260 characters unless long paths are on (WinError 3 and 206): say so, not a 500.
+        return HTTPException(status_code=400, detail=(
+            "The path to the project folder is too long for Windows (over 260 characters). Move the data folder "
+            "closer to the drive root in Settings > Storage, or turn on Windows long paths."))
     raise exc
 
 

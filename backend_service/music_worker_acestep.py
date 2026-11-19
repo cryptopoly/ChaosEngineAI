@@ -5,8 +5,8 @@ and nothing heavy until ``load``. On MLX it applies the three memory settings fr
 via the environment, a 2 GB MLX cache limit, dropping the torch copy of the DiT decoder once MLX runs it)
 and reports real diffusion steps by wrapping the pinned private name ``acestep.models.mlx.dit_generate.tqdm``.
 On CUDA (FU-139) the DiT runs in PyTorch bf16 with no ``tqdm`` in its loop, so steps come from forward hooks
-on ``handler.model.decoder`` (one decoder call per ODE step); everything stays on the GPU at 20 GB of VRAM or
-more and ACE-Step's own CPU offload is used below that. Either hook cancels by raising; an unexpected layout
+on ``handler.model.decoder`` (one decoder call per ODE step); everything stays on the GPU when enough VRAM is free
+for the model (``CUDA_FULL_GPU_NEED_GB``) and ACE-Step's own CPU offload is used otherwise. Either hook cancels by raising; an unexpected layout
 leaves stage-only progress, never a crash. FLAC 24-bit 48 kHz is written here from the returned tensor.
 """
 
@@ -22,8 +22,19 @@ from typing import Any, Callable
 STEP_HOOK_MODULE = "acestep.models.mlx.dit_generate"
 MLX_CACHE_LIMIT_BYTES = 2 * 1024 ** 3
 SAMPLE_RATE = 48_000
-# ACE-Step's own GPU tiers keep everything on the card from 20 GB (gpu_config.py, tier "20-24GB").
-CUDA_NO_OFFLOAD_MIN_GB = 20.0
+# Free VRAM a model needs to keep the DiT, text encoder and VAE on the card together (measured on the 4090:
+# turbo peaks at 8.6 GB reserved; XL holds 11.5 GB once loaded, plus activations). Below it, ACE-Step's own CPU
+# offload moves the text encoder and VAE off the card between uses; the DiT stays on it.
+CUDA_FULL_GPU_NEED_GB = {"acestep-v15-turbo": 10.0, "acestep-v15-xl-turbo": 16.0}
+CUDA_DEFAULT_NEED_GB = 20.0
+
+
+def cuda_offload(model: str, free_gb: float, forced: str = "") -> bool:
+    """True when the model should load with CPU offload: forced by the setting, or too little free VRAM now."""
+    forced = forced.strip().lower()
+    if forced:
+        return forced in ("1", "true", "yes")
+    return free_gb < CUDA_FULL_GPU_NEED_GB.get(model, CUDA_DEFAULT_NEED_GB)
 # The worker runs in its own process and imports nothing from the backend, so this sentence is a copy of
 # ``music_env.UNSUPPORTED_PLATFORM_REASON``; tests/test_music_worker.py keeps the two equal.
 UNSUPPORTED_PLATFORM_REASON = (
@@ -200,9 +211,9 @@ class AceStepEngine:
         from acestep.handler import AceStepHandler
         from acestep.llm_inference import LLMHandler
 
-        total_gb = torch.cuda.get_device_properties(0).total_memory / 1024 ** 3
-        forced = os.environ.get("CHAOSENGINE_MUSIC_OFFLOAD", "").strip().lower()
-        self.offload = forced in ("1", "true", "yes") if forced else total_gb < CUDA_NO_OFFLOAD_MIN_GB
+        # Free, not total: other apps (or another model) may already hold part of the card.
+        free_gb = torch.cuda.mem_get_info()[0] / 1e9
+        self.offload = cuda_offload(model, free_gb, os.environ.get("CHAOSENGINE_MUSIC_OFFLOAD", ""))
         handler = AceStepHandler()
         status, ok = handler.initialize_service(
             project_root=str(self.data_dir), config_path=model, device="cuda", use_mlx_dit=False,
@@ -210,6 +221,10 @@ class AceStepEngine:
         )
         if not ok:
             raise RuntimeError(f"ACE-Step could not load {model}: {str(status)[:400]}")
+        # Loading leaves several GB cached in torch's allocator (XL: 10 GB allocated, 21 GB held), and ACE-Step's
+        # pre-flight reads the driver's free VRAM, so it refused every XL run until the cache was handed back.
+        gc.collect()
+        torch.cuda.empty_cache()
         self.decoder_dropped = False
         self.step_hook = getattr(getattr(handler, "model", None), "decoder", None) is not None
         llm = LLMHandler()
@@ -230,6 +245,7 @@ class AceStepEngine:
             "gpu": torch.cuda.get_device_name(0),
             "dtype": str(getattr(handler, "dtype", "")).replace("torch.", ""),
             "offload": self.offload,
+            "free_vram_before_gb": round(free_gb, 2),
             "vram_gb": round(torch.cuda.memory_reserved() / 1e9, 2),
         }
 

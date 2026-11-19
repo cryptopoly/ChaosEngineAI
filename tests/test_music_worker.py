@@ -232,6 +232,19 @@ class EngineUnavailableTests(unittest.TestCase):
                 self.assertIn("'torch' is missing", engine.unavailable_reason())
 
 
+class CudaOffloadTests(unittest.TestCase):
+    def test_offload_follows_free_vram_per_model_and_the_setting(self) -> None:
+        offload = music_worker_acestep.cuda_offload
+        self.assertFalse(offload("acestep-v15-turbo", 22.0))
+        self.assertFalse(offload("acestep-v15-turbo", 11.5))
+        self.assertTrue(offload("acestep-v15-turbo", 6.0))
+        self.assertFalse(offload("acestep-v15-xl-turbo", 22.0))
+        self.assertTrue(offload("acestep-v15-xl-turbo", 12.0))  # another app holds half the card
+        self.assertTrue(offload("some-new-model", 18.0))
+        self.assertTrue(offload("acestep-v15-turbo", 22.0, "1"))
+        self.assertFalse(offload("acestep-v15-xl-turbo", 2.0, "0"))
+
+
 class DecoderHookTests(unittest.TestCase):
     """FU-139: progress and cancel on the CUDA path come from forward hooks on the torch DiT decoder."""
 

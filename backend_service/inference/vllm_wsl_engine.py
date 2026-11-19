@@ -51,6 +51,7 @@ from backend_service.inference._utils import (
     _http_json,
     _normalize_message_content,
     _now_label,
+    _read_log_with_root_cause,
     _read_text_tail,
 )
 from backend_service.inference.base import (
@@ -245,7 +246,7 @@ class VllmWslEngine(BaseInferenceEngine):
         last_error = "vLLM (WSL) did not become ready."
         while time.time() < deadline:
             if self.process is not None and self.process.poll() is not None:
-                logs = _read_text_tail(self.log_path)
+                logs = _read_log_with_root_cause(self.log_path)
                 raise RuntimeError(logs or "vLLM (WSL) exited during startup.")
             try:
                 _http_json(self._server_url("/v1/models"), timeout=2.0)
@@ -253,7 +254,7 @@ class VllmWslEngine(BaseInferenceEngine):
             except Exception as exc:  # noqa: BLE001 — best-effort poll
                 last_error = str(exc)
             time.sleep(1.0)
-        logs = _read_text_tail(self.log_path)
+        logs = _read_log_with_root_cause(self.log_path)
         raise RuntimeError(logs if logs else last_error)
 
     # ------------------------------------------------------------------

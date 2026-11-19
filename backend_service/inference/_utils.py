@@ -58,6 +58,46 @@ def _read_text_tail(path: Path | None, limit: int = 40) -> str:
     return "\n".join(lines[-limit:])
 
 
+_FATAL_LOG_PATTERNS = re.compile(
+    r"fatal error:|Failed to find C compiler|No such file or directory"
+    r"|CUDA out of memory|\b\w*Error: ",
+)
+
+
+def _read_log_with_root_cause(
+    path: Path | None, limit: int = 40, max_causes: int = 3
+) -> str:
+    """Tail a log, led by the first lines that look like the root cause.
+
+    Engine start-up failures end in a generic line ("Engine core
+    initialization failed") with the real reason many lines above, past
+    the tail. Put up to ``max_causes`` earliest fatal-looking lines first,
+    then the usual tail. With no match this is exactly ``_read_text_tail``.
+    """
+    tail = _read_text_tail(path, limit)
+    if not tail or path is None:
+        return tail
+    try:
+        lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
+    except OSError:
+        return tail
+    causes: list[str] = []
+    for line in lines:
+        text = line.strip()
+        if (
+            text
+            and _FATAL_LOG_PATTERNS.search(text)
+            and "initialization failed" not in text
+            and text not in causes
+        ):
+            causes.append(text)
+            if len(causes) >= max_causes:
+                break
+    if not causes:
+        return tail
+    return "Likely cause:\n" + "\n".join(causes) + "\n\nLog tail:\n" + tail
+
+
 def _append_runtime_note(existing: str | None, extra: str) -> str:
     """Append ``extra`` to ``existing``, deduping if it's already present."""
     if not existing:

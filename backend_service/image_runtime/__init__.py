@@ -66,6 +66,8 @@ from backend_service.image_runtime.pipeline_helpers import (
     format_run_label,
 )
 from backend_service.image_runtime.transformer_loaders import (
+    cpu_offload_note,
+    cuda_total_vram_gb,
     detect_device,
     maybe_enable_fp8_layerwise,
     preferred_execution_device,
@@ -257,6 +259,7 @@ class DiffusersTextToImageEngine:
                 nunchaku_repo=config.nunchakuRepo,
                 nunchaku_file=config.nunchakuFile,
                 fp8_layerwise_casting=config.fp8LayerwiseCasting,
+                full_gpu_footprint_gb=config.fullGpuFootprintGb,
             )
             # Early-cancel check: the load phase is blocking (from_pretrained
             # is a C-extension call we can't interrupt), so if the user hit
@@ -551,6 +554,7 @@ class DiffusersTextToImageEngine:
         nunchaku_repo: str | None = None,
         nunchaku_file: str | None = None,
         fp8_layerwise_casting: bool = False,
+        full_gpu_footprint_gb: float | None = None,
     ) -> Any:
         with self._lock:
             # Variant key folds LoRA identity in too — switching LoRAs
@@ -602,7 +606,16 @@ class DiffusersTextToImageEngine:
                 torch, repo, device,
                 sdxl_vae_fix_available=sdxl_vae_fix_path is not None,
             )
-            use_cpu_offload = self._should_use_model_cpu_offload(repo, device)
+            # FLUX on CUDA: offload unless the card clearly holds the whole
+            # pipeline (total VRAM against the variant's full-GPU footprint).
+            vram_total_gb: float | None = None
+            if device == "cuda" and full_gpu_footprint_gb and _is_flux_repo(repo):
+                vram_total_gb = cuda_total_vram_gb(torch)
+            use_cpu_offload = self._should_use_model_cpu_offload(
+                repo, device,
+                vram_total_gb=vram_total_gb,
+                footprint_gb=full_gpu_footprint_gb,
+            )
             # Clear load notes on each pipeline (re)load so stale entries
             # from a previously-loaded model don't bleed into new outputs.
             self._load_notes = []
@@ -655,7 +668,23 @@ class DiffusersTextToImageEngine:
                 if quantized_transformer is not None:
                     pipeline_kwargs["transformer"] = quantized_transformer
                 if nunchaku_note:
+                    self._load_notes.append(nunchaku_note)
                     IMAGE_PROGRESS.set_phase(PHASE_LOADING, message=nunchaku_note)
+            # The footprint describes the variant's quantized transformer. If
+            # that transformer did not load, the bf16 one takes its place and
+            # the footprint no longer holds: go back to offload (and NF4).
+            if (
+                not use_cpu_offload
+                and (gguf_file or nunchaku_repo)
+                and "transformer" not in pipeline_kwargs
+            ):
+                vram_total_gb = None
+                use_cpu_offload = self._should_use_model_cpu_offload(repo, device)
+            offload_note = cpu_offload_note(
+                vram_total_gb, full_gpu_footprint_gb, use_cpu_offload,
+            )
+            if offload_note:
+                self._load_notes.append(offload_note)
             if (
                 "transformer" not in pipeline_kwargs
                 and device == "mps"
@@ -801,14 +830,15 @@ class DiffusersTextToImageEngine:
                     )
 
             if use_cpu_offload:
-                # Diffusers' stock recipe for FLUX on <32 GB VRAM: keep only
+                # Diffusers' stock recipe for FLUX on a card too small for the
+                # whole pipeline (see should_use_model_cpu_offload): keep only
                 # the active component (T5, then transformer, then VAE) on
                 # GPU, transferring at component boundaries. Do NOT combine
                 # with attention/VAE slicing or .to(device) — slicing issues
                 # many tiny kernel launches that saturate PCIe when the
                 # active weights are already being DMA'd in, and .to(device)
-                # would pin all 33 GB of FLUX weights in VRAM at once
-                # (exceeds even a 4090) causing fallback-to-pagefile thrash.
+                # would pin all of FLUX's weights in VRAM at once (33 GB in
+                # bf16, more than a 4090) causing fallback-to-pagefile thrash.
                 # Real-world signature of doing it wrong: GPU at 97% util
                 # but step 0/8 never completing.
                 pipeline.enable_model_cpu_offload()
@@ -893,8 +923,14 @@ class DiffusersTextToImageEngine:
     ) -> tuple[Any, str | None]:
         return try_load_gguf_transformer(repo, gguf_repo, gguf_file, torch)
 
-    def _should_use_model_cpu_offload(self, repo: str, device: str) -> bool:
-        return should_use_model_cpu_offload(repo, device)
+    def _should_use_model_cpu_offload(
+        self,
+        repo: str,
+        device: str,
+        vram_total_gb: float | None = None,
+        footprint_gb: float | None = None,
+    ) -> bool:
+        return should_use_model_cpu_offload(repo, device, vram_total_gb, footprint_gb)
 
     def _build_pipeline_kwargs(self, config: ImageGenerationConfig, generator: Any) -> dict[str, Any]:
         return build_pipeline_kwargs(config, generator, self._pipeline)

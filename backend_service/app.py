@@ -492,6 +492,13 @@ def _generate_image_artifacts(
             # request rather than the catalog so users can experiment
             # without the catalog committing to fp8 readiness per repo.
             fp8LayerwiseCasting=request.fp8LayerwiseCasting,
+            # Whole-pipeline VRAM for this variant: lets FLUX skip CPU
+            # offload on a card that clearly holds it.
+            fullGpuFootprintGb=(
+                float(variant["fullGpuFootprintGb"])
+                if isinstance(variant.get("fullGpuFootprintGb"), (int, float))
+                else None
+            ),
         )
     )
     created_at = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"

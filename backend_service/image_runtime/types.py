@@ -151,6 +151,10 @@ class ImageGenerationConfig:
     # GPUs — the helper guards before invoking. Defaults off so users
     # opt-in once their hardware is confirmed.
     fp8LayerwiseCasting: bool = False
+    # VRAM (GB) the whole diffusers pipeline needs to sit on one CUDA card,
+    # from the catalog's ``fullGpuFootprintGb``. FLUX skips CPU offload when
+    # the card clearly holds it; ``None`` keeps offload on.
+    fullGpuFootprintGb: float | None = None
 
 
 @dataclass(frozen=True)

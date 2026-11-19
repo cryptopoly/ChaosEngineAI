@@ -25,6 +25,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["photoreal", "general", "fast"],
                 "taskSupport": ["txt2img"],
                 "sizeGb": 23.7,
+                "fullGpuFootprintGb": 38.0,  # 23.8 GB bf16 transformer + 9.9 GB T5 / CLIP-L / VAE + 4.5 GB activations and buffers (the overhead measured on the Nunchaku row)
                 "recommendedResolution": "1024x1024",
                 "note": "Fastest concepting option in the curated image catalog.",
                 "estimatedGenerationSeconds": 4.2,
@@ -43,6 +44,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["photoreal", "general", "fast", "gguf"],
                 "taskSupport": ["txt2img"],
                 "sizeGb": 6.8,
+                "fullGpuFootprintGb": 21.0,  # 6.8 GB GGUF + 9.9 GB T5 / CLIP-L / VAE + 4.5 GB overhead (estimated like the Nunchaku row)
                 "recommendedResolution": "1024x1024",
                 "note": "GGUF Q4_K_S — quantizes the FLUX transformer; the full diffusers pipeline still carries the base text encoders/VAE in memory.",
                 "estimatedGenerationSeconds": 5.2,
@@ -61,6 +63,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["photoreal", "general", "quality", "gguf"],
                 "taskSupport": ["txt2img"],
                 "sizeGb": 12.7,
+                "fullGpuFootprintGb": 27.0,  # 12.7 GB GGUF + 9.9 GB T5 / CLIP-L / VAE + 4.5 GB overhead (estimated)
                 "recommendedResolution": "1024x1024",
                 "note": "GGUF Q8_0 — near-bf16 transformer quality; text encoders/VAE still make the full FLUX runtime memory-heavy.",
                 "estimatedGenerationSeconds": 4.8,
@@ -137,6 +140,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["general", "fast", "cuda", "int4"],
                 "taskSupport": ["txt2img"],
                 "sizeGb": 6.7,
+                "fullGpuFootprintGb": 21.0,  # measured 2026-11: 22.7 GB peak fully on a 24 GB RTX 4090, about 1.6 GB of it the desktop
                 "recommendedResolution": "1024x1024",
                 "note": (
                     "Nunchaku SVDQuant INT4 — sub-second 4-step gen on a "
@@ -168,6 +172,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["general", "detailed", "balanced"],
                 "taskSupport": ["txt2img"],
                 "sizeGb": 23.8,
+                "fullGpuFootprintGb": 38.0,  # 23.8 GB bf16 transformer + 9.9 GB T5 / CLIP-L / VAE + 4.5 GB activations and buffers (the overhead measured on the Nunchaku row)
                 "recommendedResolution": "1024x1024",
                 "note": "Quality-oriented generalist for the curated image lineup.",
                 "estimatedGenerationSeconds": 7.4,
@@ -186,6 +191,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["general", "detailed", "gguf"],
                 "taskSupport": ["txt2img"],
                 "sizeGb": 6.8,
+                "fullGpuFootprintGb": 21.0,  # 6.8 GB GGUF + 9.9 GB T5 / CLIP-L / VAE + 4.5 GB overhead (estimated)
                 "recommendedResolution": "1024x1024",
                 "note": "GGUF Q4_K_S — quantizes the FLUX Dev transformer; expect the full diffusers pipeline to remain memory-heavy from text encoders/VAE.",
                 "estimatedGenerationSeconds": 9.0,
@@ -204,6 +210,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["general", "detailed", "quality", "gguf"],
                 "taskSupport": ["txt2img"],
                 "sizeGb": 9.9,
+                "fullGpuFootprintGb": 25.0,  # 9.9 GB GGUF + 9.9 GB T5 / CLIP-L / VAE + 4.5 GB overhead (estimated)
                 "recommendedResolution": "1024x1024",
                 "note": "GGUF Q6_K — mid-point between Q4 size and Q8 transformer quality; FLUX text encoders/VAE still dominate runtime memory.",
                 "estimatedGenerationSeconds": 8.4,
@@ -222,6 +229,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["general", "detailed", "quality", "gguf"],
                 "taskSupport": ["txt2img"],
                 "sizeGb": 12.7,
+                "fullGpuFootprintGb": 27.0,  # 12.7 GB GGUF + 9.9 GB T5 / CLIP-L / VAE + 4.5 GB overhead (estimated)
                 "recommendedResolution": "1024x1024",
                 "note": "GGUF Q8_0 — near-bf16 transformer quality; text encoders/VAE still make the full FLUX runtime memory-heavy.",
                 "estimatedGenerationSeconds": 7.8,
@@ -299,6 +307,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["general", "detailed", "fast", "lora"],
                 "taskSupport": ["txt2img"],
                 "sizeGb": 23.8,
+                "fullGpuFootprintGb": 38.0,  # bf16 FLUX.1 Dev with the LoRA fused in, same as the base row
                 "recommendedResolution": "1024x1024",
                 "note": (
                     "8-step Hyper-SD distillation LoRA fused into FLUX.1 Dev. "
@@ -324,6 +333,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["general", "detailed", "fast", "lora"],
                 "taskSupport": ["txt2img"],
                 "sizeGb": 23.8,
+                "fullGpuFootprintGb": 38.0,  # bf16 FLUX.1 Dev with the LoRA fused in, same as the base row
                 "recommendedResolution": "1024x1024",
                 "note": (
                     "alimama's 8-step Turbo Alpha LoRA fused into FLUX.1 Dev. "
@@ -351,6 +361,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["general", "detailed", "fast", "cuda", "int4"],
                 "taskSupport": ["txt2img"],
                 "sizeGb": 6.7,
+                "fullGpuFootprintGb": 21.0,  # same INT4 transformer size and T5 as the measured Schnell row
                 "recommendedResolution": "1024x1024",
                 "note": (
                     "Nunchaku SVDQuant INT4 — ~3× over NF4 on FLUX.1-dev, "
@@ -712,6 +723,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "styleTags": ["photoreal", "general", "fast"],
                 "taskSupport": ["txt2img"],
                 "sizeGb": 16.0,
+                "fullGpuFootprintGb": 20.0,  # 16 GB of bf16 weights (sizeGb) + about 4 GB activations and buffers (estimated)
                 "recommendedResolution": "1024x1024",
                 "note": "Distilled 4B FLUX.2 — the accessible entry point, fits consumer GPUs and 32 GB Macs.",
                 "estimatedGenerationSeconds": 5.5,

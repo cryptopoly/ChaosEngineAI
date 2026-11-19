@@ -388,3 +388,44 @@ class PinnedDrafterTests(unittest.TestCase):
             args, ["--model-draft", str(drafter), "--spec-type", "draft-dflash", "--spec-draft-n-max", "15"]
         )
         self.assertIn("drafter.gguf", note or "")
+
+
+_GEMMA12_REPO = "google/gemma-4-12B-it-qat-q4_0-gguf"
+
+
+class GemmaMtpDrafterTests(unittest.TestCase):
+    """Google ships no GGUF drafter for its QAT Gemma 4 (the ``-assistant`` repos are safetensors);
+    Unsloth's ``mtp-`` GGUF of the 12B assistant ran against it on llama.cpp b12441 (2026-11-19)."""
+
+    def test_the_12b_qat_row_is_paired_with_the_unsloth_mtp_gguf(self) -> None:
+        self.assertEqual(
+            text_gguf.pinned_drafter(_GEMMA12_REPO),
+            ("unsloth/gemma-4-12B-it-GGUF", "mtp-gemma-4-12b-it.gguf", "draft-mtp"),
+        )
+
+    def test_the_drafter_downloads_beside_the_model(self) -> None:
+        from backend_service.helpers.companions import companion_downloads
+
+        self.assertEqual(
+            companion_downloads(_GEMMA12_REPO),
+            [("unsloth/gemma-4-12B-it-GGUF", ["mtp-gemma-4-12b-it.gguf"])],
+        )
+
+    def test_the_engine_runs_it_as_draft_mtp_with_two_tokens(self) -> None:
+        from backend_service.inference import llama_cpp_engine
+
+        with tempfile.TemporaryDirectory() as tmp:
+            model = _write(Path(tmp) / "gemma-4-12b-it-qat-q4_0.gguf", 8)
+            drafter = _write(Path(tmp) / "mtp-gemma-4-12b-it.gguf", 8)
+            with (
+                mock.patch("backend_service.inference.llama_cpp_engine._llama_server_supports", return_value=True),
+                mock.patch("backend_service.inference._mtp.model_has_mtp_tensors", return_value=False),
+                mock.patch(
+                    "backend_service.helpers.text_gguf.resolve_pinned_drafter",
+                    return_value=("draft-mtp", str(drafter)),
+                ),
+            ):
+                args, _note = llama_cpp_engine._speculative_args(
+                    "llama-server", resolved_gguf=str(model), path=str(model), repo=_GEMMA12_REPO
+                )
+        self.assertEqual(args, ["--model-draft", str(drafter), "--spec-type", "draft-mtp", "--spec-draft-n-max", "2"])

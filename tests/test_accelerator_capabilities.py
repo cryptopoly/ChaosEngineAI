@@ -147,6 +147,55 @@ class DflashAvailabilityTests(unittest.TestCase):
             self.assertIsNone(accelerators.dflash_cuda_version())
 
 
+class DflashViaWslTests(unittest.TestCase):
+    """DFlash is served over the WSL bridge by the vLLM inside WSL, so that version decides the Boost Pack row."""
+
+    def test_new_enough_wsl_vllm_counts(self):
+        self.assertTrue(accelerators.dflash_cuda_via_wsl("0.34.0"))
+        self.assertTrue(accelerators.dflash_cuda_via_wsl("0.28.0"))
+        self.assertTrue(accelerators.dflash_cuda_via_wsl("1.0.1.dev3+g1234"))
+
+    def test_old_missing_or_unparseable_wsl_vllm_does_not(self):
+        self.assertFalse(accelerators.dflash_cuda_via_wsl("0.27.9"))
+        self.assertFalse(accelerators.dflash_cuda_via_wsl("0.21.0"))
+        self.assertFalse(accelerators.dflash_cuda_via_wsl(None))
+        self.assertFalse(accelerators.dflash_cuda_via_wsl(""))
+        self.assertFalse(accelerators.dflash_cuda_via_wsl("unknown"))
+
+    def _probe(self, wsl_version, windows_dflash=False):
+        from backend_service.inference import capabilities
+
+        with patch.object(capabilities, "_json_subprocess", return_value=(0, {"mlxUsable": False}, "")), \
+                patch.object(capabilities, "_resolve_llama_server", return_value=None), \
+                patch.object(capabilities, "_resolve_llama_server_turbo", return_value=None), \
+                patch.object(capabilities, "_resolve_llama_cli", return_value=None), \
+                patch.object(capabilities, "dflash_cuda_available", return_value=windows_dflash), \
+                patch.object(capabilities, "dflash_cuda_version", return_value="0.30.0" if windows_dflash else None), \
+                patch.object(capabilities, "wsl2_available", return_value=True), \
+                patch.object(capabilities, "wsl_default_distro", return_value="Ubuntu-26.04"), \
+                patch.object(capabilities, "wsl_cuda_available", return_value=True), \
+                patch.object(capabilities, "wsl_vllm_available", return_value=wsl_version is not None), \
+                patch.object(capabilities, "wsl_vllm_version", return_value=wsl_version):
+            return capabilities._probe_native_backends()
+
+    def test_the_boost_pack_row_reads_installed_through_wsl(self):
+        caps = self._probe("0.34.0")
+        self.assertTrue(caps.dflashCudaAvailable)
+        self.assertEqual(caps.dflashCudaVersion, "0.34.0")
+        self.assertTrue(caps.wslVllmAvailable)
+
+    def test_old_or_missing_wsl_vllm_leaves_the_row_not_installed(self):
+        self.assertFalse(self._probe("0.21.0").dflashCudaAvailable)
+        caps = self._probe(None)
+        self.assertFalse(caps.dflashCudaAvailable)
+        self.assertIsNone(caps.dflashCudaVersion)
+
+    def test_a_native_vllm_still_wins_its_own_version(self):
+        caps = self._probe("0.34.0", windows_dflash=True)
+        self.assertTrue(caps.dflashCudaAvailable)
+        self.assertEqual(caps.dflashCudaVersion, "0.30.0")
+
+
 class Wsl2AvailableTests(unittest.TestCase):
     def test_returns_false_off_windows(self):
         with patch.object(accelerators.sys, "platform", "linux"):

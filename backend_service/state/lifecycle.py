@@ -79,6 +79,30 @@ def align_model_ref_with_path(state: ChaosEngineState, request: LoadModelRequest
     return request.model_copy(update={"modelRef": replacement, "modelName": model_name})
 
 
+def library_dir_for_vllm(library_entry: dict[str, Any] | None) -> str | None:
+    """Folder of a downloaded safetensors model, for vLLM to load instead of fetching the repo again.
+
+    vLLM given a repo id downloads it into its own cache (inside WSL on Windows, about 10x slower
+    to fill than reading the files already on the Windows drive). A Hugging Face cache folder is
+    resolved to its newest snapshot, which is where ``config.json`` lives. ``None`` when the entry
+    is missing, a GGUF, or not a folder with a ``config.json``.
+    """
+    if library_entry is None or library_entry.get("broken") or library_entry.get("format") == "GGUF":
+        return None
+    raw = str(library_entry.get("path") or "").strip()
+    if not raw:
+        return None
+    try:
+        from backend_service.inference.conversion import _resolve_local_model_dir
+
+        folder = _resolve_local_model_dir(raw)
+        if (Path(folder).expanduser() / "config.json").is_file():
+            return folder
+    except OSError:
+        pass
+    return None
+
+
 def load_model(
     state: ChaosEngineState,
     request: LoadModelRequest,
@@ -172,6 +196,13 @@ def load_model(
             backend=request.backend,
         )
         display_name = model_name or request.modelRef
+        # A repo-id load on vLLM re-downloads the model into vLLM's own cache even when the library
+        # already holds it on disk: hand the engine the library folder instead.
+        load_path = request.path
+        if resolved_backend == "vllm" and not has_path:
+            load_path = library_dir_for_vllm(library_entry) or request.path
+            if load_path != request.path:
+                state.add_log("runtime", "info", f"vLLM loads {display_name} from the library folder {load_path}.")
         speculative_decoding = bool(getattr(request, "speculativeDecoding", False))
         tree_budget = int(getattr(request, "treeBudget", 0) or 0)
 
@@ -315,7 +346,7 @@ def load_model(
                 canonical_repo=effective_canonical_repo,
                 source=request.source,
                 backend=resolved_backend,
-                path=request.path,
+                path=load_path,
                 runtime_target=runtime_target,
                 cache_strategy=effective_cache_strategy,
                 cache_bits=effective_cache_bits,

@@ -19,7 +19,7 @@ import type { NativeBackendStatus } from "../../types/server";
  * panel makes the install one click: behind the scenes it spawns a
  * background job that creates an isolated venv inside the user's
  * default WSL distro at ``~/.chaosengine/vllm-venv``, pip-installs
- * vllm (~2 GB), and verifies the import works.
+ * vllm (~9 GB), and verifies the import works.
  *
  * Five state buckets:
  *
@@ -296,7 +296,7 @@ export function WslBridgePanel({ backendOnline }: WslBridgePanelProps) {
           })
           : t("wslBridgePanel.readySummary", {
             distro,
-            defaultValue: "WSL2 ({distro}) + CUDA passthrough are ready. Install vLLM into an isolated venv at ~/.chaosengine/vllm-venv (~2 GB download, ~5-15 min on a warm box).",
+            defaultValue: "WSL2 ({distro}) + CUDA passthrough are ready. Install vLLM into an isolated venv at ~/.chaosengine/vllm-venv (about 9 GB download, 10-15 min).",
           })}
       </p>
       <div className="button-row" style={{ marginTop: 10 }}>

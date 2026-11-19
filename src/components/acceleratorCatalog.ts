@@ -24,8 +24,8 @@
  *     FOLLOW_UPS.md FU rows that registered each package.
  *   - ``installMode`` — ``"sync"`` for ~5 min installs that we can hold
  *     a single HTTP call open for; ``"async"`` for the >5 min builds
- *     (triattention compiles flash-attn from source; vLLM ships a
- *     ~2 GB wheel) that need the background-job + poll-status shape.
+ *     (triattention compiles flash-attn from source; vLLM with its CUDA
+ *     torch is ~9 GB) that need the background-job + poll-status shape.
  *   - ``platformGate`` — when set, the affordance hides on platforms
  *     where the accelerator can't run at all (e.g. dflash-mlx on
  *     Windows, vLLM native on macOS). Diagnostic surfaces that show
@@ -134,7 +134,9 @@ export const ACCELERATOR_CATALOG: ReadonlyArray<AcceleratorMeta> = [
     versionField: "dflashCudaVersion",
     speedupClaim: "≈1.5-2× tokens/sec on Qwen3.x and DeepSeek chat models",
     appliesTo: "CUDA — any LLM with a registered draft model",
-    sizeOnDiskLabel: "~2 GB (vLLM 0.28+)",
+    // vLLM has no Windows build: on Windows it is installed into WSL2 (Boost Pack), which the bridge serves
+    // DFlash from. The WSL venv measured 9.4 GB (RTX 4090, 2026-11-19: CUDA torch, flashinfer, triton).
+    sizeOnDiskLabel: "~9 GB (vLLM 0.28+; in WSL2 on Windows)",
     installMode: "async",
     platformGate: "cuda",
     followUp: "FU-048",
@@ -155,7 +157,9 @@ export const ACCELERATOR_CATALOG: ReadonlyArray<AcceleratorMeta> = [
     // app's vLLM is newer) and needs a per-model stats file.
     speedupClaim: "Real-time long Wan video; chat KV compression only on vLLM 0.18 or older",
     appliesTo: "Wan 2.1 1.3B (LongLive), long generations with a per-model stats file",
-    sizeOnDiskLabel: "~2 GB (pulls vllm)",
+    // Pulls vLLM (about 9 GB with CUDA torch, measured in the WSL venv) and needs triton, which has no Windows
+    // build: it installs on Linux or inside WSL2, not on native Windows (see ``_WINDOWS_UNSUPPORTED``).
+    sizeOnDiskLabel: "~9 GB (pulls vllm; Linux or WSL2 only)",
     installMode: "async",
     platformGate: "cuda",
     followUp: "FU-003 / FU-002",

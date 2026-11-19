@@ -1448,7 +1448,7 @@
     "reinstall": "Réinstaller vLLM dans WSL",
     "install": "Installer vLLM dans WSL",
     "installedSummary": "vLLM {version} est installé dans {distro} à l'emplacement ~/.chaosengine/vllm-venv. L'application de bureau peut acheminer les chargements de modèles vLLM via ce venv.",
-    "readySummary": "WSL2 ({distro}) + le passage de CUDA sont prêts. Installez vLLM dans un venv isolé à l'emplacement ~/.chaosengine/vllm-venv (~2 Go à télécharger, ~5-15 min sur une machine aux caches déjà chauds)."
+    "readySummary": "WSL2 ({distro}) + le passage de CUDA sont prêts. Installez vLLM dans un venv isolé à l'emplacement ~/.chaosengine/vllm-venv (environ 9 Go à télécharger, 10-15 min)."
   },
   "acceleratorsBoostPack": {
     "installFailed": "La commande d'installation s'est terminée avec un code d'erreur.",

@@ -1448,7 +1448,7 @@
     "reinstall": "在 WSL 中重新安装 vLLM",
     "install": "在 WSL 中安装 vLLM",
     "installedSummary": "vLLM {version} 已安装在 {distro} 的 ~/.chaosengine/vllm-venv 中。桌面应用可以通过此 venv 加载 vLLM 模型。",
-    "readySummary": "WSL2（{distro}）和 CUDA 直通已就绪。将把 vLLM 安装到 ~/.chaosengine/vllm-venv 的独立 venv 中（约 2 GB 下载，一般环境下约 5-15 分钟）。"
+    "readySummary": "WSL2（{distro}）和 CUDA 直通已就绪。将把 vLLM 安装到 ~/.chaosengine/vllm-venv 的独立 venv 中（下载约 9 GB，约需 10-15 分钟）。"
   },
   "acceleratorsBoostPack": {
     "installFailed": "安装命令以非零状态退出。",

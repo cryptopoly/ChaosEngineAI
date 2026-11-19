@@ -1448,7 +1448,7 @@
     "reinstall": "WSL에 vLLM 재설치",
     "install": "WSL에 vLLM 설치",
     "installedSummary": "vLLM {version}이(가) {distro}의 ~/.chaosengine/vllm-venv에 설치되어 있습니다. 데스크톱 앱은 이 venv를 통해 vLLM 모델을 로드할 수 있습니다.",
-    "readySummary": "WSL2({distro})와 CUDA 패스스루가 준비되었습니다. ~/.chaosengine/vllm-venv의 격리된 venv에 vLLM을 설치하세요(약 2 GB 다운로드, 캐시가 준비된 환경에서 약 5-15분)."
+    "readySummary": "WSL2({distro})와 CUDA 패스스루가 준비되었습니다. ~/.chaosengine/vllm-venv의 격리된 venv에 vLLM을 설치하세요(다운로드 약 9 GB, 10-15분 소요)."
   },
   "acceleratorsBoostPack": {
     "installFailed": "설치 명령이 0이 아닌 종료 코드로 끝났습니다.",

@@ -337,7 +337,7 @@ def _run_install_steps() -> None:
         "Installing vllm: this takes 10 to 15 minutes and downloads about 9 GB."
     )
 
-    # Step 4 — the actual pip install. Long step (~2 GB download +
+    # Step 4 — the actual pip install. Long step (~9 GB download +
     # extraction). The InstallLogPanel will show pip's progress lines
     # in the attempt row as they accumulate.
     code, output = _run_wsl_step(

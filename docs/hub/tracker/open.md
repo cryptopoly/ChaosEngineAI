@@ -1,13 +1,40 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 146 rows with work, decisions or watch items still open, newest first.
+summary: 149 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-262 · Install size labels for the WSL vLLM bridge, DFlash (CUDA) and TriAttention said about 2 GB — Done (2026-11-19, test/rtx4090)</summary>
+
+**Status or trigger:** **Done (2026-11-19, `test/rtx4090`)**
+
+**Notes:** Measured: the WSL venv is 9.4 GB (torch 2.14 CUDA, flashinfer, triton). TriAttention pulls vLLM and needs triton, so it does not install on native Windows. | `wslBridgePanel.readySummary` (en and the 10 locales; tlh keeps its pattern with the numbers changed), the panel comment and the installer comment say about 9 GB and 10-15 min; the catalogue rows say "~9 GB (vLLM 0.28+; in WSL2 on Windows)" and "~9 GB (pulls vllm; Linux or WSL2 only)".
+
+</details>
+
+<details>
+<summary>FU-261 · WSL vLLM bridge: use the library folder, serve DFlash, show it in the Boost Pack — Done (2026-11-19, test/rtx4090)</summary>
+
+**Status or trigger:** **Done (2026-11-19, `test/rtx4090`); DFlash command line tested, DFlash not run live (27B + drafter does not fit 24 GB)**
+
+**Notes:** A repo-id load made vLLM download the model again; the Boost Pack "DFlash (CUDA)" row read only the Windows venv; the bridge dropped speculative decoding. | `state/lifecycle.py` hands a vLLM load the library entry's folder (HF cache resolved to its snapshot) when no path was sent; live: loaded from `/mnt/e/AI Models/...`, no download. The bridge builds `--speculative-config` (DFlash drafter from `dflash.get_draft_model`, `num_speculative_tokens` from the drafter config, `--max-num-seqs 8`) when the WSL vLLM is >= `VLLM_DFLASH_MIN_VERSION`, else runs plain and says why in `runtimeNote`. `dflashCudaAvailable` and `dflashCudaVersion` also count a new enough WSL vLLM (`dflash_cuda_via_wsl`). Tests: `test_vllm_wsl_engine.py`, `test_accelerator_capabilities.py`. A library folder on a Windows drive is read through `/mnt/<drive>` (slower to read than the WSL disk; a Hugging Face cache with real symlinks may not resolve there).
+
+</details>
+
+<details>
+<summary>FU-260 · WSL vLLM bridge: GPU memory share, reasoning split, dead attention variable — Done (2026-11-19, test/rtx4090), live-checked with Qwen3-0.6B</summary>
+
+**Status or trigger:** **Done (2026-11-19, `test/rtx4090`), live-checked with Qwen3-0.6B**
+
+**Notes:** vLLM was started with its 0.92 default, so a 1.1 GiB model held 23.6 of 24 GB; the `<think>` block came back inside the reply; `VLLM_ATTENTION_BACKEND=TORCH_SDPA` is not a variable in vLLM 0.34 at all. | The bridge passes `--gpu-memory-utilization` (weights x 1.3 + 4 GiB, at least 6 GiB, cap 0.85, never more than the free memory; `CHAOSENGINE_VLLM_GPU_SHARE` overrides); live: 6.2 GB used instead of about 22. generate and stream_generate split `<think>` like the llama.cpp lane (`ThinkingTokenFilter`, `strip_thinking_tokens`, a server-side `reasoning_content`); the dead variable is gone. Tests in `tests/test_vllm_wsl_engine.py`. Not tried on a card above 24 GB.
+
+</details>
 
 <details>
 <summary>FU-258 · /v1/chat/completions with stream: true drops tool calls — Done (2026-11-19, test/rtx4090), not run live</summary>

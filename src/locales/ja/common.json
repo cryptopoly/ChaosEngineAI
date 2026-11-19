@@ -1448,7 +1448,7 @@
     "reinstall": "WSL に vLLM を再インストール",
     "install": "WSL に vLLM をインストール",
     "installedSummary": "vLLM {version} は {distro} の ~/.chaosengine/vllm-venv にインストールされています。デスクトップアプリは、この venv 経由で vLLM のモデル読み込みを実行できます。",
-    "readySummary": "WSL2（{distro}）と CUDA パススルーの準備ができています。vLLM を ~/.chaosengine/vllm-venv の独立した venv にインストールします（約 2 GB のダウンロード、通常の環境で約 5-15 分）。"
+    "readySummary": "WSL2（{distro}）と CUDA パススルーの準備ができています。vLLM を ~/.chaosengine/vllm-venv の独立した venv にインストールします（ダウンロード約 9 GB、所要時間は 10〜15 分）。"
   },
   "acceleratorsBoostPack": {
     "installFailed": "インストールコマンドが 0 以外の終了コードで終了しました。",

@@ -20,6 +20,7 @@ from backend_service.inference._constants import CAPABILITY_CACHE_TTL_SECONDS
 from backend_service.inference.accelerators import (
     dflash_cuda_available,
     dflash_cuda_version,
+    dflash_cuda_via_wsl,
     dflash_mlx_available,
     dflash_mlx_version,
     kvpress_available,
@@ -283,6 +284,9 @@ def _probe_native_backends() -> BackendCapabilities:
     wsl_cuda = wsl_cuda_available() if wsl2_active else False
     wsl_vllm = wsl_vllm_available() if wsl2_active else False
     wsl_vllm_ver = wsl_vllm_version() if wsl2_active and wsl_vllm else None
+    # DFlash is served over the bridge by the vLLM inside WSL (``--speculative-config``), so a Windows host
+    # with a new enough WSL vLLM has the lane although its own Python has no vLLM.
+    dflash_via_wsl = dflash_cuda_via_wsl(wsl_vllm_ver)
 
     return BackendCapabilities(
         pythonExecutable=python_executable,
@@ -314,8 +318,8 @@ def _probe_native_backends() -> BackendCapabilities:
         sageattentionVersion=sageattention_version(),
         dflashMlxAvailable=dflash_mlx_available(),
         dflashMlxVersion=dflash_mlx_version(),
-        dflashCudaAvailable=dflash_cuda_available(),
-        dflashCudaVersion=dflash_cuda_version(),
+        dflashCudaAvailable=dflash_cuda_available() or dflash_via_wsl,
+        dflashCudaVersion=dflash_cuda_version() or (wsl_vllm_ver if dflash_via_wsl else None),
         triattentionAvailable=triattention_available(),
         triattentionVersion=triattention_version(),
         kvpressAvailable=kvpress_available(),

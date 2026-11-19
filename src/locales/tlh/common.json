@@ -1448,7 +1448,7 @@
     "reinstall": "WSLDaq vLLM yIjomqa'",
     "install": "WSLDaq vLLM yIjom",
     "installedSummary": "{distro}Daq ~/.chaosengine/vllm-venv Daq vLLM {version} jomlu'ta'. venvvam lo'taHvIS vLLM yab chu'laH app.",
-    "readySummary": "WSL2 ({distro}) + CUDA ghuH. ~/.chaosengine/vllm-venv venv pImDaq vLLM yIjom (~2 GB lI', ~5-15 tup)."
+    "readySummary": "WSL2 ({distro}) + CUDA ghuH. ~/.chaosengine/vllm-venv venv pImDaq vLLM yIjom (~9 GB lI', ~10-15 tup)."
   },
   "acceleratorsBoostPack": {
     "installFailed": "luj jom ra'.",

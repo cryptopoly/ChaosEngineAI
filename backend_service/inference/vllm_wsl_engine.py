@@ -30,6 +30,7 @@ let vLLM keep its own HF cache inside WSL.
 from __future__ import annotations
 
 import json
+import os
 import re
 import shlex
 import subprocess
@@ -54,6 +55,7 @@ from backend_service.inference._utils import (
     _read_log_with_root_cause,
     _read_text_tail,
 )
+from backend_service.reasoning_split import ThinkingTokenFilter, strip_thinking_tokens
 from backend_service.inference.base import (
     BackendCapabilities,
     BaseInferenceEngine,
@@ -98,6 +100,110 @@ def windows_path_to_wsl(path: str) -> str:
     return f"/mnt/{drive}/{tail}"
 
 
+# vLLM reserves ``--gpu-memory-utilization`` x total VRAM up front (weights plus the KV-cache pool) and
+# defaults to 0.92, so a 1.1 GiB model took 23.6 of 24 GB and left nothing for the desktop or a second
+# model. The bridge sizes the share to the model instead: its weights x 1.3 plus 4 GiB for the KV cache and
+# activations (at least 6 GiB), never above the cap, and never more than what is free beside other apps.
+# A big card gives a small model a small share; a model that needs more than the cap gets the cap, and
+# ``CHAOSENGINE_VLLM_GPU_SHARE`` (0 to 1, the same switch as the native lane) overrides the lot.
+_WSL_GPU_SHARE_CAP = 0.85
+_WSL_GPU_KV_HEADROOM_BYTES = 4 * 1024**3
+_WSL_GPU_MIN_BUDGET_BYTES = 6 * 1024**3
+_WSL_GPU_FREE_MARGIN_BYTES = 1536 * 1024 * 1024
+_WEIGHT_FILE_SUFFIXES = (".safetensors", ".bin", ".pt", ".gguf")
+
+
+def _gpu_free_total_bytes() -> tuple[int, int] | None:
+    """Free and total memory of GPU 0 from the Windows driver's ``nvidia-smi`` (``None`` when unreadable)."""
+    try:
+        result = subprocess.run(
+            ["nvidia-smi", "--query-gpu=memory.free,memory.total", "--format=csv,noheader,nounits"],
+            capture_output=True,
+            text=True,
+            timeout=5.0,
+            check=False,
+        )
+        if result.returncode != 0:
+            return None
+        free_mib, total_mib = (int(part.strip()) for part in result.stdout.splitlines()[0].split(","))
+    except (OSError, subprocess.SubprocessError, ValueError, IndexError):
+        return None
+    return free_mib * 1024**2, total_mib * 1024**2
+
+
+def _local_weight_bytes(path: str | None) -> int:
+    """Bytes of weight files in a local model folder; 0 for a repo id or a folder that is not there."""
+    if not path:
+        return 0
+    try:
+        folder = Path(path).expanduser()
+        if not folder.is_dir():
+            return 0
+        return sum(
+            entry.stat().st_size
+            for entry in folder.iterdir()
+            if entry.is_file() and entry.suffix.lower() in _WEIGHT_FILE_SUFFIXES
+        )
+    except OSError:
+        return 0
+
+
+def gpu_memory_utilization(weight_bytes: int = 0) -> float:
+    """The ``--gpu-memory-utilization`` share for one load (see the note above the constants)."""
+    override = os.environ.get("CHAOSENGINE_VLLM_GPU_SHARE", "").strip()
+    if override:
+        try:
+            value = float(override)
+        except ValueError:
+            value = 0.0
+        if 0.0 < value <= 1.0:
+            return value
+    sizes = _gpu_free_total_bytes()
+    if sizes is None:
+        return _WSL_GPU_SHARE_CAP
+    free, total = sizes
+    if total <= 0:
+        return _WSL_GPU_SHARE_CAP
+    share = _WSL_GPU_SHARE_CAP
+    if weight_bytes > 0:
+        budget = max(int(weight_bytes * 1.3) + _WSL_GPU_KV_HEADROOM_BYTES, _WSL_GPU_MIN_BUDGET_BYTES)
+        share = min(share, budget / total)
+    # vLLM refuses to start when its share is more than the free memory.
+    share = min(share, (free - _WSL_GPU_FREE_MARGIN_BYTES) / total)
+    return round(max(share, 0.05), 3)
+
+
+def _dflash_speculative_config(
+    *,
+    wsl_vllm_version: str | None,
+    canonical_repo: str | None,
+    path: str | None,
+    model_ref: str,
+) -> tuple[dict[str, Any] | None, str]:
+    """vLLM ``--speculative-config`` for a DFlash drafter, as the native lane builds it, plus a note.
+
+    Needs vLLM >= ``VLLM_DFLASH_MIN_VERSION`` inside WSL and a drafter registered for the target.
+    """
+    from dflash import VLLM_DFLASH_MIN_VERSION, _version_tuple, get_draft_model
+
+    parsed = _version_tuple(wsl_vllm_version or "")
+    if parsed is None or parsed < VLLM_DFLASH_MIN_VERSION:
+        need = ".".join(str(part) for part in VLLM_DFLASH_MIN_VERSION)
+        return None, f"DFlash needs vLLM {need} or newer in WSL (found {wsl_vllm_version or 'unknown'})."
+    from backend_service.model_resolution import resolve_dflash_target_ref
+    from backend_service.vllm_engine import _dflash_num_speculative_tokens
+
+    target = resolve_dflash_target_ref(canonical_repo=canonical_repo, path=path, model_ref=model_ref) or model_ref
+    draft_model = get_draft_model(target, allow_dflash2=True)
+    if not draft_model:
+        return None, f"DFlash unavailable for '{target}': no compatible draft model is registered."
+    config: dict[str, Any] = {"method": "dflash", "model": draft_model}
+    draft_tokens = _dflash_num_speculative_tokens(draft_model)
+    if draft_tokens:
+        config["num_speculative_tokens"] = draft_tokens
+    return config, f"DFlash speculative decoding active (draft: {draft_model})."
+
+
 class VllmWslEngine(BaseInferenceEngine):
     """vLLM running inside the WSL isolated venv, proxied via HTTP.
 
@@ -136,6 +242,8 @@ class VllmWslEngine(BaseInferenceEngine):
         port: int,
         max_model_len: int,
         served_model_name: str | None = None,
+        gpu_memory_utilization: float | None = None,
+        speculative_config: dict[str, Any] | None = None,
     ) -> list[str]:
         """Compose the ``wsl -- bash -c "<inner cmd>"`` argv.
 
@@ -158,13 +266,15 @@ class VllmWslEngine(BaseInferenceEngine):
         # bash word-splits the expanded ``$PATH`` and crashes with
         # ``export: 'Files/NVIDIA': not a valid identifier``.
         #
-        # Env-var bypasses for vLLM 0.21+ flashinfer JIT path that
-        # otherwise crashes mid-startup with ``FileNotFoundError:
-        # 'ninja'`` (the JIT subprocess can't see venv bin on PATH
-        # through vLLM's multiprocessing fork chain). The flags +
-        # env vars below disable flashinfer's runtime kernel
-        # compilation and route attention through the pre-built
-        # TORCH_SDPA path instead.
+        # ``VLLM_USE_FLASHINFER_SAMPLER=0`` is the bypass for the vLLM 0.21+
+        # flashinfer JIT path that otherwise crashes mid-startup with
+        # ``FileNotFoundError: 'ninja'`` (the JIT subprocess can't see venv
+        # bin on PATH through vLLM's multiprocessing fork chain); it is
+        # still a live variable in vLLM 0.34. ``VLLM_ATTENTION_BACKEND=
+        # TORCH_SDPA`` used to sit beside it, but vLLM 0.34 no longer has
+        # that variable (it logs "Unknown vLLM environment variable" and
+        # ignores it; ``TORCH_SDPA`` is only a ViT tag there now), so it was
+        # dropped. The backend is picked with ``--attention-backend``.
         #
         # ``--host 127.0.0.1`` keeps vLLM bound to loopback — WSL2
         # mirrors loopback to the Windows host so the Windows backend
@@ -184,13 +294,25 @@ class VllmWslEngine(BaseInferenceEngine):
         # local folder: vLLM otherwise serves the model under the folder path and answers 404 "model does not exist"
         # (RTX 4090, 2026-11-19).
         served = f"--served-model-name {shlex.quote(served_model_name)} " if served_model_name else ""
+        # ``--gpu-memory-utilization``: the share of VRAM vLLM may reserve (see ``gpu_memory_utilization``).
+        extra = ""
+        if gpu_memory_utilization is not None:
+            extra += f"--gpu-memory-utilization {gpu_memory_utilization:g} "
+        if speculative_config:
+            # DFlash targets are hybrid models (Gated DeltaNet) that reserve a state block per sequence:
+            # vLLM's server default of 256 sequences left a 27B on a 24 GB card with room for about 30,
+            # so the native lane runs 8 (``_DESKTOP_MAX_NUM_SEQS``) and the bridge does too.
+            extra += (
+                f"--speculative-config {shlex.quote(json.dumps(speculative_config, separators=(',', ':')))} "
+                "--max-num-seqs 8 "
+            )
         inner = (
             f'export PATH="{bin_path}:$PATH" && '
             'export VLLM_USE_FLASHINFER_SAMPLER=0 && '
-            'export VLLM_ATTENTION_BACKEND=TORCH_SDPA && '
             f"{bin_path}/python -m vllm.entrypoints.openai.api_server "
             f"--model {shlex.quote(model_arg)} "
             f"{served}"
+            f"{extra}"
             f"--host 127.0.0.1 "
             f"--port {port} "
             f"--max-model-len {max_model_len} "
@@ -314,11 +436,30 @@ class VllmWslEngine(BaseInferenceEngine):
         else:
             model_arg = canonical_repo or model_ref
 
+        gpu_share = gpu_memory_utilization(_local_weight_bytes(path or runtime_target))
+
+        # DFlash over the bridge: the same ``speculative_config`` the native lane passes to ``LLM(...)``,
+        # given to the OpenAI server as ``--speculative-config`` (vLLM >= 0.28).
+        spec_config: dict[str, Any] | None = None
+        spec_note = ""
+        if speculative_decoding:
+            try:
+                spec_config, spec_note = _dflash_speculative_config(
+                    wsl_vllm_version=self.capabilities.wslVllmVersion,
+                    canonical_repo=canonical_repo,
+                    path=path,
+                    model_ref=model_ref,
+                )
+            except ImportError:
+                spec_note = "DFlash is not available in this build."
+
         command = self._build_wsl_command(
             model_arg=model_arg,
             port=self.port,
             max_model_len=context_tokens,
             served_model_name=model_ref,
+            gpu_memory_utilization=gpu_share,
+            speculative_config=spec_config,
         )
 
         if progress_callback:
@@ -358,17 +499,9 @@ class VllmWslEngine(BaseInferenceEngine):
                 f"vLLM {self.capabilities.wslVllmVersion} running inside WSL "
                 f"({self.capabilities.wslDistroName or 'Ubuntu'})."
             )
-        # Speculative decoding via the WSL bridge isn't wired yet — the
-        # in-process VLLMEngine handles it via ``speculative_config=``,
-        # but the OpenAI server entry-point uses a different surface
-        # (``--speculative-model`` / ``--num-speculative-tokens``) that
-        # we'll add in a follow-up. Note the gap honestly in the
-        # runtime note rather than silently dropping the request.
-        if speculative_decoding:
-            runtime_note += (
-                " Speculative decoding requested but not yet supported "
-                "via the WSL bridge — running with standard decoding."
-            )
+        runtime_note += f" GPU memory share {gpu_share:.0%}."
+        if spec_note:
+            runtime_note += " " + spec_note
 
         if progress_callback:
             progress_callback({
@@ -394,7 +527,7 @@ class VllmWslEngine(BaseInferenceEngine):
             path=path,
             runtimeTarget=model_arg,
             runtimeNote=runtime_note,
-            speculativeDecoding=False,
+            speculativeDecoding=spec_config is not None,
         )
         return self.loaded_model
 
@@ -464,7 +597,9 @@ class VllmWslEngine(BaseInferenceEngine):
         usage = response.get("usage") or {}
         completion_tokens = int(usage.get("completion_tokens") or 0)
         prompt_tokens = int(usage.get("prompt_tokens") or 0)
-        text = str(message.get("content") or "")
+        # vLLM's server leaves ``<think>...</think>`` inside ``content`` unless a reasoning parser is
+        # configured; drop it from the reply the way the llama.cpp lane does.
+        text = strip_thinking_tokens(str(message.get("content") or ""))
 
         return GenerationResult(
             text=text,
@@ -537,6 +672,8 @@ class VllmWslEngine(BaseInferenceEngine):
         prompt_tokens = 0
         completion_tokens = 0
         started_at = time.perf_counter()
+        # Split ``<think>`` blocks into the reasoning channel, as the llama.cpp lane does.
+        think_filter = ThinkingTokenFilter(detect_raw_reasoning=(thinking_mode or "off") != "off")
 
         with resp:
             for raw_line in resp:
@@ -555,9 +692,19 @@ class VllmWslEngine(BaseInferenceEngine):
                     continue
                 choice = choices[0]
                 delta = choice.get("delta") or {}
+                # A server started with a reasoning parser sends the block as its own field.
+                server_reasoning = delta.get("reasoning_content") or delta.get("reasoning")
+                if server_reasoning:
+                    yield StreamChunk(reasoning=str(server_reasoning))
                 text_delta = delta.get("content")
                 if text_delta:
-                    yield StreamChunk(text=text_delta)
+                    split = think_filter.feed(str(text_delta))
+                    if split.reasoning:
+                        yield StreamChunk(reasoning=split.reasoning)
+                    if split.reasoning_done:
+                        yield StreamChunk(reasoning_done=True)
+                    if split.text:
+                        yield StreamChunk(text=split.text)
                 # vLLM emits ``finish_reason`` on the last delta only.
                 fr = choice.get("finish_reason")
                 if fr:
@@ -566,6 +713,14 @@ class VllmWslEngine(BaseInferenceEngine):
                 if usage:
                     prompt_tokens = int(usage.get("prompt_tokens") or prompt_tokens)
                     completion_tokens = int(usage.get("completion_tokens") or completion_tokens)
+
+        flushed = think_filter.flush()
+        if flushed.reasoning:
+            yield StreamChunk(reasoning=flushed.reasoning)
+        if flushed.reasoning_done:
+            yield StreamChunk(reasoning_done=True)
+        if flushed.text:
+            yield StreamChunk(text=flushed.text)
 
         elapsed = max(time.perf_counter() - started_at, 1e-6)
         yield StreamChunk(

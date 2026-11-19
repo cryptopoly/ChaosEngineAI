@@ -161,6 +161,22 @@ def dflash_cuda_available() -> bool:
         return False
 
 
+def dflash_cuda_via_wsl(wsl_vllm_version: str | None) -> bool:
+    """DFlash through the WSL2 bridge: the vLLM in the WSL venv is new enough (``VLLM_DFLASH_MIN_VERSION``).
+
+    The bridge engine passes ``--speculative-config`` to the vLLM server inside WSL, so a Windows
+    host with the bridge installed serves DFlash although the Windows Python has no vLLM at all.
+    """
+    if not wsl_vllm_version:
+        return False
+    try:
+        from dflash import VLLM_DFLASH_MIN_VERSION, _version_tuple
+    except ImportError:
+        return False
+    parsed = _version_tuple(wsl_vllm_version)
+    return parsed is not None and parsed >= VLLM_DFLASH_MIN_VERSION
+
+
 def dflash_mlx_version() -> str | None:
     return _safe_version("dflash_mlx")
 

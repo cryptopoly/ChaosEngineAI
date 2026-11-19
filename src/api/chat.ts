@@ -375,6 +375,9 @@ export interface StudioPlanDecisionBody {
   decisions: Record<string, "approve" | "deny">;
   edit?: boolean;
   alwaysAllow?: boolean;
+  /** FU-241: the quality picked on the card, and whether it stays for the rest of this chat. */
+  tier?: "draft" | "standard" | "final";
+  keepTier?: boolean;
 }
 
 export async function decideStudioPlan(planId: string, body: StudioPlanDecisionBody): Promise<void> {

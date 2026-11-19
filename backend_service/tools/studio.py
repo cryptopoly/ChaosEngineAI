@@ -18,7 +18,7 @@ import threading
 from typing import Any, Callable
 
 from backend_service.tools import BaseTool, StructuredToolOutput, ToolRegistry
-from backend_service.tools.studio_tiers import SINGLE_RENDERS, apply_tier, variant_for
+from backend_service.tools.studio_tiers import SINGLE_RENDERS, apply_tier, current, variant_for
 
 # What the chat model may do. Never "files" (download links, uploads, exports), "download" or "clone".
 CHAT_SCOPES = frozenset({"read", "generate"})
@@ -306,7 +306,7 @@ class StudioTool(BaseTool):
     def __init__(self, tool: dict[str, Any], handler: Any, app_request: Any,
                  is_cancelled: Callable[[], bool] | None = None, revisions: TurnRevisions | None = None,
                  defer: Callable[[str, dict[str, Any]], StructuredToolOutput | None] | None = None,
-                 watch: Any = None, tier: str = "standard") -> None:
+                 watch: Any = None, tier: Any = "standard") -> None:
         self._tool = tool
         # The chat's quality tier (FU-241): a single image or clip never runs above it.
         self._tier = tier
@@ -412,7 +412,7 @@ class StudioTool(BaseTool):
         if self.name in SINGLE_RENDERS:
             from backend_service.mcp_bridge.tools import _state
 
-            args, tier_notes = apply_tier(self._tier, self.name, args,
+            args, tier_notes = apply_tier(current(self._tier), self.name, args,
                                           variant_for(self.name, args.get("model"), _state(make_context(self._request))))
         if self._defer is not None and needs_approval(self.name, args):
             kept = self._defer(self.name, args)

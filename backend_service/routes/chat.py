@@ -207,13 +207,15 @@ class StudioPlanDecision(BaseModel):
     decisions: dict[str, Literal["approve", "deny"]] = Field(default_factory=dict)
     edit: bool = False  # "Edit by chat": decline everything, the model asks what to change
     alwaysAllow: bool = False  # "Always allow renders in this chat"
+    tier: Literal["draft", "standard", "final"] | None = None  # quality picked on the card (FU-241)
+    keepTier: bool = False  # "use for the rest of this chat"
 
 
 @router.post("/api/chat/studio/plans/{plan_id}/decision")
 def decide_studio_plan(request: Request, plan_id: str, body: StudioPlanDecision) -> dict[str, Any]:
     from backend_service.tools.studio_gate import decide
 
-    plan = decide(plan_id, dict(body.decisions), edit=body.edit, always_allow=body.alwaysAllow)
+    plan = decide(plan_id, dict(body.decisions), edit=body.edit, always_allow=body.alwaysAllow, tier=body.tier, keep_tier=body.keepTier)
     if plan is None:
         raise HTTPException(status_code=404, detail=localized_detail(
             request, "This plan is no longer waiting (answered, cancelled or timed out)."))

@@ -170,6 +170,42 @@ describe("plan decisions", () => {
   });
 });
 
+describe("quality tiers on the plan card (FU-241)", () => {
+  const options = {
+    draft: { size: "384x256", estimatedSeconds: 12 },
+    standard: { size: "768x512", estimatedSeconds: 55 },
+    final: { size: "1152x768", estimatedSeconds: 179 },
+  };
+  const clip = plan({
+    items: [{ callId: "c1", tool: "generate_video", kind: "video", prompt: "Waves", size: "768x512", estimatedSeconds: 55,
+      tier: "standard", tierOptions: options, qualityNotes: ["Standard quality: size 1280x720 brought to 768x512."] }],
+  });
+
+  it("shows three tier buttons with size and time, the chosen one marked, and the keep box", () => {
+    const html = renderToStaticMarkup(<StudioPlanCard plan={clip} sessionId="s1" />);
+    expect(html).toContain('role="radiogroup"');
+    for (const text of ["Draft", "Standard", "Final", "384x256 · 12 s", "1152x768 · 3 min", "Use for the rest of this chat"]) {
+      expect(html).toContain(text);
+    }
+    expect(html).toMatch(/aria-checked="true"[^>]*>\s*<strong>Standard/);
+    expect(html).toContain("size 1280x720 brought to 768x512");
+  });
+
+  it("has no tier row for a plan without single renders", () => {
+    const html = renderToStaticMarkup(<StudioPlanCard plan={plan()} sessionId="s1" />);
+    expect(html).not.toContain("radiogroup");
+    expect(html).not.toContain("Use for the rest of this chat");
+  });
+
+  it("the decision carries the tier and keep, only when something is approved", () => {
+    expect(planDecision(clip, { type: "approveAll" }, false, { tier: "draft", keep: true }))
+      .toEqual({ decisions: { c1: "approve" }, edit: false, alwaysAllow: false, tier: "draft", keepTier: true });
+    expect(planDecision(clip, { type: "approveAll" }, false, { tier: "final", keep: false }).keepTier).toBeUndefined();
+    expect(planDecision(clip, { type: "deny" }, false, { tier: "draft", keep: true }).tier).toBeUndefined();
+    expect(planDecision(clip, { type: "edit" }, false, { tier: "draft", keep: true }).tier).toBeUndefined();
+  });
+});
+
 describe("plan card states", () => {
   it("pending: lists what will be made with estimates and all four actions", () => {
     const html = renderToStaticMarkup(<StudioPlanCard plan={plan()} sessionId="s1" />);

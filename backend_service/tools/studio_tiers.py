@@ -19,6 +19,18 @@ SINGLE_RENDERS = ("generate_image", "generate_video")
 _FLOOR = 256
 _FPS = 24
 
+class TierHolder:
+    """The chat's current tier, shared by the plan gate and the tools so a pick on the card reaches the render."""
+
+    def __init__(self, value: str = DEFAULT_TIER) -> None:
+        self.value = value if value in TIERS else DEFAULT_TIER
+
+
+def current(tier: "TierHolder | str | None") -> str:
+    value = tier.value if isinstance(tier, TierHolder) else tier
+    return value if value in TIERS else DEFAULT_TIER
+
+
 _DRAFT_WORDS = re.compile(r"\b(draft|drafts|quick|quickly|rough|preview)\b", re.IGNORECASE)
 _FINAL_WORDS = re.compile(r"\b(final|full quality|best quality|highest quality|high quality)\b", re.IGNORECASE)
 _STANDARD_WORDS = re.compile(r"\bstandard quality\b", re.IGNORECASE)

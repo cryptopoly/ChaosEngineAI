@@ -73,6 +73,8 @@ class PendingPlan:
     decisions: dict[str, str] = field(default_factory=dict)
     edit: bool = False
     always_allow: bool = False
+    tier: str | None = None  # the quality the user picked on the card (FU-241)
+    keep_tier: bool = False  # "use for the rest of this chat"
 
     def payload(self) -> dict[str, Any]:
         return {"planId": self.id, "sessionId": self.session_id, "items": self.items, "memory": self.memory,
@@ -117,7 +119,8 @@ def turn_running(session_id: str) -> bool:
         return _TURNS.get(session_id, 0) > 0
 
 
-def decide(plan_id: str, decisions: dict[str, str], edit: bool = False, always_allow: bool = False) -> PendingPlan | None:
+def decide(plan_id: str, decisions: dict[str, str], edit: bool = False, always_allow: bool = False,
+           tier: str | None = None, keep_tier: bool = False) -> PendingPlan | None:
     """Record the user's click. Unlisted calls are declined. None when the plan is unknown or already decided."""
     with _LOCK:
         plan = _PLANS.get(plan_id)
@@ -127,6 +130,8 @@ def decide(plan_id: str, decisions: dict[str, str], edit: bool = False, always_a
         plan.decisions = {cid: ("approve" if decisions.get(cid) == "approve" and not edit else "deny") for cid in listed}
         plan.edit = bool(edit)
         plan.always_allow = bool(always_allow) and not edit
+        plan.tier = tier if tier in ("draft", "standard", "final") and not edit else None
+        plan.keep_tier = bool(keep_tier) and plan.tier is not None
         plan.event.set()
         return plan
 
@@ -261,6 +266,7 @@ def plan_item(tool_call: dict[str, Any], state: Any | None, tier: str | None = N
     time measured at the recommended size when the call asks for another size or a frame count.
     """
     name, args = call_name(tool_call), call_args(tool_call)
+    asked_args = args  # before the tier: the card prices every tier from what the model asked
     quality: list[str] = []
     if tier and state is not None:
         from backend_service.tools.studio_tiers import apply_tier, variant_for
@@ -339,9 +345,24 @@ def plan_item(tool_call: dict[str, Any], state: Any | None, tier: str | None = N
                     if item["estimatedSeconds"] and (asked != recommended or "frames" in args or "seconds" in args):
                         item["estimateAtRecommended"] = True
                     _price_settings(item, catalog_kind, row.get("id"), args)
+                    if tier and name in ("generate_image", "generate_video"):
+                        item["tierOptions"] = _tier_options(name, catalog_kind, row.get("id"), asked_args, state)
     except Exception:  # noqa: BLE001 - an estimate is a nicety; the plan shows without it
         pass
     return item
+
+
+def _tier_options(name: str, kind: str, model_id: Any, args: dict[str, Any], state: Any) -> dict[str, Any]:
+    """Size and time of this call at each tier, for the card's three buttons (FU-241)."""
+    from backend_service.tools.studio_tiers import TIERS, apply_tier, variant_for
+
+    variant = variant_for(name, model_id, state)
+    options: dict[str, Any] = {}
+    for tier in TIERS:
+        scratch: dict[str, Any] = {}
+        _price_settings(scratch, kind, model_id, apply_tier(tier, name, args, variant)[0])
+        options[tier] = {"size": scratch.get("size"), "estimatedSeconds": scratch.get("estimatedSeconds")}
+    return options
 
 
 def _price_settings(item: dict[str, Any], kind: str, model_id: Any, args: dict[str, Any]) -> None:
@@ -445,7 +466,7 @@ class StudioGate:
         poll_seconds: float = 0.25,
         keepalive_seconds: float = KEEPALIVE_SECONDS,
         auto_until: float | None = None,
-        tier: str = "standard",
+        tier: Any = "standard",
     ) -> None:
         self.session_id = session_id
         # The chat's quality tier (FU-241): the card shows a single render as it will run at this tier.
@@ -496,7 +517,9 @@ class StudioGate:
             planned.append(tc)
         if not planned or self._auto_now():
             return answers
-        items = [plan_item(tc, self.state, self.tier) for tc in planned]
+        from backend_service.tools.studio_tiers import current
+
+        items = [plan_item(tc, self.state, current(self.tier)) for tc in planned]
         plan = PendingPlan(id=f"plan-{uuid.uuid4().hex[:10]}", session_id=self.session_id, items=items,
                            memory=memory_note(items, self.state))
         with _LOCK:
@@ -525,6 +548,18 @@ class StudioGate:
                 denials[item["callId"]] = NO_ANSWER_TEXT
             elif plan.decisions.get(item["callId"]) != "approve":
                 denials[item["callId"]] = EDIT_TEXT if plan.edit else DECLINED_TEXT
+        if answered and plan.tier:
+            from backend_service.tools.studio_tiers import TierHolder
+
+            if isinstance(self.tier, TierHolder):
+                self.tier.value = plan.tier
+            else:
+                self.tier = plan.tier
+            if plan.keep_tier and self.session_id and self.state is not None:
+                chat_tiers = getattr(self.state, "chat_tiers", None)
+                if chat_tiers is None:
+                    chat_tiers = self.state.chat_tiers = {}
+                chat_tiers[self.session_id] = plan.tier
         if answered and plan.always_allow:
             self.auto_approve = True
             self.auto_until = None  # the user's own click on this card: the rest of the turn, as before
@@ -534,6 +569,8 @@ class StudioGate:
             "status": status,
             "decisions": {i["callId"]: ("deny" if i["callId"] in denials else "approve") for i in items},
             "alwaysAllow": bool(answered and plan.always_allow),
+            "tier": plan.tier if answered else None,
+            "keepTier": bool(answered and plan.keep_tier),
         }
         self.resolved.append(resolved)
         yield {"studio_plan_resolved": resolved}

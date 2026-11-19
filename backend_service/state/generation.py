@@ -575,7 +575,12 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
         from backend_service.tools.studio_tiers import DEFAULT_TIER, tier_from_text
         from backend_service.tools.studio_gate import StudioGate
 
-        chat_tier = tier_from_text(request.prompt) or DEFAULT_TIER
+        from backend_service.tools.studio_tiers import TierHolder
+
+        # The message's own words win, then the tier the user kept for this chat on a card, then Standard.
+        chat_tier = TierHolder(tier_from_text(request.prompt)
+                               or (getattr(chaosengine, "chat_tiers", None) or {}).get(session_id_for_cancel)
+                               or DEFAULT_TIER)
         studio_registry = _studio_registry(
             app_request, _base_registry, available_tools if enable_tools else [],
             # Stop in the chat ends a wait_for_job at once (the job itself keeps running).

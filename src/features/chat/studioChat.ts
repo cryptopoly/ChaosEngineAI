@@ -3,8 +3,8 @@
  * card's decision bodies and the small helpers the job cards use. Pure functions so vitest covers them.
  */
 import { useEffect, useState } from "react";
-import { decideStudioPlan } from "../../api";
-import type { StudioJob, StudioPlan, TabId, ToolCallInfo } from "../../types";
+import { decideStudioPlan, type StudioPlanDecisionBody } from "../../api";
+import type { StudioJob, StudioPlan, StudioTier, TabId, ToolCallInfo } from "../../types";
 
 const SWITCH_KEY = "chaosengine.chat.studioTools";
 const AUTO_KEY_PREFIX = "chaosengine.chat.studioAutoApprove.";
@@ -126,14 +126,19 @@ export function useStudioAutoApprove(sessionId: string | null | undefined): bool
 export type PlanAction = { type: "approveAll" } | { type: "approveOne"; callId: string } | { type: "deny" } | { type: "edit" };
 
 /** The decision body for a plan card button. "Approve this" runs that call only and declines the rest. */
-export function planDecision(plan: StudioPlan, action: PlanAction, alwaysAllow: boolean) {
+export function planDecision(plan: StudioPlan, action: PlanAction, alwaysAllow: boolean, quality?: { tier: StudioTier; keep: boolean }) {
   const decisions: Record<string, "approve" | "deny"> = {};
   for (const item of plan.items) {
     const approve = action.type === "approveAll" || (action.type === "approveOne" && action.callId === item.callId);
     decisions[item.callId] = approve ? "approve" : "deny";
   }
   const anyApproved = Object.values(decisions).includes("approve");
-  return { decisions, edit: action.type === "edit", alwaysAllow: alwaysAllow && anyApproved };
+  const body: StudioPlanDecisionBody = { decisions, edit: action.type === "edit", alwaysAllow: alwaysAllow && anyApproved };
+  if (quality && anyApproved && action.type !== "edit") {
+    body.tier = quality.tier;
+    if (quality.keep) body.keepTier = true;
+  }
+  return body as typeof body & { alwaysAllow: boolean };
 }
 
 /**
@@ -145,8 +150,9 @@ export async function submitPlanDecision(
   action: PlanAction,
   alwaysAllow: boolean,
   sessionId: string | null | undefined,
+  quality?: { tier: StudioTier; keep: boolean },
 ): Promise<ReturnType<typeof planDecision>> {
-  const body = planDecision(plan, action, alwaysAllow);
+  const body = planDecision(plan, action, alwaysAllow, quality);
   await decideStudioPlan(plan.planId, body);
   if (body.alwaysAllow) writeStudioAutoApprove(sessionId, true);
   return body;

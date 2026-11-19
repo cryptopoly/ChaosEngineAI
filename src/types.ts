@@ -59,6 +59,7 @@ export type {
   StudioPlan,
   StudioPlanEstimate,
   StudioPlanItem,
+  StudioTier,
   TokenLogprob,
   ToolCallInfo,
   ToolRenderAs,

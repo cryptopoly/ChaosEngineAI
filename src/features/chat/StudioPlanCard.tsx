@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatDuration } from "../../components/RunEstimateStrip";
-import type { StudioPlan, StudioPlanEstimate, StudioPlanItem } from "../../types";
+import type { StudioPlan, StudioPlanEstimate, StudioPlanItem, StudioTier } from "../../types";
 import { formatSeconds, submitPlanDecision, type PlanAction } from "./studioChat";
 
 interface StudioPlanCardProps {
@@ -23,12 +23,15 @@ const KIND_LABELS: Record<string, string> = {
 };
 
 /** Every argument that changes what gets made or what it costs, as short labelled facts. */
-function ItemFacts({ item }: { item: StudioPlanItem }) {
+function ItemFacts({ item, tier }: { item: StudioPlanItem; tier?: StudioTier }) {
   const { t } = useTranslation("chat");
-  const time = formatSeconds(item.estimatedSeconds ?? null);
+  // A tier picked on the card shows that tier's size and time; the rest of the call is unchanged.
+  const picked = tier && tier !== item.tier ? item.tierOptions?.[tier] : undefined;
+  const time = formatSeconds((picked ? picked.estimatedSeconds : item.estimatedSeconds) ?? null);
+  const size = picked?.size ?? item.size;
   const facts: string[] = [];
   if (item.model) facts.push(item.model);
-  if (item.size) facts.push(item.size);
+  if (size) facts.push(size);
   if (typeof item.frames === "number") facts.push(t("studioChat.plan.frames", { count: item.frames, defaultValue: "{count} frames" }));
   if (typeof item.fps === "number") facts.push(t("studioChat.plan.fps", { fps: item.fps, defaultValue: "{fps} fps" }));
   if (typeof item.steps === "number") facts.push(t("studioChat.plan.steps", { count: item.steps, defaultValue: "{count} steps" }));
@@ -41,7 +44,7 @@ function ItemFacts({ item }: { item: StudioPlanItem }) {
   if (item.preview) facts.push(t("studioChat.plan.preview", { defaultValue: "preview" }));
   if (item.force) facts.push(t("studioChat.plan.force", { defaultValue: "includes locked shots" }));
   if (time) {
-    facts.push(item.estimateAtRecommended
+    facts.push(item.estimateAtRecommended && !picked
       ? t("studioChat.plan.timeRecommended", { time, defaultValue: "about {time} at the recommended size" })
       : t("studioChat.plan.time", { time, defaultValue: "about {time}" }));
   }
@@ -59,6 +62,39 @@ function ItemFacts({ item }: { item: StudioPlanItem }) {
 }
 
 type TFn = (key: string, options: Record<string, unknown>) => string;
+
+const TIERS: StudioTier[] = ["draft", "standard", "final"];
+
+/** FU-241: Draft, Standard or Final for the single images and clips on the card, with each one's size and time. */
+function QualityPicker({ item, tier, onPick, disabled }: {
+  item: StudioPlanItem;
+  tier: StudioTier;
+  onPick: (tier: StudioTier) => void;
+  disabled: boolean;
+}) {
+  const { t } = useTranslation("chat");
+  const labels: Record<StudioTier, string> = {
+    draft: t("studioChat.plan.tierDraft", { defaultValue: "Draft" }),
+    standard: t("studioChat.plan.tierStandard", { defaultValue: "Standard" }),
+    final: t("studioChat.plan.tierFinal", { defaultValue: "Final" }),
+  };
+  return (
+    <div className="studio-plan-card__quality" role="radiogroup" aria-label={t("studioChat.plan.qualityLabel", { defaultValue: "Quality" })}>
+      {TIERS.map((name) => {
+        const option = item.tierOptions?.[name];
+        const time = formatSeconds(option?.estimatedSeconds ?? null);
+        return (
+          <button key={name} type="button" role="radio" aria-checked={tier === name} disabled={disabled}
+            className={`secondary-button studio-plan-card__tier${tier === name ? " is-active" : ""}`}
+            onClick={() => onPick(name)}>
+            <strong>{labels[name]}</strong>
+            <small>{[option?.size, time].filter(Boolean).join(" · ")}</small>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 /**
  * S7: time per shot (still and clip) and the total before a storyboard render is approved. The time, unknown
@@ -142,6 +178,9 @@ function ItemPrompt({ item }: { item: StudioPlanItem }) {
 export function StudioPlanCard({ plan, sessionId, onEditByChat }: StudioPlanCardProps) {
   const { t } = useTranslation("chat");
   const [alwaysAllow, setAlwaysAllow] = useState(false);
+  const rendered = plan.items.find((i) => i.tierOptions);
+  const [tier, setTier] = useState<StudioTier>(rendered?.tier ?? "standard");
+  const [keepTier, setKeepTier] = useState(false);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -159,7 +198,7 @@ export function StudioPlanCard({ plan, sessionId, onEditByChat }: StudioPlanCard
     setSending(true);
     setError(null);
     try {
-      await submitPlanDecision(plan, action, alwaysAllow, chatId);
+      await submitPlanDecision(plan, action, alwaysAllow, chatId, rendered ? { tier, keep: keepTier } : undefined);
       setSent(true);
       if (action.type === "edit") onEditByChat?.();
     } catch (err) {
@@ -213,7 +252,7 @@ export function StudioPlanCard({ plan, sessionId, onEditByChat }: StudioPlanCard
                 <ItemPrompt item={item} />
               </div>
               <div className="studio-plan-card__meta">
-                <ItemFacts item={item} />
+                <ItemFacts item={item} tier={tier} />
                 {decision ? (
                   <span className={`studio-plan-card__decision studio-plan-card__decision--${decision}`}>
                     {decision === "approve"
@@ -223,6 +262,10 @@ export function StudioPlanCard({ plan, sessionId, onEditByChat }: StudioPlanCard
                 ) : null}
               </div>
               {item.estimate ? <StoryboardEstimate estimate={item.estimate} /> : null}
+              {pending && item.tierOptions ? <QualityPicker item={item} tier={tier} onPick={setTier} disabled={sending} /> : null}
+              {item.qualityNotes?.length ? (
+                <ul className="studio-plan-card__quality-notes">{item.qualityNotes.map((note) => <li key={note}>{note}</li>)}</ul>
+              ) : null}
               {pending && many ? (
                 <button type="button" className="secondary-button studio-plan-card__one" disabled={sending}
                   aria-label={t("studioChat.plan.approveThisLabel", {
@@ -244,6 +287,12 @@ export function StudioPlanCard({ plan, sessionId, onEditByChat }: StudioPlanCard
       ) : null}
       {pending ? (
         <>
+          {rendered ? (
+            <label className="studio-plan-card__always">
+              <input type="checkbox" checked={keepTier} onChange={(e) => setKeepTier(e.target.checked)} />
+              {t("studioChat.plan.keepTier", { defaultValue: "Use for the rest of this chat" })}
+            </label>
+          ) : null}
           <label className="studio-plan-card__always">
             <input type="checkbox" checked={alwaysAllow} onChange={(e) => setAlwaysAllow(e.target.checked)} />
             {t("studioChat.plan.alwaysAllow", { defaultValue: "Always allow renders in this chat" })}

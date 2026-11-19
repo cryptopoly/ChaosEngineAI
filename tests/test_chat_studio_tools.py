@@ -249,6 +249,47 @@ class GateTests(unittest.TestCase):
         except StopIteration as stop:
             return events, stop.value or {}
 
+    def test_a_tier_picked_on_the_card_reaches_the_tools_and_can_be_kept_for_the_chat(self):
+        from backend_service.tools.studio_tiers import TierHolder
+
+        holder = TierHolder("standard")
+        state = SimpleNamespace(runtime=SimpleNamespace(loaded_model=None))
+        gate = StudioGate("chat-1", poll_seconds=0.01, tier=holder, state=state)
+
+        def click(plan):
+            decide(plan.id, {"c1": "approve"}, tier="draft", keep_tier=True)
+            return {"c1": "approve"}
+
+        def run():
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                with studio_gate._LOCK:
+                    plans = list(studio_gate._PLANS.values())
+                if plans:
+                    click(plans[0])
+                    return
+                time.sleep(0.01)
+
+        thread = threading.Thread(target=run, daemon=True)
+        thread.start()
+        events, denials = self.run_review(gate, [call("generate_image", {"prompt": "a fox"}, "c1")])
+        thread.join(2)
+        self.assertEqual(denials, {})
+        self.assertEqual(holder.value, "draft")
+        self.assertEqual(state.chat_tiers, {"chat-1": "draft"})
+        resolved = events[-1]["studio_plan_resolved"]
+        self.assertEqual((resolved["tier"], resolved["keepTier"]), ("draft", True))
+
+    def test_an_unknown_tier_or_an_edit_changes_nothing(self):
+        plan = studio_gate.PendingPlan(id="p", session_id="s", items=[{"callId": "c1"}], memory=None)
+        with studio_gate._LOCK:
+            studio_gate._PLANS["p"] = plan
+        try:
+            decide("p", {"c1": "approve"}, tier="ultra")
+            self.assertIsNone(plan.tier)
+        finally:
+            studio_gate._PLANS.pop("p", None)
+
     def test_read_only_calls_skip_the_gate(self):
         events, denials = self.run_review(StudioGate("s"), [call("system_status", {}, "c1"), call("list_models", {"kind": "image"}, "c2")])
         self.assertEqual((events, denials), ([], {}))

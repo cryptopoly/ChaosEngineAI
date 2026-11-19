@@ -41,7 +41,13 @@ export interface StudioPlanItem {
   shots?: number | null;
   /** S7: a storyboard generate's time per shot and in total, from the Storyboard estimate. */
   estimate?: StudioPlanEstimate | null;
+  /** FU-241: the quality tier a single image or clip runs at, what each tier would run, and what was brought down. */
+  tier?: StudioTier;
+  tierOptions?: Record<StudioTier, { size?: string | null; estimatedSeconds?: number | null }>;
+  qualityNotes?: string[];
 }
+
+export type StudioTier = "draft" | "standard" | "final";
 
 /** Seconds are null when unknown (no catalogue time, or a model that is not installed). */
 export interface StudioPlanEstimate {

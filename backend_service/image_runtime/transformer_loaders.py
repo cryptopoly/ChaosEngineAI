@@ -332,6 +332,11 @@ def try_load_nunchaku_transformer(
         )
         return transformer, note
     except Exception as exc:  # noqa: BLE001 — fall through to NF4
+        if type(exc).__name__ == "LocalEntryNotFoundError":
+            return None, (
+                f"The Nunchaku weights ({nunchaku_repo}) are not downloaded. "
+                "Download this model again from Image Models."
+            )
         return None, (
             f"Nunchaku load failed ({type(exc).__name__}: {exc}) — "
             "falling back to NF4 / int8wo / bf16."

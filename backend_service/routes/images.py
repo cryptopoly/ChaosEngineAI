@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
@@ -21,6 +22,12 @@ from backend_service.helpers.images import (
     _image_download_validation_error,
     _image_download_repo_ids,
     _latest_image_model_payloads,
+)
+from backend_service.helpers.huggingface import _hf_repo_snapshot_dir
+from backend_service.helpers.image_validation import (
+    _nunchaku_download_validation_error,
+    _nunchaku_variant_for_pack,
+    _transformer_weights_present,
 )
 from backend_service.app import (
     _generate_image_artifacts,
@@ -158,9 +165,10 @@ def preload_image_model(request: Request, body: ImageRuntimePreloadRequest) -> d
         detail = validation_error or f"{variant['name']} is not installed locally yet."
         raise HTTPException(status_code=409, detail=localized_detail(request, detail))
     _unload_idle_video_runtime_for_image(request, "image preload")
-    if str(variant.get("engine") or "").lower() in {"mflux", "sdcpp"}:
+    if str(variant.get("engine") or "").lower() in {"mflux", "sdcpp"} or variant.get("nunchakuRepo"):
         # mflux and stable-diffusion.cpp start one process per image and free it afterwards;
         # there is no pipeline to preload, and sending these repos to diffusers answers 500.
+        # A Nunchaku row has no bf16 transformer on disk; its pipeline loads with the first image.
         state.add_log("images", "info", f"{variant['name']} loads per image; nothing to preload.")
         return {"runtime": state.image_runtime.capabilities()}
     try:
@@ -235,6 +243,13 @@ def image_library(request: Request) -> dict[str, Any]:
 def download_image_model(request: Request, body: DownloadModelRequest) -> dict[str, Any]:
     state = request.app.state.chaosengine
     _require_territory(repo=body.repo)
+    # A Nunchaku variant downloads under its pack repo; the base repo's text encoders and VAE come along.
+    if _nunchaku_variant_for_pack(body.repo) is not None:
+        return {
+            "download": state.start_download(
+                body.repo, validation_error_fn=_nunchaku_download_validation_error,
+            )
+        }
     return {"download": state.start_download(body.repo)}
 
 
@@ -246,6 +261,7 @@ def image_download_status(request: Request) -> dict[str, Any]:
         item
         for item in state.download_status()
         if str(item.get("repo") or "") in image_repos
+        or _nunchaku_variant_for_pack(str(item.get("repo") or "")) is not None
     ]
     return {"downloads": downloads}
 
@@ -259,7 +275,17 @@ def cancel_image_download(request: Request, body: DownloadModelRequest) -> dict[
 @router.post("/api/images/download/delete")
 def delete_image_download(request: Request, body: DownloadModelRequest) -> dict[str, Any]:
     state = request.app.state.chaosengine
-    return {"result": state.delete_download(body.repo)}
+    result = state.delete_download(body.repo)
+    # Deleting a Nunchaku variant also removes the base-repo parts it brought, unless the base repo
+    # holds its own transformer weights (an installed standard row) or is downloading for one.
+    variant = _nunchaku_variant_for_pack(body.repo)
+    if variant is not None:
+        base_repo = str(variant["repo"])
+        base_dir = _hf_repo_snapshot_dir(base_repo)
+        base_busy = state._downloads.get(base_repo, {}).get("state") == "downloading"
+        if base_dir is not None and not base_busy and not _transformer_weights_present(Path(base_dir)):
+            state.delete_download(base_repo)
+    return {"result": result}
 
 
 @router.post("/api/images/generate")

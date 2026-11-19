@@ -1686,3 +1686,17 @@ Live checks against a throwaway backend (own port, token, throwaway home, `HF_HU
 | 51 Smallest window and backend offline | **PASS in Chromium; Task Manager kill not run** | `32-backend-offline` 3 of 3 and `33-window-sizes` (1100x760, 1400x920, 375x812) pass. Killing the real backend from Task Manager in the packaged app was not done. |
 
 Test servers stopped (nothing listens on the test ports). Left for the packaged app: restart persistence (46), the OS clipboard (47), Task Manager kill (51).
+
+## 2026-11-19: Windows risks of handover section 3 (projects, paths, NTFS)
+
+Live against a throwaway backend (Storyboard projects), once in a short home folder and once in a home of 208 characters.
+
+| Risk | Result | Evidence |
+|---|---|---|
+| Non-ASCII project name | **PASS** | "Café 東京 ★ Ünïcode": created, exported to `exports/Café-東京-Ünïcode-<time>.chaosfilm`, imported again with the same name. |
+| Names differing only in case | **PASS** | "Harbour" and "HARBOUR" are two projects with different ids (folders are named by id, so NTFS case-folding cannot merge them). |
+| Long project name | **PASS** | A 118-character name works; the longest path was 113 characters in a short home. |
+| Paths over 260 characters | **FAIL, fixed** | `LongPathsEnabled` is 0 on this PC. With a 208-character home, creating a project answered HTTP 500 (`WinError 206`, raw OSError). It now answers HTTP 400 "The path to the project folder is too long for Windows (over 260 characters). Move the data folder closer to the drive root in Settings > Storage, or turn on Windows long paths." (`_http` in `routes/storyboard.py`, `tests/test_storyboard_path_errors.py`; confirmed live). Not done: other routes that write under the data folder may still show the raw error; the packaged app's manifest long-path setting was not checked. |
+| File lock while deleting a project | **PASS** | With a file held open in the project folder the delete answered 200 "The project was deleted, but 1 file(s) could not be removed (probably in use), for example held.bin", and a second delete after the file closed answered 404 (gone). |
+
+Test servers stopped; the temp folders under `E:	mp` are removed.

@@ -234,6 +234,13 @@ _COMPANION_PINS: dict[str, tuple[str, ...]] = {
 }
 
 
+# Packages installed WITHOUT their dependencies. ``pip install --target`` ignores what the app already runs on,
+# so kvpress (``torch>=2.3``) pulled PyPI's CPU-only torch 2.15 (1.1 GB) and transformers 5.2 into the extras
+# folder, on top of the CUDA torch the GPU runtime keeps there and out of step with torchvision (found on the
+# RTX 4090, 2026-11-19). These packages use the torch, transformers and accelerate the app already has.
+_NO_DEPS_PACKAGES = frozenset({"kvpress"})
+
+
 class InstallPackageRequest(BaseModel):
     package: str
 
@@ -284,6 +291,8 @@ def install_pip_package(request: Request, body: InstallPackageRequest) -> dict[s
     mlx_constraint = _write_mlx_constraint(extras_dir) if extras_dir is not None else None
     if mlx_constraint is not None:
         cmd.extend(["-c", str(mlx_constraint)])
+    if body.package in _NO_DEPS_PACKAGES:
+        cmd.append("--no-deps")
     cmd.append(pip_name)
     cmd.extend(_COMPANION_PINS.get(body.package, ()))
     state.add_log("server", "info", f"Installing pip package: {' '.join(cmd)}")

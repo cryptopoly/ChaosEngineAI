@@ -234,6 +234,7 @@ export function AcceleratorCard(props: AcceleratorCardProps) {
 
   if (variant === "row") {
     return (
+      <>
       <tr
         className={
           "accelerator-card-row" +
@@ -265,6 +266,22 @@ export function AcceleratorCard(props: AcceleratorCardProps) {
           )}
         </td>
       </tr>
+      {installError && (
+        <tr className="accelerator-card-row-error" data-accelerator-error={meta.id}>
+          <td colSpan={5}>
+            <p className="accelerator-card-log-error" role="alert">{installError}</p>
+            {installOutput && (
+              <details className="accelerator-card-log">
+                <summary className="accelerator-card-log-summary">
+                  {t("acceleratorCard.installFailureOutput", { defaultValue: "Install failure — show output" })}
+                </summary>
+                <pre className="accelerator-card-log-output">{installOutput}</pre>
+              </details>
+            )}
+          </td>
+        </tr>
+      )}
+      </>
     );
   }
 

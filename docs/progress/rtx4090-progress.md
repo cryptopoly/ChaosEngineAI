@@ -1720,3 +1720,18 @@ Reading: the Klein figure is within the 20 % bar at 1024 and 39 % low at 2048, s
 ## 2026-11-19: row 44, stable-diffusion.cpp `532d2c1` on Windows
 
 Built with the Visual Studio 2022 Build Tools already on this PC (MSVC 14.44, the CMake and Ninja that ship with them; nothing installed): `git checkout --detach 532d2c1`, `cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF`, target `sd-cli`: **builds clean** (304 steps, `sd-cli.exe` 38 MB, a CPU-only build: no CUDA toolkit is installed, so `SD_CUBLAS` was not used). `--help` lists the flags the app passes (`--seed`, `--video-frames`, `--flash-attn`, `--fa`, `--diffusion-fa`, `--vae-tiling`, `--cfg-scale`, `--sampling-method`, `--llm`, `--diffusion-model`, `--vae`): all 20 sd.cpp flags in `backend_service` are present (the three the check reported missing belong to the mflux engine's own CLI). Not done: a real Qwen-Image 2.1 image on this build (the model files are not here: `leejet/Qwen-Image-2.1-GGUF` holds only a README and a partial blob; the Q4_K download is about 13 GB), and a CUDA build (needs the CUDA toolkit, a third-party install). Build folder removed.
+
+## 2026-11-19: Settings > Accelerators (Boost Pack) on Windows, first look
+
+The Install buttons were run through `POST /api/setup/install-package` on a throwaway profile (own extras folder), after a read-only code review by a subagent whose claims I checked.
+
+| Row | What the button does on this PC | Finding |
+|---|---|---|
+| Nunchaku | HTTP 400 with the manual-wheel text; installs nothing | The row showed only an "Install failed" badge and "Retry": the text was never displayed. **Fixed**: rows now show the message (and pip output) under the row (`AcceleratorCard.tsx`, Playwright `41-accelerators-install-error`, screenshot looked at). Separately: the 11 Nov "does not load" skip was a wrong wheel pick (`1.1.0+torch2.11`, built for CUDA 13); the app pins 1.2.1 and `v1.2.1` has `+cu12.8torch2.11-cp312-win_amd64`, which matches this PC's torch 2.11.0+cu128: installed into a scratch folder, `nunchaku` and `NunchakuFluxTransformer2dModel` import and the native `_C` loads. A real image still needs the SVDQuant pack and the FLUX.1-schnell encoders. |
+| SageAttention | HTTP 400 with the build-from-source text; installs nothing | Same hidden message, same fix. No Windows wheel exists; SageAttention 2.2.0 built and ran in WSL2 (11 Nov, 1.49x on Wan). |
+| DFlash (CUDA) | `pip install vllm>=0.28.0` into extras: fails in 13 s | pip tried to unpack the vLLM sdist and hit the Windows 260-character path limit. vLLM has no Windows build; the only working route is the WSL panel. The row is labelled "CUDA only" and "(background)" but is neither useful nor background on Windows. |
+| TriAttention | `pip install triattention @ git+...` fails in 58 s | "No matching distribution found for triton": `triton` has no Windows wheel on PyPI, so the package cannot install on native Windows. |
+| kvpress | succeeded in 148 s, **but broke the stack** | `--target` ignores what the app already runs on, so pip fetched PyPI's CPU-only `torch 2.15.0+cpu` (1.1 GB) and `transformers 5.2.0` into the extras folder, where the GPU runtime keeps its CUDA torch; pip also warned torchvision 0.26.0+cu128 needs torch 2.11.0. **Fixed**: kvpress installs with `--no-deps` (`_NO_DEPS_PACKAGES`, `tests/test_setup_routes.py`). Also: the capability still read `kvpressAvailable: false` right after a successful install. |
+| Install vLLM in WSL | not run yet | |
+
+Open from the review: the "(background)" label is fake (the install is a blocking 300 s call; a 2 GB download usually times out); "~40 MB" and "~2 GB" sizes ignore dependencies; "Installed" only means importable; a WSL vLLM install does not flip the DFlash row.

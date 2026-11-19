@@ -200,6 +200,19 @@ class SetupRouteTests(unittest.TestCase):
             f"mlx-video spec must point to Blaizzy git URL: {cmd}",
         )
 
+    def test_kvpress_install_leaves_the_apps_torch_alone(self):
+        """``pip --target`` ignores what the app runs on, so kvpress's ``torch>=2.3`` pulled PyPI's CPU torch into the
+        extras folder over the GPU runtime's CUDA torch (RTX 4090, 2026-11-19): it installs without dependencies."""
+        with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run,              mock.patch("backend_service.routes.setup._extras_site_packages", return_value=Path("/tmp/x-extras")):
+            mock_run.return_value = mock.Mock(returncode=0, stdout="OK", stderr="")
+            self.client.post("/api/setup/install-package", json={"package": "kvpress"})
+            kv_cmd = mock_run.call_args[0][0]
+            self.client.post("/api/setup/install-package", json={"package": "mlx-video"})
+            other_cmd = mock_run.call_args[0][0]
+        self.assertIn("--no-deps", kv_cmd)
+        self.assertLess(kv_cmd.index("--no-deps"), kv_cmd.index("kvpress>=0.5.3"))
+        self.assertNotIn("--no-deps", other_cmd)
+
     def test_mlx_video_install_cannot_pull_a_newer_mlx(self):
         """mlx-video's unbounded mlx-vlm dependency is held to the app's mlx
         series by the constraint file, not by a fixed version that goes stale

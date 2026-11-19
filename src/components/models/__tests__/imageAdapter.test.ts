@@ -45,6 +45,19 @@ describe("imageVariantToEntry", () => {
     expect(entry.source.id).toBe("black-forest-labs/FLUX.1-schnell");
   });
 
+  it("downloads and deletes a Nunchaku row under its pack repo, not the shared base repo", () => {
+    const entry = imageVariantToEntry(
+      makeImageVariant({
+        id: "black-forest-labs/FLUX.1-schnell-nunchaku-int4",
+        nunchakuRepo: "mit-han-lab/svdq-int4-flux.1-schnell",
+      }),
+      { host: CUDA_PC },
+    );
+    expect(entry.repo).toBe("black-forest-labs/FLUX.1-schnell");
+    expect(entry.downloadKey).toBe("mit-han-lab/svdq-int4-flux.1-schnell");
+    expect(entry.deleteTarget).toBe("mit-han-lab/svdq-int4-flux.1-schnell");
+  });
+
   it("reads fit defensively and marks the family's best fit", () => {
     const variant = makeImageVariant({
       fit: { status: "fits", needGb: 14, usableGb: 51.8, headroomPct: 73, reason: "14 GB peak", basis: "measured" },

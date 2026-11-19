@@ -684,8 +684,23 @@ class DiffusersTextToImageEngine:
                 )
                 if quantized_transformer is not None:
                     pipeline_kwargs["transformer"] = quantized_transformer
+                elif nunchaku_note:
+                    # Say in the image's note why it did not run on Nunchaku.
+                    self._load_notes.append(nunchaku_note)
                 if nunchaku_note:
                     IMAGE_PROGRESS.set_phase(PHASE_LOADING, message=nunchaku_note)
+            if (
+                nunchaku_repo
+                and "transformer" not in pipeline_kwargs
+                and not any((Path(local_path) / "transformer").glob("*.safetensors"))
+            ):
+                # The Nunchaku download fetches the 4-bit transformer, not the base repo's bf16 one,
+                # so there is nothing to fall back to.
+                raise RuntimeError(
+                    (f"{nunchaku_note} " if nunchaku_note else "")
+                    + "This Nunchaku model has no standard transformer to fall back to. It needs an "
+                    "NVIDIA GPU with Nunchaku installed (Setup); otherwise use the standard FLUX.1 model."
+                )
             if (
                 "transformer" not in pipeline_kwargs
                 and device == "mps"

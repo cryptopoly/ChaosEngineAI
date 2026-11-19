@@ -320,6 +320,26 @@ class CapabilityRefreshTests(_TempRoot):
             caps.refresh_install_detection()
         self.assertEqual(cached.llamaServerPath, str(folder / "llama-server.exe"))
 
+    @unittest.skipUnless(sys.platform == "win32", "builds Windows paths; runs on the Windows box")
+    def test_install_turns_gguf_on_when_no_server_was_found_before(self) -> None:
+        from backend_service.inference import capabilities as caps
+        from backend_service.inference.base import BackendCapabilities
+
+        self.start_host("windows", "x64", 621, (13, 5))
+        folder = self.root / llama_cuda.LLAMA_CPP_TAG
+        folder.mkdir(parents=True)
+        (folder / "installed.json").write_text("{}", encoding="utf-8")
+        (folder / "llama-server.exe").write_bytes(b"MZ")
+        cached = BackendCapabilities(
+            pythonExecutable="python", mlxAvailable=False, mlxLmAvailable=False, mlxUsable=False,
+            ggufAvailable=False, llamaServerPath=None,
+        )
+        with mock.patch.object(caps, "_capability_cache", (0.0, cached)), \
+                mock.patch.object(llama_cuda, "lists_cuda_device", return_value=True):
+            caps.refresh_install_detection()
+        self.assertTrue(cached.ggufAvailable)
+        self.assertEqual(cached.llamaServerPath, str(folder / "llama-server.exe"))
+
 
 class WindowsRouteTests(_TempRoot):
     def _client(self):

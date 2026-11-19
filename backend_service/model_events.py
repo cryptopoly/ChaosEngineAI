@@ -278,6 +278,11 @@ class ModelEventLog:
                         handle.close()
                         handle = None
                         self._rotate()
+                    elif self._writes.empty():
+                        # Close between bursts: Windows locks an open file, so the data folder could not be moved
+                        # or deleted while the app runs.
+                        handle.close()
+                        handle = None
                 except OSError:
                     self.dropped += 1
                 finally:

@@ -1543,6 +1543,47 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(samplers["mirostat_tau"], 5.0)
         self.assertEqual(samplers["mirostat_eta"], 0.1)
 
+    def _tool_reply(self, result: GenerationResult, tools=True):
+        weather = {"type": "function", "function": {"name": "get_weather", "parameters": {
+            "type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}}}
+        body = {"model": "google/gemma-4-E4B-it", "messages": [{"role": "user", "content": "Weather in Paris?"}]}
+        if tools:
+            body["tools"] = [weather]
+        runtime = self.client.app.state.chaosengine.runtime
+        with mock.patch.object(runtime, "generate", return_value=result):
+            response = self.client.post("/v1/chat/completions", json=body)
+        self.assertEqual(response.status_code, 200)
+        return response.json()["choices"][0]
+
+    @staticmethod
+    def _result(text: str, tool_calls=None, finish="stop") -> GenerationResult:
+        return GenerationResult(text=text, finishReason=finish, promptTokens=5, completionTokens=5, totalTokens=10,
+                                tokS=1.0, responseSeconds=0.1, tool_calls=tool_calls)
+
+    def test_openai_completion_returns_the_engines_structured_tool_calls(self):
+        # llama-server reads the call with the model's template and leaves the text empty; it was dropped.
+        call = {"id": "call_1", "type": "function", "function": {"name": "get_weather", "arguments": '{"city": "Paris"}'}}
+        choice = self._tool_reply(self._result("", [call], finish="tool_calls"))
+        self.assertEqual(choice["finish_reason"], "tool_calls")
+        self.assertEqual(choice["message"]["tool_calls"], [call])
+        self.assertIsNone(choice["message"]["content"])
+
+    def test_openai_completion_reads_tool_calls_written_in_the_text(self):
+        # The MLX path writes the call as text.
+        text = 'Checking.\n<tool_call>{"name": "get_weather", "arguments": {"city": "Paris"}}</tool_call>'
+        choice = self._tool_reply(self._result(text))
+        self.assertEqual(choice["finish_reason"], "tool_calls")
+        calls = choice["message"]["tool_calls"]
+        self.assertEqual([c["function"]["name"] for c in calls], ["get_weather"])
+        self.assertEqual(json.loads(calls[0]["function"]["arguments"]), {"city": "Paris"})
+        self.assertEqual(choice["message"]["content"], "Checking.")
+
+    def test_openai_completion_without_tools_keeps_the_text(self):
+        text = '<tool_call>{"name": "get_weather", "arguments": {"city": "Paris"}}</tool_call>'
+        choice = self._tool_reply(self._result(text), tools=False)
+        self.assertEqual(choice["message"], {"role": "assistant", "content": text})
+        self.assertEqual(choice["finish_reason"], "stop")
+
     def test_openai_completion_omits_sampler_dict_when_none_set(self):
         response = self.client.post(
             "/v1/chat/completions",

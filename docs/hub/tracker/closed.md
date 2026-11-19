@@ -1,13 +1,22 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 109 shipped, obsoleted or dropped rows, newest first.
+summary: 110 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Shipped, obsoleted or dropped rows (struck through, or marked shipped with no open points left). Kept as the history of why things are the way they are.
 
+
+<details>
+<summary>FU-257 · Tests that make symlinks fail on Windows without Developer Mode — Closed 2026-11-18: the owner turned Developer Mode on (D-96)</summary>
+
+**Status or trigger:** **Closed 2026-11-18: the owner turned Developer Mode on (D-96); the 31 tests pass on the PC.**
+
+**Notes:** 31 pytest tests (WinError 1314): `test_routing_hints` 17, `test_gguf_routing` 4, `test_discovery_layouts` 3, `test_model_import` 2, one each in `test_agent_files`, `test_diagnostics_routes`, `test_storyboard_store`, `test_voice_model_files`, `test_mlx_video`. If Developer Mode stays off: a shared `can_symlink()` probe and a skip with that reason; tests that only build a fake cache could fall back to copies and keep running.
+
+</details>
 
 <details>
 <summary>FU-250 · Language banner asks to switch to the language the app is already in — Shipped 2026-11-18 (branch review/i18nfix, D-94)</summary>

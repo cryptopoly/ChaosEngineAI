@@ -267,7 +267,9 @@ class ScriptedRecoveryRuns(Harness):
         """The rehearsal's reply for this project; ``fixable`` False adds a trailing comma no repair may touch."""
         p = self.project()
         text = REPLIES[1].replace("e818ea0a241c48d6", p.id).replace('"revision": 17', f'"revision": {p.revision}')
-        text = text.replace("/Users/dan/.chaosengine/music/library/1794902867_ce532def.flac", str(self.track))
+        # Escaped as the model writes it in JSON: a Windows path's backslashes would otherwise break the call.
+        text = text.replace("/Users/dan/.chaosengine/music/library/1794902867_ce532def.flac",
+                            json.dumps(str(self.track))[1:-1])
         return text if fixable else text.replace('"Background score"}}', '"Background score",}}')
 
     def run_film(self, script):

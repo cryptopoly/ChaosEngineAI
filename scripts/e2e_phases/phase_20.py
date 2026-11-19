@@ -561,11 +561,15 @@ def run(cap: Any, suite: Any):
         if folder is not None:
             link = folder / "exports" / "e2e-link.png"
             link.parent.mkdir(exist_ok=True)
-            link.symlink_to(outside)
             try:
-                problems.append(refused(str(link), 400))  # a link inside the app's folders that points outside
-            finally:
-                link.unlink()
+                link.symlink_to(outside)
+            except OSError as exc:  # Windows without Developer Mode cannot make symlinks (WinError 1314)
+                note = f"symlink case not run: this account cannot make symlinks ({exc.strerror or exc})"
+            else:
+                try:
+                    problems.append(refused(str(link), 400))  # a link inside the app's folders that points outside
+                finally:
+                    link.unlink()
         else:
             note = "symlink case not run: the backend's project folder is not on this machine"
         problems = [p for p in problems if p]

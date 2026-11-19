@@ -56,7 +56,6 @@ from backend_service.helpers.video import (
     _video_repo_allow_patterns,
 )
 from backend_service.helpers.music import (
-    is_music_repo,
     music_download_validation_error,
     music_repo_allow_patterns,
     music_repo_revision,
@@ -68,17 +67,23 @@ if TYPE_CHECKING:
     from backend_service.state import ChaosEngineState
 
 
-def _music_companions(repo: str) -> list[tuple[str, list[str]]]:
-    """The companion repos of a music row (empty for any other repo)."""
+def _counted_companions(repo: str) -> list[tuple[str, list[str]]]:
+    """The companion repos the progress bar counts: a music row's, and a text row's pinned drafter.
+
+    An image or video row that pins its files sizes the bar with the catalog's download size instead,
+    so its companions are left out here.
+    """
     from backend_service.helpers.companions import companion_downloads
 
-    return companion_downloads(repo) if is_music_repo(repo) else []
+    if _video_repo_allow_patterns(repo) or _image_repo_allow_patterns(repo):
+        return []
+    return companion_downloads(repo)
 
 
-def _music_companion_downloaded_bytes(repo: str) -> int:
+def _companion_downloaded_bytes(repo: str) -> int:
     from backend_service.helpers.huggingface import _hf_repo_downloaded_bytes
 
-    return sum(_hf_repo_downloaded_bytes(c_repo, c_patterns) for c_repo, c_patterns in _music_companions(repo))
+    return sum(_hf_repo_downloaded_bytes(c_repo, c_patterns) for c_repo, c_patterns in _counted_companions(repo))
 
 
 def start_download(
@@ -179,10 +184,10 @@ def start_download(
     # preview lists only the top level, so it cannot be summed against the patterns the way text and music rows are.
     if pinned_catalog_gb:
         total_gb = pinned_catalog_gb
-    # A music row's companion repo (Stable Audio's T5 text encoder) is fetched after the model itself, so
-    # the bar counts it too: otherwise it sat at 99 % while the last 0.9 GB came down.
+    # Companion repos (Stable Audio's T5 text encoder, a GGUF's pinned DFlash drafter) are fetched after the
+    # model itself, so the bar counts them too: otherwise it read "16.52 of 16.52 GB" with 1.9 GB still to come.
     companion_total_bytes = 0
-    for companion_repo, companion_patterns in _music_companions(repo):
+    for companion_repo, companion_patterns in _counted_companions(repo):
         try:
             companion_total_bytes += matched_size_bytes(_hub_repo_files(companion_repo).get("files") or [], companion_patterns)
         except Exception:
@@ -192,7 +197,7 @@ def start_download(
         total_gb = float(total_gb) + _bytes_to_gb(companion_total_bytes)
 
     def _scoped_downloaded_bytes() -> int:
-        return _hf_repo_downloaded_bytes(repo, scope_patterns) + _music_companion_downloaded_bytes(repo)
+        return _hf_repo_downloaded_bytes(repo, scope_patterns) + _companion_downloaded_bytes(repo)
 
     downloaded_gb = _bytes_to_gb(_scoped_downloaded_bytes())
     initial_progress = 0.0
@@ -571,7 +576,7 @@ def cancel_download(state: ChaosEngineState, repo: str) -> dict[str, Any]:
         or music_repo_allow_patterns(repo)
         or text_repo_allow_patterns(repo)
     )
-    downloaded_gb = _bytes_to_gb(_hf_repo_downloaded_bytes(repo, scope_patterns) + _music_companion_downloaded_bytes(repo))
+    downloaded_gb = _bytes_to_gb(_hf_repo_downloaded_bytes(repo, scope_patterns) + _companion_downloaded_bytes(repo))
     with state._lock:
         current = state._downloads.get(repo)
         if current is None:

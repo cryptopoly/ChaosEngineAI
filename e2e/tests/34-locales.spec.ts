@@ -39,7 +39,7 @@ async function rawText(page: Page): Promise<string[]> {
       const parent = walker.currentNode.parentElement;
       if (!text || !parent || parent.closest("pre, code, .mono-text, script, style")) continue;
       // A key: dotted camelCase words and nothing else, not a file name or a host.
-      if (/^[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$/.test(text) && !/\.(py|sh|json|md|gguf|safetensors|wav|mp4|png|app|cpp|com|ai|io)$/i.test(text)) found.push(`key: ${text}`);
+      if (/^[a-zA-Z][a-zA-Z0-9]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$/.test(text) && !/\.(py|sh|exe|json|md|gguf|safetensors|wav|mp4|png|app|cpp|com|ai|io)$/i.test(text)) found.push(`key: ${text}`);
       if (/\{\{?[a-zA-Z_]+\}?\}/.test(text)) found.push(`placeholder: ${text.slice(0, 100)}`);
     }
     return [...new Set(found)];

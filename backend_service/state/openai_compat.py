@@ -129,6 +129,30 @@ def openai_embeddings(
     }
 
 
+def _reply_tool_calls(result: Any, tools: list[dict[str, Any]] | None) -> tuple[list[dict[str, Any]], str]:
+    """The reply's tool calls in OpenAI form, and the text left for ``content``.
+
+    llama-server reads calls with the model's own template and returns them structured with empty text;
+    the MLX path returns them written in the text. Both were dropped here before, so a client that sent
+    ``tools`` got an empty reply. Text calls are read as the app's own agent loop reads them.
+    """
+    if not tools:
+        return [], result.text
+    if getattr(result, "tool_calls", None):
+        return list(result.tool_calls), result.text
+    names = {
+        str(name) for tool in tools if isinstance(tool, dict) and (name := (tool.get("function") or {}).get("name"))
+    }
+    if not result.text or not names:
+        return [], result.text
+    from backend_service.agent_parse import _strip_tool_call_xml, read_calls
+
+    calls, _beside = read_calls(result.text, names, result.finishReason == "length")
+    if not calls:
+        return [], result.text
+    return calls, _strip_tool_call_xml(result.text)
+
+
 def openai_chat_completion(
     state: ChaosEngineState, request: OpenAIChatCompletionRequest
 ) -> dict[str, Any] | StreamingResponse:
@@ -370,6 +394,12 @@ def openai_chat_completion(
         raise HTTPException(status_code=400 if isinstance(exc, RequestNotUsable) else 500, detail=str(exc)) from exc
 
     gen_elapsed = round(time.perf_counter() - gen_start, 2)
+    message: dict[str, Any] = {"role": "assistant", "content": result.text}
+    finish_reason = result.finishReason
+    calls, visible = _reply_tool_calls(result, request.tools)
+    if calls:
+        message = {"role": "assistant", "content": visible or None, "tool_calls": calls}
+        finish_reason = "tool_calls"
     with state._lock:
         state.active_requests = max(0, state.active_requests - 1)
         state.requests_served += 1
@@ -387,11 +417,8 @@ def openai_chat_completion(
             "choices": [
                 {
                     "index": 0,
-                    "finish_reason": result.finishReason,
-                    "message": {
-                        "role": "assistant",
-                        "content": result.text,
-                    },
+                    "finish_reason": finish_reason,
+                    "message": message,
                 }
             ],
             "usage": {

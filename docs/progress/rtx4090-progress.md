@@ -1716,3 +1716,11 @@ One run per case through the app's own routes (`/api/images/generate`, `/api/vid
 | LTX-2.5 1280x704, 97 frames | 211 s | 158.1 s | shown 33 % high |
 
 Reading: the Klein figure is within the 20 % bar at 1024 and 39 % low at 2048, so its `quad` term is too small on CUDA; the LTX figure is exact at the reference size and 22 to 33 % high above it, so its `quad` term is too large (the Mac fit's `1e9`). Not changed: one run per case is not enough to refit `fixed` and `quad`, and the 49-frame case needs a warm repeat. Next: repeat each case three times warm, then set the constants per row and add the cases to `tests/fixtures/time_estimate_cases.json`. The new tier times (Final 1152x768, 3 min) inherit this error.
+
+## 2026-11-19: Task Manager kill leaves llama-server running (found and fixed)
+
+**Found:** with a GGUF model loaded, ending the backend the way Task Manager does (`taskkill /F`) left `llama-server.exe` running with the model in GPU memory. The next backend start did not stop it (`recentOrphanedWorkers` empty, still one `llama-server`). `atexit` and the parent watch only run on a clean exit. It showed first as a stray `llama-server` after my own test runs.
+
+**Fixed:** `backend_service/windows_job.py` puts the backend in a Job Object with `KILL_ON_JOB_CLOSE` at startup (`app.py` `main`); Windows closes the handle when the backend ends however it ends, and ends every process in the job with it. `tests/test_windows_job.py` kills a parent hard and checks its grandchild is gone. Live check: the same scenario now leaves no `llama-server` (before: 1, after the kill: 0, after the next start: 0). Not checked: the packaged app (Tauri starts the backend, so the job sits inside Tauri's own process tree); the voice worker and the MLX-free workers follow the same rule because they are children.
+
+Also: I launched the installed 0.9.9 app once with a debug port to drive its webview; the port did not open (the shell ignored the setting), so the packaged-app checks of rows 46, 47 and 51 stay not run. That instance and its backend were stopped.

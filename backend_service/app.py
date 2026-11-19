@@ -964,6 +964,10 @@ def main() -> None:
 
     # Watch for parent death so we don't orphan ourselves
     _watch_parent_and_exit()
+    # Windows: workers (llama-server, voice, MLX) end with the backend even when it is force-killed.
+    from backend_service.windows_job import attach_kill_on_close_job
+
+    attach_kill_on_close_job()
 
     uvicorn.run(
         "backend_service.app:app",

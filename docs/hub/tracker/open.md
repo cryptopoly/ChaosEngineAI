@@ -28,11 +28,11 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-255 · A Windows path written unescaped in a model's tool call gets the wrong advice — When agent_call_repair is next touched, or a Windows Studio chat shows it</summary>
+<summary>FU-255 · A Windows path written unescaped in a model's tool call gets the wrong advice — Done (2026-11-19, test/rtx4090)</summary>
 
-**Status or trigger:** When `agent_call_repair` is next touched, or a Windows Studio chat shows it
+**Status or trigger:** **Done (2026-11-19, `test/rtx4090`)**
 
-**Notes:** Found on the 4090 (2026-11-18): a call holding `C:\Users\...` with single backslashes does not parse as JSON, and the repair says "the JSON is missing 1 closing brace", so the model resends the same path. Either mend lone backslashes inside a string value (only where the result then parses and names a real tool), or say "write each backslash in a path as two". `tests/test_keep_going_recovery.py` now escapes its path, so it no longer shows this.
+**Notes:** Found on the 4090 (2026-11-18): a call holding `C:\Users\...` with single backslashes does not parse as JSON, and the repair says "the JSON is missing 1 closing brace", so the model resends the same path. Either mend lone backslashes inside a string value (only where the result then parses and names a real tool), or say "write each backslash in a path as two". `tests/test_keep_going_recovery.py` now escapes its path, so it no longer shows this. | Fixed by the second way: a lone backslash now gets "a backslash in a path must be written as two" (`_lone_backslash`, `tests/test_agent_call_repair_paths.py`).
 
 </details>
 

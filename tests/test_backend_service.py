@@ -1584,6 +1584,34 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(choice["message"], {"role": "assistant", "content": text})
         self.assertEqual(choice["finish_reason"], "stop")
 
+    def _stream_deltas(self, chunks):
+        weather = {"type": "function", "function": {"name": "get_weather", "parameters": {
+            "type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}}}
+        body = {"model": "google/gemma-4-E4B-it", "stream": True, "tools": [weather],
+                "messages": [{"role": "user", "content": "Weather in Paris?"}]}
+        runtime = self.client.app.state.chaosengine.runtime
+        with mock.patch.object(runtime, "stream_generate", return_value=iter(chunks)):
+            response = self.client.post("/v1/chat/completions", json=body)
+        self.assertEqual(response.status_code, 200)
+        events = [line[6:] for line in response.text.splitlines() if line.startswith("data: ")]
+        self.assertEqual(events[-1], "[DONE]")
+        return [json.loads(e)["choices"][0] for e in events[:-1]]
+
+    def test_openai_stream_sends_the_engines_tool_calls(self):
+        call = {"id": "call_1", "type": "function", "function": {"name": "get_weather", "arguments": '{"city": "Paris"}'}}
+        choices = self._stream_deltas([StreamChunk(done=True, finish_reason="tool_calls", tool_calls=[call])])
+        sent = [c["delta"]["tool_calls"] for c in choices if "tool_calls" in c["delta"]]
+        self.assertEqual(sent, [[{"index": 0, **call}]])
+        self.assertEqual(choices[-1]["finish_reason"], "tool_calls")
+
+    def test_openai_stream_reads_calls_written_in_the_text(self):
+        text = 'Checking.\n<tool_call>{"name": "get_weather", "arguments": {"city": "Paris"}}</tool_call>'
+        choices = self._stream_deltas([StreamChunk(text=text), StreamChunk(done=True, finish_reason="stop")])
+        self.assertEqual([c["delta"].get("content") for c in choices if "content" in c["delta"]], ["Checking."])
+        sent = next(c["delta"]["tool_calls"] for c in choices if "tool_calls" in c["delta"])
+        self.assertEqual(sent[0]["function"]["name"], "get_weather")
+        self.assertEqual(choices[-1]["finish_reason"], "tool_calls")
+
     def test_openai_completion_omits_sampler_dict_when_none_set(self):
         response = self.client.post(
             "/v1/chat/completions",

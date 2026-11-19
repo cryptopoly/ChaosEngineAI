@@ -322,6 +322,8 @@ class StreamChunk:
     speculative_decoding: bool | None = None
     tree_budget: int | None = None
     done: bool = False
+    # Structured tool calls the engine's server parsed, set on the final chunk (FU-258).
+    tool_calls: list[dict[str, Any]] | None = None
     # Phase 3.3: per-token logprobs. When set, contains the chosen
     # token's logprob plus the top-k alternatives. Only populated
     # when the request had `logprobs: N` set.

@@ -1163,6 +1163,8 @@ class LlamaCppEngine(BaseInferenceEngine):
         # --reasoning off. Track whether that channel still needs closing.
         server_reasoning_open = False
         timings: Any = None
+        # llama-server streams a call in pieces (``delta.tool_calls``: index, id, name, argument text): join them.
+        call_parts: dict[int, dict[str, Any]] = {}
         try:
             for raw_line in resp:
                 line = raw_line.decode("utf-8", errors="ignore").strip()
@@ -1179,6 +1181,17 @@ class LlamaCppEngine(BaseInferenceEngine):
                 delta = choice.get("delta") or {}
                 content = delta.get("content")
                 reasoning_content = delta.get("reasoning_content")
+                for piece in delta.get("tool_calls") or []:
+                    if not isinstance(piece, dict):
+                        continue
+                    part = call_parts.setdefault(int(piece.get("index") or 0), {"function": {"name": "", "arguments": ""}})
+                    if piece.get("id"):
+                        part["id"] = piece["id"]
+                    function = piece.get("function") or {}
+                    if function.get("name"):
+                        part["function"]["name"] += str(function["name"])
+                    if function.get("arguments"):
+                        part["function"]["arguments"] += str(function["arguments"])
                 if reasoning_content:
                     if first_token_time is None:
                         first_token_time = time.perf_counter()
@@ -1264,4 +1277,5 @@ class LlamaCppEngine(BaseInferenceEngine):
             tok_s=tok_s,
             runtime_note=runtime_note,
             dflash_acceptance_rate=self._acceptance_rate(timings),
+            tool_calls=_structured_calls([call_parts[k] for k in sorted(call_parts)]) or None,
         )

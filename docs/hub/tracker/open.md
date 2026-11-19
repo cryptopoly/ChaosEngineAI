@@ -10,11 +10,11 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 
 
 <details>
-<summary>FU-258 · /v1/chat/completions with stream: true drops tool calls — When the OpenAI-compatible server is next touched, or a client that streams tools reports it</summary>
+<summary>FU-258 · /v1/chat/completions with stream: true drops tool calls — Done (2026-11-19, test/rtx4090), not run live</summary>
 
-**Status or trigger:** When the OpenAI-compatible server is next touched, or a client that streams tools reports it
+**Status or trigger:** **Done (2026-11-19, `test/rtx4090`), not run live**
 
-**Notes:** Found on the 4090 (2026-11-18). The non-streamed reply now returns `tool_calls` (structured from llama-server, or read from the text on the MLX path), but `StreamChunk` has no field for calls and the llama.cpp stream ignores `delta.tool_calls`, so a streaming client gets an empty reply with `finish_reason` stop. Needs a calls field on the final chunk and the OpenAI `delta.tool_calls` chunks.
+**Notes:** Found on the 4090 (2026-11-18). The non-streamed reply now returns `tool_calls` (structured from llama-server, or read from the text on the MLX path), but `StreamChunk` has no field for calls and the llama.cpp stream ignores `delta.tool_calls`, so a streaming client gets an empty reply with `finish_reason` stop. Needs a calls field on the final chunk and the OpenAI `delta.tool_calls` chunks. | Fixed: `StreamChunk.tool_calls`, the llama.cpp stream joins `delta.tool_calls` pieces, and with `tools` the reply holds its text until the calls are known, then sends content, an OpenAI `delta.tool_calls` chunk and `finish_reason` tool_calls (`test_openai_stream_*` in `tests/test_backend_service.py`, fake runtime only; no real llama-server stream was run).
 
 </details>
 
@@ -28,11 +28,11 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-255 · A Windows path written unescaped in a model's tool call gets the wrong advice — When agent_call_repair is next touched, or a Windows Studio chat shows it</summary>
+<summary>FU-255 · A Windows path written unescaped in a model's tool call gets the wrong advice — Done (2026-11-19, test/rtx4090)</summary>
 
-**Status or trigger:** When `agent_call_repair` is next touched, or a Windows Studio chat shows it
+**Status or trigger:** **Done (2026-11-19, `test/rtx4090`)**
 
-**Notes:** Found on the 4090 (2026-11-18): a call holding `C:\Users\...` with single backslashes does not parse as JSON, and the repair says "the JSON is missing 1 closing brace", so the model resends the same path. Either mend lone backslashes inside a string value (only where the result then parses and names a real tool), or say "write each backslash in a path as two". `tests/test_keep_going_recovery.py` now escapes its path, so it no longer shows this.
+**Notes:** Found on the 4090 (2026-11-18): a call holding `C:\Users\...` with single backslashes does not parse as JSON, and the repair says "the JSON is missing 1 closing brace", so the model resends the same path. Either mend lone backslashes inside a string value (only where the result then parses and names a real tool), or say "write each backslash in a path as two". `tests/test_keep_going_recovery.py` now escapes its path, so it no longer shows this. | Fixed by the second way: a lone backslash now gets "a backslash in a path must be written as two" (`_lone_backslash`, `tests/test_agent_call_repair_paths.py`).
 
 </details>
 
@@ -217,9 +217,9 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-231 · Honest, staged tool prompt on the MLX path — Queued (2026-11-18), D-90</summary>
+<summary>FU-231 · Honest, staged tool prompt on the MLX path — Part 1 built (2026-11-19, test/rtx4090): the text block prints allowed values, ranges, defaults and nested key…</summary>
 
-**Status or trigger:** Queued (2026-11-18), D-90. After the FU-230 baseline
+**Status or trigger:** **Part 1 built (2026-11-19, `test/rtx4090`):** the text block prints allowed values, ranges, defaults and nested keys (`_schema_limits`, `tests/test_tool_prompt_limits.py`; the 20 Studio tools now 15,822 characters). Open: the staged Storyboard list, the history budget, temperature 0.2 for tool steps. Not measured on MLX (Mac): the scorecard on the MLX models decides whether part 1 helps. D-90.
 
 **Notes:** The text block prints allowed values, ranges, defaults and nested keys (today `list_models` shows `kind: string (required)` and nothing else; `generate_video` shows no limits). Core Studio tools always; the seven Storyboard tools (7,814 of 14,708 characters) only when the message asks for a film, a project is bound, or the model calls one. The history budget counts the tool block (it reserves 512 tokens against about 4,000). Tool steps at temperature 0.2 if claim C5 holds. The bridge's tool list and its golden test are unchanged.
 

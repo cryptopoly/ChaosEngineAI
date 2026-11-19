@@ -1656,3 +1656,12 @@ The warm-up page load (`e2e/warmup.ts`) timed out twice at 180 s when Playwright
 **Download (owner's OK, 2026-11-18):** `lmstudio-community/Qwen3.8-27B-GGUF` through the app (`POST /api/models/download`) into the PC's cache `E:\AI Models`: 37.5 min at about 11 MB/s; `Qwen3.8-27B-Q4_K_M.gguf` 15.66 GB, `mmproj-Qwen3.8-27B-BF16.gguf` 0.87 GB, and z-lab's DFlash 2 drafter (`models--z-lab--Qwen3.8-27B-DFlash2-GGUF`, 1.92 GB) with it. The progress bar's total said 16.52 GB and finished at 16.52 of 16.52 while the drafter's 1.92 GB came on top, so the bar left out the drafter (the same kind of fault as FU-175). Fixed the same day: the total now counts every companion of a text or music row (`_counted_companions` in `backend_service/state/downloads.py`), test `test_a_text_gguf_total_includes_its_pinned_drafter`. The snapshot uses symlinks now that Developer Mode is on.
 
 **Scorecard (tier 1, five runs, CUDA llama-server b12441):** Qwen3.8 27B Q4_K_M **50 of 60** right values, 60 of 60 calls, all valid; the 10 misses were all look-ups first (`list_voices` before speaking, `list_models` before a video), which the Studio hint asks for. Qwen3-0.6B **37 of 60**. The scoring now counts "looked up first" apart from a wrong tool and accepts an extra look-up beside the right call (9 tests). Table: `docs/research/tool-call-scorecard-2026-11.md`.
+
+
+## 2026-11-19: release merge, FU-231 part 1, row 44 remainder
+
+- **Merged into `release/v0.10.0` (owner's instruction, 2026-11-19):** `feat/model-storage-share` and `test/rtx4090` merged with no conflicts; release is `9a4ec887`, pushed. Checked on the merged tree: 135 backend tests in the touched areas, tsc, i18n:validate.
+- **FU-231 part 1:** tool block prints enum, range, default and nested keys. Built and unit-tested here; its effect on MLX models is unmeasured (needs the Mac).
+- **Row 44 remainder: SKIP on this PC.** sd.cpp `532d2c1` needs cmake and a CUDA or MSVC toolchain (none installed; installing third-party tools needs the owner's yes). TensorFold 1.2.9 has no Windows archive (source build only). The CUDA 12.4 llama.cpp archive and the real caps fixture are not run.
+- `tests/test_mlx_worker.py` DFlash tests `test_load_model_prepares_a_hybrid_gdn_target` and `test_load_model_uses_dflash_runtime_bundle_api` fail here with "cannot load module more than once per process" (a native-module import; host-bound like FU-256, not touched by this change).
+- **FU-255 and FU-258 done** (tests added; FU-258 checked against a fake runtime only, no live llama-server stream).

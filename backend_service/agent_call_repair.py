@@ -155,6 +155,14 @@ def _in_fence(text: str, pos: int) -> bool:
     return any(m.start() <= pos < m.end() for m in _FENCE.finditer(text))
 
 
+_JSON_ESCAPE = re.compile(r'\\(?:u[0-9a-fA-F]{4}|["\\/bfnrt]|(.?))', re.DOTALL)
+
+
+def _lone_backslash(body: str) -> bool:
+    """True when ``body`` holds a backslash that starts no JSON escape (an unescaped Windows path, FU-255)."""
+    return any(m.group(1) is not None for m in _JSON_ESCAPE.finditer(body))
+
+
 def _json_reason(text: str, start: int, body_end: int, names: Collection[str], truncated: bool) -> tuple[str | None, str]:
     """(tool name, reason) for the JSON value at ``start`` that the parser did not take."""
     body = text[start:body_end].rstrip()
@@ -163,6 +171,8 @@ def _json_reason(text: str, start: int, body_end: int, names: Collection[str], t
     try:
         payload, _end = json.JSONDecoder().raw_decode(body)
     except json.JSONDecodeError as exc:
+        if _lone_backslash(body):
+            return tool, "a backslash in a path must be written as two (C:\\\\Users\\\\me), as JSON needs"
         closers = _missing_closers(body)
         if isinstance(closers, list) and closers:
             reason = _closers_phrase(closers)

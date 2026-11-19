@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import time
+import types
 import uuid
 from typing import TYPE_CHECKING, Any
 
@@ -296,6 +297,14 @@ def openai_chat_completion(
                 state.add_log("server", "info", f"[{model_tag}] Streaming response...")
             token_count = 0
             prompt_tokens = 0
+            held_text: list[str] = []
+
+            def _sse_delta(delta: dict[str, Any]) -> str:
+                return "data: " + json.dumps({
+                    "id": completion_id, "object": "chat.completion.chunk", "created": created, "model": model_ref,
+                    "choices": [{"index": 0, "delta": delta, "finish_reason": None}],
+                }) + "\n\n"
+
             try:
                 first = True
                 for chunk in state.runtime.stream_generate(
@@ -310,7 +319,12 @@ def openai_chat_completion(
                     samplers=oai_samplers or None,
                     json_schema=oai_json_schema,
                 ):
-                    if chunk.text:
+                    if chunk.text and request.tools:
+                        # A call may sit in the text (the MLX path), so with tools the text is held and
+                        # sent once the calls are known (FU-258).
+                        token_count += 1
+                        held_text.append(chunk.text)
+                    elif chunk.text:
                         token_count += 1
                         delta = {"content": chunk.text}
                         if first:
@@ -335,6 +349,19 @@ def openai_chat_completion(
                             prompt_tokens = chunk.prompt_tokens
                         if hasattr(chunk, "completion_tokens") and chunk.completion_tokens:
                             token_count = chunk.completion_tokens
+                        finish = chunk.finish_reason or "stop"
+                        if request.tools:
+                            calls, visible = _reply_tool_calls(
+                                types.SimpleNamespace(
+                                    text="".join(held_text), tool_calls=chunk.tool_calls, finishReason=finish,
+                                ),
+                                request.tools,
+                            )
+                            if visible:
+                                yield _sse_delta({"role": "assistant", "content": visible})
+                            if calls:
+                                yield _sse_delta({"tool_calls": [{"index": i, **call} for i, call in enumerate(calls)]})
+                                finish = "tool_calls"
                         done_chunk = {
                             "id": completion_id,
                             "object": "chat.completion.chunk",
@@ -344,7 +371,7 @@ def openai_chat_completion(
                                 {
                                     "index": 0,
                                     "delta": {},
-                                    "finish_reason": chunk.finish_reason or "stop",
+                                    "finish_reason": finish,
                                 }
                             ],
                         }

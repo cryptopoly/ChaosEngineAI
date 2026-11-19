@@ -94,6 +94,7 @@ _MTP_ALIASES: dict[str, str] = {
     "ggml-org/Qwen3.6-35B-A3B-MTP-GGUF": "Qwen/Qwen3.6-35B-A3B",
     "am17an/Qwen3.6-27B-MTP-GGUF": "Qwen/Qwen3.6-27B",
     "am17an/Qwen3.6-35BA3B-MTP-GGUF": "Qwen/Qwen3.6-35B-A3B",
+    "unsloth/Qwen3.6-35B-A3B-MTP-GGUF": "Qwen/Qwen3.6-35B-A3B",
     # Qwen3.8-27B GGUF builds that keep the MTP head in the main file
     # (``qwen35.nextn_predict_layers`` in the header; the tensor probe finds
     # it). The alias only sets the draft count.

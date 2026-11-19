@@ -224,5 +224,45 @@ class NewTextFamiliesTests(unittest.TestCase):
             self.assertIn(fid, ids, f"{fid} missing from discover payloads")
 
 
+    # Windows 4090 chat rows (2026-11-19): file names and sizes read from the Hugging Face file lists.
+    _CUDA_CHAT_ROWS = {
+        "google/gemma-4-12B-it-qat-q4_0-gguf": ("gemma-4", None, 7.0),
+        "google/gemma-4-26B-A4B-it-qat-q4_0-gguf": ("gemma-4", "gemma-4-26B_q4_0-it.gguf", 14.4),
+        "unsloth/gemma-4-26B-A4B-it-GGUF": ("gemma-4", "gemma-4-26B-A4B-it-Q8_0.gguf", 26.9),
+        "bartowski/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF": (
+            "nemotron-3-5-lightning", "NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Q4_0.gguf", 19.1),
+        "unsloth/Qwen3.6-35B-A3B-MTP-GGUF": ("qwen-3-6", "Qwen3.6-35B-A3B-UD-IQ4_XS.gguf", 18.2),
+    }
+
+    def test_cuda_chat_rows_are_pinned_and_sized(self):
+        for repo, (family, gguf_file, size_gb) in self._CUDA_CHAT_ROWS.items():
+            rows = [v for v in self.by_id[family]["variants"] if v["repo"] == repo]
+            self.assertEqual(len(rows), 1, f"{repo} must be one row in {family}")
+            row = rows[0]
+            self.assertEqual(row["format"], "GGUF")
+            self.assertEqual(row["backend"], "llama.cpp")
+            self.assertEqual(row.get("ggufFile"), gguf_file)
+            self.assertAlmostEqual(row["sizeGb"], size_gb, places=1)
+
+    def test_bigger_gemma_quant_is_kept_beside_the_24gb_pick(self):
+        # A model is never dropped because 24 GB cannot run it: the Q8_0 stays, with its fit left to the gate.
+        sizes = {
+            v["repo"]: v["sizeGb"] for v in self.by_id["gemma-4"]["variants"] if "26B-A4B" in v["repo"] and v["format"] == "GGUF"
+        }
+        self.assertLess(sizes["google/gemma-4-26B-A4B-it-qat-q4_0-gguf"], 24.0)
+        self.assertGreater(sizes["unsloth/gemma-4-26B-A4B-it-GGUF"], 24.0)
+
+    def test_unsloth_qwen36_mtp_row_is_read_as_mtp(self):
+        from backend_service.inference._mtp import get_mtp_draft_n, is_mtp_gguf_repo
+
+        self.assertTrue(is_mtp_gguf_repo("unsloth/Qwen3.6-35B-A3B-MTP-GGUF"))
+        self.assertEqual(get_mtp_draft_n("unsloth/Qwen3.6-35B-A3B-MTP-GGUF"), 3)
+
+    def test_one_row_per_repo_in_text_catalog(self):
+        # ``pinned_gguf_file`` pins one file per repo, so a second row for a repo would be ignored.
+        repos = [v["repo"] for f in MODEL_FAMILIES for v in f["variants"]]
+        self.assertEqual(len(repos), len(set(repos)))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -2426,10 +2426,16 @@ def phase_7(cap: Capability) -> PhaseResult:
 
         return check(sys.modules[__name__])
 
+    def _studio_tiers():
+        from e2e_phases.studio_tiers import check
+
+        return check(sys.modules[__name__])
+
     for name, fn in [("diagnostics-snapshot", _snapshot), ("diagnostics-log-tail", _log_tail),
                       ("no orphan workers", _no_orphans), ("runtime idle/loaded", _idle_state),
                       ("strongControlBorders round trip", _border_setting),
-                      ("Keep going run API (start, idempotent, bounds, stop, resume refused)", _keep_going)]:
+                      ("Keep going run API (start, idempotent, bounds, stop, resume refused)", _keep_going),
+                      ("Chat quality tiers (draft <= standard <= final per installed model)", _studio_tiers)]:
         phase.checks.append(_check(name, fn))
     fails = [c for c in phase.checks if c.status == "fail"]
     phase.status = "fail" if fails else "pass"

@@ -271,3 +271,11 @@ def studio_job_media(request: Request, job_id: str, track: int = 0) -> FileRespo
     if real is None:
         raise HTTPException(status_code=404, detail=localized_detail(request, "This job has no file to show."))
     return FileResponse(real)
+
+
+@router.get("/api/chat/studio/tiers")
+def studio_tiers(request: Request) -> dict[str, Any]:
+    """Draft, Standard and Final for every installed image and video model: size, fps, steps and a time each."""
+    from backend_service.tools.studio_tiers import DEFAULT_TIER, TIERS, tiers_table
+
+    return {"default": DEFAULT_TIER, "tiers": list(TIERS), "models": tiers_table(request.app.state.chaosengine)}

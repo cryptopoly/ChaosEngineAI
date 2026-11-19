@@ -254,13 +254,21 @@ def storyboard_estimate(args: dict[str, Any], state: Any | None) -> dict[str, An
     }
 
 
-def plan_item(tool_call: dict[str, Any], state: Any | None) -> dict[str, Any]:
+def plan_item(tool_call: dict[str, Any], state: Any | None, tier: str | None = None) -> dict[str, Any]:
     """One row of the plan card: what will be made and every argument that changes it. Never raises.
 
     Estimates come from the catalog rows the bridge already reads; ``estimateAtRecommended`` marks a video
     time measured at the recommended size when the call asks for another size or a frame count.
     """
     name, args = call_name(tool_call), call_args(tool_call)
+    quality: list[str] = []
+    if tier and state is not None:
+        from backend_service.tools.studio_tiers import apply_tier, variant_for
+
+        try:
+            args, quality = apply_tier(tier, name, args, variant_for(name, args.get("model"), state))
+        except Exception:  # noqa: BLE001 - the card shows the call as asked
+            quality = []
     prompt = args.get("prompt") or args.get("text") or args.get("caption") or ""
     item: dict[str, Any] = {
         "callId": str(tool_call.get("id") or ""),
@@ -274,6 +282,10 @@ def plan_item(tool_call: dict[str, Any], state: Any | None) -> dict[str, Any]:
         "peakGb": None,
         "inputs": _file_names(args),
     }
+    if tier and name in ("generate_image", "generate_video"):
+        item["tier"] = tier
+        if quality:
+            item["qualityNotes"] = quality
     for key in ("variations", "frames", "steps", "fps", "lyrics"):
         if key in args:
             item[key] = _short(args[key], 200) if key == "lyrics" else args[key]
@@ -433,8 +445,11 @@ class StudioGate:
         poll_seconds: float = 0.25,
         keepalive_seconds: float = KEEPALIVE_SECONDS,
         auto_until: float | None = None,
+        tier: str = "standard",
     ) -> None:
         self.session_id = session_id
+        # The chat's quality tier (FU-241): the card shows a single render as it will run at this tier.
+        self.tier = tier
         self.auto_approve = auto_approve
         # Keep going's run grant (FU-191): auto-approval ends at this epoch time, even mid-turn. None: no end.
         self.auto_until = auto_until
@@ -481,7 +496,7 @@ class StudioGate:
             planned.append(tc)
         if not planned or self._auto_now():
             return answers
-        items = [plan_item(tc, self.state) for tc in planned]
+        items = [plan_item(tc, self.state, self.tier) for tc in planned]
         plan = PendingPlan(id=f"plan-{uuid.uuid4().hex[:10]}", session_id=self.session_id, items=items,
                            memory=memory_note(items, self.state))
         with _LOCK:

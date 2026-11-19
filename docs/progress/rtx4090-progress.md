@@ -1667,3 +1667,4 @@ The warm-up page load (`e2e/warmup.ts`) timed out twice at 180 s when Playwright
 - **FU-255 and FU-258 done** (tests added; FU-258 checked against a fake runtime only, no live llama-server stream).
 - **FU-231 part 2:** Storyboard tools staged by `wants_storyboard`; tests pass (staging, backend, Keep going integration). Effect on prompt time unmeasured (MLX).
 - **FU-240 part 1:** plan card prices the settings that will run (size, frames, fps, steps, time). Tests pass; the card layout was not looked at in the app (no frontend change).
+- **FU-241 backend (single renders):** tier module, endpoint, applied in Chat and on the card; live check on the 4090 through a throwaway backend (port 8910, stopped after): LTX-2.5 clip Draft 384x256 12 s, Standard 768x512 55 s, Final 1152x768 179 s (catalogue estimates, not renders). No UI buttons yet.

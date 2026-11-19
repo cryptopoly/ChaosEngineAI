@@ -18,6 +18,7 @@ import threading
 from typing import Any, Callable
 
 from backend_service.tools import BaseTool, StructuredToolOutput, ToolRegistry
+from backend_service.tools.studio_tiers import SINGLE_RENDERS, apply_tier, variant_for
 
 # What the chat model may do. Never "files" (download links, uploads, exports), "download" or "clone".
 CHAT_SCOPES = frozenset({"read", "generate"})
@@ -305,8 +306,10 @@ class StudioTool(BaseTool):
     def __init__(self, tool: dict[str, Any], handler: Any, app_request: Any,
                  is_cancelled: Callable[[], bool] | None = None, revisions: TurnRevisions | None = None,
                  defer: Callable[[str, dict[str, Any]], StructuredToolOutput | None] | None = None,
-                 watch: Any = None) -> None:
+                 watch: Any = None, tier: str = "standard") -> None:
         self._tool = tool
+        # The chat's quality tier (FU-241): a single image or clip never runs above it.
+        self._tier = tier
         # Keep going's stall guard (FU-207, ``keep_going.stall.TurnWatch``): ends a wait on a job without progress.
         self._watch = watch
         # Keep going's "free GPU memory while rendering" (FU-191): an approved render may be kept for after the
@@ -405,6 +408,12 @@ class StudioTool(BaseTool):
         refused = _chat_input_problem(self.name, args) or _foreign_job_problem(self.name, args)
         if refused:
             return self._error(refused)
+        tier_notes: list[str] = []
+        if self.name in SINGLE_RENDERS:
+            from backend_service.mcp_bridge.tools import _state
+
+            args, tier_notes = apply_tier(self._tier, self.name, args,
+                                          variant_for(self.name, args.get("model"), _state(make_context(self._request))))
         if self._defer is not None and needs_approval(self.name, args):
             kept = self._defer(self.name, args)
             if kept is not None:
@@ -433,6 +442,8 @@ class StudioTool(BaseTool):
             return self._error(f"{self.name} failed: {type(exc).__name__}: {exc}")
         finally:
             CURRENT_OWNER.reset(token)
+        if tier_notes and isinstance(payload, dict):
+            payload = {**payload, "qualityNotes": tier_notes}
         trimmed = trim_result(payload)
         return StructuredToolOutput(text=_text(trimmed), render_as="studio", data={"tool": self.name, **trimmed})
 
@@ -501,24 +512,24 @@ def wants_storyboard(prompt: str, messages: list[dict[str, Any]] | None, *, keep
 
 def studio_tools(app_request: Any, is_cancelled: Callable[[], bool] | None = None,
                  defer: Callable[[str, dict[str, Any]], StructuredToolOutput | None] | None = None,
-                 watch: Any = None, storyboard: bool = True) -> list[StudioTool]:
+                 watch: Any = None, storyboard: bool = True, tier: str = "standard") -> list[StudioTool]:
     tools, handlers = _bridge()
     by_name = {t["name"]: t for t in tools}
     revisions = TurnRevisions()  # one per chat turn, shared by its storyboard tools
-    return [StudioTool(by_name[n], handlers[n], app_request, is_cancelled, revisions, defer, watch)
+    return [StudioTool(by_name[n], handlers[n], app_request, is_cancelled, revisions, defer, watch, tier)
             for n in STUDIO_TOOL_NAMES if n in by_name and n in handlers and (storyboard or not n.startswith("storyboard_"))]
 
 
 def studio_registry(app_request: Any, base: ToolRegistry, available: list[str] | None,
                     is_cancelled: Callable[[], bool] | None = None,
                     defer: Callable[[str, dict[str, Any]], StructuredToolOutput | None] | None = None,
-                    watch: Any = None, storyboard: bool = True) -> ToolRegistry:
+                    watch: Any = None, storyboard: bool = True, tier: str = "standard") -> ToolRegistry:
     """The chat tools (``available`` of ``base``, all when None) plus the studio tools (the Storyboard ones only
     when ``storyboard``, see ``wants_storyboard``)."""
     registry = ToolRegistry()
     for tool in base.list_tools():
         if available is None or tool.name in available:
             registry.register(tool)
-    for tool in studio_tools(app_request, is_cancelled, defer, watch, storyboard):
+    for tool in studio_tools(app_request, is_cancelled, defer, watch, storyboard, tier):
         registry.register(tool)
     return registry

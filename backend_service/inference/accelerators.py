@@ -72,6 +72,15 @@ def _safe_version(module_name: str) -> str | None:
     except Exception:
         return None
     version = getattr(module, "__version__", None)
+    if version is None:
+        # Nunchaku 1.2.x has no ``__version__``: the package metadata still names the build (``1.2.1+cu12.8torch2.11``).
+        from importlib import metadata
+
+        for dist in dict.fromkeys((module_name, module_name.replace("_", "-"))):
+            try:
+                return metadata.version(dist)
+            except metadata.PackageNotFoundError:
+                continue
     return str(version) if version is not None else None
 
 

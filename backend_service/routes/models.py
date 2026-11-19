@@ -406,6 +406,51 @@ def import_scan() -> dict[str, Any]:
     return scan_importable()
 
 
+class ShareLmStudioRequest(BaseModel):
+    path: str
+    repo: str | None = None
+    lmstudioDir: str | None = None
+
+
+@router.post("/api/models/share-lmstudio")
+def share_model_with_lmstudio(request: Request, body: ShareLmStudioRequest) -> dict[str, Any]:
+    """Make a GGUF visible to LM Studio by linking it into its models folder (no copy)."""
+    from pathlib import Path
+
+    from backend_service.helpers.model_import import default_lmstudio_dirs, share_with_lmstudio
+
+    if body.lmstudioDir and body.lmstudioDir.strip():
+        raw = body.lmstudioDir.strip()
+        if not (raw.startswith("~") or Path(raw).expanduser().is_absolute()):
+            raise HTTPException(status_code=400, detail=localized_detail(request, "LM Studio folder must be an absolute path."))
+        target = Path(raw).expanduser()
+    else:
+        saved = str(request.app.state.chaosengine.settings.get("lmstudioDir") or "").strip()
+        existing = [Path(saved).expanduser()] if saved else [d for d in default_lmstudio_dirs() if d.is_dir()]
+        if not existing:
+            raise HTTPException(
+                status_code=400,
+                detail=localized_detail(
+                    request,
+                    "LM Studio's models folder is not set. Add it under Settings > Model Storage and try again.",
+                ),
+            )
+        target = existing[0]
+    try:
+        result = share_with_lmstudio(path=body.path, lmstudio_dir=target, repo=body.repo)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=localized_detail(request, str(exc))) from exc
+    except OSError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=localized_detail(
+                request,
+                f"Could not link the model into LM Studio's folder (it must be on the same drive as the model): {exc}",
+            ),
+        ) from exc
+    return {"shared": result, "lmstudioDir": str(target)}
+
+
 @router.post("/api/models/import")
 def import_model(request: Request, body: ImportModelRequest) -> dict[str, Any]:
     """Register an existing model by reference (symlink, no copy)."""

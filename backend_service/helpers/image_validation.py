@@ -90,6 +90,52 @@ def _mflux_snapshot_error(snapshot_dir: Path, repo_id: str) -> str | None:
     return f"The snapshot of {repo_id} has no weights in: {', '.join(missing)}. Retry the download."
 
 
+def _nunchaku_variant_for_pack(pack_repo: str) -> dict[str, Any] | None:
+    """The catalog variant whose Nunchaku pack is ``pack_repo``."""
+    for family in IMAGE_MODEL_FAMILIES:
+        for variant in family["variants"]:
+            if variant.get("nunchakuRepo") and str(variant["nunchakuRepo"]) == pack_repo:
+                return variant
+    return None
+
+
+def _nunchaku_base_repos() -> set[str]:
+    """Base repos a Nunchaku variant fetches only in part (no bf16 transformer shards)."""
+    return {
+        str(variant.get("repo") or "")
+        for family in IMAGE_MODEL_FAMILIES
+        for variant in family["variants"]
+        if variant.get("nunchakuRepo")
+    }
+
+
+def _transformer_weights_present(snapshot_dir: Path) -> bool:
+    """True when the snapshot holds transformer weights, not just ``transformer/config.json``."""
+    return any((snapshot_dir / "transformer").glob("*.safetensors"))
+
+
+def _nunchaku_variant_ready(variant: dict[str, Any]) -> bool:
+    """A Nunchaku variant runs when the base repo's pipeline parts and its pack are both on disk."""
+    base_dir = _hf_repo_snapshot_dir(str(variant.get("repo") or ""))
+    pack_dir = _hf_repo_snapshot_dir(str(variant.get("nunchakuRepo") or ""))
+    if base_dir is None or pack_dir is None:
+        return False
+    if validate_local_diffusers_snapshot(Path(base_dir), str(variant["repo"])) is not None:
+        return False
+    return any(Path(pack_dir).glob("*.safetensors"))
+
+
+def _nunchaku_download_validation_error(pack_repo: str) -> str | None:
+    """After a Nunchaku download: both the pack and the base repo's parts must be on disk."""
+    variant = _nunchaku_variant_for_pack(pack_repo)
+    if variant is None or _nunchaku_variant_ready(variant):
+        return None
+    return (
+        f"The download of {variant['name']} is incomplete: it needs {pack_repo} and the text encoders "
+        f"and VAE of {variant['repo']}. Retry the download."
+    )
+
+
 def _image_repo_runtime_ready(repo_id: str) -> bool:
     snapshot_dir = _hf_repo_snapshot_dir(repo_id)
     if snapshot_dir is None:
@@ -102,10 +148,15 @@ def _image_repo_runtime_ready(repo_id: str) -> bool:
         return all((Path(snapshot_dir) / name).is_file() for name in pinned)
     if _mflux_only_repo(repo_id):
         return _mflux_snapshot_error(Path(snapshot_dir), repo_id) is None
-    return validate_local_diffusers_snapshot(snapshot_dir, repo_id) is None
+    if validate_local_diffusers_snapshot(snapshot_dir, repo_id) is not None:
+        return False
+    # A Nunchaku download leaves the base repo without its own transformer weights.
+    return repo_id not in _nunchaku_base_repos() or _transformer_weights_present(Path(snapshot_dir))
 
 
 def _image_variant_available_locally(variant: dict[str, Any], library: list[dict[str, Any]]) -> bool:
+    if variant.get("nunchakuRepo"):
+        return _nunchaku_variant_ready(variant)
     repo = str(variant.get("repo") or "")
     if variant.get("engine") == "sdcpp" and variant.get("ggufFile") and str(variant.get("ggufRepo") or "") == repo:
         snapshot_dir = _hf_repo_snapshot_dir(repo)
@@ -127,8 +178,11 @@ def _image_variant_available_locally(variant: dict[str, Any], library: list[dict
         if not (name in candidates or name.split("/")[-1] in compact_candidates):
             continue
         item_path = Path(str(item.get("path") or "")).expanduser()
+        needs_transformer = repo in _nunchaku_base_repos()
         for directory in _candidate_model_dirs(item_path):
-            if validate_local_diffusers_snapshot(directory) is None:
+            if validate_local_diffusers_snapshot(directory) is None and (
+                not needs_transformer or _transformer_weights_present(directory)
+            ):
                 return True
     return False
 

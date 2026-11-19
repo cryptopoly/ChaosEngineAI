@@ -29,6 +29,12 @@ export function findImageVariantByRepo(families: ImageModelFamily[], repo: strin
   return null;
 }
 
+/** The repo a variant's download, pause and delete go to: a Nunchaku row downloads under its pack
+ * (the backend brings the base repo's text encoders and VAE with it), every other row under its repo. */
+export function imageDownloadRepo(variant: Pick<ImageModelVariant, "repo" | "nunchakuRepo">): string {
+  return variant.nunchakuRepo || variant.repo;
+}
+
 export function imageRuntimeKind(label?: string | null) {
   const lowered = (label ?? "").toLowerCase();
   if (lowered.includes("placeholder")) return "placeholder";

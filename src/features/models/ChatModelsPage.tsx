@@ -13,7 +13,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import type { DownloadStatus } from "../../api";
+import { shareWithLmStudio, type DownloadStatus } from "../../api";
 import type { HubFileListResponse, HubModel, LibraryItem, ModelFamily, ModelVariant } from "../../types";
 import { CAPABILITY_META } from "../../constants";
 import { IconActionButton } from "../../components/ModelActionIcons";
@@ -344,6 +344,25 @@ export function ChatModelsPage({
   const { t } = useTranslation("library");
   const { t: tCommon } = useTranslation("common");
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const [shareNotice, setShareNotice] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const handleShareWithLmStudio = useCallback(
+    async (path: string, repo?: string) => {
+      try {
+        const result = await shareWithLmStudio({ path, repo });
+        const where = `${result.shared.publisher}/${result.shared.model}`;
+        setShareNotice({
+          ok: true,
+          text: result.shared.alreadyShared
+            ? t("models.chat.share.already", { defaultValue: "Already shared with LM Studio ({where}).", where })
+            : t("models.chat.share.done", { defaultValue: "Shared with LM Studio as {where}. No extra disk space used.", where }),
+        });
+      } catch (err) {
+        setShareNotice({ ok: false, text: err instanceof Error ? err.message : String(err) });
+      }
+    },
+    [t],
+  );
 
   // The fuzzy match is the costly part; it only depends on the catalog
   // and the disk scan, not on download polling.
@@ -663,6 +682,14 @@ export function ChatModelsPage({
                 onClick={() => onDeleteModel(item)}
               />
             ) : null}
+            {item && status.state === "installed" && item.path.toLowerCase().endsWith(".gguf") ? (
+              <IconActionButton
+                icon="share"
+                label={t("models.chat.share.action", { defaultValue: "Share with LM Studio" })}
+                title={t("models.chat.share.action", { defaultValue: "Share with LM Studio" })}
+                onClick={() => void handleShareWithLmStudio(item.path, entry.repo ?? undefined)}
+              />
+            ) : null}
             {item ? (
               <IconActionButton icon="reveal" label={fileRevealLabel} title={fileRevealLabel} onClick={() => onRevealPath(item.path)} />
             ) : null}
@@ -802,6 +829,11 @@ export function ChatModelsPage({
           {searchError ? (
             <div className="callout error">
               <p>{searchError}</p>
+            </div>
+          ) : null}
+          {shareNotice ? (
+            <div className={shareNotice.ok ? "callout" : "callout error"} role="status">
+              <p>{shareNotice.text}</p>
             </div>
           ) : null}
           <RunFromHuggingFace />

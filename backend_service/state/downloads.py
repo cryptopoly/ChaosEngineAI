@@ -51,6 +51,7 @@ from backend_service.helpers.images import (
     _image_download_validation_error,
     _image_repo_allow_patterns,
 )
+from backend_service.helpers.image_validation import _nunchaku_variant_for_pack
 from backend_service.helpers.video import (
     _video_download_validation_error,
     _video_repo_allow_patterns,
@@ -120,8 +121,15 @@ def start_download(
     # sizes the bar with the catalog's download size, never the cached Hub total of the whole repo. Catalog GB
     # are decimal, the bar counts GiB.
     pinned_catalog_gb: float | None = None
-    if not allow_patterns and (_video_repo_allow_patterns(repo) or _image_repo_allow_patterns(repo)):
-        catalog_gb = _known_repo_size_gb(repo, catalog_only=True)
+    nunchaku_variant = None if allow_patterns else _nunchaku_variant_for_pack(repo)
+    if nunchaku_variant is not None or (
+        not allow_patterns and (_video_repo_allow_patterns(repo) or _image_repo_allow_patterns(repo))
+    ):
+        # A Nunchaku pack's catalog size covers the pack and the base-repo parts it brings as a companion.
+        catalog_gb = (
+            nunchaku_variant.get("sizeGb") if nunchaku_variant is not None
+            else _known_repo_size_gb(repo, catalog_only=True)
+        )
         if isinstance(catalog_gb, (int, float)) and catalog_gb > 0:
             pinned_catalog_gb = round(float(catalog_gb) * 1e9 / 1024 ** 3, 2)
 
@@ -187,7 +195,7 @@ def start_download(
     # Companion repos (Stable Audio's T5 text encoder, a GGUF's pinned DFlash drafter) are fetched after the
     # model itself, so the bar counts them too: otherwise it read "16.52 of 16.52 GB" with 1.9 GB still to come.
     companion_total_bytes = 0
-    for companion_repo, companion_patterns in _counted_companions(repo):
+    for companion_repo, companion_patterns in [] if nunchaku_variant is not None else _counted_companions(repo):
         try:
             companion_total_bytes += matched_size_bytes(_hub_repo_files(companion_repo).get("files") or [], companion_patterns)
         except Exception:

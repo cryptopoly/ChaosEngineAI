@@ -780,6 +780,11 @@
         "modifiedDesc": "recently modified first",
         "modifiedAsc": "least recently modified first",
         "status": "Status"
+      },
+      "share": {
+        "action": "Share with LM Studio",
+        "done": "Shared with LM Studio as {where}. No extra disk space used.",
+        "already": "Already shared with LM Studio ({where})."
       }
     }
   }

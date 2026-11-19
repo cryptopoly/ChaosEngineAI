@@ -456,6 +456,24 @@ def phase_0(cap: Capability) -> PhaseResult:
             "lmstudioAvailable": payload["lmstudio"].get("available"),
         }
 
+    def _model_share_guard():
+        # Share a GGUF into another app's models folder: refusals only, nothing is linked or created.
+        missing = {"path": str(Path.home() / ".chaosengine" / "e2e-no-such-model.gguf"),
+                   "lmstudioDir": str(Path.home() / ".chaosengine" / "e2e-share-target")}
+        rc, payload, err = _cli_json("call", "POST", "/api/models/share-lmstudio", "--body", json.dumps(missing),
+                                     timeout=15.0)
+        if rc == 0 or "404" not in f"{payload} {err}":
+            return "fail", f"a missing GGUF was not refused with 404: {err[:160]}", {}
+        relative = {"path": missing["path"], "lmstudioDir": "relative/folder"}
+        rc, payload, err = _cli_json("call", "POST", "/api/models/share-lmstudio", "--body", json.dumps(relative),
+                                     timeout=15.0)
+        if rc == 0 or "400" not in f"{payload} {err}":
+            return "fail", f"a relative folder was not refused with 400: {err[:160]}", {}
+        rc, storage, err = _cli_json("call", "GET", "/api/settings/storage", timeout=15.0)
+        if rc != 0 or not isinstance(storage, dict) or "lmstudioDir" not in storage:
+            return "fail", f"storage settings lack lmstudioDir: {err[:160]}", {}
+        return "pass", "", {}
+
     def _resolve_hf_guard():
         # Malformed repo must be rejected before any network call — proves
         # the route is wired without depending on Hugging Face reachability.
@@ -602,6 +620,7 @@ def phase_0(cap: Capability) -> PhaseResult:
         ("rag status (#1)", _rag_status),
         ("ollama-compat (#3)", _ollama_compat),
         ("model import scan (#4)", _model_import_scan),
+        ("share a GGUF into another app's folder: refusals", _model_share_guard),
         ("run-from-hf guard (#5)", _resolve_hf_guard),
         ("new model families (frontier + Ornith)", _new_model_families),
         ("text GGUF file pins (FU-087)", _gguf_pins),

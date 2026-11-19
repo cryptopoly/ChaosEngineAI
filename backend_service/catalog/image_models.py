@@ -141,11 +141,16 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "runtime": "diffusers + nunchaku SVDQuant (CUDA)",
                 "styleTags": ["general", "fast", "cuda", "int4"],
                 "taskSupport": ["txt2img"],
-                "sizeGb": 6.7,
+                # 6.75 GB pack + 9.94 GB of the base repo (text encoders, tokenizers, VAE, scheduler,
+                # transformer config), read from the Hub file listings on 2026-11-19.
+                "sizeGb": 16.7,
+                "runtimeFootprintGb": 8.7,  # unchanged estimate (the old 6.7 GB size x 1.3), not measured
                 "recommendedResolution": "1024x1024",
                 "note": (
                     "Nunchaku SVDQuant INT4 — sub-second 4-step gen on a "
-                    "4090 with quality near the bf16 baseline. CUDA only."
+                    "4090 with quality near the bf16 baseline. CUDA only, "
+                    "needs Nunchaku installed. Downloads the 6.8 GB INT4 "
+                    "transformer plus the FLUX.1 text encoders and VAE (9.9 GB)."
                 ),
                 "estimatedGenerationSeconds": 0.7,
                 "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 4},  # FU-165 reference: row defaultSteps
@@ -349,9 +354,9 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
             # FU-023 Nunchaku SVDQuant — 4-bit precompiled INT4 weights.
             # CUDA only (Ada/Hopper/Blackwell). ~3× over NF4 on FLUX.1-dev,
             # quality near bf16. Variant pins the upstream MIT-Han-Lab
-            # snapshot; runtime falls back to the standard FLUX.1 Dev
-            # path when nunchaku is unavailable so MPS / CPU users see
-            # the same final image (just slower).
+            # snapshot. The download is the pack plus the base repo's text
+            # encoders and VAE (no bf16 transformer), so there is no
+            # fallback when nunchaku is unavailable.
             {
                 "id": "black-forest-labs/FLUX.1-dev-nunchaku-int4",
                 "familyId": "flux-dev",
@@ -363,13 +368,17 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "runtime": "diffusers + nunchaku SVDQuant (CUDA)",
                 "styleTags": ["general", "detailed", "fast", "cuda", "int4"],
                 "taskSupport": ["txt2img"],
-                "sizeGb": 6.7,
+                # 6.77 GB pack + 9.94 GB of the base repo (text encoders, tokenizers, VAE, scheduler,
+                # transformer config), read from the Hub file listings on 2026-11-19.
+                "sizeGb": 16.7,
+                "runtimeFootprintGb": 8.7,  # unchanged estimate (the old 6.7 GB size x 1.3), not measured
                 "recommendedResolution": "1024x1024",
                 "note": (
                     "Nunchaku SVDQuant INT4 — ~3× over NF4 on FLUX.1-dev, "
                     "quality near bf16. CUDA only (RTX 4070+ / 4090 / "
-                    "Hopper / Blackwell). Falls back to bf16 / NF4 / int8wo "
-                    "automatically on Apple Silicon and CPU."
+                    "Hopper / Blackwell), needs Nunchaku installed. Downloads "
+                    "the 6.8 GB INT4 transformer plus the FLUX.1 text encoders "
+                    "and VAE (9.9 GB)."
                 ),
                 "estimatedGenerationSeconds": 1.4,
                 "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 28},  # FU-165 reference: FLUX.1-dev 28-step entry in recommended_settings

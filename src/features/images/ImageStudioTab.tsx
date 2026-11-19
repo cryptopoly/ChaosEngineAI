@@ -42,6 +42,7 @@ import {
   sizeLabel,
   downloadProgressLabel,
   formatImageAccessError,
+  imageDownloadRepo,
   isGatedImageAccessError,
 } from "../../utils";
 import {
@@ -353,7 +354,7 @@ export function ImageStudioTab({
     IMAGE_QUALITY_PRESETS.find((preset) => preset.id === imageQualityPreset) ?? IMAGE_QUALITY_PRESETS[1];
   // CUDA-only controls need an NVIDIA GPU: hidden on a Mac and on a PC without one.
   const showCudaControls = hostSystem ? hasNvidiaGpu(hostSystem) : !isAppleSiliconHost;
-  const selectedImageDownload = selectedImageVariant ? activeImageDownloads[selectedImageVariant.repo] : undefined;
+  const selectedImageDownload = selectedImageVariant ? activeImageDownloads[imageDownloadRepo(selectedImageVariant)] : undefined;
   const selectedImageDownloadPaused = selectedImageDownload?.state === "cancelled";
   const selectedImageDownloadComplete = selectedImageDownload?.state === "completed";
   const selectedImageDownloadFailed = selectedImageDownload?.state === "failed";
@@ -801,29 +802,29 @@ export function ImageStudioTab({
                 {selectedImageDownload?.state === "downloading" ? (
                   <>
                     <span className="badge accent">{downloadProgressLabel(selectedImageDownload)}</span>
-                    <button className="secondary-button" type="button" onClick={() => onCancelImageDownload(selectedImageVariant.repo)}>
+                    <button className="secondary-button" type="button" onClick={() => onCancelImageDownload(imageDownloadRepo(selectedImageVariant))}>
                       {t("imageStudio.download.pause", { defaultValue: "Pause" })}
                     </button>
-                    <button className="secondary-button danger-button" type="button" onClick={() => onDeleteImageDownload(selectedImageVariant.repo)}>
+                    <button className="secondary-button danger-button" type="button" onClick={() => onDeleteImageDownload(imageDownloadRepo(selectedImageVariant))}>
                       {t("imageStudio.download.cancel", { defaultValue: "Cancel" })}
                     </button>
                   </>
                 ) : selectedImageDownloadPaused ? (
                   <>
                     <span className="badge warning">{downloadProgressLabel(selectedImageDownload)}</span>
-                    <button className="secondary-button" type="button" onClick={() => onImageDownload(selectedImageVariant.repo)}>
+                    <button className="secondary-button" type="button" onClick={() => onImageDownload(imageDownloadRepo(selectedImageVariant))}>
                       {t("imageStudio.download.resume", { defaultValue: "Resume" })}
                     </button>
-                    <button className="secondary-button danger-button" type="button" onClick={() => onDeleteImageDownload(selectedImageVariant.repo)}>
+                    <button className="secondary-button danger-button" type="button" onClick={() => onDeleteImageDownload(imageDownloadRepo(selectedImageVariant))}>
                       {t("imageStudio.download.delete", { defaultValue: "Delete" })}
                     </button>
                   </>
                 ) : selectedImageDownloadFailed ? (
                   <>
-                    <button className="secondary-button" type="button" onClick={() => onImageDownload(selectedImageVariant.repo)}>
+                    <button className="secondary-button" type="button" onClick={() => onImageDownload(imageDownloadRepo(selectedImageVariant))}>
                       {t("imageStudio.download.retry", { defaultValue: "Retry Download" })}
                     </button>
-                    <button className="secondary-button danger-button" type="button" onClick={() => onDeleteImageDownload(selectedImageVariant.repo)}>
+                    <button className="secondary-button danger-button" type="button" onClick={() => onDeleteImageDownload(imageDownloadRepo(selectedImageVariant))}>
                       {t("imageStudio.download.delete", { defaultValue: "Delete" })}
                     </button>
                   </>
@@ -831,11 +832,11 @@ export function ImageStudioTab({
                   <span className="badge success">{t("imageStudio.download.complete", { defaultValue: "Download complete" })}</span>
                 ) : (
                   <>
-                    <button className="secondary-button" type="button" onClick={() => onImageDownload(selectedImageVariant.repo)}>
+                    <button className="secondary-button" type="button" onClick={() => onImageDownload(imageDownloadRepo(selectedImageVariant))}>
                       {t("imageStudio.download.downloadModel", { defaultValue: "Download Model" })}
                     </button>
                     {selectedImageVariant.hasLocalData ? (
-                      <button className="secondary-button danger-button" type="button" onClick={() => onDeleteImageDownload(selectedImageVariant.repo)}>
+                      <button className="secondary-button danger-button" type="button" onClick={() => onDeleteImageDownload(imageDownloadRepo(selectedImageVariant))}>
                         {t("imageStudio.download.delete", { defaultValue: "Delete" })}
                       </button>
                     ) : null}

@@ -780,6 +780,11 @@
         "modifiedDesc": "最近修改优先",
         "modifiedAsc": "最早修改优先",
         "status": "状态"
+      },
+      "share": {
+        "action": null,
+        "done": null,
+        "already": null
       }
     }
   }

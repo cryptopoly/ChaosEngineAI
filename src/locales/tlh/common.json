@@ -1496,7 +1496,10 @@
     "starting": "taghlI'...",
     "moveModels": "He chu'Daq yab tu'lu'bogh tIvIHmoH",
     "filesProgress": "{copied} / {total} nav",
-    "restartBackend": "qoD pat yItaghqa'"
+    "restartBackend": "qoD pat yItaghqa'",
+    "lmstudioDir": null,
+    "lmstudioHint": null,
+    "saveLmstudioDir": null
   },
   "videoPlaceholderTab": {
     "engines": {

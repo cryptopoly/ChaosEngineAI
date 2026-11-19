@@ -63,6 +63,8 @@ export interface ImageModelVariant {
   name: string;
   provider: string;
   repo: string;
+  /** Nunchaku SVDQuant pack; the variant downloads under this repo (see ``imageDownloadRepo``). */
+  nunchakuRepo?: string | null;
   ggufRepo?: string | null;
   ggufFile?: string | null;
   /** ``mflux`` or ``sdcpp`` for variants that run outside the diffusers

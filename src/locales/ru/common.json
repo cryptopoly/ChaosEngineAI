@@ -1496,7 +1496,10 @@
     "starting": "Запуск...",
     "moveModels": "Переместить существующие модели в новый путь",
     "filesProgress": "{copied} / {total} файлов",
-    "restartBackend": "Перезапустить бэкенд"
+    "restartBackend": "Перезапустить бэкенд",
+    "lmstudioDir": null,
+    "lmstudioHint": null,
+    "saveLmstudioDir": null
   },
   "videoPlaceholderTab": {
     "engines": {

@@ -13,6 +13,22 @@ import { useVoice } from "../VoiceContext";
 import { VOICE_LANGUAGES, voiceLanguageName } from "../voiceLanguages";
 import { sttDeleteConfirmText } from "./voiceModelsLogic";
 
+/** Why this GPU cannot run a GPU dictation row; the same words as the speech models' rows. */
+function gpuFactsText(facts: NonNullable<SttModel["gpuFacts"]>, t: (key: string, options?: Record<string, unknown>) => string): string {
+  if (facts.kind === "compute") {
+    return t("voice.speak.gpuTooOld", {
+      need: facts.need,
+      have: facts.have,
+      defaultValue: "Needs an NVIDIA GPU of compute capability {need} or newer; this one is {have}.",
+    });
+  }
+  return t("voice.speak.gpuTooSmall", {
+    need: facts.need,
+    have: facts.have,
+    defaultValue: "Needs about {need} GB of GPU memory; this GPU has {have} GB.",
+  });
+}
+
 function SttModelCard({
   model,
   selected,
@@ -73,8 +89,10 @@ function SttModelCard({
         <div>
           <h3 className="voice-model-card__name">{model.name}</h3>
           <p className="muted-text voice-model-card__meta">
-            {model.languages} · {model.sizeGb} GB
+            {model.languages} · {model.sizeGb} GB{model.licence ? ` · ${model.licence}` : ""}
           </p>
+          {model.note ? <p className="muted-text voice-model-card__meta">{model.note}</p> : null}
+          {model.gpuFacts ? <p className="voice-error">{gpuFactsText(model.gpuFacts, tf)}</p> : null}
         </div>
         <div className="voice-model-card__badges">
           {model.installed ? (

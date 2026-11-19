@@ -154,6 +154,26 @@ describe("Dictation models (D-73 M1)", () => {
     expect(html).toContain("fetched the first time you dictate");
     expect(html).not.toContain("Downloads on first use if you skip this");
   });
+
+  it("shows a GPU row's licence and note, and why this GPU cannot run it", () => {
+    const gpu = wrap(
+      <DictationModelsPanel
+        runtime={runtime({
+          sttModels: [
+            {
+              id: "nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B", key: "nemotron-3.5-transcribe-30b", name: "Nemotron 3.5 Transcribe 30B-A4B",
+              languages: "40 languages", sizeGb: 67.5, installed: false, default: false, backend: "transformers-asr", licence: "OpenMDW-1.1",
+              note: "Needs a GPU with about 72 GB of memory. Untested here.", minVramGb: 72, gpuFacts: { kind: "memory", need: 72, have: 24 },
+            },
+          ],
+        })}
+        onChanged={() => {}}
+      />,
+    );
+    expect(gpu).toContain("40 languages · 67.5 GB · OpenMDW-1.1");
+    expect(gpu).toContain("Untested here.");
+    expect(gpu).toContain("Needs about 72 GB of GPU memory; this GPU has 24 GB.");
+  });
 });
 
 describe("Voice runtime panel (D-73 M4, M5)", () => {

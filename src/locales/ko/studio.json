@@ -1190,6 +1190,7 @@
       "addon": {
         "chinese": "중국어(표준어) 빠른 음성 (음성 8종, 약 60 MB)",
         "speech-gpu": "음성 GPU 추가 기능: NVIDIA GPU에서 Chatterbox, VoxCPM2, Orpheus 실행 (수 GB)",
+        "stt-gpu": null,
         "kokoro": "Kokoro 빠른 음성 (약 330 MB)"
       },
       "addons": "추가 기능",

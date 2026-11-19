@@ -389,6 +389,17 @@ environment, `~/.chaosengine/voice-venv`; not bundled with the app. Run by
   (NVIDIA proprietary licence; downloaded by the user's machine, never
   redistributed by us).
 
+### Speech-to-text on the NVIDIA GPU (the `stt-gpu` add-on, Windows / Linux)
+
+- **Packages** (installed on request into the voice environment, `asr-site` folder; not shipped by us):
+  Transformers 5.23.0, tokenizers, safetensors, accelerate (Apache-2.0); regex (Apache-2.0 AND CNRI-Python);
+  psutil (BSD-3-Clause); PyTorch and torchaudio CUDA 12.8 wheels (BSD-3-Clause, with NVIDIA's CUDA libraries under
+  NVIDIA's licence, downloaded by the user's machine).
+- **Weights** (downloaded by the user from Hugging Face): `Qwen/Qwen3-ASR-1.7B-hf` and `Qwen/Qwen3-ASR-0.6B-hf`
+  (Apache-2.0); `nvidia/parakeet-tdt-0.6b-v3` (CC-BY-4.0, attribution: NVIDIA); `ibm-granite/granite-speech-5.0-2b`
+  (Apache-2.0); `nvidia/nemotron-3.5-asr-streaming-0.6b` and `nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B`
+  (OpenMDW-1.1, <https://openmdw.ai/license/1-1/>).
+
 ### mlx-audio (Apple Silicon TTS)
 
 - **Upstream:** <https://github.com/Blaizzy/mlx-audio>

@@ -1190,6 +1190,7 @@
       "addon": {
         "chinese": "Voix rapides en mandarin (8 voix, environ 60 Mo)",
         "speech-gpu": "Module GPU vocal : Chatterbox, VoxCPM2 et Orpheus sur le GPU NVIDIA (plusieurs Go)",
+        "stt-gpu": null,
         "kokoro": "Voix rapides Kokoro (environ 330 Mo)"
       },
       "addons": "Modules complémentaires",

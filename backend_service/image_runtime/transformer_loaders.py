@@ -12,7 +12,8 @@ Eight stateless helpers lifted out of ``DiffusersTextToImageEngine``:
 * ``maybe_enable_fp8_layerwise`` — FU-024 ``enable_layerwise_casting``
   with family-correct fp8 dtype (E4M3 / E5M2) gated on SM ≥ 8.9.
 * ``should_use_model_cpu_offload`` — predicate for FLUX-on-CUDA's
-  whole-component swap path.
+  whole-component swap path, from the card's VRAM and the variant's
+  full-GPU footprint (``cuda_total_vram_gb`` / ``cpu_offload_note``).
 * ``detect_device`` — torch device probe (CUDA → MPS → CPU) with the
   Windows-CUDA-missing diagnostic.
 
@@ -391,20 +392,82 @@ def maybe_enable_fp8_layerwise(
     return f"FP8 layerwise casting enabled ({storage_label}, compute=bf16)."
 
 
-def should_use_model_cpu_offload(repo: str, device: str) -> bool:
+# Room the card must have beyond the pipeline's expected footprint before
+# FLUX skips CPU offload and sits entirely on the GPU. The 15 % covers
+# allocator fragmentation, larger-than-1024 px activations and the VAE
+# decode spike; the flat 2 GB covers what the desktop, browser and other
+# apps keep on the card (about 1.6 GB on a measured Windows 4090). A miss
+# here is costly (Windows spills to shared memory and runs at PCIe speed,
+# Linux runs out of memory), so the margin leans safe.
+FULL_GPU_MARGIN_FRACTION = 0.15
+FULL_GPU_MARGIN_GB = 2.0
+
+
+def full_gpu_need_gb(footprint_gb: float) -> float:
+    """Total VRAM a card needs to hold a pipeline of ``footprint_gb`` on the GPU."""
+    return footprint_gb * (1.0 + FULL_GPU_MARGIN_FRACTION) + FULL_GPU_MARGIN_GB
+
+
+def should_use_model_cpu_offload(
+    repo: str,
+    device: str,
+    vram_total_gb: float | None = None,
+    footprint_gb: float | None = None,
+) -> bool:
     """True when the pipeline should load via enable_model_cpu_offload().
 
-    Currently limited to FLUX on CUDA. FLUX.1-Dev is ~24 GB transformer
-    plus ~9 GB T5-XXL text encoder in bf16; on any single consumer GPU
-    (≤32 GB VRAM) a plain ``pipeline.to("cuda")`` either OOMs or, worse
-    on Windows, silently falls back to pinned host memory + pagefile
-    and runs at PCIe speeds. Other pipelines (SD 1.5 / SDXL /
-    Qwen-Image) fit comfortably and stay on the legacy .to(device)
-    path for best throughput.
+    Limited to FLUX on CUDA. FLUX.1-Dev in bf16 is ~24 GB transformer
+    plus ~9 GB T5-XXL text encoder; when the card cannot hold the whole
+    pipeline a plain ``pipeline.to("cuda")`` either OOMs or, worse on
+    Windows, silently falls back to pinned host memory + pagefile and
+    runs at PCIe speeds. Offload stays on when the card's total VRAM or
+    the variant's full-GPU footprint is unknown, or when the card has
+    less than ``full_gpu_need_gb(footprint_gb)``. A card that clearly
+    holds the whole pipeline (an INT4 / GGUF row on 32 GB, bf16 on
+    48 GB+) keeps everything on the GPU, which is several times faster.
+    Other pipelines (SD 1.5 / SDXL / Qwen-Image) stay on the legacy
+    .to(device) path regardless.
     """
     if device != "cuda":
         return False
-    return _is_flux_repo(repo)
+    if not _is_flux_repo(repo):
+        return False
+    if not vram_total_gb or vram_total_gb <= 0 or not footprint_gb or footprint_gb <= 0:
+        return True
+    return vram_total_gb < full_gpu_need_gb(footprint_gb)
+
+
+def cuda_total_vram_gb(torch: Any) -> float | None:
+    """Total memory of the current CUDA device in GB, or None when it cannot be read."""
+    try:
+        cuda = torch.cuda
+        props = cuda.get_device_properties(cuda.current_device())
+        total = float(props.total_memory) / (1024 ** 3)
+    except Exception:
+        return None
+    return total if total > 0 else None
+
+
+def cpu_offload_note(
+    vram_total_gb: float | None,
+    footprint_gb: float | None,
+    use_cpu_offload: bool,
+) -> str | None:
+    """One plain line saying why FLUX runs fully on the GPU or with CPU offload.
+
+    None when there was nothing to decide on (VRAM or footprint unknown).
+    """
+    if not vram_total_gb or not footprint_gb:
+        return None
+    if use_cpu_offload:
+        return (
+            f"Using CPU offload: this card has {vram_total_gb:.0f} GB, "
+            f"the pipeline needs about {full_gpu_need_gb(footprint_gb):.0f} GB."
+        )
+    return (
+        f"Kept the whole pipeline on the GPU ({vram_total_gb:.0f} GB card, "
+        f"about {footprint_gb:.0f} GB needed)."
+    )
 
 
 def detect_device(torch: Any) -> str:

@@ -1664,3 +1664,4 @@ The warm-up page load (`e2e/warmup.ts`) timed out twice at 180 s when Playwright
 - **FU-231 part 1:** tool block prints enum, range, default and nested keys. Built and unit-tested here; its effect on MLX models is unmeasured (needs the Mac).
 - **Row 44 remainder: SKIP on this PC.** sd.cpp `532d2c1` needs cmake and a CUDA or MSVC toolchain (none installed; installing third-party tools needs the owner's yes). TensorFold 1.2.9 has no Windows archive (source build only). The CUDA 12.4 llama.cpp archive and the real caps fixture are not run.
 - `tests/test_mlx_worker.py` DFlash tests `test_load_model_prepares_a_hybrid_gdn_target` and `test_load_model_uses_dflash_runtime_bundle_api` fail here with "cannot load module more than once per process" (a native-module import; host-bound like FU-256, not touched by this change).
+- **FU-255 and FU-258 done** (tests added; FU-258 checked against a fake runtime only, no live llama-server stream).

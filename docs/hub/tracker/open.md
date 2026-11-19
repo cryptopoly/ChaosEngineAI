@@ -10,11 +10,11 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 
 
 <details>
-<summary>FU-258 · /v1/chat/completions with stream: true drops tool calls — When the OpenAI-compatible server is next touched, or a client that streams tools reports it</summary>
+<summary>FU-258 · /v1/chat/completions with stream: true drops tool calls — Done (2026-11-19, test/rtx4090), not run live</summary>
 
-**Status or trigger:** When the OpenAI-compatible server is next touched, or a client that streams tools reports it
+**Status or trigger:** **Done (2026-11-19, `test/rtx4090`), not run live**
 
-**Notes:** Found on the 4090 (2026-11-18). The non-streamed reply now returns `tool_calls` (structured from llama-server, or read from the text on the MLX path), but `StreamChunk` has no field for calls and the llama.cpp stream ignores `delta.tool_calls`, so a streaming client gets an empty reply with `finish_reason` stop. Needs a calls field on the final chunk and the OpenAI `delta.tool_calls` chunks.
+**Notes:** Found on the 4090 (2026-11-18). The non-streamed reply now returns `tool_calls` (structured from llama-server, or read from the text on the MLX path), but `StreamChunk` has no field for calls and the llama.cpp stream ignores `delta.tool_calls`, so a streaming client gets an empty reply with `finish_reason` stop. Needs a calls field on the final chunk and the OpenAI `delta.tool_calls` chunks. | Fixed: `StreamChunk.tool_calls`, the llama.cpp stream joins `delta.tool_calls` pieces, and with `tools` the reply holds its text until the calls are known, then sends content, an OpenAI `delta.tool_calls` chunk and `finish_reason` tool_calls (`test_openai_stream_*` in `tests/test_backend_service.py`, fake runtime only; no real llama-server stream was run).
 
 </details>
 

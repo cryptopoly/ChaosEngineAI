@@ -14,6 +14,7 @@ in ``vllm_engine``) keep resolving.
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 
@@ -218,6 +219,42 @@ def _apply_mlx_seed(request: dict[str, Any]) -> None:
         pass
 
 
+def _schema_limits(info: dict[str, Any], depth: int = 0) -> str:
+    """The values a parameter may take, as a short suffix: allowed values, range, default, nested keys.
+
+    The tool call is checked against these limits (FU-231), so the model sees them instead of
+    guessing: ``kind: string (required) [one of: text, image, video]``.
+    """
+    if not isinstance(info, dict):
+        return ""
+    parts: list[str] = []
+    enum = info.get("enum")
+    if isinstance(enum, list) and enum:
+        parts.append("one of: " + ", ".join(str(v) for v in enum))
+    low, high = info.get("minimum"), info.get("maximum")
+    if low is not None and high is not None:
+        parts.append(f"{low} to {high}")
+    elif low is not None:
+        parts.append(f"at least {low}")
+    elif high is not None:
+        parts.append(f"at most {high}")
+    if "default" in info:
+        parts.append(f"default {json.dumps(info['default'])}")
+    items = info.get("items")
+    if isinstance(items, dict):
+        item_limits = _schema_limits(items, depth + 1)
+        if item_limits:
+            parts.append("each item" + item_limits)
+    nested = info.get("properties")
+    if isinstance(nested, dict) and nested and depth < 1:
+        keys = []
+        for key, sub in nested.items():
+            sub = sub if isinstance(sub, dict) else {}
+            keys.append(f"{key}: {sub.get('type', 'string')}{_schema_limits(sub, depth + 1)}")
+        parts.append("keys: " + "; ".join(keys))
+    return f" [{', '.join(parts)}]" if parts else ""
+
+
 def _format_tools_for_prompt(tools: list[dict[str, Any]] | None) -> str | None:
     """Format tool schemas into a system prompt block for open-source models.
 
@@ -247,7 +284,8 @@ def _format_tools_for_prompt(tools: list[dict[str, Any]] | None) -> str | None:
             ptype = pinfo.get("type", "string")
             pdesc = pinfo.get("description", "")
             req = " (required)" if pname in required else ""
-            param_parts.append(f"    - {pname}: {ptype}{req} — {pdesc}")
+            limits = _schema_limits(pinfo)
+            param_parts.append(f"    - {pname}: {ptype}{req}{limits} — {pdesc}")
 
         lines.append(f"\n- {name}: {desc}")
         if param_parts:

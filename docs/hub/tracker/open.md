@@ -217,9 +217,9 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-231 · Honest, staged tool prompt on the MLX path — Queued (2026-11-18), D-90</summary>
+<summary>FU-231 · Honest, staged tool prompt on the MLX path — Part 1 built (2026-11-19, test/rtx4090): the text block prints allowed values, ranges, defaults and nested key…</summary>
 
-**Status or trigger:** Queued (2026-11-18), D-90. After the FU-230 baseline
+**Status or trigger:** **Part 1 built (2026-11-19, `test/rtx4090`):** the text block prints allowed values, ranges, defaults and nested keys (`_schema_limits`, `tests/test_tool_prompt_limits.py`; the 20 Studio tools now 15,822 characters). Open: the staged Storyboard list, the history budget, temperature 0.2 for tool steps. Not measured on MLX (Mac): the scorecard on the MLX models decides whether part 1 helps. D-90.
 
 **Notes:** The text block prints allowed values, ranges, defaults and nested keys (today `list_models` shows `kind: string (required)` and nothing else; `generate_video` shows no limits). Core Studio tools always; the seven Storyboard tools (7,814 of 14,708 characters) only when the message asks for a film, a project is bound, or the model calls one. The history budget counts the tool block (it reserves 512 tokens against about 4,000). Tool steps at temperature 0.2 if claim C5 holds. The bridge's tool list and its golden test are unchanged.
 

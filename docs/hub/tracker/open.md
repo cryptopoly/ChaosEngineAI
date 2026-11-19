@@ -1,7 +1,7 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 145 rows with work, decisions or watch items still open, newest first.
+summary: 146 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
@@ -132,6 +132,15 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** **Backend built for single renders (2026-11-19, `test/rtx4090`):** `tools/studio_tiers.py` (tier words, sizes, `apply_tier`, `tiers_table`), `GET /api/chat/studio/tiers`, the chat's tier from the message (Standard by default) applied to `generate_image` and `generate_video` in `StudioTool` and shown on the plan card (`tier`, `qualityNotes`); tests `test_studio_tiers.py`, E2E phase 7 check, run live on the 4090 (FLUX.2 Klein 4B and LTX-2.5: Draft 12 s, Standard 55 s, Final 179 s for the clip). **Card buttons built (2026-11-19):** Draft / Standard / Final buttons with each tier's size and time on the plan card, the pick reaches the render (`TierHolder`, decision body `tier`), "Use for the rest of this chat" keeps it for the chat (in memory, resets when the app restarts), `qualityNotes` show what was brought down; vitest, Playwright at 90 % and 125 % UI scale with screenshots. **Expert fields built (2026-11-19):** under "Expert settings" on each image or clip row: width, height, steps, seed, fps (clips) and model, priced live by the backend (`POST /api/chat/studio/price`), checked against the tool's own schema and the installed models when sent (`clean_overrides`, HTTP 400 with a sentence), applied to the approved call and run as typed, above the tier (`TierHolder.exempt`); a declined call keeps what the model asked; tests in `test_studio_tiers.py`, `test_chat_studio_tools.py`, vitest and Playwright. Open: a visible chip to change the kept tier; tiers for `storyboard_generate` and Keep going (3.3 rest, FU-244); Final's size is 1.5x recommended until C10 is measured; claims C10 and C13 not run.
 
 **Notes:** New `tools/studio_tiers.py` returns each tier's size, fps, steps, model per pass and upscale for a model or a film: Draft is half size with the fast still model (24 fps, clips only when asked), Standard the model's recommended size or the film's size, Final the largest that fits or the film's size with the quality still model. The same table maps to `draft: true`, `what: both` and `what: final`, so no new render path. Chat applies the chat's tier (Standard by default; a tier word or a size in the message sets it); a call above the tier runs at the tier with a note in the result and on the job card. The card gets three buttons with time and disk each, Expert fields (size, length, fps, steps, seed, model), validated overrides on the decision, and "use for the rest of this chat" with a chip. External agents are unchanged. `GET /api/chat/studio/tiers` with an E2E check. Layout checked at 90 % and 125 % UI scale. Stop: no Draft tier for single clips if it is under 1.5x faster than Standard.
+
+</details>
+
+<details>
+<summary>FU-240 · Plan card: always show tier, size, length, frames, fps, steps, and a time for those settings — Part 1 built (2026-11-19, test/rtx4090): the card states the size, frames, fps and steps that will run (resolv…</summary>
+
+**Status or trigger:** **Part 1 built (2026-11-19, `test/rtx4090`):** the card states the size, frames, fps and steps that will run (resolved the way `generate_image` and `generate_video` do) and a time from `variant_seconds` for exactly those (`_price_settings` in `tools/studio_gate.py`, test in `tests/test_chat_studio_tools.py`); the "at the recommended size" note stays only for a model the catalog cannot price. Tier name and the change-tier click are built (FU-241 card buttons). The 90 % and 125 % scale check is done for the tier card (Playwright, screenshots); at 125 % in a 1280x720 window the Chat thread pane is only a few lines tall, so the test opens its scroll boxes (a Chat layout issue, not the card's). Expert fields are built. Open: disk size (FU-243), a length line. D-91
+
+**Notes:** Was: size, frames, fps and steps show only when the model passed them, and the time is the catalogue figure "at the recommended size" (a 3 min 36 s render was shown against a 1 min 29 s figure). Price with `variant_seconds` for the settings that will run; show disk when known. `tools/studio_gate.plan_item`, `StudioPlanCard.tsx`. Checked at 90 % and 125 % UI scale.
 
 </details>
 

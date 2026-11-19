@@ -1666,3 +1666,4 @@ The warm-up page load (`e2e/warmup.ts`) timed out twice at 180 s when Playwright
 - `tests/test_mlx_worker.py` DFlash tests `test_load_model_prepares_a_hybrid_gdn_target` and `test_load_model_uses_dflash_runtime_bundle_api` fail here with "cannot load module more than once per process" (a native-module import; host-bound like FU-256, not touched by this change).
 - **FU-255 and FU-258 done** (tests added; FU-258 checked against a fake runtime only, no live llama-server stream).
 - **FU-231 part 2:** Storyboard tools staged by `wants_storyboard`; tests pass (staging, backend, Keep going integration). Effect on prompt time unmeasured (MLX).
+- **FU-240 part 1:** plan card prices the settings that will run (size, frames, fps, steps, time). Tests pass; the card layout was not looked at in the app (no frontend change).

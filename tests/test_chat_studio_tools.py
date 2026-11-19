@@ -325,6 +325,31 @@ class GateTests(unittest.TestCase):
         self.assertIsInstance(note["freeGb"], float)
         self.assertIn(note["level"], ("ok", "slower", "risky"))
 
+    def test_plan_prices_the_settings_that_will_run_not_the_recommended_size(self):
+        # FU-240: a 1280x720 clip was shown against the figure for the recommended size.
+        variant = {"id": "v", "repo": "x/y", "defaultDurationSeconds": 4, "recommendedResolution": "768x512",
+                   "estimatedGenerationSeconds": 90,
+                   "estimateRef": {"width": 768, "height": 512, "frames": 97, "steps": 30, "fixed": 0.1}}
+        row = {"id": "v", "name": "Clip model", "sizeGb": 20.0, "estimatedSeconds": 90,
+               "recommendedResolution": "768x512"}
+        state = SimpleNamespace(runtime=SimpleNamespace(loaded_model=None))
+
+        def plan(args):
+            with mock.patch("backend_service.mcp_bridge.models.installed_models", return_value=[row]),                     mock.patch("backend_service.mcp_bridge.models.default_model", return_value=row),                     mock.patch("backend_service.helpers.video._find_video_variant", return_value=variant),                     mock.patch("backend_service.mcp_bridge.tools._recommended", return_value={"steps": 30}),                     mock.patch("backend_service.helpers.generation_limits.align_video_frames",
+                               side_effect=lambda repo, frames: (frames, None)):
+                return studio_gate.plan_item(call("generate_video", {"prompt": "x", **args}, "c"), state)
+
+        plain = plan({"frames": 97})
+        big = plan({"frames": 97, "width": 1280, "height": 720})
+        self.assertEqual((plain["size"], plain["frames"], plain["fps"], plain["steps"]), ("768x512", 97, 24, 30))
+        self.assertEqual(plain["estimatedSeconds"], 90)
+        self.assertGreater(big["estimatedSeconds"], 150)
+        self.assertEqual(big["size"], "1280x720")
+        self.assertNotIn("estimateAtRecommended", big)
+        # No size, frames or steps given: the card still states what will run (4 s at 24 fps).
+        bare = plan({})
+        self.assertEqual((bare["size"], bare["frames"], bare["fps"], bare["steps"]), ("768x512", 96, 24, 30))
+
     def test_plan_shows_arguments_that_change_the_render(self):
         item = studio_gate.plan_item(call("generate_image", {
             "prompt": "p" * 300, "reference_images": ["/Users/x/Desktop/id.jpg", "upload:abc"], "steps": 30}, "c1"), None)

@@ -1,7 +1,7 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 146 rows with work, decisions or watch items still open, newest first.
+summary: 145 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
@@ -132,15 +132,6 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** Queued (2026-11-18), D-91 and D-92. After FU-240 and claims C10 and C13
 
 **Notes:** New `tools/studio_tiers.py` returns each tier's size, fps, steps, model per pass and upscale for a model or a film: Draft is half size with the fast still model (24 fps, clips only when asked), Standard the model's recommended size or the film's size, Final the largest that fits or the film's size with the quality still model. The same table maps to `draft: true`, `what: both` and `what: final`, so no new render path. Chat applies the chat's tier (Standard by default; a tier word or a size in the message sets it); a call above the tier runs at the tier with a note in the result and on the job card. The card gets three buttons with time and disk each, Expert fields (size, length, fps, steps, seed, model), validated overrides on the decision, and "use for the rest of this chat" with a chip. External agents are unchanged. `GET /api/chat/studio/tiers` with an E2E check. Layout checked at 90 % and 125 % UI scale. Stop: no Draft tier for single clips if it is under 1.5x faster than Standard.
-
-</details>
-
-<details>
-<summary>FU-240 · Plan card: always show tier, size, length, frames, fps, steps, and a time for those settings — Queued (2026-11-18), D-91</summary>
-
-**Status or trigger:** Queued (2026-11-18), D-91
-
-**Notes:** Today size, frames, fps and steps show only when the model passed them, and the time is the catalogue figure "at the recommended size" (a 3 min 36 s render was shown against a 1 min 29 s figure). Price with `variant_seconds` for the settings that will run; show disk when known. `tools/studio_gate.plan_item`, `StudioPlanCard.tsx`. Checked at 90 % and 125 % UI scale.
 
 </details>
 

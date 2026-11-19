@@ -326,9 +326,50 @@ def plan_item(tool_call: dict[str, Any], state: Any | None) -> dict[str, Any]:
                     asked = f"{args.get('width')}x{args.get('height')}" if args.get("width") and args.get("height") else recommended
                     if item["estimatedSeconds"] and (asked != recommended or "frames" in args or "seconds" in args):
                         item["estimateAtRecommended"] = True
+                    _price_settings(item, catalog_kind, row.get("id"), args)
     except Exception:  # noqa: BLE001 - an estimate is a nicety; the plan shows without it
         pass
     return item
+
+
+def _price_settings(item: dict[str, Any], kind: str, model_id: Any, args: dict[str, Any]) -> None:
+    """Fill the card with the size, frames, fps and steps that will really run, and a time for exactly those
+    settings (FU-240), the way ``generate_image`` and ``generate_video`` resolve them. A model the catalog cannot
+    price keeps the catalogue figure and its "at the recommended size" note."""
+    from backend_service.helpers.generation_limits import align_video_frames, parse_resolution
+    from backend_service.helpers.time_estimate import variant_seconds
+    from backend_service.mcp_bridge.tools import _recommended
+
+    if kind == "image":
+        from backend_service.helpers.images import _find_image_variant as find
+    else:
+        from backend_service.helpers.video import _find_video_variant as find
+    variant = find(str(model_id))
+    if variant is None:
+        return
+    size = parse_resolution(variant.get("recommendedResolution"))
+    width = int(args.get("width") or (size[0] if size else 0))
+    height = int(args.get("height") or (size[1] if size else 0))
+    steps = args.get("steps", _recommended(variant).get("steps"))
+    frames = 1
+    if kind == "video":
+        fps = int(args.get("fps", 24))
+        if "frames" in args:
+            frames = int(args["frames"])
+        else:
+            frames = round(float(args.get("seconds") or variant.get("defaultDurationSeconds") or 4) * fps)
+        frames, _note = align_video_frames(str(variant.get("repo") or ""), max(8, min(257, frames)))
+        item["frames"], item["fps"] = frames, fps
+        if not size and not (width and height):
+            return
+    if width and height:
+        item["size"] = f"{width}x{height}"
+    if steps is not None:
+        item["steps"] = steps
+    seconds = variant_seconds(variant, kind, width, height, frames, steps) if width and height else None
+    if seconds:
+        item["estimatedSeconds"] = round(seconds)
+        item.pop("estimateAtRecommended", None)
 
 
 def memory_note(items: list[dict[str, Any]], state: Any | None) -> dict[str, Any] | None:

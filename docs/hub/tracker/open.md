@@ -1,13 +1,76 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 149 rows with work, decisions or watch items still open, newest first.
+summary: 157 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-269 · Bonsai 2 27B GGUF Q2_0 (7.63 GB) on stock llama.cpp b12441 as a 24 GB row — Next 4090 pass</summary>
+
+**Status or trigger:** Next 4090 pass
+
+**Notes:** `prism-ml/Ternary-Bonsai-2-27B-gguf` (1.37M downloads; arch qwen35, Qwen3.8-based) has `Ternary-Bonsai-2-27B-Q2_0.gguf` that the card says mainline llama.cpp reads from b11556; the catalogue comment in `text_models.py` (Bonsai family) still says Bonsai 2's GGUFs need the PrismML fork. Download, load on b12441, measure and add the row (mmproj Q8_0 0.63 GB); not tried on 2026-11-19 (link too slow).
+
+</details>
+
+<details>
+<summary>FU-268 · Draft length for MoE MTP (Qwen3.6 35B-A3B) — Next 4090 pass</summary>
+
+**Status or trigger:** Next 4090 pass
+
+**Notes:** The baked-in MTP at 3 per round gave 174 tok/s against 170 plain (+2 %, 35 to 45 % accepted); the Gemma rows were best at 2. Try 1 and 2 before keeping 3 (`MTP_MODEL_MAP`).
+
+</details>
+
+<details>
+<summary>FU-267 · Tier 2 for the look-up-first models — With tier 2</summary>
+
+**Status or trigger:** With tier 2
+
+**Notes:** Gemma 4 (12B, 26B-A4B) and Nemotron Lightning looked things up first on 14 to 19 of 36 tier-1 replies; tier 2 with real tool answers shows whether the action follows.
+
+</details>
+
+<details>
+<summary>FU-266 · Check the app's own Hub download on a slow link — Next download-path change</summary>
+
+**Status or trigger:** Next download-path change
+
+**Notes:** On 2026-11-19 `hf_hub_download` (xet on) sat at 0 to 0.4 MB/s while 16 parallel range requests got 5 to 12 MB/s on the same link; the rows were fetched by a ranged downloader instead. The app's downloader was not measured on a clean link, so this may be the shared link only.
+
+</details>
+
+<details>
+<summary>FU-265 · Nemotron 3.5 Lightning cannot take the Studio tool list at the default 8,192 context — Before Chat offers it with tools</summary>
+
+**Status or trigger:** Before Chat offers it with tools
+
+**Notes:** Its template renders the 20 Studio tools as 9,228 tokens, so every request is refused with HTTP 400 (scorecard run 2, `tool-call-scorecard-2026-11.md`). Needs the larger default context for tool chats, or FU-231's staged tool list; the row note says so.
+
+</details>
+
+<details>
+<summary>FU-264 · Gemma 4 31B on the 4090 and its drafter — Next 4090 pass</summary>
+
+**Status or trigger:** Next 4090 pass
+
+**Notes:** The QAT Q4_0 (17 GB) and unsloth Q4_K_M (19 GB) rows exist and fit 24 GB; `unsloth/gemma-4-31B-it-GGUF` ships `mtp-gemma-4-31B-it.gguf` (0.51 GB). Neither was run or paired in the 2026-11-19 pass (the 12B and 26B-A4B pairings gave +26 % and +9 %).
+
+</details>
+
+<details>
+<summary>FU-263 · ggml-org/Qwen3.6-35B-A3B-GGUF has a dflash- drafter and a 20.5 GB Q4_K_M that fits 24 GB; its row is pinned to Q8_0 (36.9 GB) — Next 4090 pass</summary>
+
+**Status or trigger:** Next 4090 pass
+
+**Notes:** Read from the Hub 2026-11-19: files `Qwen3.6-35B-A3B-Q4_K_M.gguf` 20.54 GB, `dflash-Qwen3.6-35B-A3B-Q8_0.gguf` 0.42 GB. One pinned file per repo means a 24 GB row needs a second repo (`lmstudio-community` Q4_K_M has no drafter). Measure DFlash against the 170 tok/s plain and 174 tok/s MTP numbers in `rtx4090-progress.md` before offering it. Not run here.
+
+</details>
 
 <details>
 <summary>FU-262 · Install size labels for the WSL vLLM bridge, DFlash (CUDA) and TriAttention said about 2 GB — Done (2026-11-19, test/rtx4090)</summary>
@@ -33,6 +96,15 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** **Done (2026-11-19, `test/rtx4090`), live-checked with Qwen3-0.6B**
 
 **Notes:** vLLM was started with its 0.92 default, so a 1.1 GiB model held 23.6 of 24 GB; the `<think>` block came back inside the reply; `VLLM_ATTENTION_BACKEND=TORCH_SDPA` is not a variable in vLLM 0.34 at all. | The bridge passes `--gpu-memory-utilization` (weights x 1.3 + 4 GiB, at least 6 GiB, cap 0.85, never more than the free memory; `CHAOSENGINE_VLLM_GPU_SHARE` overrides); live: 6.2 GB used instead of about 22. generate and stream_generate split `<think>` like the llama.cpp lane (`ThinkingTokenFilter`, `strip_thinking_tokens`, a server-side `reasoning_content`); the dead variable is gone. Tests in `tests/test_vllm_wsl_engine.py`. Not tried on a card above 24 GB.
+
+</details>
+
+<details>
+<summary>FU-259 · Unsloth GGUF repos: MTP/ sidecar lands in a subfolder, and every mmproj precision downloads — Next catalogue pass</summary>
+
+**Status or trigger:** Next catalogue pass
+
+**Notes:** Found 2026-11-19 on the Gemma 4 26B-A4B Q8_0 row (`unsloth/gemma-4-26B-A4B-it-GGUF`): `_best_sidecar` picks the nearest-quant `MTP/mtp-...-Q8_0.gguf`, but `resolve_spec_sidecar` scans only the model's own folder, so the 0.46 GB file is downloaded and never used (no drafter is pinned for that row because it was not run here); `*mmproj*.gguf` fetches BF16, F16 and F32 (4.7 GB) where one is enough. Same for the Qwen3.6 MTP row (3.6 GB of mmproj). Fix: scan `MTP/` or pin the top-level `mtp-` file, and cap mmproj to one file.
 
 </details>
 

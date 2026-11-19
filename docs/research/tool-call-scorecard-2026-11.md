@@ -88,6 +88,55 @@ What this says:
 A first pass the same day scored a look-up as a wrong tool and took only the first call of a single-call prompt; the
 numbers above are from the corrected scoring (`tool-call-scorecard-20261118-153057.csv`).
 
+## Run 2: four new GGUF chat rows on the RTX 4090 (2026-11-19)
+
+Same machine, build (llama.cpp b12441 CUDA) and settings as run 1 (Studio hint on, temperature 0.7, reply limit 4,096),
+but **three runs per prompt** (36 replies per model) and models loaded through `/api/models/load` with the catalogue
+rows added the same day. Speculative decoding off. With three runs a difference of one or two replies is noise.
+
+| Model | Context | Replies | Call came back | Right tool | Valid arguments | Right values | Looked up first | Unreadable | Median s | Prompt tokens |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Qwen3.6 35B-A3B UD-IQ4_XS (MTP GGUF, 18.2 GB) | 16,384 | 36 | 36 of 36 | 32 of 36 | 36 of 36 | **29 of 36** | 3 of 36 | 0 of 36 | 0.43 | 7,261 |
+| Nemotron 3.5 Lightning 30B-A3B Q4_0 (19.1 GB) | 16,384 | 36 | 35 of 36 | 21 of 36 | 35 of 36 | **21 of 36** | 14 of 36 | 0 of 36 | 0.23 | 9,255 |
+| Gemma 4 26B-A4B QAT Q4_0 (14.4 GB) | 8,192 | 36 | 34 of 36 | 18 of 36 | 34 of 36 | **14 of 36** | 16 of 36 | 0 of 36 | 0.73 | 5,795 |
+| Gemma 4 12B QAT Q4_0 (7.0 GB) | 8,192 | 36 | 36 of 36 | 16 of 36 | 36 of 36 | **16 of 36** | 19 of 36 | 0 of 36 | 0.41 | 5,795 |
+| (run 1, for scale) Qwen3.8 27B Q4_K_M | 8,192 | 60 | 60 of 60 | 50 of 60 | 60 of 60 | 50 of 60 | 10 of 60 | 0 of 60 | 2.06 | 7,261 |
+
+Right values by prompt (out of 3 runs):
+
+| Prompt | Tests | Qwen3.6 35B-A3B | Nemotron Lightning | Gemma 26B-A4B | Gemma 12B |
+|---|---|---|---|---|---|
+| kind-video | enum | 3 | 3 | 3 | 3 |
+| kind-voice | enum | 0 | 3 | 2 | 3 |
+| image-prompt | required argument | 3 | 0 | 0 | 0 |
+| video-size | numbers in range | 3 | 0 | 0 | 0 |
+| speak-speed | number in range | 1 | 0 | 0 | 0 |
+| status | no arguments | 3 | 3 | 3 | 3 |
+| jobs-failed | enum | 3 | 3 | 3 | 3 |
+| project-create | enums and a name | 3 | 2 | 0 | 3 |
+| shot-fields | nested object | 3 | 3 | 1 | 0 |
+| music-flags | boolean and numbers | 3 | 1 | 2 | 0 |
+| two-calls | two calls in one reply | 1 | 0 | 0 | 0 |
+| wait-job | required id | 3 | 3 | 0 | 1 |
+
+What this says:
+
+- **Qwen3.6 35B-A3B is the best tool writer of the new rows** (29 of 36, 81 %), level with run 1's Qwen3.8 27B (83 %), at
+  a median 0.43 s a reply against 2.06 s. Its one weak prompt is `kind-voice` (0 of 3: "speech models" became `list_models(kind=stt)`, as it did for Gemma 26B and Nemotron once each).
+- **Gemma 4 (both sizes) and Nemotron Lightning mostly look things up first** (14 to 19 of 36), which the Studio hint
+  asks for, so their "right values" are lower bounds on what they would do over two turns; tier 2 will show whether
+  the action follows. Neither Gemma size wrote an action call with the wrong tool; the 26B had two replies with no call
+  (prose or empty) and Nemotron one. Every call that came back was valid (grammar-built arguments, as in run 1).
+- **Nemotron Lightning cannot take the Studio tool list at the app's 8,192 context.** Its template renders the 20 tools and
+  the hint as 9,228 tokens, so every request failed with HTTP 400 ("exceeds the available context size"): a first
+  run at 8,192 scored 0 of 36 for that reason, not for quality. The row above used 16,384. Qwen3.6's template needs 7,261
+  tokens (so 16,384 was not required there; used for symmetry), Gemma's 5,795.
+- The two Gemma runs never fell to wrong tools, but their 8,192-token context leaves about 2,400 tokens for history and
+  the reply; FU-231's staged tool list matters most for the models with the larger tool renderings.
+
+Files (not committed, generated): `tool-call-scorecard-20261119-155105` (Gemma 12B), `-161431` (Gemma 26B),
+`-171629` (Nemotron, 16,384), `-164536` (Nemotron at 8,192, all HTTP 400), `-172336` (Qwen3.6 35B-A3B).
+
 ## Still to run
 
 - The plan's four MLX models on the Mac: Qwen3.8 27B 4-bit, LFM2.5 24B-A2B 4-bit, Qwen3 8B, Qwen3 4B; then C7

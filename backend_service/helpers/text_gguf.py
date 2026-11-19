@@ -82,6 +82,16 @@ PINNED_DRAFTERS: dict[str, tuple[str, str, str]] = {
         "draft-dflash",
     ),
     "lmstudio-community/Qwen3.8-27B-GGUF": _QWEN38_DFLASH2,
+    # Google's QAT GGUFs ship no drafter, and its ``-qat-q4_0-unquantized-assistant`` repos are
+    # safetensors that llama.cpp cannot load. Unsloth converted the Gemma 4 assistants to GGUF
+    # (``mtp-`` files); llama.cpp b12441 runs them as ``draft-mtp`` against the QAT target. Measured
+    # 2026-11-19 on an RTX 4090 (12B QAT, 500-token prompt, 300 tokens): 92.8 tok/s plain, 123 tok/s
+    # at ``--spec-draft-n-max 2`` (the engine's default), 104 at 5.
+    "google/gemma-4-12B-it-qat-q4_0-gguf": ("unsloth/gemma-4-12B-it-GGUF", "mtp-gemma-4-12b-it.gguf", "draft-mtp"),
+    # 26B-A4B QAT: 160 tok/s plain, 181 at n=2, 169 at n=3 (same prompt).
+    "google/gemma-4-26B-A4B-it-qat-q4_0-gguf": (
+        "unsloth/gemma-4-26B-A4B-it-GGUF", "mtp-gemma-4-26B-A4B-it.gguf", "draft-mtp",
+    ),
 }
 
 

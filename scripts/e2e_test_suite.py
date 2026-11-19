@@ -501,7 +501,7 @@ def phase_0(cap: Capability) -> PhaseResult:
             "ornith-1": 9, "kimi-k2-6": 3, "llama-4-scout": 3,
             "minimax-m3": 3, "mistral-large-3": 2,
             # 2026-09 additions (FU-088).
-            "qwen-3-8": 8, "bonsai": 8, "nemotron-3-5-lightning": 6, "minicpm-5": 3,
+            "qwen-3-8": 8, "bonsai": 8, "nemotron-3-5-lightning": 7, "minicpm-5": 3,
             # FU-093: TensorFold-served checkpoints.
             "glm-5-3-flash": 1,
             # FU-103: Kolibri 1 (Aleph Alpha), three community MLX builds plus
@@ -516,6 +516,8 @@ def phase_0(cap: Capability) -> PhaseResult:
             # separately published DFlash drafter, plus ggml-org's Q8_0) and IBM
             # Granite Switch 4.1 (8B and 30B GGUF).
             "nemotron-3-5-bolt": 2, "granite-switch-4-1": 2,
+            # 2026-11-19: the 4090 chat rows (Gemma 4 QAT GGUF 12B and 26B-A4B, a Q8_0 26B, Qwen3.6 MTP UD-IQ4_XS).
+            "gemma-4": 14, "qwen-3-6": 13,
         }
         missing = []
         for fid, min_variants in expected.items():
@@ -586,6 +588,30 @@ def phase_0(cap: Capability) -> PhaseResult:
             return "fail", f"gemma-4 has {nvar} variants, expected the 10-variant union", {"variants": nvar}
         return "pass", "", {"gemma4Variants": nvar}
 
+    # 2026-11-19: Google's QAT Gemma 4 GGUF rows (12B, 26B-A4B) are pinned to the Unsloth mtp GGUF
+    # drafter that ran live on the 4090 (92 to 117 and 160 to 175 tok/s); the 26B Q8_0 stays listed
+    # for 32 GB cards with no drafter. Read-only: the live speed numbers are in
+    # docs/progress/rtx4090-progress.md.
+    def _gemma_qat_rows():
+        rc, payload, err = _cli_json("call", "GET", "/api/workspace", timeout=15.0)
+        if rc != 0 or not isinstance(payload, dict):
+            return "fail", f"workspace fetch failed: {err[:160]}", {}
+        gemmas = [f for f in (payload.get("featuredModels") or []) if f.get("id") == "gemma-4"]
+        if len(gemmas) != 1:
+            return "fail", f"expected exactly 1 gemma-4 family, got {len(gemmas)}", {}
+        rows = {v.get("repo"): v for v in gemmas[0].get("variants") or []}
+        want = {
+            "google/gemma-4-12B-it-qat-q4_0-gguf": None,
+            "google/gemma-4-26B-A4B-it-qat-q4_0-gguf": "gemma-4-26B_q4_0-it.gguf",
+            "unsloth/gemma-4-26B-A4B-it-GGUF": "gemma-4-26B-A4B-it-Q8_0.gguf",
+        }
+        problems = [r for r in want if r not in rows]
+        problems += [f"{r}: ggufFile {rows[r].get('ggufFile')!r}" for r, f in want.items()
+                     if r in rows and rows[r].get("ggufFile") != f]
+        if problems:
+            return "fail", "; ".join(problems)[:300], {"problems": problems}
+        return "pass", "", {"rows": sorted(want)}
+
     # Voice I/O feature gate (new this release). Read-only liveness + shape:
     # /api/voice/runtime must report STT/TTS availability + the model/voice
     # catalogs. No transcription/synthesis is run (would need a recorded clip
@@ -625,6 +651,7 @@ def phase_0(cap: Capability) -> PhaseResult:
         ("new model families (frontier + Ornith)", _new_model_families),
         ("text GGUF file pins (FU-087)", _gguf_pins),
         ("gemma-4 single family (dedup)", _gemma4_single_family),
+        ("gemma-4 QAT GGUF rows (4090 chat pass)", _gemma_qat_rows),
         ("library lists chat models only", _library_chat_only),
         ("voice I/O runtime", _voice_runtime),
     ]:

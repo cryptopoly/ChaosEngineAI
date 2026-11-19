@@ -429,3 +429,11 @@ class GemmaMtpDrafterTests(unittest.TestCase):
                     "llama-server", resolved_gguf=str(model), path=str(model), repo=_GEMMA12_REPO
                 )
         self.assertEqual(args, ["--model-draft", str(drafter), "--spec-type", "draft-mtp", "--spec-draft-n-max", "2"])
+
+    def test_the_26b_a4b_qat_row_is_paired_too(self) -> None:
+        self.assertEqual(
+            text_gguf.pinned_drafter("google/gemma-4-26B-A4B-it-qat-q4_0-gguf"),
+            ("unsloth/gemma-4-26B-A4B-it-GGUF", "mtp-gemma-4-26B-A4B-it.gguf", "draft-mtp"),
+        )
+        # Only a pairing that ran live is pinned: the Q8_0 row has none (it needs 32 GB, not run here).
+        self.assertIsNone(text_gguf.pinned_drafter("unsloth/gemma-4-26B-A4B-it-GGUF"))

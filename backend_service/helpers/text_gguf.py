@@ -88,6 +88,10 @@ PINNED_DRAFTERS: dict[str, tuple[str, str, str]] = {
     # 2026-11-19 on an RTX 4090 (12B QAT, 500-token prompt, 300 tokens): 92.8 tok/s plain, 123 tok/s
     # at ``--spec-draft-n-max 2`` (the engine's default), 104 at 5.
     "google/gemma-4-12B-it-qat-q4_0-gguf": ("unsloth/gemma-4-12B-it-GGUF", "mtp-gemma-4-12b-it.gguf", "draft-mtp"),
+    # 26B-A4B QAT: 160 tok/s plain, 181 at n=2, 169 at n=3 (same prompt).
+    "google/gemma-4-26B-A4B-it-qat-q4_0-gguf": (
+        "unsloth/gemma-4-26B-A4B-it-GGUF", "mtp-gemma-4-26B-A4B-it.gguf", "draft-mtp",
+    ),
 }
 
 

@@ -113,11 +113,28 @@ class MusicRouteTests(_RouteBox):
         self.assertEqual((response.status_code, response.json()["detail"]), (409, "The music pack is not installed."))
 
     def test_memory_gate_refuses_with_the_fix(self) -> None:
-        with mock.patch("backend_service.helpers.memory_gate.snapshot_memory_signals", return_value=(10.0, 60.0)):
+        with mock.patch("backend_service.helpers.memory_gate.snapshot_memory_signals", return_value=(10.0, 60.0)),                 mock.patch.object(music_env, "lane", return_value="mlx"):
             response = self.client.post("/api/music/generate", json=INSTRUMENTAL)
         self.assertEqual(response.status_code, 503)
         self.assertIn("about 23 GB", response.json()["detail"])
         self.assertIn("Unload", response.json()["detail"])
+
+    def test_on_cuda_the_memory_gate_reads_host_ram_not_the_mac_peak(self) -> None:
+        """FU-139: weights sit in VRAM, so 10 GB of free RAM is enough on CUDA; 2 GB is not."""
+        from backend_service.catalog.music_models import music_variants
+        from backend_service.routes.music import CUDA_HOST_PEAK_GB
+
+        cuda = music_variants()[0]["estimates"]["cuda"]
+        need = float(cuda.get("hostPeakGb") or CUDA_HOST_PEAK_GB)
+        self.assertLess(need, 10.0)
+        with mock.patch.object(music_env, "lane", return_value="cuda"):
+            with mock.patch("backend_service.helpers.memory_gate.snapshot_memory_signals", return_value=(2.0, 60.0)):
+                refused = self.client.post("/api/music/generate", json=INSTRUMENTAL)
+            self.assertEqual(refused.status_code, 503)
+            self.assertIn(f"about {need:.0f} GB", refused.json()["detail"])
+            with mock.patch("backend_service.helpers.memory_gate.snapshot_memory_signals", return_value=(10.0, 60.0)):
+                made = self.client.post("/api/music/generate", json=INSTRUMENTAL)
+            self.assertEqual(made.status_code, 200, made.text)
 
     def test_queue_note_and_cancel_of_a_waiting_studio_job(self) -> None:
         holder = HEAVY_JOBS.enqueue("image", "agent", "busy")

@@ -211,7 +211,7 @@ describe("MusicModelsPage", () => {
 
   it("says Music needs an Apple Silicon Mac and shows the backend's reason, and hides the install banner", () => {
     const html = render(fakeMusic({ runtime: runtime({ installed: false, unavailableReason: "Music runs on Apple Silicon (MLX) in this version." }) }));
-    expect(html).toContain("Music needs an Apple Silicon Mac for now.");
+    expect(html).toContain("Music needs an Apple Silicon Mac or an NVIDIA GPU.");
     expect(html).toContain("Music runs on Apple Silicon (MLX) in this version.");
     expect(html).not.toContain("Install the music pack");
   });

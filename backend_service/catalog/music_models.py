@@ -6,8 +6,9 @@ Same family -> variants shape as the image and video catalogs, plus the fields t
 sections 3.2, 4.2 and 5); ``estimate_run`` in ``music_runtime`` reads this table and nothing else,
 so a new measurement is a change here. Weights are pinned to full Hugging Face revisions.
 
-``platforms`` lists only where a row actually runs. ``"cuda"`` stays out until the CUDA lane exists (FU-139);
-the ``estimates.cuda`` notes are kept for that day and are not read while it is absent.
+``platforms`` lists only where a row actually runs. The ACE-Step rows carry ``"cuda"`` since the CUDA lane was
+built and measured on an RTX 4090 (FU-139); ``estimate_run`` reads ``estimates.cuda`` on that lane once it holds a
+``wallSecondsAt`` table. The sound rows stay Apple Silicon only (the CUDA sound lane is not built).
 """
 
 from __future__ import annotations
@@ -84,7 +85,7 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
         "name": "ACE-Step 1.5",
         "provider": "ACE Studio and StepFun",
         "headline": "Songs with vocals and lyrics, or instrumentals, 10 s to 10 minutes.",
-        "summary": "Text to music with BPM, key and seed control. Runs on MLX on Apple Silicon.",
+        "summary": "Text to music with BPM, key and seed control. Runs on MLX on Apple Silicon and on PyTorch on NVIDIA GPUs.",
         "badges": ["MIT", "Songs", "Instrumental"],
         "defaultVariantId": "ACE-Step/Ace-Step1.5",
         "variants": [
@@ -98,9 +99,9 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "link": "https://huggingface.co/ACE-Step/Ace-Step1.5",
                 "engine": "acestep",
                 "engineModel": "acestep-v15-turbo",
-                "runtime": "ACE-Step 1.5 on MLX (isolated music venv)",
+                "runtime": "ACE-Step 1.5 on MLX or CUDA (isolated music venv)",
                 "makes": ["songs", "instrumental"],
-                "platforms": ["apple-silicon"],
+                "platforms": ["apple-silicon", "cuda"],
                 "taskSupport": ["txt2music"],
                 "sizeGb": 10.09,
                 "sizeNote": "Includes the 1.7B planner LM (3.7 GB) the library requires on disk; it is not loaded by default.",
@@ -146,9 +147,9 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "link": "https://huggingface.co/ACE-Step/acestep-v15-xl-turbo",
                 "engine": "acestep",
                 "engineModel": "acestep-v15-xl-turbo",
-                "runtime": "ACE-Step 1.5 on MLX (isolated music venv)",
+                "runtime": "ACE-Step 1.5 on MLX or CUDA (isolated music venv)",
                 "makes": ["songs", "instrumental"],
-                "platforms": ["apple-silicon"],
+                "platforms": ["apple-silicon", "cuda"],
                 "taskSupport": ["txt2music"],
                 "sizeGb": 19.95,
                 "sizeNote": "Needs the ACE-Step 1.5 turbo pack too (VAE and text encoder).",

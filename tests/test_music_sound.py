@@ -132,6 +132,11 @@ class SoundEnvTests(_SoundEnvBox):
             self.assertEqual((music_sound_env.lane(), music_sound_env.lane_unavailable_reason()), ("mps", None))
         with mock.patch.object(music_env, "lane", lambda: "unsupported"):
             self.assertEqual(music_sound_env.lane(), "unsupported")
+        # FU-139: music runs on CUDA, sounds do not yet; they say so in their own sentence and code.
+        with mock.patch.object(music_env, "lane", lambda: "cuda"):
+            self.assertEqual(music_sound_env.lane(), "unsupported")
+            self.assertEqual(music_sound_env.lane_unavailable_reason(), music_sound_env.SOUND_UNSUPPORTED_REASON)
+            self.assertEqual(music_sound_env.lane_unavailable_code(), "music.soundUnsupportedPlatform")
             self.assertIn("Apple Silicon", music_sound_env.lane_unavailable_reason())
 
     def test_marker_needs_the_release_the_venv_and_its_python(self) -> None:

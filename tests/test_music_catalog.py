@@ -41,7 +41,7 @@ class CatalogRowTests(unittest.TestCase):
                           "that output may be used commercially. You are responsible for checking that your output does not "
                           "copy existing works.", licence["summaryLines"])
             self.assertEqual(variant["makes"], ["songs", "instrumental"])
-            self.assertEqual(variant["platforms"], ["apple-silicon"])  # no "cuda" until the lane exists (FU-139)
+            self.assertEqual(variant["platforms"], ["apple-silicon", "cuda"])  # the CUDA lane exists (FU-139)
             self.assertEqual(variant["taskSupport"], ["txt2music"])
             self.assertEqual(variant["engine"], "acestep")
             self.assertEqual(len(variant["revision"]), 40)
@@ -79,14 +79,22 @@ class MusicFitTests(unittest.TestCase):
     def test_turbo_on_a_16_gb_mac_does_not_fit(self) -> None:
         self.assertEqual(variant_fit(_variant(TURBO), "music", APPLE_16)["status"], "wont-fit")
 
-    def test_cuda_rows_are_not_offered_until_the_lane_exists(self) -> None:
-        """FU-139: the card's 20 GB figure is kept as a note, but no row claims to run on an NVIDIA GPU yet."""
+    def test_cuda_rows_are_offered_and_judged_on_their_cuda_figure(self) -> None:
+        """FU-139: both ACE-Step rows run on an NVIDIA GPU; fit reads ``estimates.cuda``, never the Mac peak."""
         for model in (TURBO, XL):
             row = _variant(model)
-            self.assertNotIn("cuda", row["platforms"])
+            self.assertIn("cuda", row["platforms"])
             fit = variant_fit(row, "music", CUDA_24)
-            self.assertEqual((fit["status"], fit["needGb"]), ("unknown", None))
-        self.assertEqual(_variant(XL)["estimates"]["cuda"]["peakGb"], 20.0)
+            cuda = row["estimates"]["cuda"]
+            if cuda.get("peakGb") is None:
+                self.assertEqual((fit["status"], fit["needGb"]), ("unknown", None))
+            else:
+                self.assertEqual(fit["needGb"], round(cuda["peakGb"], 1))
+                self.assertEqual(fit["basis"], cuda["basis"])
+                self.assertNotIn("not built", fit["reason"])
+        for row in music_variants():
+            if row.get("kind") == "sound":
+                self.assertNotIn("cuda", row["platforms"])  # the CUDA sound lane is not built
 
     def test_platform_gate(self) -> None:
         self.assertEqual(variant_fit(_variant(TURBO), "music", CPU)["status"], "unknown")

@@ -166,6 +166,12 @@ export function MusicModelsPage({ music, backendOnline, availability, onAvailabi
 
   function renderRow({ entry, status }: ModelRow<MusicModelEntry>) {
     const variant = entry.source;
+    // A sound row follows the sounds lane, which may be missing where music runs (an NVIDIA GPU).
+    const soundBlock = variant.kind === "sound" ? (runtime?.sound?.unavailableReason ?? null) : null;
+    const rowUnavailable = soundBlock ?? unavailable;
+    const rowUnavailableText = soundBlock
+      ? unsupportedText(tf as unknown as TFn, soundBlock, runtime?.sound?.unavailableCode)
+      : unavailableText;
     const licence = licenceOf(entry);
     const needsLicence = Boolean(licence?.gated) && !isLicenceAccepted(variant.id, licence?.id ?? "", acceptedTick);
     const download = status.download;
@@ -198,14 +204,14 @@ export function MusicModelsPage({ music, backendOnline, availability, onAvailabi
       makes,
       licenceChip,
       <span title={entry.sizeTitle ?? undefined}>{entry.sizeLabel}</span>,
-      unavailable ? (
-        // Off Apple Silicon no row can run: say so instead of the generic "Not for this machine" fit chip.
+      rowUnavailable ? (
+        // Where this row's lane does not exist no run is possible: say so instead of the generic fit chip.
         <span className="media-model-memory models-memory-cell">
           <span
             className="fit-badge fit-badge--unknown"
             data-fit-status="unknown"
-            title={unavailableText}
-            aria-label={`${unsupportedBadge(tf)}. ${unavailableText}`}
+            title={rowUnavailableText}
+            aria-label={`${unsupportedBadge(tf)}. ${rowUnavailableText}`}
           >
             {unsupportedBadge(tf)}
           </span>
@@ -233,7 +239,7 @@ export function MusicModelsPage({ music, backendOnline, availability, onAvailabi
     ) : (
       <ModelDownloadControls
         status={status}
-        canDownload={!unavailable}
+        canDownload={!rowUnavailable}
         onDownload={() => void music.startDownload(entry.downloadKey)}
         onPause={() => void music.pauseDownload(download?.repo ?? entry.downloadKey)}
         onCancel={() => void music.deleteDownload(entry.deleteTarget)}
@@ -269,7 +275,7 @@ export function MusicModelsPage({ music, backendOnline, availability, onAvailabi
                 ? t("models.speed.measured", { defaultValue: "About {rate} s of audio per second on this machine", rate: speed.rate })
                 : t("models.speed.unknown", { defaultValue: "Speed not measured yet" }),
             },
-            unavailable
+            rowUnavailable
               ? { label: t("musicModels.detail.fit", { defaultValue: "Fit on this machine" }), value: unsupportedBadge(tf) }
               : entry.fit
               ? {
@@ -399,7 +405,7 @@ export function MusicModelsPage({ music, backendOnline, availability, onAvailabi
           <>
             {unavailable ? (
               <div className="callout warning music-models__unavailable" role="status">
-                <p>{t("musicModels.unavailable", { defaultValue: "Music needs an Apple Silicon Mac for now." })}</p>
+                <p>{t("musicModels.unavailable", { defaultValue: "Music needs an Apple Silicon Mac or an NVIDIA GPU." })}</p>
                 <p className="muted-text">{unavailableText}</p>
               </div>
             ) : null}

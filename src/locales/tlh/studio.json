@@ -2561,7 +2561,7 @@
       "statusSummary": "jomlu'ta'bogh wa'DIch"
     },
     "title": "QoQ wab yab",
-    "unavailable": "DaH Apple Silicon Mac poQ QoQ.",
+    "unavailable": null,
     "sounds": {
       "pack": {
         "failedTitle": "wab jo jomlaHbe'lu'.",
@@ -2920,6 +2920,7 @@
   },
   "musicUnsupported": {
     "reason": null,
+    "soundReason": null,
     "badge": null
   },
   "territoryGate": {

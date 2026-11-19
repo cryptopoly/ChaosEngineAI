@@ -81,6 +81,31 @@ def _macos_footprint_bytes(pid: int) -> int | None:
         return None
 
 
+def _windows_footprint_bytes() -> int | None:
+    """Private bytes of this process from ``GetProcessMemoryInfo`` (no psutil in the venv). Host RAM, not VRAM."""
+    try:
+        from ctypes import wintypes
+
+        class Counters(ctypes.Structure):
+            _fields_ = [("cb", wintypes.DWORD), ("PageFaultCount", wintypes.DWORD)] + [
+                (name, ctypes.c_size_t) for name in (
+                    "PeakWorkingSetSize", "WorkingSetSize", "QuotaPeakPagedPoolUsage", "QuotaPagedPoolUsage",
+                    "QuotaPeakNonPagedPoolUsage", "QuotaNonPagedPoolUsage", "PagefileUsage", "PeakPagefileUsage",
+                    "PrivateUsage")]
+
+        counters = Counters()
+        counters.cb = ctypes.sizeof(Counters)
+        kernel32 = ctypes.WinDLL("kernel32")
+        kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+        psapi = ctypes.WinDLL("psapi")
+        psapi.GetProcessMemoryInfo.argtypes = [wintypes.HANDLE, ctypes.c_void_p, wintypes.DWORD]
+        if not psapi.GetProcessMemoryInfo(kernel32.GetCurrentProcess(), ctypes.byref(counters), counters.cb):
+            return None
+        return int(counters.WorkingSetSize)
+    except (OSError, AttributeError, ValueError):
+        return None
+
+
 def _fallback_footprint_bytes() -> int | None:
     """Resident memory without psutil: ``/proc`` on Linux, else the peak from ``getrusage``."""
     try:
@@ -98,7 +123,12 @@ def _fallback_footprint_bytes() -> int | None:
 
 
 def footprint_gb() -> float | None:
-    value = _macos_footprint_bytes(os.getpid()) if sys.platform == "darwin" else None
+    if sys.platform == "darwin":
+        value = _macos_footprint_bytes(os.getpid())
+    elif sys.platform == "win32":
+        value = _windows_footprint_bytes()
+    else:
+        value = None
     if value is None:
         value = _fallback_footprint_bytes()
     return round(value / 1e9, 2) if value else None

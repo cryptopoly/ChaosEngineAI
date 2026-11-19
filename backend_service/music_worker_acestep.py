@@ -1,17 +1,20 @@
-"""The ACE-Step 1.5 engine for the music worker (MLX on Apple Silicon), at the pinned commit.
+"""The ACE-Step 1.5 engine for the music worker (MLX on Apple Silicon, PyTorch on CUDA), at the pinned commit.
 
 Loaded by path from ``music_worker.py`` inside the music venv; imports nothing from ``backend_service``
-and nothing heavy until ``load``. It applies the three memory settings from the spike (VAE chunk 256 via
-the environment, a 2 GB MLX cache limit, dropping the torch copy of the DiT decoder once MLX runs it),
-reports real diffusion steps by wrapping the pinned private name ``acestep.models.mlx.dit_generate.tqdm``
-(an unexpected layout leaves stage-only progress, never a crash), cancels by raising from that hook, and
-writes FLAC 24-bit 48 kHz itself from the returned tensor.
+and nothing heavy until ``load``. On MLX it applies the three memory settings from the spike (VAE chunk 256
+via the environment, a 2 GB MLX cache limit, dropping the torch copy of the DiT decoder once MLX runs it)
+and reports real diffusion steps by wrapping the pinned private name ``acestep.models.mlx.dit_generate.tqdm``.
+On CUDA (FU-139) the DiT runs in PyTorch bf16 with no ``tqdm`` in its loop, so steps come from forward hooks
+on ``handler.model.decoder`` (one decoder call per ODE step); everything stays on the GPU at 20 GB of VRAM or
+more and ACE-Step's own CPU offload is used below that. Either hook cancels by raising; an unexpected layout
+leaves stage-only progress, never a crash. FLAC 24-bit 48 kHz is written here from the returned tensor.
 """
 
 from __future__ import annotations
 
 import gc
 import importlib
+import os
 import platform
 from pathlib import Path
 from typing import Any, Callable
@@ -19,12 +22,21 @@ from typing import Any, Callable
 STEP_HOOK_MODULE = "acestep.models.mlx.dit_generate"
 MLX_CACHE_LIMIT_BYTES = 2 * 1024 ** 3
 SAMPLE_RATE = 48_000
+# ACE-Step's own GPU tiers keep everything on the card from 20 GB (gpu_config.py, tier "20-24GB").
+CUDA_NO_OFFLOAD_MIN_GB = 20.0
 # The worker runs in its own process and imports nothing from the backend, so this sentence is a copy of
 # ``music_env.UNSUPPORTED_PLATFORM_REASON``; tests/test_music_worker.py keeps the two equal.
 UNSUPPORTED_PLATFORM_REASON = (
-    "Music generation runs on Apple Silicon Macs in this version. Windows and Linux support "
-    "(NVIDIA GPUs) is planned; nothing is installed or downloaded on this computer."
+    "Music generation needs an Apple Silicon Mac or an NVIDIA GPU on Windows or Linux; "
+    "nothing is installed or downloaded on this computer."
 )
+NO_CUDA_REASON = (
+    "The music environment sees no NVIDIA GPU (CUDA). Update the NVIDIA driver, or reinstall the music pack."
+)
+
+
+def is_apple_silicon() -> bool:
+    return platform.system() == "Darwin" and platform.machine() in ("arm64", "aarch64")
 
 # Who receives step events right now: ``(before_step(index, total), after_step(done, total))``.
 _ACTIVE: dict[str, Callable[[int, int], None] | None] = {"before": None, "after": None}
@@ -69,6 +81,31 @@ def install_step_hook(module_name: str = STEP_HOOK_MODULE) -> bool:
     return True
 
 
+def attach_decoder_hooks(decoder: Any, total: int) -> list[Any]:
+    """Forward hooks on the torch DiT decoder: one call is one ODE step. Returns the handles to remove.
+
+    ``before`` runs ahead of each call (it may raise to cancel), ``after`` once it returns. Calls beyond
+    ``total`` (a sampler that evaluates twice) are reported as the last step, never past it.
+    """
+    count = {"n": 0}
+
+    def pre(_module: Any, _args: Any) -> None:
+        before = _ACTIVE["before"]
+        if before is not None:
+            before(min(count["n"], total - 1), total)
+
+    def post(_module: Any, _args: Any, _output: Any) -> None:
+        count["n"] += 1
+        after = _ACTIVE["after"]
+        if after is not None and count["n"] <= total:
+            after(count["n"], total)
+
+    try:
+        return [decoder.register_forward_pre_hook(pre), decoder.register_forward_hook(post)]
+    except Exception:  # noqa: BLE001 - no hooks means stage-only progress
+        return []
+
+
 def _stage_for(desc: Any) -> str | None:
     text = str(desc or "").lower()
     if "preparing inputs" in text:
@@ -89,17 +126,24 @@ class AceStepEngine:
         self.lm: str | None = None
         self.step_hook = False
         self.decoder_dropped = False
+        self.cuda = not is_apple_silicon()
+        self.offload = False
 
     # -- availability and loading ---------------------------------------
 
     def unavailable_reason(self) -> str | None:
-        if platform.system() != "Darwin" or platform.machine() not in ("arm64", "aarch64"):
-            return UNSUPPORTED_PLATFORM_REASON
         import importlib.util
 
-        for name in ("mlx", "torch", "acestep", "soundfile"):
+        if self.cuda and platform.system() not in ("Windows", "Linux"):
+            return UNSUPPORTED_PLATFORM_REASON
+        for name in ("torch", "acestep", "soundfile") if self.cuda else ("mlx", "torch", "acestep", "soundfile"):
             if importlib.util.find_spec(name) is None:
                 return f"The package '{name}' is missing from the music environment. Reinstall the music pack."
+        if self.cuda:
+            import torch
+
+            if not torch.cuda.is_available():
+                return NO_CUDA_REASON
         return None
 
     def loaded(self) -> dict[str, Any]:
@@ -111,6 +155,8 @@ class AceStepEngine:
         if self.handler is not None and self.model == model and self.lm == lm:
             return {"model": model, "lm": lm, "already_loaded": True, "step_hook": self.step_hook}
         self.unload()
+        if self.cuda:
+            return self._load_cuda(model, lm)
         import mlx.core as mx
         import torch
 
@@ -145,6 +191,46 @@ class AceStepEngine:
             "mlx_dit": getattr(handler, "mlx_decoder", None) is not None,
             "decoder_dropped": self.decoder_dropped,
             "step_hook": self.step_hook,
+            "device": "mps",
+        }
+
+    def _load_cuda(self, model: str, lm: str | None) -> dict[str, Any]:
+        """The PyTorch path: bf16 on the GPU, ACE-Step's CPU offload only on cards under 20 GB."""
+        import torch
+        from acestep.handler import AceStepHandler
+        from acestep.llm_inference import LLMHandler
+
+        total_gb = torch.cuda.get_device_properties(0).total_memory / 1024 ** 3
+        forced = os.environ.get("CHAOSENGINE_MUSIC_OFFLOAD", "").strip().lower()
+        self.offload = forced in ("1", "true", "yes") if forced else total_gb < CUDA_NO_OFFLOAD_MIN_GB
+        handler = AceStepHandler()
+        status, ok = handler.initialize_service(
+            project_root=str(self.data_dir), config_path=model, device="cuda", use_mlx_dit=False,
+            offload_to_cpu=self.offload, offload_dit_to_cpu=False,
+        )
+        if not ok:
+            raise RuntimeError(f"ACE-Step could not load {model}: {str(status)[:400]}")
+        self.decoder_dropped = False
+        self.step_hook = getattr(getattr(handler, "model", None), "decoder", None) is not None
+        llm = LLMHandler()
+        if lm:
+            lm_status, lm_ok = llm.initialize(
+                checkpoint_dir=str(self.data_dir / "checkpoints"), lm_model_path=lm, backend="pt", device="cuda"
+            )
+            if not lm_ok:
+                raise RuntimeError(f"The planner {lm} could not load: {str(lm_status)[:300]}")
+        self.handler, self.llm, self.model, self.lm = handler, llm, model, lm
+        return {
+            "model": model,
+            "lm": lm,
+            "mlx_dit": False,
+            "decoder_dropped": False,
+            "step_hook": self.step_hook,
+            "device": "cuda",
+            "gpu": torch.cuda.get_device_name(0),
+            "dtype": str(getattr(handler, "dtype", "")).replace("torch.", ""),
+            "offload": self.offload,
+            "vram_gb": round(torch.cuda.memory_reserved() / 1e9, 2),
         }
 
     def unload(self) -> None:
@@ -166,7 +252,10 @@ class AceStepEngine:
         try:
             import torch
 
-            torch.mps.empty_cache()
+            if self.cuda:
+                torch.cuda.empty_cache()
+            else:
+                torch.mps.empty_cache()
         except Exception:  # noqa: BLE001
             pass
 
@@ -223,16 +312,31 @@ class AceStepEngine:
             elif stage is not None:
                 hooks.stage(stage)
 
+        handles: list[Any] = []
+        torch = None
+        if self.cuda:
+            import torch
+
+            torch.cuda.reset_peak_memory_stats()
+            decoder = getattr(getattr(self.handler, "model", None), "decoder", None)
+            if decoder is not None:
+                handles = attach_decoder_hooks(decoder, int(params.inference_steps))
         _ACTIVE["before"], _ACTIVE["after"] = before, after
         try:
             result = generate_music(self.handler, self.llm, params, config, save_dir=None, progress=progress)
         finally:
             _ACTIVE["before"], _ACTIVE["after"] = None, None
+            for handle in handles:
+                handle.remove()
         hooks.check_cancel()
         if not getattr(result, "success", False):
             raise RuntimeError(str(getattr(result, "error", None) or "ACE-Step generation failed."))
         hooks.stage("write")
-        return {"tracks": self._write(request, result, seeds), "timings": self._timings(result)}
+        timings = self._timings(result)
+        if torch is not None:
+            timings["vram_peak_gb"] = round(torch.cuda.max_memory_reserved() / 1e9, 2)
+            timings["vram_peak_allocated_gb"] = round(torch.cuda.max_memory_allocated() / 1e9, 2)
+        return {"tracks": self._write(request, result, seeds), "timings": timings}
 
     def _write(self, request: dict[str, Any], result: Any, seeds: list[int]) -> list[dict[str, Any]]:
         import numpy as np

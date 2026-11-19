@@ -37,25 +37,30 @@ class _EnvBox(unittest.TestCase):
 
 class LaneAndMarkerTests(_EnvBox):
     def test_lane(self) -> None:
-        cases = [("Darwin", "arm64", "mlx"), ("Darwin", "x86_64", "unsupported"), ("Windows", "AMD64", "unsupported"),
-                 ("Linux", "x86_64", "unsupported")]
-        for system, machine, expected in cases:
+        cases = [("Darwin", "arm64", True, "mlx"), ("Darwin", "x86_64", True, "unsupported"),
+                 ("Windows", "AMD64", True, "cuda"), ("Linux", "x86_64", True, "cuda"),
+                 ("Windows", "AMD64", False, "unsupported"), ("Linux", "x86_64", False, "unsupported"),
+                 ("Linux", "aarch64", True, "unsupported")]  # GB10 / GH200: the cu130 lane is not built
+        for system, machine, nvidia, expected in cases:
             with mock.patch.object(music_env.platform, "system", return_value=system), \
-                    mock.patch.object(music_env.platform, "machine", return_value=machine):
-                self.assertEqual(music_env.lane(), expected)
+                    mock.patch.object(music_env.platform, "machine", return_value=machine), \
+                    mock.patch.object(music_env, "_nvidia_present", return_value=nvidia):
+                self.assertEqual(music_env.lane(), expected, (system, machine, nvidia))
                 reason = music_env.lane_unavailable_reason()
-                self.assertEqual(reason is None, expected == "mlx")
-                self.assertEqual(music_env.lane_unavailable_code() is None, expected == "mlx")
+                self.assertEqual(reason is None, expected in ("mlx", "cuda"))
+                self.assertEqual(music_env.lane_unavailable_code() is None, expected in ("mlx", "cuda"))
                 if reason:
                     self.assertEqual(reason, music_env.UNSUPPORTED_PLATFORM_REASON)
                     self.assertEqual(music_env.lane_unavailable_code(), "music.unsupportedPlatform")
                     self.assertIn("Apple Silicon", reason)
+                    self.assertIn("NVIDIA GPU", reason)
                     self.assertIn("nothing is installed or downloaded", reason)
 
-    def test_install_is_refused_off_apple_silicon_and_starts_nothing(self) -> None:
+    def test_install_is_refused_without_a_lane_and_starts_nothing(self) -> None:
         for system, machine in (("Windows", "AMD64"), ("Linux", "x86_64")):
             with mock.patch.object(music_env.platform, "system", return_value=system), \
                     mock.patch.object(music_env.platform, "machine", return_value=machine), \
+                    mock.patch.object(music_env, "_nvidia_present", return_value=False), \
                     mock.patch.object(music_env.threading, "Thread") as thread, \
                     mock.patch.object(music_env, "_run") as run:
                 job = music_env.start_install()
@@ -72,6 +77,9 @@ class LaneAndMarkerTests(_EnvBox):
         self.assertFalse(music_env._python_supported((3, 10, 9)))
 
     def test_marker_needs_this_commit_this_venv_and_its_python(self) -> None:
+        lane = mock.patch.object(music_env, "lane", return_value="mlx")
+        lane.start()
+        self.addCleanup(lane.stop)
         self.assertFalse(music_env.is_installed())
         python = music_env.venv_python()
         python.parent.mkdir(parents=True)
@@ -82,16 +90,30 @@ class LaneAndMarkerTests(_EnvBox):
         self.assertEqual((marker["ref"], marker["python"], marker["venv"]), (music_env.ACE_REF, "3.12.5", str(self.venv)))
         with mock.patch.object(music_env, "MUSIC_VENV_DIR", self.venv.with_name("other")):
             self.assertFalse(music_env.is_installed())
+        # A pack built for one lane is not the other's (an MLX marker without ``lane`` predates the CUDA lane).
+        with mock.patch.object(music_env, "lane", return_value="mlx"):
+            (self.data / "music-pack.json").write_text(json.dumps({k: v for k, v in marker.items() if k != "lane"}))
+            self.assertTrue(music_env.is_installed())
+        with mock.patch.object(music_env, "lane", return_value="cuda"):
+            self.assertFalse(music_env.is_installed())
+            (self.data / "music-pack.json").write_text(json.dumps({**marker, "lane": "cuda"}))
+            self.assertTrue(music_env.is_installed())
+        (self.data / "music-pack.json").write_text(json.dumps(marker))
         (self.data / "music-pack.json").write_text(json.dumps({**marker, "ref": "old"}))
         self.assertFalse(music_env.is_installed())
         (self.data / "music-pack.json").write_text("not json")
         self.assertFalse(music_env.is_installed())
 
     def test_worker_env_carries_the_spike_settings(self) -> None:
-        env = music_env.worker_env()
+        with mock.patch.object(music_env, "lane", return_value="cuda"):
+            cuda = music_env.worker_env()
+        self.assertEqual((cuda["ACESTEP_LM_BACKEND"], cuda["CHAOSENGINE_MUSIC_LANE"]), ("pt", "cuda"))
+        with mock.patch.object(music_env, "lane", return_value="mlx"):
+            env = music_env.worker_env()
         self.assertEqual(env["ACESTEP_MLX_VAE_CHUNK"], "256")
         self.assertEqual(env["TOKENIZERS_PARALLELISM"], "false")
         self.assertEqual(env["ACESTEP_LM_BACKEND"], "mlx")
+        self.assertEqual(env["CHAOSENGINE_MUSIC_LANE"], "mlx")
         self.assertEqual(env["HF_HUB_OFFLINE"], "1")
         self.assertEqual(env["ACESTEP_CHECKPOINTS_DIR"], str(self.data / "checkpoints"))
         self.assertEqual(env["CHAOSENGINE_MUSIC_DATA"], str(self.data))
@@ -105,6 +127,20 @@ class LaneAndMarkerTests(_EnvBox):
         self.assertNotIn("\n./", text)
         self.assertNotIn("\npytorch-wavelets", text)  # D-37: dropped on purpose (licence)
         self.assertIn("\npywavelets==", text)
+        # FU-139: the CUDA lane's torch pins are local versions found only on the PyTorch CUDA index; Windows on
+        # Python 3.12 gets no flash-attn or triton line (both are python < 3.12 in the lock).
+        self.assertIn("\ntorch==2.7.1+cu128 ; sys_platform == 'win32'", text)
+        self.assertIn("\ntorchaudio==2.7.1+cu128 ; sys_platform == 'win32'", text)
+        for line in text.splitlines():
+            if line.startswith(("flash-attn", "triton-windows")):
+                self.assertIn("python_full_version < '3.12'", line)
+
+    def test_cuda_install_command_adds_the_pytorch_index(self) -> None:
+        with mock.patch.object(music_env, "lane", return_value="cuda"):
+            command = music_env.requirements_command()
+        self.assertEqual(command[-2:], ["--extra-index-url", "https://download.pytorch.org/whl/cu128"])
+        with mock.patch.object(music_env, "lane", return_value="mlx"):
+            self.assertNotIn("--extra-index-url", music_env.requirements_command())
 
 
 class MirrorTests(_EnvBox):
@@ -178,6 +214,12 @@ class MirrorTests(_EnvBox):
 
 
 class InstallJobTests(_EnvBox):
+    def setUp(self) -> None:
+        super().setUp()
+        host = mock.patch.object(music_env, "lane", return_value="mlx")  # never this machine's own lane
+        host.start()
+        self.addCleanup(host.stop)
+
     def _wait(self) -> dict:
         deadline = time.monotonic() + 10
         while music_env.job_status()["running"] and time.monotonic() < deadline:
@@ -231,6 +273,31 @@ class InstallJobTests(_EnvBox):
         self.assertEqual(status["phase"], "error")
         self.assertIn("Apple Silicon", status["error"])
         run.assert_not_called()
+
+    def test_cuda_install_uses_the_cuda_index_and_check(self) -> None:
+        commands: list[list[str]] = []
+
+        def fake_run(command: list[str]) -> str:
+            commands.append(command)
+            if command[1:3] == ["-m", "venv"]:
+                python = music_env.venv_python()
+                python.parent.mkdir(parents=True, exist_ok=True)
+                python.write_text("")
+            return '{"torch": "2.7.1+cu128", "cuda": "12.8", "gpu": "NVIDIA GeForce RTX 4090", "python": "3.12.10"}'
+
+        with self._lane("cuda"), mock.patch.object(music_env, "_run", side_effect=fake_run), \
+                mock.patch("backend_service.voice_env._base_python", return_value="python"):
+            music_env.start_install()
+            status = self._wait()
+            self.assertEqual(status["phase"], "done", status)
+            self.assertTrue(music_env.is_installed())
+        pip = next(c for c in commands if "-r" in c)
+        self.assertEqual(pip[-2:], ["--extra-index-url", music_env.CUDA_TORCH_INDEX])
+        check = commands[-1]
+        self.assertIn("torch.cuda.is_available()", check[-1])
+        self.assertNotIn("mlx", check[-1])
+        marker = music_env.read_marker()
+        self.assertEqual((marker["lane"], marker["gpu"]), ("cuda", "NVIDIA GeForce RTX 4090"))
 
     def test_cancel_and_failure(self) -> None:
         def cancelled(_command: list[str]) -> str:

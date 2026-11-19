@@ -144,6 +144,9 @@ def estimate_run(model: str | None, seconds: float, variations: int = 1, warm: b
     """
     variant = resolve_variant(model)
     est = variant["estimates"]
+    cuda = est.get("cuda") or {}
+    if music_env.lane() == "cuda" and cuda.get("wallSecondsAt"):
+        est = {**est, **cuda}  # measured on an NVIDIA GPU: its own times, peak (VRAM) and cold start
     count = max(1, int(variations))
     # A fixed-window row (Stable Audio) works on its whole window whatever length is asked: full cost always.
     length = max(float(a) for a, _ in est["wallSecondsAt"]) if est.get("fixedWindow") else float(seconds)
@@ -171,6 +174,7 @@ def estimate_run(model: str | None, seconds: float, variations: int = 1, warm: b
         "basisNote": note,
         "steps": chosen if chosen is not None else measured_steps,
         "measuredOn": est.get("measuredOn"),
+        "lane": music_env.lane(),
     }
 
 
@@ -300,7 +304,7 @@ def capabilities() -> dict[str, Any]:
         "sound": {
             "lane": music_sound_env.lane(),
             "unavailableReason": music_sound_env.lane_unavailable_reason(),
-            "unavailableCode": music_env.lane_unavailable_code(),
+            "unavailableCode": music_sound_env.lane_unavailable_code(),
             "installed": music_sound_env.is_installed(),
             "engine": "stableaudio",
             "engineVersion": music_sound_env.ENGINE_VERSION,

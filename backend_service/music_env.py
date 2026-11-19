@@ -9,7 +9,10 @@ cache; ``prepare_checkpoints`` mirrors them into ``<data>/checkpoints`` in the l
 (``ACESTEP_CHECKPOINTS_DIR``): small files are copied (the library rewrites its model code there, which
 must never reach the cache), weight files are linked. A dangling or wrong link is re-made, and
 ``checkpoints/.mirror.json`` records the revision mirrored per repo so a catalog revision bump re-mirrors.
-Only the MLX lane (Apple Silicon) exists today.
+Two lanes: ``mlx`` on Apple Silicon and ``cuda`` on a Windows or Linux x86_64 host with an NVIDIA GPU (FU-139).
+The CUDA lane installs the same requirements file; its ``torch==2.7.1+cu128`` (Windows) and ``2.10.0+cu128``
+(Linux) pins come from the PyTorch CUDA index, added with ``--extra-index-url``. Python 3.12 gets no
+flash-attn or triton wheel from the lock (both are ``python < 3.12`` there), so the DiT runs on PyTorch SDPA.
 """
 
 from __future__ import annotations
@@ -34,6 +37,8 @@ ACE_REF = "ca1e85fe9430179831e6bc6be790c332190a3866"
 ENGINE_VERSION = ACE_REF[:7]
 ACE_ARCHIVE = f"{ACE_REPO}/archive/{ACE_REF}.zip"
 REQUIREMENTS = Path(__file__).with_name("music_requirements.txt")
+# The uv.lock pins ``+cu128`` local versions for Windows and Linux x86_64; they live on this index only.
+CUDA_TORCH_INDEX = "https://download.pytorch.org/whl/cu128"
 _SCHEMA = 1
 _MIN_FREE_GB = 4.0
 # Files at least this large are linked into the checkpoints layout, smaller ones copied.
@@ -46,30 +51,47 @@ _VERIFY_CODE = (
     "print(json.dumps({'torch': torch.__version__, 'mlx': mx.__version__, "
     "'python': '.'.join(map(str, sys.version_info[:3]))}))\n"
 )
+# The CUDA lane has no MLX; it needs a CUDA torch that sees the GPU (a CPU wheel would be a silent 50x slowdown).
+_VERIFY_CODE_CUDA = (
+    "import json, sys, torch, soundfile, acestep.handler, acestep.inference\n"
+    "assert torch.cuda.is_available(), 'torch ' + torch.__version__ + ' sees no CUDA GPU'\n"
+    "print(json.dumps({'torch': torch.__version__, 'cuda': torch.version.cuda, "
+    "'gpu': torch.cuda.get_device_name(0), 'python': '.'.join(map(str, sys.version_info[:3]))}))\n"
+)
+
+
+def _nvidia_present() -> bool:
+    from backend_service.helpers.gpu import nvidia_gpu_present
+
+    return nvidia_gpu_present()
 
 
 def lane() -> str:
-    """``mlx`` on Apple Silicon; ``unsupported`` elsewhere (the CUDA lane is later work)."""
-    if platform.system() == "Darwin" and platform.machine() in ("arm64", "aarch64"):
+    """``mlx`` on Apple Silicon, ``cuda`` on Windows or Linux x86_64 with an NVIDIA GPU, else ``unsupported``."""
+    system, machine = platform.system(), platform.machine().lower()
+    if system == "Darwin" and machine in ("arm64", "aarch64"):
         return "mlx"
+    # Linux aarch64 (GB10, GH200) would need the cu130 index the lock names; not built or tested.
+    if system in ("Windows", "Linux") and machine in ("amd64", "x86_64") and _nvidia_present():
+        return "cuda"
     return "unsupported"
 
 
 UNSUPPORTED_PLATFORM_CODE = "music.unsupportedPlatform"
 UNSUPPORTED_PLATFORM_REASON = (
-    "Music generation runs on Apple Silicon Macs in this version. Windows and Linux support "
-    "(NVIDIA GPUs) is planned; nothing is installed or downloaded on this computer."
+    "Music generation needs an Apple Silicon Mac or an NVIDIA GPU on Windows or Linux; "
+    "nothing is installed or downloaded on this computer."
 )
 
 
 def lane_unavailable_reason() -> str | None:
-    """The one sentence for every music and sound surface off Apple Silicon (``None`` on a supported Mac)."""
-    return None if lane() == "mlx" else UNSUPPORTED_PLATFORM_REASON
+    """The one sentence for every music surface on a host with neither lane (``None`` where music runs)."""
+    return None if lane() in ("mlx", "cuda") else UNSUPPORTED_PLATFORM_REASON
 
 
 def lane_unavailable_code() -> str | None:
     """The translation key the frontend maps the reason to."""
-    return None if lane() == "mlx" else UNSUPPORTED_PLATFORM_CODE
+    return None if lane() in ("mlx", "cuda") else UNSUPPORTED_PLATFORM_CODE
 
 
 def checkpoints_dir() -> Path:
@@ -115,6 +137,8 @@ def is_installed() -> bool:
         and marker.get("schema") == _SCHEMA
         and marker.get("ref") == ACE_REF
         and marker.get("venv") == str(MUSIC_VENV_DIR)
+        # A marker from before the CUDA lane has no ``lane``: it was an MLX build.
+        and marker.get("lane", "mlx") == lane()
         and venv_python().exists()
     )
 
@@ -123,11 +147,14 @@ def worker_env() -> dict[str, str]:
     """Environment for the music worker (spike section 4) and the install commands."""
     from backend_service.inference._utils import _isolated_child_env
 
+    here = lane()
     return _isolated_child_env({
         "PYTHONUNBUFFERED": "1",
         "TOKENIZERS_PARALLELISM": "false",
         "ACESTEP_MLX_VAE_CHUNK": "256",
-        "ACESTEP_LM_BACKEND": "mlx",
+        # No vLLM in the venv (the lock's nano-vllm is dropped), so the planner runs on plain PyTorch on CUDA.
+        "ACESTEP_LM_BACKEND": "pt" if here == "cuda" else "mlx",
+        "CHAOSENGINE_MUSIC_LANE": here,
         "HF_HUB_OFFLINE": "1",
         "ACESTEP_CHECKPOINTS_DIR": str(checkpoints_dir()),
         "ACESTEP_PROJECT_ROOT": str(MUSIC_DATA_DIR),
@@ -314,7 +341,7 @@ def start_install() -> dict[str, Any]:
             return _JOB.to_dict()
         _JOB.__init__()  # type: ignore[misc]
         reason = lane_unavailable_reason()
-        if reason:  # off Apple Silicon: say why and start nothing (no venv, no thread, no download)
+        if reason:  # neither lane here: say why and start nothing (no venv, no thread, no download)
             _JOB.phase, _JOB.error, _JOB.finished_at = "error", reason, time.time()
             return _JOB.to_dict()
         _JOB.phase = "preflight"
@@ -363,9 +390,17 @@ def _run(command: list[str]) -> str:
     return "\n".join(lines)
 
 
+def requirements_command() -> list[str]:
+    """The pip command for the pinned requirements; the CUDA lane adds the PyTorch CUDA index."""
+    command = [str(venv_python()), "-m", "pip", "install", "-r", str(REQUIREMENTS)]
+    if lane() == "cuda":
+        command += ["--extra-index-url", CUDA_TORCH_INDEX]
+    return command
+
+
 def _verify() -> dict[str, Any]:
     """Import the engine in the venv; returns the versions it reports."""
-    output = _run([str(venv_python()), "-I", "-c", _VERIFY_CODE])
+    output = _run([str(venv_python()), "-I", "-c", _VERIFY_CODE_CUDA if lane() == "cuda" else _VERIFY_CODE])
     for line in reversed(output.splitlines()):
         try:
             found = json.loads(line)
@@ -382,6 +417,7 @@ def _write_marker(versions: dict[str, Any]) -> None:
         "schema": _SCHEMA,
         "ref": ACE_REF,
         "venv": str(MUSIC_VENV_DIR),
+        "lane": lane(),
         "python": ".".join(map(str, sys.version_info[:3])),
         "installedAt": time.strftime("%Y-%m-%dT%H:%M:%S"),
         **{k: str(v) for k, v in versions.items()},
@@ -425,7 +461,7 @@ def _run_install() -> None:
         _run([str(venv_python()), "-m", "pip", "install", "--upgrade", "--quiet", "pip"])
 
         _set_phase("installing")
-        _run([str(venv_python()), "-m", "pip", "install", "-r", str(REQUIREMENTS)])
+        _run(requirements_command())
 
         _set_phase("installing-engine")
         _run([str(venv_python()), "-m", "pip", "install", "--no-deps", ACE_ARCHIVE])

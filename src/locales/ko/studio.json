@@ -2561,7 +2561,7 @@
       "statusSummary": "설치된 것 먼저"
     },
     "title": "음악 모델",
-    "unavailable": "음악 기능은 현재 Apple Silicon Mac이 필요합니다.",
+    "unavailable": null,
     "sounds": {
       "pack": {
         "failedTitle": "사운드 팩을 설치할 수 없었습니다.",
@@ -2919,7 +2919,8 @@
     "alternative": "여기서 더 빠른 모델: {name}."
   },
   "musicUnsupported": {
-    "reason": "이 버전에서 음악 생성은 Apple Silicon Mac에서만 실행됩니다. Windows와 Linux(NVIDIA GPU) 지원은 계획 중입니다. 이 컴퓨터에는 아무것도 설치되거나 내려받아지지 않습니다.",
+    "reason": null,
+    "soundReason": null,
     "badge": "아직 이 컴퓨터에서 사용할 수 없음"
   },
   "territoryGate": {

@@ -403,6 +403,20 @@ describe("Music and Audio Models with the Sounds row", () => {
     expect(html).not.toContain("Install the sounds pack");
   });
 
+  it("on an NVIDIA host (FU-139) music rows stay open and only the sound row says why it cannot run", () => {
+    acceptLicence();
+    const soundReason =
+      "Sound effects run on Apple Silicon Macs in this version. NVIDIA GPU support is planned; nothing is installed or downloaded for sounds on this computer.";
+    const cuda = runtime({
+      lane: "cuda",
+      sound: { lane: "unsupported", unavailableReason: soundReason, unavailableCode: "music.soundUnsupportedPlatform", installed: false, engine: "stableaudio", workerRunning: false, loadedModel: null, install: IDLE_JOB },
+    });
+    const html = page(fakeMusic(soundVariant(), { runtime: cuda }));
+    expect(html).not.toContain("Music needs an Apple Silicon Mac");
+    expect(html.match(/Not available on this computer yet/g)?.length).toBe(2); // one row: its chip text and aria-label
+    expect(html).toContain(soundReason);
+  });
+
   it("after the licence is accepted the row offers the weights and the separate sounds pack", () => {
     acceptLicence();
     const html = page(fakeMusic(soundVariant()));

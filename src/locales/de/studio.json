@@ -2561,7 +2561,7 @@
       "statusSummary": "installierte zuerst"
     },
     "title": "Musikmodelle",
-    "unavailable": "Musik braucht vorerst einen Mac mit Apple Silicon.",
+    "unavailable": null,
     "sounds": {
       "pack": {
         "failedTitle": "Das Sound-Paket konnte nicht installiert werden.",
@@ -2919,7 +2919,8 @@
     "alternative": "Hier schneller: {name}."
   },
   "musicUnsupported": {
-    "reason": "Musikerzeugung läuft in dieser Version auf Apple-Silicon-Macs. Unterstützung für Windows und Linux (NVIDIA-GPUs) ist geplant; auf diesem Computer wird nichts installiert oder heruntergeladen.",
+    "reason": null,
+    "soundReason": null,
     "badge": "Auf diesem Computer noch nicht verfügbar"
   },
   "territoryGate": {

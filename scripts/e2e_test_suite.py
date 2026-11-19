@@ -3584,11 +3584,15 @@ def phase_11(cap: Capability) -> PhaseResult:
         peak = body.get("peakFootprintGb")
         if isinstance(peak, (int, float)) and peak > 26:
             return "fail", f"peak footprint {peak} GB is above the 26 GB guard", {}
+        vram = (body.get("timings") or {}).get("vram_peak_gb")
+        if runtime.get("lane") == "cuda" and not (isinstance(vram, (int, float)) and 0 < vram <= 24):
+            # FU-139: the CUDA lane reports the torch VRAM peak; the 2B turbo measured 9.4 GB on a 4090.
+            return "fail", f"CUDA VRAM peak missing or above 24 GB: {vram!r}", {}
         return "pass", "", {"wallSeconds": round(time.perf_counter() - started, 1), "jobSeconds": body.get("seconds"),
-                            "peakFootprintGb": peak, "bytes": len(data)}
+                            "peakFootprintGb": peak, "vramPeakGb": vram, "lane": runtime.get("lane"), "bytes": len(data)}
 
     def _platform_reason():
-        """FU-139: off Apple Silicon the runtime says why and install is refused (checks in e2e_phases/music_platform.py)."""
+        """FU-139: the lane matches the host; without a lane install is refused (checks in e2e_phases/music_platform.py)."""
         from e2e_phases.music_platform import check
 
         return check(_call, runtime)
@@ -3596,12 +3600,12 @@ def phase_11(cap: Capability) -> PhaseResult:
     try:
         for name, fn in [
             ("runtime route shape", _runtime_shape),
-            ("off Apple Silicon: one reason, no cuda rows, install refused", _platform_reason),
+            ("lane matches the host: MLX, CUDA (sounds refused) or one reason and install refused", _platform_reason),
             ("catalog row carries the licence and UI fields", _catalog),
             ("estimate answers; out-of-range requests are refused", _estimate_and_validation),
             ("sound steps: range in the catalog, scaled estimate, out-of-range refused", _sound_steps),
             ("library list, rename, tag, Range audio and delete on a synthetic item", _library_crud),
-            ("a real 20 s instrumental (skips without the music pack)", _real_generation),
+            ("a real 20 s instrumental on MLX or CUDA (skips without the music pack or weights)", _real_generation),
         ]:
             phase.checks.append(_check(name, fn))
     finally:

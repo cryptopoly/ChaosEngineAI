@@ -2561,7 +2561,7 @@
       "statusSummary": "インストール済みを先に"
     },
     "title": "ミュージックモデル",
-    "unavailable": "ミュージックは今のところ Apple シリコンの Mac が必要です。",
+    "unavailable": null,
     "sounds": {
       "pack": {
         "failedTitle": "サウンドパックをインストールできませんでした。",
@@ -2919,7 +2919,8 @@
     "alternative": "ここではより高速: {name}。"
   },
   "musicUnsupported": {
-    "reason": "このバージョンでは、ミュージック生成は Apple シリコンの Mac で動作します。Windows と Linux（NVIDIA GPU）への対応は予定されています。このコンピューターには何もインストールもダウンロードもされません。",
+    "reason": null,
+    "soundReason": null,
     "badge": "このコンピューターではまだ利用できません"
   },
   "territoryGate": {

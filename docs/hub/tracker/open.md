@@ -77,7 +77,7 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 
 **Status or trigger:** **Done (2026-11-20, agent branch), unit-tested with links forced to fail; not run on a PC without Developer Mode**
 
-**Notes:** `music_env._place` still tries symlink, then hard link, but a large file that can be neither is no longer copied silently: `prepare_checkpoints` collects them, and the first load stops (`WeightCopyNotice`, a 409 through `MusicNotReady`) with the file count, the size, the two drives and the fixes (Developer Mode, or the cache on the same drive); the next try copies (via a `.partial` file; the acknowledged file list is kept in `checkpoints/.copy-notice.json`). Pointing ACE-Step at the cache instead is not feasible: it reads one merged checkpoints folder built from several repos and rewrites small files there. Decision D-99 (a dialog button would be clearer). Tests: `tests/test_music_env.py` MirrorTests.
+**Notes:** `music_env._place` still tries symlink, then hard link, but a large file that can be neither is no longer copied silently: `prepare_checkpoints` collects them, and the first load stops (`WeightCopyNotice`, a 409 through `MusicNotReady`) with the file count, the size, the two drives and the fixes (Developer Mode, or the cache on the same drive); the next try copies (via a `.partial` file; the acknowledged file list is kept in `checkpoints/.copy-notice.json`). Pointing ACE-Step at the cache instead is not feasible: it reads one merged checkpoints folder built from several repos and rewrites small files there. Decision D-100 (a dialog button would be clearer). Tests: `tests/test_music_env.py` MirrorTests.
 
 </details>
 

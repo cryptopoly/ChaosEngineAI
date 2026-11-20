@@ -749,41 +749,41 @@
       "kokoroLineAddon": "{count} 种快速语音，覆盖 {languages} 种语言。在任何机器上都快；是语音运行时的附加组件。",
       "kokoroNotInstalled": "未安装",
       "kokoroAddHint": "在“语音运行时 > 附加组件”中勾选即可。",
-      "gpuDefaultLine": null,
-      "macOnlySummary": null,
-      "macOnlyNote": null,
-      "macOnlyNoteVoices": null,
+      "gpuDefaultLine": "{name} 下载完成后将成为听写模型，除非你另选其他模型。",
+      "macOnlySummary": "{count} 个适用于 Apple Silicon Mac 的模型",
+      "macOnlyNote": "它们无法在这台电脑上运行，因此未列入“朗读”和“语音”。",
+      "macOnlyNoteVoices": "它们无法在这台电脑上运行，因此它们及其 {voices} 个语音未列入“朗读”和“语音”。",
       "licenceName": {
-        "Apache-2_0": null,
-        "MIT": null,
-        "CC-BY-4_0": null,
-        "OpenMDW-1_1": null
+        "Apache-2_0": "Apache 2.0",
+        "MIT": "MIT",
+        "CC-BY-4_0": "Creative Commons BY 4.0（需署名作者）",
+        "OpenMDW-1_1": "OpenMDW 1.1（开放模型许可证）"
       },
-      "licenceOpen": null,
+      "licenceOpen": "在模型页面阅读许可证",
       "sttGuide": {
-        "qwen3-asr-1_7b": null,
-        "qwen3-asr-0_6b": null,
-        "parakeet-tdt-v3": null,
-        "nemotron-3_5-asr": null,
-        "whisper-large-v3-turbo": null,
-        "whisper-small": null,
-        "whisper-base": null,
-        "granite-speech-5_0-2b": null,
-        "nemotron-3_5-transcribe-30b": null
+        "qwen3-asr-1_7b": "NVIDIA GPU 的首选：支持 30 种语言和 22 种中文方言，可自动识别语言。",
+        "qwen3-asr-0_6b": "更小的 Qwen3-ASR：占用 GPU 内存更少、速度更快，支持相同的语言。",
+        "parakeet-tdt-v3": "对 25 种欧洲语言速度极快；可自动识别语言，并为每个词单独标注时间。",
+        "nemotron-3_5-asr": "小巧快速，专为 40 种语言的实时语音而设计；使用“语言”设置或自动识别。",
+        "whisper-large-v3-turbo": "可在任何机器上运行，支持 99 种语言并标注每个词的时间；不支持翻译。",
+        "whisper-small": "小巧快速，支持 99 种语言；是两个可将语音翻译成英语的模型之一。",
+        "whisper-base": "最小的模型：在任何机器上都很快，可翻译成英语，但准确度最低。",
+        "granite-speech-5_0-2b": "支持六种语言，以英语为主；可自动识别语言。",
+        "nemotron-3_5-transcribe-30b": "最大的模型，支持 40 种语言；适用于约 80 GB 显存的 GPU。"
       },
-      "sttFit": null,
-      "sttFitAbout": null,
-      "sttFitMeasured": null,
-      "sttFitEstimate": null,
-      "sttDownloading": null,
-      "sttDownloadingName": null,
-      "defaultBadge": null,
-      "defaultTitle": null,
-      "recommendedGpu": null,
-      "recommendedGpuTitle": null,
-      "wordTimings": null,
-      "wordTimingsLine": null,
-      "firstUseLanguageLine": null
+      "sttFit": "可运行 · {gb} GB GPU 内存",
+      "sttFitAbout": "可运行 · 约 {gb} GB GPU 内存（估算）",
+      "sttFitMeasured": "在 RTX 4090（24 GB）上实测，并额外预留约 1 GB。",
+      "sttFitEstimate": "根据权重大小估算；未在此处实测。",
+      "sttDownloading": "{percent}% · {done}/{total} GB",
+      "sttDownloadingName": "正在下载 {name}",
+      "defaultBadge": "默认",
+      "defaultTitle": "听写使用此模型，除非你另选其他模型。",
+      "recommendedGpu": "推荐用于此 GPU",
+      "recommendedGpuTitle": "下载完成后成为默认模型。",
+      "wordTimings": "词级时间",
+      "wordTimingsLine": "为本身没有词级时间的 Qwen3-ASR、Granite Speech 和 Nemotron Transcribe 标注每个词的时间（用于字幕和转录编辑器）；Nemotron ASR 也会用到。使用时额外占用约 {vram} GB GPU 内存。",
+      "firstUseLanguageLine": "你选择但尚未下载的模型会在首次听写时获取。Whisper、Qwen3-ASR 和 Nemotron 3.5 ASR 使用上方的“语言”设置（设为自动检测时则自行识别）；Parakeet、Granite 和 Nemotron Transcribe 始终自行识别语言。"
     },
     "voices": {
       "addChinese": "添加普通话语音",
@@ -856,7 +856,7 @@
       "quickNoteAddon": "Kokoro 是语音运行时的附加组件。速度快，小于 1 GB，仅保证速度。按评分最高者优先显示。",
       "kokoroMissing": "Kokoro 快速语音尚未安装。请在“语音 > 模型 > 语音运行时 > 附加组件”中勾选（约 330 MB）。",
       "openModels": "打开语音模型",
-      "macOnlyHidden": null
+      "macOnlyHidden": "适用于 Apple Silicon Mac 的语音模型的 {count} 个语音未列出：它们无法在这台电脑上运行。"
     },
     "settings": {
       "autoSend": "语音输入结束后立即发送消息",
@@ -893,7 +893,7 @@
       "fileTypes": "WAV、MP3、M4A、FLAC、OGG、MP4、MOV 等",
       "subtitleLibrary": "录音，或拖入音频和视频文件。转写稿保存在资料库中。",
       "translateWhich": "翻译为英文（Whisper Small 或 Base）",
-      "needsWordTimings": null
+      "needsWordTimings": "在“词级时间”下载（{gb} GB）完成之前，{name} 只提供分段时间。"
     },
     "stopRecording": "停止录音",
     "record": "录音",
@@ -1031,19 +1031,19 @@
       "changeVoice": "更改语音",
       "noVoice": "未选择语音",
       "queue": {
-        "video": null,
-        "image": null,
-        "music": null,
-        "other": null
+        "video": "正在等待视频渲染完成，随后立即开始朗读。",
+        "image": "正在等待图像任务完成，随后立即开始朗读。",
+        "music": "正在等待音乐任务完成，随后立即开始朗读。",
+        "other": "正在等待另一个任务完成，随后立即开始朗读。"
       },
-      "needsSpeechGpu": null
+      "needsSpeechGpu": "需要语音 GPU 附加组件。请在“语音 > 模型 > 语音运行时 > 附加组件”中勾选。"
     },
     "stop": "停止",
     "studio": {
       "title": "Voice Studio",
       "openModels": "打开语音模型",
       "library": "资料库",
-      "needsPackGb": null
+      "needsPackGb": "语音在本机运行，需要语音运行时（含 Kokoro 快速语音约 {gb} GB）。请在“语音 > 模型”中安装一次。"
     },
     "savedToLibrary": "已保存到资料库",
     "saveToLibrary": "保存到资料库",
@@ -1225,8 +1225,8 @@
     "runtime": {
       "addon": {
         "chinese": "普通话快速语音（8 种语音，约 60 MB）",
-        "speech-gpu": null,
-        "stt-gpu": null,
+        "speech-gpu": "语音 GPU 附加组件：在 NVIDIA GPU 上运行 Qwen3-TTS、Chatterbox、VoxCPM2 和 Orpheus 自然语音、语音设计与克隆（约 {size}）",
+        "stt-gpu": "语音转文字 GPU 附加组件：在 NVIDIA GPU 上运行 Qwen3-ASR、Parakeet、Nemotron 和 Granite（约 {size}）",
         "kokoro": "Kokoro 快速语音（约 330 MB）"
       },
       "addons": "附加组件",
@@ -1251,7 +1251,7 @@
       "updateFeatures": "更新语音运行时，以支持对话中的语音通话和转写稿中的说话人标签（新增约 40 MB 模型；需一到两分钟）。",
       "workerOnly": "语音工作进程，尚无模型",
       "partsNoKokoro": "磁盘占用 {total} GB：语音包 {packages} GB，轮次检测和说话人标签 {small} GB；Kokoro 快速语音未安装。不会联网发送任何内容。",
-      "aboutTickedGb": null
+      "aboutTickedGb": "勾选下方附加组件后约 {gb} GB：包括语音软件包、话轮检测和说话人标签，以及每个已勾选的附加组件。听写模型和语音模型需在本页单独下载。不会向网络发送任何内容。"
     }
   },
   "residentChatModelNote": "已加载的聊天模型占用了其中约 {gb} GB 内存；卸载它即可释放这部分内存。",
@@ -1400,7 +1400,7 @@
       "asks": "此许可证对你的要求",
       "gatedNote": "此模型为受限模型：请先在 Hugging Face 上接受条款，然后使用你的令牌在此下载（设置 > Hugging Face）。",
       "readFull": "阅读完整许可证",
-      "readLive": null,
+      "readLive": "在 Hugging Face 上阅读最新许可证",
       "openHub": "在 Hugging Face 上打开",
       "notNow": "以后再说",
       "accepted": "我已接受",
@@ -1552,8 +1552,8 @@
       "needDownload": "请从“音乐模型”下载 {name}（约 {size} GB）。请先在 Hugging Face 上接受许可证。",
       "needTextEncoder": "音效模型缺少文本编码器。请从“音乐模型”重新下载。",
       "needPack": "音效还需要一个小型组件包（约 1 GB）。请从“音乐模型”安装。",
-      "needPackCuda": null,
-      "needLicenceStableAudio3": null,
+      "needPackCuda": "音效还需要包含 NVIDIA 版 PyTorch 的软件包（约 {size} GB）。请在“音乐与音频模型”中安装。",
+      "needLicenceStableAudio3": "{name} 要求你先接受其许可证以及其文本编码器的 Gemma 条款。请打开“音乐与音频模型”阅读。",
       "prompt": "描述这个声音",
       "placeholder": "沉重的木门吱呀作响地打开，近距离麦克风",
       "english": "英文效果最好。适合音效和循环音频，不适合歌曲或语音。",
@@ -1579,18 +1579,18 @@
       "cpuOnly": "此音效在 CPU 而非 GPU 上运行。这会慢很多：可能需要数分钟。你可以取消。"
     },
     "copy": {
-      "title": null,
-      "why": null,
-      "wayDeveloper": null,
-      "waySameDrive": null,
-      "button": null,
-      "resume": null,
-      "progress": null,
-      "status": null,
-      "eta": null,
-      "cancel": null,
-      "cancelled": null,
-      "done": null
+      "title": "需要复制音乐模型的文件",
+      "why": "这台电脑不允许从已下载的模型文件创建指向音乐文件夹的链接，因此需要复制 {count} 个文件（{size} GB）。这会占用额外磁盘空间，且只需进行一次。",
+      "wayDeveloper": "打开开发人员模式（Windows 设置 > 系统 > 开发者选项），即可允许创建链接。",
+      "waySameDrive": "或者将模型缓存放在与应用数据相同的磁盘（{targetDrive}）上。",
+      "button": "立即复制（{size} GB，约 {minutes} 分钟）",
+      "resume": "重新复制（{size} GB，约 {minutes} 分钟）",
+      "progress": "复制进度",
+      "status": "{done}/{size} GB · {percent}%",
+      "eta": "还剩约 {minutes} 分钟",
+      "cancel": "取消",
+      "cancelled": "复制已取消。已完成的文件会保留，再次复制将从中断处继续。",
+      "done": "完成，正在加载…"
     }
   },
   "audioPlayer": {
@@ -1669,12 +1669,12 @@
       "trimOutEnd": "版本结尾",
       "useClip": "用作视频片段",
       "noCast": "此项目中没有角色。没关系：镜头可以独立存在。在“角色表”标签中添加人物或场景，即可保持统一风格。",
-      "vocal": null,
-      "vocalHint": null,
-      "vocalFile": null,
-      "vocalChange": null,
-      "vocalAttach": null,
-      "vocalRemove": null
+      "vocal": "用于口型同步的人声",
+      "vocalHint": "口型会跟随的 WAV 或 FLAC：片段从此镜头的静帧开始，时长 3 至 8 秒，并保留此声音。需要将 LTX-2.3 作为视频模型（4-bit NVIDIA 模型需要 24 GB 显卡）。",
+      "vocalFile": "人声文件（WAV 或 FLAC）",
+      "vocalChange": "更换人声",
+      "vocalAttach": "添加人声",
+      "vocalRemove": "移除人声"
     },
     "empty": "还没有镜头。添加一个镜头，然后写提示词或导入素材。",
     "estimate": {
@@ -2621,7 +2621,7 @@
       "statusSummary": "已安装的优先"
     },
     "title": "音乐模型",
-    "unavailable": null,
+    "unavailable": "音乐功能需要 Apple Silicon Mac 或 NVIDIA GPU。",
     "sounds": {
       "pack": {
         "failedTitle": "无法安装音效组件包。",
@@ -2979,8 +2979,8 @@
     "alternative": "在此可以更快：{name}。"
   },
   "musicUnsupported": {
-    "reason": null,
-    "soundReason": null,
+    "reason": "音乐生成需要 Apple Silicon Mac，或 Windows、Linux 上的 NVIDIA GPU；本机不会安装或下载任何内容。",
+    "soundReason": "此版本中音效在 Apple Silicon Mac 上运行。NVIDIA GPU 支持已在计划中；本机不会为音效安装或下载任何内容。",
     "badge": "此电脑暂不可用"
   },
   "territoryGate": {

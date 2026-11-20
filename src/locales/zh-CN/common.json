@@ -225,7 +225,7 @@
     "pluginSystem": "插件系统",
     "pluginsRegistered": "{count, plural, other {已注册 # 个插件}}",
     "externalPlugins": "外部插件",
-    "installFromDirectory": null,
+    "installFromDirectory": "此版本暂不可用",
     "noModelsMatchFilters": "没有模型符合当前筛选条件",
     "savedOutputs": "已保存的输出",
     "installedImageModels": "已安装的图像模型",
@@ -326,131 +326,131 @@
   },
   "serverActivity": {
     "views": {
-      "label": null,
-      "overview": null,
-      "activity": null
+      "label": "服务器视图",
+      "overview": "概览",
+      "activity": "活动"
     },
     "summary": {
-      "requested": null,
-      "resolving": null,
-      "loading": null,
-      "loaded": null,
-      "loadedWarm": null,
-      "parked": null,
-      "firstToken": null,
-      "generation": null,
-      "idle": null,
-      "unloaded": null
+      "requested": "已请求加载（{backend}）",
+      "resolving": "正在选择引擎",
+      "loading": "正在 {engine} 上加载（{size}）",
+      "loaded": "已在 {seconds} 内加载，占用内存 {memory}",
+      "loadedWarm": "已切换到预热副本",
+      "parked": "保持预热，便于快速切回",
+      "firstToken": "{seconds} 后输出首个 Token",
+      "generation": "{tokens} 个 Token，{rate} tok/s，用时 {seconds}",
+      "idle": "空闲",
+      "unloaded": "已卸载（{reason}）"
     },
     "reason": {
-      "user": null,
-      "swap": null,
-      "memory": null,
-      "idle": null,
-      "error": null
+      "user": "由你操作",
+      "swap": "换成了其他模型",
+      "memory": "释放内存",
+      "idle": "空闲",
+      "error": "出错"
     },
     "kind": {
-      "requested": null,
-      "resolving": null,
-      "loading": null,
-      "loaded": null,
-      "load_failed": null,
-      "parked": null,
-      "first_token": null,
-      "generation": null,
-      "generation_failed": null,
-      "idle": null,
-      "unloaded": null
+      "requested": "已请求",
+      "resolving": "解析中",
+      "loading": "加载中",
+      "loaded": "已加载",
+      "load_failed": "加载失败",
+      "parked": "保持预热",
+      "first_token": "首个 Token",
+      "generation": "生成",
+      "generation_failed": "生成失败",
+      "idle": "空闲",
+      "unloaded": "已卸载"
     },
     "phase": {
-      "loading": null,
-      "ready": null,
-      "generating": null,
-      "idle": null,
-      "warm": null,
-      "failed": null
+      "loading": "加载中",
+      "ready": "就绪",
+      "generating": "生成中",
+      "idle": "空闲",
+      "warm": "预热",
+      "failed": "失败"
     },
     "timeline": {
-      "title": null,
-      "window": null,
+      "title": "模型时间线",
+      "window": "时间范围",
       "windows": {
-        "15m": null,
-        "1h": null,
-        "24h": null,
-        "all": null
+        "15m": "15 分钟",
+        "1h": "1 小时",
+        "24h": "24 小时",
+        "all": "全部"
       },
-      "empty": null,
-      "live": null,
-      "legend": null
+      "empty": "此时间范围内没有模型活动。加载一个模型即可查看其时间线。",
+      "live": "现在",
+      "legend": "图例"
     },
     "list": {
-      "title": null,
-      "empty": null,
-      "select": null
+      "title": "事件",
+      "empty": "没有匹配的事件。模型的加载、回答和卸载会显示在这里。",
+      "select": "选择 {time} 的{kind}"
     },
     "detail": {
-      "request": null,
-      "modelRef": null,
-      "engine": null,
-      "cache": null,
-      "speculative": null,
-      "message": null,
-      "error": null,
-      "command": null,
-      "stderr": null,
-      "env": null
+      "request": "请求",
+      "modelRef": "模型 ID",
+      "engine": "引擎",
+      "cache": "缓存策略",
+      "speculative": "推测解码",
+      "message": "消息",
+      "error": "错误",
+      "command": "命令行",
+      "stderr": "引擎最后的输出",
+      "env": "环境变量"
     },
-    "copyEvent": null,
-    "paused": null,
-    "live": null,
-    "offline": null,
+    "copyEvent": "复制事件",
+    "paused": "{count, plural, =0 {已暂停} other {已暂停，新增 # 条}}",
+    "live": "实时",
+    "offline": "正在重新连接",
     "filter": {
-      "model": null,
-      "allModels": null,
-      "level": null,
-      "allLevels": null,
-      "request": null,
-      "search": null
+      "model": "模型",
+      "allModels": "所有模型",
+      "level": "级别",
+      "allLevels": "所有级别",
+      "request": "请求 ID",
+      "search": "搜索事件"
     },
     "level": {
-      "info": null,
-      "warning": null,
-      "error": null
+      "info": "信息",
+      "warning": "警告",
+      "error": "错误"
     },
-    "pause": null,
-    "resume": null,
-    "latestFailure": null,
-    "selectAll": null,
-    "selectNone": null,
-    "copySelected": null,
-    "exportSelected": null,
+    "pause": "暂停",
+    "resume": "恢复",
+    "latestFailure": "最近一次失败",
+    "selectAll": "选择已显示项",
+    "selectNone": "清除选择",
+    "copySelected": "复制所选（{count}）",
+    "exportSelected": "导出所选（{count}）",
     "lines": {
-      "title": null,
-      "filter": null,
-      "noMatch": null
+      "title": "日志行",
+      "filter": "筛选日志行",
+      "noMatch": "没有符合筛选条件的日志行。"
     },
     "recent": {
-      "title": null,
-      "open": null,
-      "empty": null
+      "title": "最近活动",
+      "open": "打开活动",
+      "empty": "暂无内容。模型的加载、回答和卸载会显示在这里。"
     },
     "field": {
-      "seconds": null,
-      "totalSeconds": null,
-      "memoryBytes": null,
-      "contextTokens": null,
-      "warm": null,
-      "bytes": null,
-      "prefillSeconds": null,
-      "tokS": null,
-      "promptTokens": null,
-      "completionTokens": null,
-      "finishReason": null,
-      "streaming": null,
-      "reason": null,
-      "backend": null,
-      "speculativeDecoding": null,
-      "source": null
+      "seconds": "秒数",
+      "totalSeconds": "总秒数",
+      "memoryBytes": "内存",
+      "contextTokens": "上下文",
+      "warm": "来自热池",
+      "bytes": "权重",
+      "prefillSeconds": "预填充",
+      "tokS": "每秒 Token 数",
+      "promptTokens": "提示词 Token",
+      "completionTokens": "补全 Token",
+      "finishReason": "结束原因",
+      "streaming": "流式输出",
+      "reason": "原因",
+      "backend": "后端",
+      "speculativeDecoding": "推测解码",
+      "source": "来源"
     }
   },
   "conversionTab": {
@@ -461,13 +461,13 @@
         "load": "正在加载到 MLX",
         "quantize": "正在量化为 {bits} 位 g{group}",
         "shard": "正在分片并写入 safetensors",
-        "measuring": null
+        "measuring": "正在用一小段文本测量质量"
       },
       "detail": {
-        "files": null,
-        "written": null,
-        "writtenOfAbout": null,
-        "modelsScored": null
+        "files": "正在下载源模型：{done}/{total} 个文件",
+        "written": "已写入 {written} GB",
+        "writtenOfAbout": "已写入 {written} GB，预计约 {expected} GB（估算）",
+        "modelsScored": "已评分 {done}/{total} 个模型"
       }
     },
     "varies": "因情况而异",
@@ -494,8 +494,8 @@
     "reQuantizingTitle": "正在对已量化的源重新量化",
     "backendNote": "后端备注",
     "reQuantizingDetail": "源已经是约 {bits} 位。降低位数会累积质量损失 — 为获得最佳效果,请从原始 FP16/BF16 权重转换。",
-    "ggufSourceTitle": null,
-    "ggufSourceDetail": null,
+    "ggufSourceTitle": "GGUF 源会按完整大小重新下载",
+    "ggufSourceDetail": "GGUF 文件无法直接转换为 MLX。系统会从 Hugging Face 下载文件中指明的原始模型再进行转换，因此需要网络连接，以及存放完整权重的磁盘空间。下载过程不显示进度；点击“取消”可停止。",
     "mlxLmAvailable": "活动后端支持 mlx-lm 转换。",
     "startNativeSidecar": "启动原生 sidecar 以启用转换。",
     "converting": "转换中...",
@@ -530,7 +530,7 @@
     "diskBeforeAfter": "磁盘 转换前 → 转换后",
     "modal": {
       "titleConverting": "正在转换模型",
-      "cancel": null,
+      "cancel": "取消转换",
       "titleFailed": "转换失败",
       "titleComplete": "转换完成",
       "debugDetails": "调试详情",
@@ -548,35 +548,35 @@
       "close": "关闭",
       "ok": "确定"
     },
-    "measureQuality": null,
-    "measureQualityHint": null,
-    "qualityMeasured": null,
-    "qualityChange": null,
-    "qualityDetail": null,
-    "qualityAfterConverting": null,
-    "qualityNotMeasured": null,
-    "qualityOff": null,
-    "bitsPerWeight": null,
-    "bitsPerWeightValue": null,
-    "sizeOnDisk": null,
-    "pickSourceFirst": null
+    "measureQuality": "转换后测量质量",
+    "measureQualityHint": "分别加载转换后的模型和源模型各一次，并在一小段 WikiText-2 样本上比较它们的困惑度。任一模型放不进可用内存时会跳过。",
+    "qualityMeasured": "质量（实测）",
+    "qualityChange": "困惑度较源模型{change}%",
+    "qualityDetail": "在 {dataset} 的 {samples} 个样本上的困惑度：源模型 {source}，转换后 {converted}。越低越好。",
+    "qualityAfterConverting": "转换后测量",
+    "qualityNotMeasured": "未测量",
+    "qualityOff": "未测量（已关闭）",
+    "bitsPerWeight": "每权重位数",
+    "bitsPerWeightValue": "{bits}（由转换器测得）",
+    "sizeOnDisk": "磁盘占用",
+    "pickSourceFirst": "请先选择源模型"
   },
   "benchmarkTab": {
     "progress": {
       "title": "正在运行基准测试",
       "phases": {
         "load": "正在将模型加载到内存",
-        "datasetPerplexity": null,
-        "datasetAccuracy": null,
-        "evaluatingPerplexity": null,
-        "evaluatingAccuracy": null,
-        "generating": null,
-        "saving": null
+        "datasetPerplexity": "正在加载评测文本",
+        "datasetAccuracy": "正在加载题目",
+        "evaluatingPerplexity": "正在为文本样本评分",
+        "evaluatingAccuracy": "正在回答题目",
+        "generating": "正在生成，最多 {tokens} 个 Token",
+        "saving": "正在保存结果"
       },
       "detail": {
-        "samples": null,
-        "questions": null,
-        "generating": null
+        "samples": "{done}/{total} 个样本",
+        "questions": "{done}/{total} 道题，答对 {correct} 道",
+        "generating": "运行中；引擎会在结束时报告 Token 数"
       }
     },
     "modelLabel": "基准模型",
@@ -586,7 +586,7 @@
     "modeThroughput": "吞吐量 (tok/s)",
     "modePerplexity": "困惑度(质量)",
     "modeTaskAccuracy": "任务准确率 (MMLU / HellaSwag)",
-    "evalNeedsMlx": null,
+    "evalNeedsMlx": "困惑度和任务准确率只能在 MLX 模型上运行。请选择 MLX 模型，或将模式切换为吞吐量。",
     "promptPreset": "提示词预设",
     "dataset": "数据集",
     "samples": "样本",
@@ -647,12 +647,12 @@
       "close": "关闭",
       "ok": "确定",
       "cancel": "取消基准测试",
-      "titleCancelled": null,
-      "cancelling": null,
-      "cancelledNothingSaved": null,
-      "cancelledModelUnloaded": null,
-      "cancelledModelKept": null,
-      "cancelUnconfirmed": null
+      "titleCancelled": "基准测试已取消",
+      "cancelling": "正在停止运行…",
+      "cancelledNothingSaved": "运行已停止。历史记录中未保存任何内容。",
+      "cancelledModelUnloaded": "模型已卸载。",
+      "cancelledModelKept": "运行前已加载的模型仍保持加载。",
+      "cancelUnconfirmed": "应用已停止等待，但无法连接后端来停止运行。它可能仍在运行：请查看“服务器”页面。"
     },
     "promptPresets": {
       "balanced": "均衡总结",
@@ -660,12 +660,12 @@
       "coding": "编程回复"
     },
     "scoring": {
-      "nextToken": null,
-      "generated": null,
-      "note": null
+      "nextToken": "下一个 Token 选择",
+      "generated": "生成文本（旧方法）",
+      "note": "答案是模型作为下一个 Token 打分最高的选项字母。此更改之前保存的运行是将答案生成为文本，其准确率与新的运行不可比较。"
     },
-    "statTokens": null,
-    "ofMaxTokens": null
+    "statTokens": "已生成 Token",
+    "ofMaxTokens": "上限 {max}"
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, other {# 次运行}}{filterSuffix}",
@@ -677,8 +677,8 @@
       "both": "两者"
     },
     "swap": "交换",
-    "copyCsv": null,
-    "csvCopied": null,
+    "copyCsv": "复制 CSV",
+    "csvCopied": "已复制",
     "summary": {
       "totalRuns": "总运行",
       "persistentHistory": "持久化历史",
@@ -688,8 +688,8 @@
       "fastest": "最快",
       "leanestCache": "最精简缓存",
       "bestValue": "最佳性价比",
-      "lowestPerplexity": null,
-      "noPerplexityRuns": null
+      "lowestPerplexity": "最低困惑度",
+      "noPerplexityRuns": "没有困惑度运行"
     },
     "metric": {
       "perplexity": "困惑度",
@@ -703,7 +703,7 @@
       "compression": "压缩",
       "context": "上下文",
       "strategy": "策略",
-      "scoring": null
+      "scoring": "评分方式"
     },
     "table": {
       "metric": "指标",
@@ -714,8 +714,8 @@
     "compareAgainst": "对比基准:",
     "pickBaseline": "选择基线运行...",
     "runAnother": "再运行一次基准测试以启用对比。",
-    "deleteRun": null,
-    "deleteRunConfirm": null,
+    "deleteRun": "删除运行",
+    "deleteRunConfirm": "要删除已保存的运行“{label}”吗？此操作无法撤销。",
     "properties": {
       "heading": "运行属性",
       "model": "模型",
@@ -740,7 +740,7 @@
       "bits": "位",
       "context": "上下文",
       "pplValue": "{value} ppl",
-      "load": null
+      "load": "加载"
     },
     "modeLabel": {
       "ppl": "PPL",
@@ -768,7 +768,7 @@
       "save": "保存",
       "cancel": "取消"
     },
-    "presetModelTitle": null,
+    "presetModelTitle": "已随模板保存。聊天暂不会应用它。",
     "presetLabel": "预设:{ref}",
     "hasPlaceholders": "模板包含变量占位符",
     "variableCount": "{count, plural, other {# 个变量}}",
@@ -781,16 +781,16 @@
     "resolvedPreview": "已解析提示词预览",
     "applyToChat": "应用到对话",
     "selectOrCreate": "从列表中选择模板或新建一个。",
-    "nameRequired": null,
-    "saveFailed": null,
-    "loadFailed": null,
-    "empty": null,
-    "noMatches": null,
-    "deleteConfirm": null,
-    "variablesInvalid": null,
-    "samplersInvalid": null,
-    "inUseNote": null,
-    "stopUsing": null
+    "nameRequired": "保存前请先给模板命名。",
+    "saveFailed": "模板未保存。请检查各字段后重试。",
+    "loadFailed": "无法加载模板。请确认后端正在运行。",
+    "empty": "还没有模板。点击“新建”创建一个。",
+    "noMatches": "没有符合搜索条件的模板。",
+    "deleteConfirm": "要删除模板“{name}”吗？此操作无法撤销。",
+    "variablesInvalid": "变量必须是 JSON 数组（方括号中的列表）。未保存任何内容。",
+    "samplersInvalid": "预设采样器必须是 JSON 对象（花括号中的名称和值）。未保存任何内容。",
+    "inUseNote": "在你停止使用或重启应用之前，聊天会在每个会话中使用此系统提示词：",
+    "stopUsing": "停止使用"
   },
   "fineTuning": {
     "loadingAdapters": "正在加载适配器...",
@@ -807,10 +807,10 @@
     "step3Title": "3. 训练",
     "step3Body": "实时监控损失和进度",
     "startButton": "开始微调",
-    "notAvailable": null,
-    "notAvailableBody": null,
-    "offline": null,
-    "loadError": null
+    "notAvailable": "此版本暂不可用",
+    "notAvailableBody": "训练功能尚未构建：此页面只列出在磁盘上找到的适配器，且适配器暂时无法应用到模型。上方的步骤展示了后续计划。",
+    "offline": "后端处于离线状态。恢复后会列出适配器。",
+    "loadError": "无法加载适配器列表：{message}"
   },
   "pluginsTab": {
     "discovering": "正在发现插件...",
@@ -865,7 +865,7 @@
     "legend3Bit": "3 位",
     "legend4Bit": "4 位",
     "legendNativeF16": "原生 f16",
-    "pointTooltipMeasured": null
+    "pointTooltipMeasured": "{label}\n{tokS} tok/s · {cacheGb} GB"
   },
   "logprobSummary": {
     "title": "token 置信度",
@@ -1050,8 +1050,8 @@
       "uiScaleHelp": "界面缩放会立即更改应用界面的密度。媒体预览保持各自的纵横比尺寸。",
       "keepGroupsOpen": "保持所有侧边栏分组展开",
       "keepGroupsOpenHelp": "默认关闭：只有你正在使用的分组保持展开。开启后所有分组都会展开。",
-      "showExperimentalTabs": null,
-      "showExperimentalTabsHelp": null
+      "showExperimentalTabs": "显示实验性标签页",
+      "showExperimentalTabsHelp": "默认关闭。在侧边栏列出尚未完成的页面。无论开关与否，这些页面及其路由都会保留。"
     },
     "dataDirectory": {
       "title": "数据目录",
@@ -1497,9 +1497,9 @@
     "moveModels": "将现有模型移动到新路径",
     "filesProgress": "{copied} / {total} 个文件",
     "restartBackend": "重启后端",
-    "lmstudioDir": null,
-    "lmstudioHint": null,
-    "saveLmstudioDir": null
+    "lmstudioDir": "LM Studio 模型文件夹",
+    "lmstudioHint": "供“与 LM Studio 共享”使用，它会把 GGUF 链接到此处的 <publisher>/<model>/ 中，而不复制文件。请将其放在与你的模型相同的磁盘上。",
+    "saveLmstudioDir": "保存文件夹"
   },
   "videoPlaceholderTab": {
     "engines": {
@@ -1606,6 +1606,6 @@
     }
   },
   "secretMask": {
-    "note": null
+    "note": "密钥在屏幕上已隐藏。复制时始终复制真实密钥。"
   }
 }

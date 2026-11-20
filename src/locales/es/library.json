@@ -782,9 +782,9 @@
         "status": "Estado"
       },
       "share": {
-        "action": null,
-        "done": null,
-        "already": null
+        "action": "Compartir con LM Studio",
+        "done": "Compartido con LM Studio como {where}. No se usa espacio extra en disco.",
+        "already": "Ya compartido con LM Studio ({where})."
       }
     }
   }

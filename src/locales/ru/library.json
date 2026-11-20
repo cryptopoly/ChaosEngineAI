@@ -782,9 +782,9 @@
         "status": "Статус"
       },
       "share": {
-        "action": null,
-        "done": null,
-        "already": null
+        "action": "Поделиться с LM Studio",
+        "done": "Доступно в LM Studio как {where}. Дополнительное место на диске не занято.",
+        "already": "Уже доступно в LM Studio ({where})."
       }
     }
   }

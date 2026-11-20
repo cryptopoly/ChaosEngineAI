@@ -782,9 +782,9 @@
         "status": "Status"
       },
       "share": {
-        "action": null,
-        "done": null,
-        "already": null
+        "action": "Mit LM Studio teilen",
+        "done": "Mit LM Studio als {where} geteilt. Kein zusätzlicher Speicherplatz belegt.",
+        "already": "Bereits mit LM Studio geteilt ({where})."
       }
     }
   }

@@ -225,7 +225,7 @@
     "pluginSystem": "プラグインシステム",
     "pluginsRegistered": "{count, plural, other {# 個のプラグインが登録されています}}",
     "externalPlugins": "外部プラグイン",
-    "installFromDirectory": null,
+    "installFromDirectory": "このバージョンでは利用できません",
     "noModelsMatchFilters": "現在のフィルターに一致するモデルはありません",
     "savedOutputs": "保存された出力",
     "installedImageModels": "インストール済みの画像モデル",
@@ -326,131 +326,131 @@
   },
   "serverActivity": {
     "views": {
-      "label": null,
-      "overview": null,
-      "activity": null
+      "label": "サーバービュー",
+      "overview": "概要",
+      "activity": "アクティビティ"
     },
     "summary": {
-      "requested": null,
-      "resolving": null,
-      "loading": null,
-      "loaded": null,
-      "loadedWarm": null,
-      "parked": null,
-      "firstToken": null,
-      "generation": null,
-      "idle": null,
-      "unloaded": null
+      "requested": "読み込みをリクエスト済み ({backend})",
+      "resolving": "エンジンを選択中",
+      "loading": "{engine} に読み込み中 ({size})",
+      "loaded": "{seconds} で読み込み完了、メモリ使用量 {memory}",
+      "loadedWarm": "ウォームコピーに切り替えました",
+      "parked": "すぐ戻せるようウォーム状態で保持",
+      "firstToken": "{seconds} 後に最初のトークン",
+      "generation": "{tokens} トークンを {rate} tok/s で {seconds} かけて生成",
+      "idle": "アイドル",
+      "unloaded": "アンロード済み ({reason})"
     },
     "reason": {
-      "user": null,
-      "swap": null,
-      "memory": null,
-      "idle": null,
-      "error": null
+      "user": "ユーザー操作",
+      "swap": "別のモデル",
+      "memory": "メモリ解放のため",
+      "idle": "アイドル",
+      "error": "エラー"
     },
     "kind": {
-      "requested": null,
-      "resolving": null,
-      "loading": null,
-      "loaded": null,
-      "load_failed": null,
-      "parked": null,
-      "first_token": null,
-      "generation": null,
-      "generation_failed": null,
-      "idle": null,
-      "unloaded": null
+      "requested": "リクエスト済み",
+      "resolving": "解決中",
+      "loading": "読み込み中",
+      "loaded": "読み込み済み",
+      "load_failed": "読み込み失敗",
+      "parked": "ウォーム保持",
+      "first_token": "最初のトークン",
+      "generation": "生成",
+      "generation_failed": "生成失敗",
+      "idle": "アイドル",
+      "unloaded": "アンロード済み"
     },
     "phase": {
-      "loading": null,
-      "ready": null,
-      "generating": null,
-      "idle": null,
-      "warm": null,
-      "failed": null
+      "loading": "読み込み中",
+      "ready": "準備完了",
+      "generating": "生成中",
+      "idle": "アイドル",
+      "warm": "ウォーム",
+      "failed": "失敗"
     },
     "timeline": {
-      "title": null,
-      "window": null,
+      "title": "モデルのタイムライン",
+      "window": "時間範囲",
       "windows": {
-        "15m": null,
-        "1h": null,
-        "24h": null,
-        "all": null
+        "15m": "15 分",
+        "1h": "1 時間",
+        "24h": "24 時間",
+        "all": "すべて"
       },
-      "empty": null,
-      "live": null,
-      "legend": null
+      "empty": "この時間範囲にモデルのアクティビティはありません。モデルを読み込むとタイムラインが表示されます。",
+      "live": "現在",
+      "legend": "凡例"
     },
     "list": {
-      "title": null,
-      "empty": null,
-      "select": null
+      "title": "イベント",
+      "empty": "一致するイベントはありません。モデルの読み込み、応答、アンロードがここに表示されます。",
+      "select": "{time} の {kind} を選択"
     },
     "detail": {
-      "request": null,
-      "modelRef": null,
-      "engine": null,
-      "cache": null,
-      "speculative": null,
-      "message": null,
-      "error": null,
-      "command": null,
-      "stderr": null,
-      "env": null
+      "request": "リクエスト",
+      "modelRef": "モデル ID",
+      "engine": "エンジン",
+      "cache": "キャッシュ戦略",
+      "speculative": "投機的デコーディング",
+      "message": "メッセージ",
+      "error": "エラー",
+      "command": "コマンドライン",
+      "stderr": "エンジンの直近の出力",
+      "env": "環境変数"
     },
-    "copyEvent": null,
-    "paused": null,
-    "live": null,
-    "offline": null,
+    "copyEvent": "イベントをコピー",
+    "paused": "{count, plural, =0 {一時停止中} other {一時停止中、新着 #}}",
+    "live": "ライブ",
+    "offline": "再接続中",
     "filter": {
-      "model": null,
-      "allModels": null,
-      "level": null,
-      "allLevels": null,
-      "request": null,
-      "search": null
+      "model": "モデル",
+      "allModels": "すべてのモデル",
+      "level": "レベル",
+      "allLevels": "すべてのレベル",
+      "request": "リクエスト ID",
+      "search": "イベントを検索"
     },
     "level": {
-      "info": null,
-      "warning": null,
-      "error": null
+      "info": "情報",
+      "warning": "警告",
+      "error": "エラー"
     },
-    "pause": null,
-    "resume": null,
-    "latestFailure": null,
-    "selectAll": null,
-    "selectNone": null,
-    "copySelected": null,
-    "exportSelected": null,
+    "pause": "一時停止",
+    "resume": "再開",
+    "latestFailure": "直近の失敗",
+    "selectAll": "表示中をすべて選択",
+    "selectNone": "選択を解除",
+    "copySelected": "選択をコピー ({count})",
+    "exportSelected": "選択をエクスポート ({count})",
     "lines": {
-      "title": null,
-      "filter": null,
-      "noMatch": null
+      "title": "ログ行",
+      "filter": "ログ行を絞り込む",
+      "noMatch": "フィルターに一致するログ行はありません。"
     },
     "recent": {
-      "title": null,
-      "open": null,
-      "empty": null
+      "title": "最近のアクティビティ",
+      "open": "アクティビティを開く",
+      "empty": "まだありません。モデルの読み込み、応答、アンロードがここに表示されます。"
     },
     "field": {
-      "seconds": null,
-      "totalSeconds": null,
-      "memoryBytes": null,
-      "contextTokens": null,
-      "warm": null,
-      "bytes": null,
-      "prefillSeconds": null,
-      "tokS": null,
-      "promptTokens": null,
-      "completionTokens": null,
-      "finishReason": null,
-      "streaming": null,
-      "reason": null,
-      "backend": null,
-      "speculativeDecoding": null,
-      "source": null
+      "seconds": "秒",
+      "totalSeconds": "合計秒数",
+      "memoryBytes": "メモリ",
+      "contextTokens": "コンテキスト",
+      "warm": "ウォームプールから",
+      "bytes": "重み",
+      "prefillSeconds": "プリフィル",
+      "tokS": "毎秒トークン数",
+      "promptTokens": "プロンプトトークン",
+      "completionTokens": "生成トークン",
+      "finishReason": "終了理由",
+      "streaming": "ストリーミング",
+      "reason": "理由",
+      "backend": "バックエンド",
+      "speculativeDecoding": "投機的デコーディング",
+      "source": "ソース"
     }
   },
   "conversionTab": {
@@ -461,13 +461,13 @@
         "load": "MLX に読み込み中",
         "quantize": "{bits} ビット g{group} に量子化中",
         "shard": "シャーディングと safetensors の書き込み",
-        "measuring": null
+        "measuring": "短いテキストサンプルで品質を測定中"
       },
       "detail": {
-        "files": null,
-        "written": null,
-        "writtenOfAbout": null,
-        "modelsScored": null
+        "files": "ソースをダウンロード中: {total} ファイル中 {done} 個",
+        "written": "{written} GB を書き込み済み",
+        "writtenOfAbout": "{written} GB を書き込み済み、約 {expected} GB の見込み (推定)",
+        "modelsScored": "{total} モデル中 {done} 個を採点済み"
       }
     },
     "varies": "変動",
@@ -494,8 +494,8 @@
     "reQuantizingTitle": "既に量子化されたソースを再量子化中",
     "backendNote": "バックエンドの注意",
     "reQuantizingDetail": "ソースは既に約 {bits} ビットです。さらに低くすると品質の劣化が累積します — 最高の結果を得るには元の FP16/BF16 重みから変換してください。",
-    "ggufSourceTitle": null,
-    "ggufSourceDetail": null,
+    "ggufSourceTitle": "GGUF ソースはフルサイズで再ダウンロードされます",
+    "ggufSourceDetail": "GGUF ファイルを直接 MLX に変換することはできません。ファイルに記載されている元のモデルを Hugging Face からダウンロードして変換するため、ネットワーク接続とフルサイズの重みを置くディスク容量が必要です。ダウンロードの進捗は表示されません。キャンセルで停止できます。",
     "mlxLmAvailable": "アクティブなバックエンドで mlx-lm 変換が利用可能です。",
     "startNativeSidecar": "変換を有効化するためにネイティブサイドカーを起動してください。",
     "converting": "変換中...",
@@ -530,7 +530,7 @@
     "diskBeforeAfter": "ディスク 変換前 → 変換後",
     "modal": {
       "titleConverting": "モデルを変換中",
-      "cancel": null,
+      "cancel": "変換をキャンセル",
       "titleFailed": "変換に失敗しました",
       "titleComplete": "変換完了",
       "debugDetails": "デバッグ詳細",
@@ -548,35 +548,35 @@
       "close": "閉じる",
       "ok": "OK"
     },
-    "measureQuality": null,
-    "measureQualityHint": null,
-    "qualityMeasured": null,
-    "qualityChange": null,
-    "qualityDetail": null,
-    "qualityAfterConverting": null,
-    "qualityNotMeasured": null,
-    "qualityOff": null,
-    "bitsPerWeight": null,
-    "bitsPerWeightValue": null,
-    "sizeOnDisk": null,
-    "pickSourceFirst": null
+    "measureQuality": "変換後に品質を測定",
+    "measureQualityHint": "変換後のモデルとソースをそれぞれ 1 回ずつ読み込み、短い WikiText-2 サンプルでパープレキシティを比較します。どちらかが空きメモリに収まらない場合はスキップされます。",
+    "qualityMeasured": "品質 (測定値)",
+    "qualityChange": "ソース比でパープレキシティ {change}%",
+    "qualityDetail": "{dataset} の {samples} サンプルでのパープレキシティ: ソース {source}、変換後 {converted}。低いほど良好です。",
+    "qualityAfterConverting": "変換後に測定",
+    "qualityNotMeasured": "未測定",
+    "qualityOff": "未測定 (オフ)",
+    "bitsPerWeight": "重みあたりのビット数",
+    "bitsPerWeightValue": "{bits} (コンバーターによる測定値)",
+    "sizeOnDisk": "ディスク上のサイズ",
+    "pickSourceFirst": "先にソースを選択してください"
   },
   "benchmarkTab": {
     "progress": {
       "title": "ベンチマーク実行中",
       "phases": {
         "load": "モデルをメモリに読み込み中",
-        "datasetPerplexity": null,
-        "datasetAccuracy": null,
-        "evaluatingPerplexity": null,
-        "evaluatingAccuracy": null,
-        "generating": null,
-        "saving": null
+        "datasetPerplexity": "評価用テキストを読み込み中",
+        "datasetAccuracy": "問題を読み込み中",
+        "evaluatingPerplexity": "テキストサンプルを採点中",
+        "evaluatingAccuracy": "問題に回答中",
+        "generating": "最大 {tokens} トークンを生成中",
+        "saving": "結果を保存中"
       },
       "detail": {
-        "samples": null,
-        "questions": null,
-        "generating": null
+        "samples": "{total} サンプル中 {done} 個",
+        "questions": "{total} 問中 {done} 問、正解 {correct} 問",
+        "generating": "実行中です。トークン数は終了時にエンジンから報告されます"
       }
     },
     "modelLabel": "ベンチマークモデル",
@@ -586,7 +586,7 @@
     "modeThroughput": "スループット(tok/s)",
     "modePerplexity": "パープレキシティ(品質)",
     "modeTaskAccuracy": "タスク精度(MMLU / HellaSwag)",
-    "evalNeedsMlx": null,
+    "evalNeedsMlx": "パープレキシティとタスク精度は MLX モデルでのみ実行できます。MLX モデルを選ぶか、モードをスループットに切り替えてください。",
     "promptPreset": "プロンプトプリセット",
     "dataset": "データセット",
     "samples": "サンプル数",
@@ -647,12 +647,12 @@
       "close": "閉じる",
       "ok": "OK",
       "cancel": "ベンチマークをキャンセル",
-      "titleCancelled": null,
-      "cancelling": null,
-      "cancelledNothingSaved": null,
-      "cancelledModelUnloaded": null,
-      "cancelledModelKept": null,
-      "cancelUnconfirmed": null
+      "titleCancelled": "ベンチマークをキャンセルしました",
+      "cancelling": "実行を停止しています...",
+      "cancelledNothingSaved": "実行を停止しました。履歴には何も保存されていません。",
+      "cancelledModelUnloaded": "モデルをアンロードしました。",
+      "cancelledModelKept": "実行前に読み込まれていたモデルはそのまま読み込まれています。",
+      "cancelUnconfirmed": "アプリは待機を中止しましたが、バックエンドに接続できず実行を停止できませんでした。実行が続いている可能性があります。サーバーページで確認してください。"
     },
     "promptPresets": {
       "balanced": "バランスの取れた要約",
@@ -660,12 +660,12 @@
       "coding": "コーディングの回答"
     },
     "scoring": {
-      "nextToken": null,
-      "generated": null,
-      "note": null
+      "nextToken": "次トークン選択方式",
+      "generated": "生成テキスト方式 (旧方式)",
+      "note": "回答は、モデルが次のトークンとして最も高くスコアリングした選択肢の文字です。この変更より前に保存された実行では回答をテキストとして生成していたため、その精度は新しい実行と比較できません。"
     },
-    "statTokens": null,
-    "ofMaxTokens": null
+    "statTokens": "生成トークン数",
+    "ofMaxTokens": "上限 {max}"
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, other {# 件の実行}}{filterSuffix}",
@@ -677,8 +677,8 @@
       "both": "両方"
     },
     "swap": "入れ替え",
-    "copyCsv": null,
-    "csvCopied": null,
+    "copyCsv": "CSV をコピー",
+    "csvCopied": "コピーしました",
     "summary": {
       "totalRuns": "合計実行数",
       "persistentHistory": "永続的な履歴",
@@ -688,8 +688,8 @@
       "fastest": "最速",
       "leanestCache": "最小キャッシュ",
       "bestValue": "最良バリュー",
-      "lowestPerplexity": null,
-      "noPerplexityRuns": null
+      "lowestPerplexity": "最小パープレキシティ",
+      "noPerplexityRuns": "パープレキシティの実行なし"
     },
     "metric": {
       "perplexity": "パープレキシティ",
@@ -703,7 +703,7 @@
       "compression": "圧縮",
       "context": "コンテキスト",
       "strategy": "戦略",
-      "scoring": null
+      "scoring": "採点方式"
     },
     "table": {
       "metric": "メトリック",
@@ -714,8 +714,8 @@
     "compareAgainst": "比較対象:",
     "pickBaseline": "ベースライン実行を選択...",
     "runAnother": "比較を有効にするには別のベンチマークを実行してください。",
-    "deleteRun": null,
-    "deleteRunConfirm": null,
+    "deleteRun": "実行を削除",
+    "deleteRunConfirm": "保存済みの実行「{label}」を削除しますか? この操作は元に戻せません。",
     "properties": {
       "heading": "実行プロパティ",
       "model": "モデル",
@@ -740,7 +740,7 @@
       "bits": "ビット",
       "context": "コンテキスト",
       "pplValue": "{value} ppl",
-      "load": null
+      "load": "読み込む"
     },
     "modeLabel": {
       "ppl": "PPL",
@@ -768,7 +768,7 @@
       "save": "保存",
       "cancel": "キャンセル"
     },
-    "presetModelTitle": null,
+    "presetModelTitle": "テンプレートと一緒に保存されます。チャットではまだ適用されません。",
     "presetLabel": "プリセット:{ref}",
     "hasPlaceholders": "テンプレートには変数プレースホルダーがあります",
     "variableCount": "{count, plural, other {# 個の変数}}",
@@ -781,16 +781,16 @@
     "resolvedPreview": "解決済みプロンプトのプレビュー",
     "applyToChat": "チャットに適用",
     "selectOrCreate": "リストからテンプレートを選択するか、新規作成してください。",
-    "nameRequired": null,
-    "saveFailed": null,
-    "loadFailed": null,
-    "empty": null,
-    "noMatches": null,
-    "deleteConfirm": null,
-    "variablesInvalid": null,
-    "samplersInvalid": null,
-    "inUseNote": null,
-    "stopUsing": null
+    "nameRequired": "保存する前にテンプレート名を入力してください。",
+    "saveFailed": "テンプレートを保存できませんでした。入力内容を確認して、もう一度お試しください。",
+    "loadFailed": "テンプレートを読み込めませんでした。バックエンドが起動しているか確認してください。",
+    "empty": "テンプレートはまだありません。「新規」から作成してください。",
+    "noMatches": "検索に一致するテンプレートはありません。",
+    "deleteConfirm": "テンプレート「{name}」を削除しますか? この操作は元に戻せません。",
+    "variablesInvalid": "変数は JSON 配列 (角括弧で囲んだリスト) で指定してください。何も保存されませんでした。",
+    "samplersInvalid": "プリセットのサンプラーは JSON オブジェクト (波括弧で囲んだ名前と値) で指定してください。何も保存されませんでした。",
+    "inUseNote": "停止するかアプリを再起動するまで、チャットはすべてのスレッドでこのシステムプロンプトを使用します:",
+    "stopUsing": "使用を停止"
   },
   "fineTuning": {
     "loadingAdapters": "アダプターを読み込み中...",
@@ -807,10 +807,10 @@
     "step3Title": "3. 訓練",
     "step3Body": "損失と進行状況をリアルタイムで監視",
     "startButton": "ファインチューニングを開始",
-    "notAvailable": null,
-    "notAvailableBody": null,
-    "offline": null,
-    "loadError": null
+    "notAvailable": "このバージョンでは利用できません",
+    "notAvailableBody": "トレーニングはまだ実装されていません。このページはディスク上で見つかったアダプターを一覧表示するだけで、アダプターをモデルに適用することはまだできません。上のステップは予定している内容です。",
+    "offline": "バックエンドがオフラインです。復旧するとアダプターが一覧表示されます。",
+    "loadError": "アダプター一覧を読み込めませんでした: {message}"
   },
   "pluginsTab": {
     "discovering": "プラグインを検出中...",
@@ -865,7 +865,7 @@
     "legend3Bit": "3 ビット",
     "legend4Bit": "4 ビット",
     "legendNativeF16": "ネイティブ f16",
-    "pointTooltipMeasured": null
+    "pointTooltipMeasured": "{label}\n{tokS} tok/s · {cacheGb} GB"
   },
   "logprobSummary": {
     "title": "トークン信頼度",
@@ -1050,8 +1050,8 @@
       "uiScaleHelp": "UI スケールはアプリのクロームの密度を即座に変更します。メディアプレビューは独自のアスペクト比に基づくサイズを維持します。",
       "keepGroupsOpen": "サイドバーのグループをすべて開いたままにする",
       "keepGroupsOpenHelp": "デフォルトはオフ：作業中のグループだけが開いたままになります。オンにすると、すべてのグループが展開されます。",
-      "showExperimentalTabs": null,
-      "showExperimentalTabsHelp": null
+      "showExperimentalTabs": "試験的なタブを表示",
+      "showExperimentalTabsHelp": "デフォルトではオフです。未完成のページをサイドバーに表示します。オフでもページとルートは残ります。"
     },
     "dataDirectory": {
       "title": "データディレクトリ",
@@ -1497,9 +1497,9 @@
     "moveModels": "既存のモデルを新しいパスに移動",
     "filesProgress": "{copied} / {total} ファイル",
     "restartBackend": "バックエンドを再起動",
-    "lmstudioDir": null,
-    "lmstudioHint": null,
-    "saveLmstudioDir": null
+    "lmstudioDir": "LM Studio のモデルフォルダー",
+    "lmstudioHint": "「LM Studio と共有」で使用します。GGUF をコピーせずに、ここの <publisher>/<model>/ にリンクします。モデルと同じドライブに置いてください。",
+    "saveLmstudioDir": "フォルダーを保存"
   },
   "videoPlaceholderTab": {
     "engines": {
@@ -1606,6 +1606,6 @@
     }
   },
   "secretMask": {
-    "note": null
+    "note": "キーは画面上では非表示です。コピーすると常に実際のキーがコピーされます。"
   }
 }

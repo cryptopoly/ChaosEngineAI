@@ -1,13 +1,31 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 196 rows with work, decisions or watch items still open, newest first.
+summary: 198 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-421 · Native-speaker review of the 2026-11-20 translations — Before the release notes claim the nine locales</summary>
+
+**Status or trigger:** Before the release notes claim the nine locales; adds to FU-254
+
+**Notes:** 119 flagged strings in `docs/progress/i18n-translation-doubts-2026-11-20.md`, per locale. Common themes: "Kept warm", "Prefill" and "Word timings" wording, the "Voice > Models > Voice runtime > Add-ons" menu paths (must match each locale's real labels), "Share with LM Studio" quoted inside `modelStoragePanel.lmstudioHint`, Windows Settings path names in `musicStudio.copy.wayDeveloper`, the word for shot in `board.editor.vocalHint`, and plural agreement in `serverActivity.paused`.
+
+</details>
+
+<details>
+<summary>FU-420 · Final translation pass before the release — Near the release/v0.10.0 merge (D-97: strings still change)</summary>
+
+**Status or trigger:** Near the `release/v0.10.0` merge (D-97: strings still change)
+
+**Notes:** The 2026-11-20 pass filled every null in the nine shipping locales (254 strings each; `npm run i18n:validate` reports 5265 of 5270 per locale). Left on purpose: the 3 `common.pluginsTab.*` keys (another stream removes the Plugins tab) and the 2 `meta.supportedLocales.10.*` fields of the experimental `tlh` entry. Re-run `node` null scan (any `null` leaf in a non-`en` file) for the Chat Prompts keys and whatever else lands, translate those, and rerun the validator. Nothing was pending in `src-tauri/locales/*.yml` or `backend_service/locales/*.po`.
+
+</details>
 
 <details>
 <summary>FU-399 · Windows pre-release verification: full bundle build with the CUDA sd.exe, the extra 790 MB against the 1.9 GB installer archive limit, a real Nunchaku image after the 409 fix — When the Windows code is ready (owner asked 2026-11-20), before the release/v0.10.0 merge</summary>

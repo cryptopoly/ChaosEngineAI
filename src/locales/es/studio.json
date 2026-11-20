@@ -749,41 +749,41 @@
       "kokoroLineAddon": "{count} voces rápidas en {languages} idiomas. Rápido en cualquier equipo; un complemento del entorno de voz.",
       "kokoroNotInstalled": "No instalado",
       "kokoroAddHint": "Márcalo en Entorno de voz > Complementos.",
-      "gpuDefaultLine": null,
-      "macOnlySummary": null,
-      "macOnlyNote": null,
-      "macOnlyNoteVoices": null,
+      "gpuDefaultLine": "{name} será el modelo de dictado en cuanto se descargue, salvo que elijas otro.",
+      "macOnlySummary": "{count} modelos para Mac con Apple Silicon",
+      "macOnlyNote": "No funcionan en este PC, así que no aparecen en Hablar ni en Voces.",
+      "macOnlyNoteVoices": "No funcionan en este PC, así que ellos y sus {voices} voces no aparecen en Hablar ni en Voces.",
       "licenceName": {
-        "Apache-2_0": null,
-        "MIT": null,
-        "CC-BY-4_0": null,
-        "OpenMDW-1_1": null
+        "Apache-2_0": "Apache 2.0",
+        "MIT": "MIT",
+        "CC-BY-4_0": "Creative Commons BY 4.0 (da crédito al autor)",
+        "OpenMDW-1_1": "OpenMDW 1.1 (licencia de modelo abierto)"
       },
-      "licenceOpen": null,
+      "licenceOpen": "Lee la licencia en la página del modelo",
       "sttGuide": {
-        "qwen3-asr-1_7b": null,
-        "qwen3-asr-0_6b": null,
-        "parakeet-tdt-v3": null,
-        "nemotron-3_5-asr": null,
-        "whisper-large-v3-turbo": null,
-        "whisper-small": null,
-        "whisper-base": null,
-        "granite-speech-5_0-2b": null,
-        "nemotron-3_5-transcribe-30b": null
+        "qwen3-asr-1_7b": "La mejor opción para una GPU NVIDIA: 30 idiomas y 22 dialectos del chino, detecta el idioma por sí mismo.",
+        "qwen3-asr-0_6b": "Un Qwen3-ASR más pequeño: menos memoria de GPU y más rápido, para los mismos idiomas.",
+        "parakeet-tdt-v3": "Muy rápido para 25 idiomas europeos; detecta el idioma por sí mismo y marca el tiempo de cada palabra.",
+        "nemotron-3_5-asr": "Pequeño y rápido, pensado para voz en directo en 40 idiomas; usa el ajuste Idioma o lo detecta.",
+        "whisper-large-v3-turbo": "Funciona en cualquier equipo en 99 idiomas y marca el tiempo de cada palabra; no traduce.",
+        "whisper-small": "Pequeño y rápido en 99 idiomas; uno de los dos que pueden traducir voz al inglés.",
+        "whisper-base": "El más pequeño: rápido en cualquier equipo y puede traducir al inglés, pero el menos preciso.",
+        "granite-speech-5_0-2b": "Seis idiomas, el inglés primero; detecta el idioma por sí mismo.",
+        "nemotron-3_5-transcribe-30b": "El más grande, 40 idiomas; para una GPU con unos 80 GB de memoria."
       },
-      "sttFit": null,
-      "sttFitAbout": null,
-      "sttFitMeasured": null,
-      "sttFitEstimate": null,
-      "sttDownloading": null,
-      "sttDownloadingName": null,
-      "defaultBadge": null,
-      "defaultTitle": null,
-      "recommendedGpu": null,
-      "recommendedGpuTitle": null,
-      "wordTimings": null,
-      "wordTimingsLine": null,
-      "firstUseLanguageLine": null
+      "sttFit": "Cabe · {gb} GB de memoria de GPU",
+      "sttFitAbout": "Cabe · unos {gb} GB de memoria de GPU (estimación)",
+      "sttFitMeasured": "Medido en una RTX 4090 (24 GB), con aproximadamente 1 GB de margen añadido.",
+      "sttFitEstimate": "Estimación a partir del tamaño de los pesos; no medido aquí.",
+      "sttDownloading": "{percent}% · {done} de {total} GB",
+      "sttDownloadingName": "Descargando {name}",
+      "defaultBadge": "Predeterminado",
+      "defaultTitle": "El dictado usa este modelo salvo que elijas otro.",
+      "recommendedGpu": "Recomendado para esta GPU",
+      "recommendedGpuTitle": "Será el predeterminado en cuanto se descargue.",
+      "wordTimings": "Tiempos de palabra",
+      "wordTimingsLine": "Marca el tiempo de cada palabra (subtítulos, el editor de transcripciones) para Qwen3-ASR, Granite Speech y Nemotron Transcribe, que no tienen tiempos de palabra propios; Nemotron ASR también lo usa. Añade unos {vram} GB de memoria de GPU mientras está en uso.",
+      "firstUseLanguageLine": "Un modelo que elijas pero no hayas descargado se obtiene la primera vez que dictas. Whisper, Qwen3-ASR y Nemotron 3.5 ASR usan el Idioma de arriba (o lo detectan si está en detección automática); Parakeet, Granite y Nemotron Transcribe siempre lo detectan por sí mismos."
     },
     "voices": {
       "addChinese": "Añadir voces de chino mandarín",
@@ -856,7 +856,7 @@
       "quickNoteAddon": "Kokoro, un complemento del entorno de voz. Rápido, menos de 1 GB, solo velocidad. Se muestra primero la mejor valorada.",
       "kokoroMissing": "Las voces rápidas de Kokoro no están instaladas. Márcalas en Voz > Modelos > Entorno de voz > Complementos (unos 330 MB).",
       "openModels": "Abrir Modelos de voz",
-      "macOnlyHidden": null
+      "macOnlyHidden": "No se muestran {count} voces de los modelos de voz para Mac con Apple Silicon: no funcionan en este PC."
     },
     "settings": {
       "autoSend": "Enviar el mensaje en cuanto termine el dictado",
@@ -893,7 +893,7 @@
       "fileTypes": "WAV, MP3, M4A, FLAC, OGG, MP4, MOV y más",
       "subtitleLibrary": "Graba, o suelta archivos de audio y video. Las transcripciones se guardan en la Biblioteca.",
       "translateWhich": "Traducir al inglés (Whisper Small o Base)",
-      "needsWordTimings": null
+      "needsWordTimings": "{name} solo da tiempos por segmento hasta que se instale la descarga de Tiempos de palabra ({gb} GB)."
     },
     "stopRecording": "Detener la grabación",
     "record": "Grabar",
@@ -1031,19 +1031,19 @@
       "changeVoice": "Cambiar voz",
       "noVoice": "No se ha elegido ninguna voz",
       "queue": {
-        "video": null,
-        "image": null,
-        "music": null,
-        "other": null
+        "video": "Esperando a que termine la generación del vídeo. La voz empieza justo después.",
+        "image": "Esperando a que termine el trabajo de imagen. La voz empieza justo después.",
+        "music": "Esperando a que termine el trabajo de música. La voz empieza justo después.",
+        "other": "Esperando a que termine otro trabajo. La voz empieza justo después."
       },
-      "needsSpeechGpu": null
+      "needsSpeechGpu": "Requiere el complemento de GPU para voz. Márcalo en Voice > Modelos > Entorno de voz > Complementos."
     },
     "stop": "Detener",
     "studio": {
       "title": "Voice Studio",
       "openModels": "Abrir Modelos de voz",
       "library": "Biblioteca",
-      "needsPackGb": null
+      "needsPackGb": "Voice se ejecuta en este equipo y necesita el entorno de voz (unos {gb} GB con las voces rápidas de Kokoro). Instálalo una sola vez desde Voice > Modelos."
     },
     "savedToLibrary": "Guardado en la biblioteca",
     "saveToLibrary": "Guardar en la biblioteca",
@@ -1225,8 +1225,8 @@
     "runtime": {
       "addon": {
         "chinese": "Voces rápidas en mandarín (8 voces, unos 60 MB)",
-        "speech-gpu": null,
-        "stt-gpu": null,
+        "speech-gpu": "Complemento de GPU para voz: voces naturales de Qwen3-TTS, Chatterbox, VoxCPM2 y Orpheus, diseño y clonación de voz en la GPU NVIDIA (unos {size})",
+        "stt-gpu": "Complemento de GPU para voz a texto: Qwen3-ASR, Parakeet, Nemotron y Granite en la GPU NVIDIA (unos {size})",
         "kokoro": "Voces rápidas de Kokoro (unos 330 MB)"
       },
       "addons": "Complementos",
@@ -1251,7 +1251,7 @@
       "updateFeatures": "Actualiza el entorno de voz para las llamadas de voz en el Chat y las etiquetas de hablante en las transcripciones (añade unos 40 MB de modelos; uno o dos minutos).",
       "workerOnly": "el proceso de voz, aún sin modelo",
       "partsNoKokoro": "{total} GB en disco: paquetes de habla {packages} GB, detección de turnos y etiquetas de hablante {small} GB; las voces rápidas de Kokoro no están instaladas. No se envía nada a internet.",
-      "aboutTickedGb": null
+      "aboutTickedGb": "Unos {gb} GB con los complementos marcados abajo: los paquetes de voz, la detección de turnos y las etiquetas de hablante, más cada complemento marcado. El dictado y los modelos de voz son descargas aparte en esta página. No se envía nada en línea."
     }
   },
   "residentChatModelNote": "Un modelo de chat cargado ocupa unos {gb} GB de esta memoria; descargarlo la libera.",
@@ -1400,7 +1400,7 @@
       "asks": "Lo que te exige esta licencia",
       "gatedNote": "Este modelo es de acceso restringido: acepta los términos en Hugging Face y luego descárgalo aquí con tu token (Preferencias > Hugging Face).",
       "readFull": "Leer la licencia completa",
-      "readLive": null,
+      "readLive": "Lee la licencia actual en Hugging Face",
       "openHub": "Abrir en Hugging Face",
       "notNow": "Ahora no",
       "accepted": "He aceptado",
@@ -1552,8 +1552,8 @@
       "needDownload": "Descarga {name} desde «Modelos de música» (unos {size} GB). Acepta primero la licencia en Hugging Face.",
       "needTextEncoder": "Al modelo de sonido le falta su codificador de texto. Vuelve a descargarlo desde «Modelos de música».",
       "needPack": "Los sonidos también necesitan un paquete pequeño (unos 1 GB). Instálalo desde «Modelos de música».",
-      "needPackCuda": null,
-      "needLicenceStableAudio3": null,
+      "needPackCuda": "Los sonidos también necesitan un paquete con la versión NVIDIA de PyTorch (unos {size} GB). Instálalo desde Modelos de música y audio.",
+      "needLicenceStableAudio3": "{name} te pide aceptar primero su licencia y los términos de Gemma de su codificador de texto. Abre Modelos de música y audio para leerlos.",
       "prompt": "Describe el sonido",
       "placeholder": "pesada puerta de madera que se abre con un chirrido, micrófono cercano",
       "english": "El inglés funciona mejor. Efectos y bucles, no canciones ni voz.",
@@ -1579,18 +1579,18 @@
       "cpuOnly": "Este sonido se ejecuta en la CPU, no en una GPU. Es mucho más lento: puede tardar muchos minutos. Puedes cancelar."
     },
     "copy": {
-      "title": null,
-      "why": null,
-      "wayDeveloper": null,
-      "waySameDrive": null,
-      "button": null,
-      "resume": null,
-      "progress": null,
-      "status": null,
-      "eta": null,
-      "cancel": null,
-      "cancelled": null,
-      "done": null
+      "title": "Hay que copiar los archivos del modelo de música",
+      "why": "Este PC no permitió crear un enlace desde los archivos descargados del modelo a la carpeta de música, así que hay que copiar {count} archivos ({size} GB). Usa espacio extra en disco y ocurre una sola vez.",
+      "wayDeveloper": "Activa el Modo de desarrollador (Configuración de Windows, Sistema, Para programadores) para permitir los enlaces.",
+      "waySameDrive": "O mantén la caché de modelos en la misma unidad que los datos de la app ({targetDrive}).",
+      "button": "Copiar ahora ({size} GB, unos {minutes} min)",
+      "resume": "Copiar de nuevo ({size} GB, unos {minutes} min)",
+      "progress": "Progreso de la copia",
+      "status": "{done} de {size} GB · {percent}%",
+      "eta": "faltan unos {minutes} min",
+      "cancel": "Cancelar",
+      "cancelled": "Copia cancelada. Los archivos terminados se conservan, así que al copiar de nuevo se continúa desde ahí.",
+      "done": "Listo, cargando…"
     }
   },
   "audioPlayer": {
@@ -1669,12 +1669,12 @@
       "trimOutEnd": "Final de la toma",
       "useClip": "Usar como clip",
       "noCast": "No hay reparto en este proyecto. No pasa nada: un plano puede ir solo. Añade personajes o lugares en la pestaña Reparto para mantener un mismo aspecto.",
-      "vocal": null,
-      "vocalHint": null,
-      "vocalFile": null,
-      "vocalChange": null,
-      "vocalAttach": null,
-      "vocalRemove": null
+      "vocal": "Voz para sincronía labial",
+      "vocalHint": "Un WAV o FLAC que la boca sigue: el clip parte del fotograma fijo de este plano, dura de 3 a 8 s y conserva este sonido. Requiere LTX-2.3 como modelo de vídeo (el modelo NVIDIA de 4 bits necesita una tarjeta de 24 GB).",
+      "vocalFile": "Archivo de voz (WAV o FLAC)",
+      "vocalChange": "Cambiar voz",
+      "vocalAttach": "Adjuntar voz",
+      "vocalRemove": "Quitar voz"
     },
     "empty": "Aún no hay planos. Añade un plano y dale un prompt o importa material.",
     "estimate": {
@@ -2621,7 +2621,7 @@
       "statusSummary": "instalados primero"
     },
     "title": "Modelos de música",
-    "unavailable": null,
+    "unavailable": "La música requiere un Mac con Apple Silicon o una GPU NVIDIA.",
     "sounds": {
       "pack": {
         "failedTitle": "No se pudo instalar el paquete de sonidos.",
@@ -2979,8 +2979,8 @@
     "alternative": "Más rápido aquí: {name}."
   },
   "musicUnsupported": {
-    "reason": null,
-    "soundReason": null,
+    "reason": "La generación de música requiere un Mac con Apple Silicon o una GPU NVIDIA en Windows o Linux; no se instala ni se descarga nada en este equipo.",
+    "soundReason": "Los efectos de sonido funcionan en Mac con Apple Silicon en esta versión. Se prevé compatibilidad con GPU NVIDIA; no se instala ni se descarga nada para sonidos en este equipo.",
     "badge": "Aún no disponible en este equipo"
   },
   "territoryGate": {

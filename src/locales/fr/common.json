@@ -225,7 +225,7 @@
     "pluginSystem": "Système de plugins",
     "pluginsRegistered": "{count, plural, one {# plugin enregistré} other {# plugins enregistrés}}",
     "externalPlugins": "Plugins externes",
-    "installFromDirectory": null,
+    "installFromDirectory": "Indisponible dans cette version",
     "noModelsMatchFilters": "Aucun modèle ne correspond aux filtres actuels",
     "savedOutputs": "Sorties enregistrées",
     "installedImageModels": "Modèles image installés",
@@ -326,131 +326,131 @@
   },
   "serverActivity": {
     "views": {
-      "label": null,
-      "overview": null,
-      "activity": null
+      "label": "Vues du serveur",
+      "overview": "Aperçu",
+      "activity": "Activité"
     },
     "summary": {
-      "requested": null,
-      "resolving": null,
-      "loading": null,
-      "loaded": null,
-      "loadedWarm": null,
-      "parked": null,
-      "firstToken": null,
-      "generation": null,
-      "idle": null,
-      "unloaded": null
+      "requested": "Chargement demandé ({backend})",
+      "resolving": "Choix d'un moteur",
+      "loading": "Chargement sur {engine} ({size})",
+      "loaded": "Chargé en {seconds}, {memory} en mémoire",
+      "loadedWarm": "Passage à la copie chaude",
+      "parked": "Gardé au chaud pour un retour rapide",
+      "firstToken": "Premier token après {seconds}",
+      "generation": "{tokens} tokens à {rate} tok/s en {seconds}",
+      "idle": "Inactif",
+      "unloaded": "Déchargé ({reason})"
     },
     "reason": {
-      "user": null,
-      "swap": null,
-      "memory": null,
-      "idle": null,
-      "error": null
+      "user": "par vous",
+      "swap": "autre modèle",
+      "memory": "pour libérer de la mémoire",
+      "idle": "inactif",
+      "error": "erreur"
     },
     "kind": {
-      "requested": null,
-      "resolving": null,
-      "loading": null,
-      "loaded": null,
-      "load_failed": null,
-      "parked": null,
-      "first_token": null,
-      "generation": null,
-      "generation_failed": null,
-      "idle": null,
-      "unloaded": null
+      "requested": "Demandé",
+      "resolving": "Résolution",
+      "loading": "Chargement",
+      "loaded": "Chargé",
+      "load_failed": "Échec du chargement",
+      "parked": "Gardé au chaud",
+      "first_token": "Premier token",
+      "generation": "Génération",
+      "generation_failed": "Échec de la génération",
+      "idle": "Inactif",
+      "unloaded": "Déchargé"
     },
     "phase": {
-      "loading": null,
-      "ready": null,
-      "generating": null,
-      "idle": null,
-      "warm": null,
-      "failed": null
+      "loading": "Chargement",
+      "ready": "Prêt",
+      "generating": "Génération",
+      "idle": "Inactif",
+      "warm": "Chaud",
+      "failed": "Échec"
     },
     "timeline": {
-      "title": null,
-      "window": null,
+      "title": "Chronologie du modèle",
+      "window": "Fenêtre de temps",
       "windows": {
-        "15m": null,
-        "1h": null,
-        "24h": null,
-        "all": null
+        "15m": "15 min",
+        "1h": "1 heure",
+        "24h": "24 heures",
+        "all": "Tout"
       },
-      "empty": null,
-      "live": null,
-      "legend": null
+      "empty": "Aucune activité de modèle dans cette fenêtre. Chargez un modèle pour voir sa chronologie.",
+      "live": "maintenant",
+      "legend": "Légende"
     },
     "list": {
-      "title": null,
-      "empty": null,
-      "select": null
+      "title": "Événements",
+      "empty": "Aucun événement ne correspond. Les chargements, réponses et déchargements de modèles s'affichent ici.",
+      "select": "Sélectionner {kind} à {time}"
     },
     "detail": {
-      "request": null,
-      "modelRef": null,
-      "engine": null,
-      "cache": null,
-      "speculative": null,
-      "message": null,
-      "error": null,
-      "command": null,
-      "stderr": null,
-      "env": null
+      "request": "Requête",
+      "modelRef": "ID du modèle",
+      "engine": "Moteur",
+      "cache": "Stratégie de cache",
+      "speculative": "Décodage spéculatif",
+      "message": "Message",
+      "error": "Erreur",
+      "command": "Ligne de commande",
+      "stderr": "Dernière sortie du moteur",
+      "env": "Environnement"
     },
-    "copyEvent": null,
-    "paused": null,
-    "live": null,
-    "offline": null,
+    "copyEvent": "Copier l'événement",
+    "paused": "{count, plural, =0 {En pause} one {En pause, # nouveau} other {En pause, # nouveaux}}",
+    "live": "En direct",
+    "offline": "Reconnexion",
     "filter": {
-      "model": null,
-      "allModels": null,
-      "level": null,
-      "allLevels": null,
-      "request": null,
-      "search": null
+      "model": "Modèle",
+      "allModels": "Tous les modèles",
+      "level": "Niveau",
+      "allLevels": "Tous les niveaux",
+      "request": "ID de requête",
+      "search": "Rechercher des événements"
     },
     "level": {
-      "info": null,
-      "warning": null,
-      "error": null
+      "info": "Info",
+      "warning": "Avertissement",
+      "error": "Erreur"
     },
-    "pause": null,
-    "resume": null,
-    "latestFailure": null,
-    "selectAll": null,
-    "selectNone": null,
-    "copySelected": null,
-    "exportSelected": null,
+    "pause": "Pause",
+    "resume": "Reprendre",
+    "latestFailure": "Dernier échec",
+    "selectAll": "Sélectionner l'affichage",
+    "selectNone": "Effacer la sélection",
+    "copySelected": "Copier la sélection ({count})",
+    "exportSelected": "Exporter la sélection ({count})",
     "lines": {
-      "title": null,
-      "filter": null,
-      "noMatch": null
+      "title": "Lignes de journal",
+      "filter": "Filtrer les lignes de journal",
+      "noMatch": "Aucune ligne de journal ne correspond au filtre."
     },
     "recent": {
-      "title": null,
-      "open": null,
-      "empty": null
+      "title": "Activité récente",
+      "open": "Ouvrir l'activité",
+      "empty": "Rien pour l'instant. Les chargements, réponses et déchargements de modèles s'affichent ici."
     },
     "field": {
-      "seconds": null,
-      "totalSeconds": null,
-      "memoryBytes": null,
-      "contextTokens": null,
-      "warm": null,
-      "bytes": null,
-      "prefillSeconds": null,
-      "tokS": null,
-      "promptTokens": null,
-      "completionTokens": null,
-      "finishReason": null,
-      "streaming": null,
-      "reason": null,
-      "backend": null,
-      "speculativeDecoding": null,
-      "source": null
+      "seconds": "Secondes",
+      "totalSeconds": "Secondes au total",
+      "memoryBytes": "Mémoire",
+      "contextTokens": "Contexte",
+      "warm": "Depuis le pool chaud",
+      "bytes": "Poids",
+      "prefillSeconds": "Préremplissage",
+      "tokS": "Tokens par seconde",
+      "promptTokens": "Tokens du prompt",
+      "completionTokens": "Tokens de la réponse",
+      "finishReason": "Raison de fin",
+      "streaming": "Streaming",
+      "reason": "Raison",
+      "backend": "Backend",
+      "speculativeDecoding": "Décodage spéculatif",
+      "source": "Source"
     }
   },
   "conversionTab": {
@@ -461,13 +461,13 @@
         "load": "Chargement dans MLX",
         "quantize": "Quantification en {bits} bits g{group}",
         "shard": "Partitionnement et écriture des safetensors",
-        "measuring": null
+        "measuring": "Mesure de la qualité sur un court échantillon de texte"
       },
       "detail": {
-        "files": null,
-        "written": null,
-        "writtenOfAbout": null,
-        "modelsScored": null
+        "files": "téléchargement de la source : {done} fichiers sur {total}",
+        "written": "{written} Go écrits",
+        "writtenOfAbout": "{written} Go écrits, environ {expected} Go attendus (estimation)",
+        "modelsScored": "{done} modèles sur {total} évalués"
       }
     },
     "varies": "Variable",
@@ -494,8 +494,8 @@
     "reQuantizingTitle": "Re-quantification d'une source déjà quantifiée",
     "backendNote": "Note backend",
     "reQuantizingDetail": "La source est déjà ~{bits} bits. Descendre encore plus bas amplifie la perte de qualité — pour de meilleurs résultats, convertissez depuis les poids FP16/BF16 originaux.",
-    "ggufSourceTitle": null,
-    "ggufSourceDetail": null,
+    "ggufSourceTitle": "Une source GGUF est téléchargée à nouveau en taille réelle",
+    "ggufSourceDetail": "Un fichier GGUF ne peut pas être converti directement en MLX. Le modèle d'origine indiqué dans le fichier est téléchargé depuis Hugging Face puis converti : cela demande une connexion réseau et de l'espace disque pour les poids en taille réelle. Le téléchargement n'affiche aucune progression ; Annuler l'arrête.",
     "mlxLmAvailable": "La conversion mlx-lm est disponible dans le backend actif.",
     "startNativeSidecar": "Démarrez le sidecar natif pour activer la conversion.",
     "converting": "Conversion...",
@@ -530,7 +530,7 @@
     "diskBeforeAfter": "Disque avant → après",
     "modal": {
       "titleConverting": "Conversion du modèle",
-      "cancel": null,
+      "cancel": "Annuler la conversion",
       "titleFailed": "Échec de la conversion",
       "titleComplete": "Conversion terminée",
       "debugDetails": "Détails de débogage",
@@ -548,35 +548,35 @@
       "close": "Fermer",
       "ok": "OK"
     },
-    "measureQuality": null,
-    "measureQualityHint": null,
-    "qualityMeasured": null,
-    "qualityChange": null,
-    "qualityDetail": null,
-    "qualityAfterConverting": null,
-    "qualityNotMeasured": null,
-    "qualityOff": null,
-    "bitsPerWeight": null,
-    "bitsPerWeightValue": null,
-    "sizeOnDisk": null,
-    "pickSourceFirst": null
+    "measureQuality": "Mesurer la qualité après la conversion",
+    "measureQualityHint": "Charge une fois le modèle converti et la source, puis compare leur perplexité sur un court échantillon WikiText-2. Ignoré si l'un des deux ne tient pas dans la mémoire libre.",
+    "qualityMeasured": "Qualité (mesurée)",
+    "qualityChange": "{change} % de perplexité par rapport à la source",
+    "qualityDetail": "Perplexité sur {samples} échantillons de {dataset} : source {source}, converti {converted}. Plus bas, c'est mieux.",
+    "qualityAfterConverting": "Mesurée après la conversion",
+    "qualityNotMeasured": "Non mesurée",
+    "qualityOff": "Non mesurée (désactivée)",
+    "bitsPerWeight": "Bits par poids",
+    "bitsPerWeightValue": "{bits} (mesuré par le convertisseur)",
+    "sizeOnDisk": "Taille sur disque",
+    "pickSourceFirst": "Choisissez d'abord une source"
   },
   "benchmarkTab": {
     "progress": {
       "title": "Benchmark en cours",
       "phases": {
         "load": "Chargement du modèle en mémoire",
-        "datasetPerplexity": null,
-        "datasetAccuracy": null,
-        "evaluatingPerplexity": null,
-        "evaluatingAccuracy": null,
-        "generating": null,
-        "saving": null
+        "datasetPerplexity": "Chargement du texte d'évaluation",
+        "datasetAccuracy": "Chargement des questions",
+        "evaluatingPerplexity": "Évaluation des échantillons de texte",
+        "evaluatingAccuracy": "Réponse aux questions",
+        "generating": "Génération de {tokens} tokens maximum",
+        "saving": "Enregistrement du résultat"
       },
       "detail": {
-        "samples": null,
-        "questions": null,
-        "generating": null
+        "samples": "{done} échantillons sur {total}",
+        "questions": "{done} questions sur {total}, {correct} correctes",
+        "generating": "en cours ; le moteur indique le nombre de tokens à la fin"
       }
     },
     "modelLabel": "Modèle de benchmark",
@@ -586,7 +586,7 @@
     "modeThroughput": "Débit (tok/s)",
     "modePerplexity": "Perplexité (qualité)",
     "modeTaskAccuracy": "Précision de tâche (MMLU / HellaSwag)",
-    "evalNeedsMlx": null,
+    "evalNeedsMlx": "La perplexité et la précision des tâches ne fonctionnent qu'avec des modèles MLX. Choisissez un modèle MLX ou passez le mode sur Débit.",
     "promptPreset": "Préréglage d'invite",
     "dataset": "Jeu de données",
     "samples": "Échantillons",
@@ -647,12 +647,12 @@
       "close": "Fermer",
       "ok": "OK",
       "cancel": "Annuler le benchmark",
-      "titleCancelled": null,
-      "cancelling": null,
-      "cancelledNothingSaved": null,
-      "cancelledModelUnloaded": null,
-      "cancelledModelKept": null,
-      "cancelUnconfirmed": null
+      "titleCancelled": "Benchmark annulé",
+      "cancelling": "Arrêt de l'exécution...",
+      "cancelledNothingSaved": "L'exécution a été arrêtée. Rien n'a été enregistré dans l'historique.",
+      "cancelledModelUnloaded": "Le modèle a été déchargé.",
+      "cancelledModelKept": "Le modèle qui était chargé avant l'exécution reste chargé.",
+      "cancelUnconfirmed": "L'app a cessé d'attendre, mais n'a pas pu joindre le backend pour arrêter l'exécution. Elle tourne peut-être encore : vérifiez la page Serveur."
     },
     "promptPresets": {
       "balanced": "Résumé équilibré",
@@ -660,12 +660,12 @@
       "coding": "Réponse de code"
     },
     "scoring": {
-      "nextToken": null,
-      "generated": null,
-      "note": null
+      "nextToken": "choix du token suivant",
+      "generated": "texte généré (ancienne méthode)",
+      "note": "La réponse est la lettre du choix que le modèle note le plus haut comme token suivant. Les exécutions enregistrées avant ce changement généraient la réponse sous forme de texte ; leur précision n'est pas comparable à celle des nouvelles exécutions."
     },
-    "statTokens": null,
-    "ofMaxTokens": null
+    "statTokens": "Tokens générés",
+    "ofMaxTokens": "sur {max} autorisés"
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, one {# exécution} other {# exécutions}}{filterSuffix}",
@@ -677,8 +677,8 @@
       "both": "Les deux"
     },
     "swap": "Permuter",
-    "copyCsv": null,
-    "csvCopied": null,
+    "copyCsv": "Copier le CSV",
+    "csvCopied": "Copié",
     "summary": {
       "totalRuns": "Total d'exécutions",
       "persistentHistory": "Historique persistant",
@@ -688,8 +688,8 @@
       "fastest": "Plus rapide",
       "leanestCache": "Cache le plus léger",
       "bestValue": "Meilleur compromis",
-      "lowestPerplexity": null,
-      "noPerplexityRuns": null
+      "lowestPerplexity": "Perplexité la plus basse",
+      "noPerplexityRuns": "Aucune exécution de perplexité"
     },
     "metric": {
       "perplexity": "Perplexité",
@@ -703,7 +703,7 @@
       "compression": "Compression",
       "context": "Contexte",
       "strategy": "Stratégie",
-      "scoring": null
+      "scoring": "Évaluation"
     },
     "table": {
       "metric": "Métrique",
@@ -714,8 +714,8 @@
     "compareAgainst": "Comparer à :",
     "pickBaseline": "Choisir une exécution de référence...",
     "runAnother": "Lancez un autre benchmark pour activer la comparaison.",
-    "deleteRun": null,
-    "deleteRunConfirm": null,
+    "deleteRun": "Supprimer l'exécution",
+    "deleteRunConfirm": "Supprimer l'exécution enregistrée « {label} » ? Cette action est irréversible.",
     "properties": {
       "heading": "Propriétés de l'exécution",
       "model": "Modèle",
@@ -740,7 +740,7 @@
       "bits": "Bits",
       "context": "Contexte",
       "pplValue": "{value} ppl",
-      "load": null
+      "load": "Charger"
     },
     "modeLabel": {
       "ppl": "PPL",
@@ -768,7 +768,7 @@
       "save": "Enregistrer",
       "cancel": "Annuler"
     },
-    "presetModelTitle": null,
+    "presetModelTitle": "Enregistré avec le modèle de prompt. Le Chat ne l'applique pas encore.",
     "presetLabel": "préréglage : {ref}",
     "hasPlaceholders": "Le modèle contient des espaces réservés de variables",
     "variableCount": "{count, plural, one {# variable} other {# variables}}",
@@ -781,16 +781,16 @@
     "resolvedPreview": "Aperçu de l'invite résolue",
     "applyToChat": "Appliquer à la discussion",
     "selectOrCreate": "Sélectionnez un modèle dans la liste ou créez-en un nouveau.",
-    "nameRequired": null,
-    "saveFailed": null,
-    "loadFailed": null,
-    "empty": null,
-    "noMatches": null,
-    "deleteConfirm": null,
-    "variablesInvalid": null,
-    "samplersInvalid": null,
-    "inUseNote": null,
-    "stopUsing": null
+    "nameRequired": "Donnez un nom au modèle avant d'enregistrer.",
+    "saveFailed": "Le modèle n'a pas été enregistré. Vérifiez les champs et réessayez.",
+    "loadFailed": "Les modèles n'ont pas pu être chargés. Vérifiez que le backend est en cours d'exécution.",
+    "empty": "Aucun modèle pour l'instant. Utilisez Nouveau pour en créer un.",
+    "noMatches": "Aucun modèle ne correspond à la recherche.",
+    "deleteConfirm": "Supprimer le modèle « {name} » ? Cette action est irréversible.",
+    "variablesInvalid": "Les variables doivent former un tableau JSON (une liste entre crochets). Rien n'a été enregistré.",
+    "samplersInvalid": "Les échantillonneurs prédéfinis doivent former un objet JSON (noms et valeurs entre accolades). Rien n'a été enregistré.",
+    "inUseNote": "Le Chat utilise ce prompt système dans chaque fil jusqu'à ce que vous l'arrêtiez ou redémarriez l'app :",
+    "stopUsing": "Ne plus l'utiliser"
   },
   "fineTuning": {
     "loadingAdapters": "Chargement des adaptateurs...",
@@ -807,10 +807,10 @@
     "step3Title": "3. Entraîner",
     "step3Body": "Surveillez la perte et la progression en temps réel",
     "startButton": "Démarrer l'affinage",
-    "notAvailable": null,
-    "notAvailableBody": null,
-    "offline": null,
-    "loadError": null
+    "notAvailable": "Indisponible dans cette version",
+    "notAvailableBody": "L'entraînement n'est pas encore développé : cette page ne liste que les adaptateurs trouvés sur le disque, et un adaptateur ne peut pas encore être appliqué à un modèle. Les étapes ci-dessus montrent ce qui est prévu.",
+    "offline": "Le backend est hors ligne. Les adaptateurs seront listés à son retour.",
+    "loadError": "Impossible de charger la liste des adaptateurs : {message}"
   },
   "pluginsTab": {
     "discovering": "Découverte des plugins...",
@@ -865,7 +865,7 @@
     "legend3Bit": "3 bits",
     "legend4Bit": "4 bits",
     "legendNativeF16": "f16 natif",
-    "pointTooltipMeasured": null
+    "pointTooltipMeasured": "{label}\n{tokS} tok/s · {cacheGb} Go"
   },
   "logprobSummary": {
     "title": "Confiance des tokens",
@@ -1050,8 +1050,8 @@
       "uiScaleHelp": "L'échelle de l'interface change la densité du chrome de l'app immédiatement. Les aperçus média conservent leur propre dimensionnement par ratio.",
       "keepGroupsOpen": "Garder tous les groupes de la barre latérale ouverts",
       "keepGroupsOpenHelp": "Désactivé par défaut : seul le groupe dans lequel vous travaillez reste ouvert. Activez pour garder tous les groupes déployés.",
-      "showExperimentalTabs": null,
-      "showExperimentalTabsHelp": null
+      "showExperimentalTabs": "Afficher les onglets expérimentaux",
+      "showExperimentalTabsHelp": "Désactivé par défaut. Affiche dans la barre latérale les pages qui ne sont pas encore terminées. Leurs pages et routes restent disponibles dans tous les cas."
     },
     "dataDirectory": {
       "title": "Répertoire de données",
@@ -1497,9 +1497,9 @@
     "moveModels": "Déplacer les modèles existants vers le nouveau chemin",
     "filesProgress": "{copied} / {total} fichiers",
     "restartBackend": "Redémarrer le backend",
-    "lmstudioDir": null,
-    "lmstudioHint": null,
-    "saveLmstudioDir": null
+    "lmstudioDir": "Dossier des modèles LM Studio",
+    "lmstudioHint": "Utilisé par Partager avec LM Studio, qui lie un GGUF dans <publisher>/<model>/ ici sans le copier. Gardez-le sur le même disque que vos modèles.",
+    "saveLmstudioDir": "Enregistrer le dossier"
   },
   "videoPlaceholderTab": {
     "engines": {
@@ -1606,6 +1606,6 @@
     }
   },
   "secretMask": {
-    "note": null
+    "note": "La clé est masquée à l'écran. Copier copie toujours la vraie clé."
   }
 }

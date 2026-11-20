@@ -225,7 +225,7 @@
     "pluginSystem": "Sistema de plugins",
     "pluginsRegistered": "{count, plural, one {# plugin registrado} other {# plugins registrados}}",
     "externalPlugins": "Plugins externos",
-    "installFromDirectory": null,
+    "installFromDirectory": "No disponible en esta versión",
     "noModelsMatchFilters": "Ningún modelo coincide con los filtros actuales",
     "savedOutputs": "Salidas guardadas",
     "installedImageModels": "Modelos de imagen instalados",
@@ -326,131 +326,131 @@
   },
   "serverActivity": {
     "views": {
-      "label": null,
-      "overview": null,
-      "activity": null
+      "label": "Vistas del servidor",
+      "overview": "Resumen",
+      "activity": "Actividad"
     },
     "summary": {
-      "requested": null,
-      "resolving": null,
-      "loading": null,
-      "loaded": null,
-      "loadedWarm": null,
-      "parked": null,
-      "firstToken": null,
-      "generation": null,
-      "idle": null,
-      "unloaded": null
+      "requested": "Carga solicitada ({backend})",
+      "resolving": "Eligiendo un motor",
+      "loading": "Cargando en {engine} ({size})",
+      "loaded": "Cargado en {seconds}, {memory} en memoria",
+      "loadedWarm": "Cambiado a la copia en caliente",
+      "parked": "Mantenido en caliente para volver rápido",
+      "firstToken": "Primer token tras {seconds}",
+      "generation": "{tokens} tokens a {rate} tok/s en {seconds}",
+      "idle": "Inactivo",
+      "unloaded": "Descargado ({reason})"
     },
     "reason": {
-      "user": null,
-      "swap": null,
-      "memory": null,
-      "idle": null,
-      "error": null
+      "user": "por ti",
+      "swap": "otro modelo",
+      "memory": "para liberar memoria",
+      "idle": "inactivo",
+      "error": "error"
     },
     "kind": {
-      "requested": null,
-      "resolving": null,
-      "loading": null,
-      "loaded": null,
-      "load_failed": null,
-      "parked": null,
-      "first_token": null,
-      "generation": null,
-      "generation_failed": null,
-      "idle": null,
-      "unloaded": null
+      "requested": "Solicitado",
+      "resolving": "Resolviendo",
+      "loading": "Cargando",
+      "loaded": "Cargado",
+      "load_failed": "Falló la carga",
+      "parked": "En caliente",
+      "first_token": "Primer token",
+      "generation": "Generación",
+      "generation_failed": "Falló la generación",
+      "idle": "Inactivo",
+      "unloaded": "Descargado"
     },
     "phase": {
-      "loading": null,
-      "ready": null,
-      "generating": null,
-      "idle": null,
-      "warm": null,
-      "failed": null
+      "loading": "Cargando",
+      "ready": "Listo",
+      "generating": "Generando",
+      "idle": "Inactivo",
+      "warm": "En caliente",
+      "failed": "Falló"
     },
     "timeline": {
-      "title": null,
-      "window": null,
+      "title": "Línea de tiempo del modelo",
+      "window": "Intervalo de tiempo",
       "windows": {
-        "15m": null,
-        "1h": null,
-        "24h": null,
-        "all": null
+        "15m": "15 min",
+        "1h": "1 hora",
+        "24h": "24 horas",
+        "all": "Todo"
       },
-      "empty": null,
-      "live": null,
-      "legend": null
+      "empty": "No hay actividad de modelos en este intervalo. Carga un modelo para ver su línea de tiempo.",
+      "live": "ahora",
+      "legend": "Leyenda"
     },
     "list": {
-      "title": null,
-      "empty": null,
-      "select": null
+      "title": "Eventos",
+      "empty": "Ningún evento coincide. Aquí aparecen las cargas, respuestas y descargas de modelos.",
+      "select": "Seleccionar {kind} a las {time}"
     },
     "detail": {
-      "request": null,
-      "modelRef": null,
-      "engine": null,
-      "cache": null,
-      "speculative": null,
-      "message": null,
-      "error": null,
-      "command": null,
-      "stderr": null,
-      "env": null
+      "request": "Solicitud",
+      "modelRef": "ID del modelo",
+      "engine": "Motor",
+      "cache": "Estrategia de caché",
+      "speculative": "Decodificación especulativa",
+      "message": "Mensaje",
+      "error": "Error",
+      "command": "Línea de comandos",
+      "stderr": "Última salida del motor",
+      "env": "Variables de entorno"
     },
-    "copyEvent": null,
-    "paused": null,
-    "live": null,
-    "offline": null,
+    "copyEvent": "Copiar evento",
+    "paused": "{count, plural, =0 {En pausa} one {En pausa, # nuevo} other {En pausa, # nuevos}}",
+    "live": "En vivo",
+    "offline": "Reconectando",
     "filter": {
-      "model": null,
-      "allModels": null,
-      "level": null,
-      "allLevels": null,
-      "request": null,
-      "search": null
+      "model": "Modelo",
+      "allModels": "Todos los modelos",
+      "level": "Nivel",
+      "allLevels": "Todos los niveles",
+      "request": "ID de solicitud",
+      "search": "Buscar eventos"
     },
     "level": {
-      "info": null,
-      "warning": null,
-      "error": null
+      "info": "Info",
+      "warning": "Advertencia",
+      "error": "Error"
     },
-    "pause": null,
-    "resume": null,
-    "latestFailure": null,
-    "selectAll": null,
-    "selectNone": null,
-    "copySelected": null,
-    "exportSelected": null,
+    "pause": "Pausa",
+    "resume": "Reanudar",
+    "latestFailure": "Último fallo",
+    "selectAll": "Seleccionar los mostrados",
+    "selectNone": "Borrar selección",
+    "copySelected": "Copiar seleccionados ({count})",
+    "exportSelected": "Exportar seleccionados ({count})",
     "lines": {
-      "title": null,
-      "filter": null,
-      "noMatch": null
+      "title": "Líneas del registro",
+      "filter": "Filtrar líneas del registro",
+      "noMatch": "Ninguna línea del registro coincide con el filtro."
     },
     "recent": {
-      "title": null,
-      "open": null,
-      "empty": null
+      "title": "Actividad reciente",
+      "open": "Abrir Actividad",
+      "empty": "Aún nada. Aquí aparecen las cargas, respuestas y descargas de modelos."
     },
     "field": {
-      "seconds": null,
-      "totalSeconds": null,
-      "memoryBytes": null,
-      "contextTokens": null,
-      "warm": null,
-      "bytes": null,
-      "prefillSeconds": null,
-      "tokS": null,
-      "promptTokens": null,
-      "completionTokens": null,
-      "finishReason": null,
-      "streaming": null,
-      "reason": null,
-      "backend": null,
-      "speculativeDecoding": null,
-      "source": null
+      "seconds": "Segundos",
+      "totalSeconds": "Segundos en total",
+      "memoryBytes": "Memoria",
+      "contextTokens": "Contexto",
+      "warm": "Del grupo en caliente",
+      "bytes": "Pesos",
+      "prefillSeconds": "Prefill",
+      "tokS": "Tokens por segundo",
+      "promptTokens": "Tokens del prompt",
+      "completionTokens": "Tokens de la respuesta",
+      "finishReason": "Motivo de finalización",
+      "streaming": "Streaming",
+      "reason": "Motivo",
+      "backend": "Backend",
+      "speculativeDecoding": "Decodificación especulativa",
+      "source": "Origen"
     }
   },
   "conversionTab": {
@@ -461,13 +461,13 @@
         "load": "Cargando en MLX",
         "quantize": "Cuantizando a {bits} bits g{group}",
         "shard": "Fragmentando y escribiendo safetensors",
-        "measuring": null
+        "measuring": "Midiendo la calidad con una muestra de texto corta"
       },
       "detail": {
-        "files": null,
-        "written": null,
-        "writtenOfAbout": null,
-        "modelsScored": null
+        "files": "descargando el origen: {done} de {total} archivos",
+        "written": "{written} GB escritos",
+        "writtenOfAbout": "{written} GB escritos, unos {expected} GB previstos (estimación)",
+        "modelsScored": "{done} de {total} modelos puntuados"
       }
     },
     "varies": "Varía",
@@ -494,8 +494,8 @@
     "reQuantizingTitle": "Recuantizando una fuente ya cuantizada",
     "backendNote": "Nota del backend",
     "reQuantizingDetail": "La fuente ya está a ~{bits} bits. Bajar más compone la pérdida de calidad — para mejores resultados convierte desde los pesos originales FP16/BF16.",
-    "ggufSourceTitle": null,
-    "ggufSourceDetail": null,
+    "ggufSourceTitle": "Un origen GGUF se vuelve a descargar en tamaño completo",
+    "ggufSourceDetail": "Un archivo GGUF no se puede convertir directamente a MLX. El modelo original indicado en el archivo se descarga de Hugging Face y se convierte, así que hace falta conexión de red y espacio en disco para los pesos de tamaño completo. La descarga no muestra progreso; Cancelar la detiene.",
     "mlxLmAvailable": "La conversión con mlx-lm está disponible en el backend activo.",
     "startNativeSidecar": "Inicia el sidecar nativo para habilitar la conversión.",
     "converting": "Convirtiendo...",
@@ -530,7 +530,7 @@
     "diskBeforeAfter": "Disco antes → después",
     "modal": {
       "titleConverting": "Convirtiendo modelo",
-      "cancel": null,
+      "cancel": "Cancelar conversión",
       "titleFailed": "Conversión fallida",
       "titleComplete": "Conversión completa",
       "debugDetails": "Detalles de depuración",
@@ -548,35 +548,35 @@
       "close": "Cerrar",
       "ok": "OK"
     },
-    "measureQuality": null,
-    "measureQualityHint": null,
-    "qualityMeasured": null,
-    "qualityChange": null,
-    "qualityDetail": null,
-    "qualityAfterConverting": null,
-    "qualityNotMeasured": null,
-    "qualityOff": null,
-    "bitsPerWeight": null,
-    "bitsPerWeightValue": null,
-    "sizeOnDisk": null,
-    "pickSourceFirst": null
+    "measureQuality": "Medir la calidad tras convertir",
+    "measureQualityHint": "Carga el modelo convertido y el original una vez cada uno y compara su perplejidad en una muestra corta de WikiText-2. Se omite si alguno no cabe en la memoria libre.",
+    "qualityMeasured": "Calidad (medida)",
+    "qualityChange": "{change}% de perplejidad respecto al original",
+    "qualityDetail": "Perplejidad en {samples} muestras de {dataset}: original {source}, convertido {converted}. Cuanto más bajo, mejor.",
+    "qualityAfterConverting": "Se mide tras convertir",
+    "qualityNotMeasured": "Sin medir",
+    "qualityOff": "Sin medir (desactivado)",
+    "bitsPerWeight": "Bits por peso",
+    "bitsPerWeightValue": "{bits} (medido por el conversor)",
+    "sizeOnDisk": "Tamaño en disco",
+    "pickSourceFirst": "Elige primero un origen"
   },
   "benchmarkTab": {
     "progress": {
       "title": "Ejecutando benchmark",
       "phases": {
         "load": "Cargando modelo en memoria",
-        "datasetPerplexity": null,
-        "datasetAccuracy": null,
-        "evaluatingPerplexity": null,
-        "evaluatingAccuracy": null,
-        "generating": null,
-        "saving": null
+        "datasetPerplexity": "Cargando el texto de evaluación",
+        "datasetAccuracy": "Cargando las preguntas",
+        "evaluatingPerplexity": "Puntuando muestras de texto",
+        "evaluatingAccuracy": "Respondiendo preguntas",
+        "generating": "Generando hasta {tokens} tokens",
+        "saving": "Guardando el resultado"
       },
       "detail": {
-        "samples": null,
-        "questions": null,
-        "generating": null
+        "samples": "{done} de {total} muestras",
+        "questions": "{done} de {total} preguntas, {correct} correctas",
+        "generating": "en curso; el motor indica el número de tokens al terminar"
       }
     },
     "modelLabel": "Modelo de benchmark",
@@ -586,7 +586,7 @@
     "modeThroughput": "Rendimiento (tok/s)",
     "modePerplexity": "Perplejidad (calidad)",
     "modeTaskAccuracy": "Precisión de tarea (MMLU / HellaSwag)",
-    "evalNeedsMlx": null,
+    "evalNeedsMlx": "La perplejidad y la precisión por tarea solo se ejecutan con modelos MLX. Elige un modelo MLX o cambia el modo a Rendimiento.",
     "promptPreset": "Preajuste de prompt",
     "dataset": "Conjunto de datos",
     "samples": "Muestras",
@@ -647,12 +647,12 @@
       "close": "Cerrar",
       "ok": "OK",
       "cancel": "Cancelar benchmark",
-      "titleCancelled": null,
-      "cancelling": null,
-      "cancelledNothingSaved": null,
-      "cancelledModelUnloaded": null,
-      "cancelledModelKept": null,
-      "cancelUnconfirmed": null
+      "titleCancelled": "Benchmark cancelado",
+      "cancelling": "Deteniendo la ejecución...",
+      "cancelledNothingSaved": "Se detuvo la ejecución. No se guardó nada en el historial.",
+      "cancelledModelUnloaded": "Se descargó el modelo.",
+      "cancelledModelKept": "El modelo que estaba cargado antes de la ejecución sigue cargado.",
+      "cancelUnconfirmed": "La app dejó de esperar, pero no pudo contactar con el backend para detener la ejecución. Puede que siga en marcha: revisa la página Servidor."
     },
     "promptPresets": {
       "balanced": "Resumen equilibrado",
@@ -660,12 +660,12 @@
       "coding": "Respuesta de código"
     },
     "scoring": {
-      "nextToken": null,
-      "generated": null,
-      "note": null
+      "nextToken": "elección del siguiente token",
+      "generated": "texto generado (método anterior)",
+      "note": "La respuesta es la letra de opción que el modelo puntúa más alta como siguiente token. Las ejecuciones guardadas antes de este cambio generaban la respuesta como texto; su precisión no es comparable con las nuevas."
     },
-    "statTokens": null,
-    "ofMaxTokens": null
+    "statTokens": "Tokens generados",
+    "ofMaxTokens": "de {max} permitidos"
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, one {# ejecución} other {# ejecuciones}}{filterSuffix}",
@@ -677,8 +677,8 @@
       "both": "Ambos"
     },
     "swap": "Intercambiar",
-    "copyCsv": null,
-    "csvCopied": null,
+    "copyCsv": "Copiar CSV",
+    "csvCopied": "Copiado",
     "summary": {
       "totalRuns": "Ejecuciones totales",
       "persistentHistory": "Historial persistente",
@@ -688,8 +688,8 @@
       "fastest": "Más rápido",
       "leanestCache": "Caché más ligera",
       "bestValue": "Mejor relación",
-      "lowestPerplexity": null,
-      "noPerplexityRuns": null
+      "lowestPerplexity": "Perplejidad más baja",
+      "noPerplexityRuns": "Sin ejecuciones de perplejidad"
     },
     "metric": {
       "perplexity": "Perplejidad",
@@ -703,7 +703,7 @@
       "compression": "Compresión",
       "context": "Contexto",
       "strategy": "Estrategia",
-      "scoring": null
+      "scoring": "Puntuación"
     },
     "table": {
       "metric": "Métrica",
@@ -714,8 +714,8 @@
     "compareAgainst": "Comparar con:",
     "pickBaseline": "Elige una ejecución base...",
     "runAnother": "Ejecuta otro benchmark para habilitar la comparación.",
-    "deleteRun": null,
-    "deleteRunConfirm": null,
+    "deleteRun": "Eliminar ejecución",
+    "deleteRunConfirm": "¿Eliminar la ejecución guardada \"{label}\"? No se puede deshacer.",
     "properties": {
       "heading": "Propiedades de la ejecución",
       "model": "Modelo",
@@ -740,7 +740,7 @@
       "bits": "Bits",
       "context": "Contexto",
       "pplValue": "{value} ppl",
-      "load": null
+      "load": "Cargar"
     },
     "modeLabel": {
       "ppl": "PPL",
@@ -768,7 +768,7 @@
       "save": "Guardar",
       "cancel": "Cancelar"
     },
-    "presetModelTitle": null,
+    "presetModelTitle": "Se guarda con la plantilla. El chat aún no la aplica.",
     "presetLabel": "preestablecido: {ref}",
     "hasPlaceholders": "La plantilla tiene marcadores de variables",
     "variableCount": "{count, plural, one {# variable} other {# variables}}",
@@ -781,16 +781,16 @@
     "resolvedPreview": "Vista previa del prompt resuelto",
     "applyToChat": "Aplicar al chat",
     "selectOrCreate": "Selecciona una plantilla de la lista o crea una nueva.",
-    "nameRequired": null,
-    "saveFailed": null,
-    "loadFailed": null,
-    "empty": null,
-    "noMatches": null,
-    "deleteConfirm": null,
-    "variablesInvalid": null,
-    "samplersInvalid": null,
-    "inUseNote": null,
-    "stopUsing": null
+    "nameRequired": "Ponle un nombre a la plantilla antes de guardarla.",
+    "saveFailed": "No se guardó la plantilla. Revisa los campos e inténtalo de nuevo.",
+    "loadFailed": "No se pudieron cargar las plantillas. Comprueba que el backend esté en marcha.",
+    "empty": "Aún no hay plantillas. Usa Nueva para crear una.",
+    "noMatches": "Ninguna plantilla coincide con la búsqueda.",
+    "deleteConfirm": "¿Eliminar la plantilla \"{name}\"? No se puede deshacer.",
+    "variablesInvalid": "Las variables deben ser un array JSON (una lista entre corchetes). No se guardó nada.",
+    "samplersInvalid": "Los samplers de la preconfiguración deben ser un objeto JSON (nombres y valores entre llaves). No se guardó nada.",
+    "inUseNote": "El chat usa este prompt del sistema en todos los hilos hasta que lo detengas o reinicies la app:",
+    "stopUsing": "Dejar de usarlo"
   },
   "fineTuning": {
     "loadingAdapters": "Cargando adaptadores...",
@@ -807,10 +807,10 @@
     "step3Title": "3. Entrena",
     "step3Body": "Monitorea la pérdida y el progreso en tiempo real",
     "startButton": "Iniciar ajuste fino",
-    "notAvailable": null,
-    "notAvailableBody": null,
-    "offline": null,
-    "loadError": null
+    "notAvailable": "No disponible en esta versión",
+    "notAvailableBody": "El entrenamiento aún no está implementado: esta página solo lista los adaptadores que encuentra en el disco, y todavía no se puede aplicar un adaptador a un modelo. Los pasos de arriba muestran lo que está previsto.",
+    "offline": "El backend está sin conexión. Los adaptadores se listarán cuando vuelva.",
+    "loadError": "No se pudo cargar la lista de adaptadores: {message}"
   },
   "pluginsTab": {
     "discovering": "Descubriendo plugins...",
@@ -865,7 +865,7 @@
     "legend3Bit": "3 bits",
     "legend4Bit": "4 bits",
     "legendNativeF16": "Nativo f16",
-    "pointTooltipMeasured": null
+    "pointTooltipMeasured": "{label}\n{tokS} tok/s · {cacheGb} GB"
   },
   "logprobSummary": {
     "title": "Confianza del token",
@@ -1050,8 +1050,8 @@
       "uiScaleHelp": "La escala de la interfaz cambia la densidad del cromo de la app inmediatamente. Las vistas previas de medios conservan su propio dimensionamiento por relación de aspecto.",
       "keepGroupsOpen": "Mantener abiertos todos los grupos de la barra lateral",
       "keepGroupsOpenHelp": "Desactivado por defecto: solo el grupo en el que trabajas permanece abierto. Actívalo para mantener todos los grupos expandidos.",
-      "showExperimentalTabs": null,
-      "showExperimentalTabsHelp": null
+      "showExperimentalTabs": "Mostrar pestañas experimentales",
+      "showExperimentalTabsHelp": "Desactivado por defecto. Muestra en la barra lateral las páginas que aún no están terminadas. Sus páginas y rutas siguen existiendo en ambos casos."
     },
     "dataDirectory": {
       "title": "Directorio de datos",
@@ -1497,9 +1497,9 @@
     "moveModels": "Mover los modelos existentes a la nueva ruta",
     "filesProgress": "{copied} / {total} archivos",
     "restartBackend": "Reiniciar el backend",
-    "lmstudioDir": null,
-    "lmstudioHint": null,
-    "saveLmstudioDir": null
+    "lmstudioDir": "Carpeta de modelos de LM Studio",
+    "lmstudioHint": "La usa Compartir con LM Studio, que enlaza aquí un GGUF en <publisher>/<model>/ sin copiarlo. Mantenla en la misma unidad que tus modelos.",
+    "saveLmstudioDir": "Guardar carpeta"
   },
   "videoPlaceholderTab": {
     "engines": {
@@ -1606,6 +1606,6 @@
     }
   },
   "secretMask": {
-    "note": null
+    "note": "La clave está oculta en pantalla. Copiar siempre copia la clave real."
   }
 }

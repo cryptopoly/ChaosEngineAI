@@ -225,7 +225,7 @@
     "pluginSystem": "外掛系統",
     "pluginsRegistered": "{count, plural, other {已註冊 # 個外掛}}",
     "externalPlugins": "外部外掛",
-    "installFromDirectory": null,
+    "installFromDirectory": "此版本無法使用",
     "noModelsMatchFilters": "沒有模型符合目前的篩選條件",
     "savedOutputs": "已儲存的輸出",
     "installedImageModels": "已安裝的影像模型",
@@ -326,131 +326,131 @@
   },
   "serverActivity": {
     "views": {
-      "label": null,
-      "overview": null,
-      "activity": null
+      "label": "伺服器檢視",
+      "overview": "總覽",
+      "activity": "活動"
     },
     "summary": {
-      "requested": null,
-      "resolving": null,
-      "loading": null,
-      "loaded": null,
-      "loadedWarm": null,
-      "parked": null,
-      "firstToken": null,
-      "generation": null,
-      "idle": null,
-      "unloaded": null
+      "requested": "已要求載入({backend})",
+      "resolving": "正在選擇引擎",
+      "loading": "正在以 {engine} 載入({size})",
+      "loaded": "已於 {seconds} 載入,記憶體佔用 {memory}",
+      "loadedWarm": "已切換至預熱副本",
+      "parked": "保持預熱,可快速切換回來",
+      "firstToken": "{seconds} 後出現第一個 token",
+      "generation": "{tokens} 個 token,速度 {rate} tok/s,耗時 {seconds}",
+      "idle": "閒置",
+      "unloaded": "已卸載({reason})"
     },
     "reason": {
-      "user": null,
-      "swap": null,
-      "memory": null,
-      "idle": null,
-      "error": null
+      "user": "由你操作",
+      "swap": "改用其他模型",
+      "memory": "為釋放記憶體",
+      "idle": "閒置",
+      "error": "錯誤"
     },
     "kind": {
-      "requested": null,
-      "resolving": null,
-      "loading": null,
-      "loaded": null,
-      "load_failed": null,
-      "parked": null,
-      "first_token": null,
-      "generation": null,
-      "generation_failed": null,
-      "idle": null,
-      "unloaded": null
+      "requested": "已要求",
+      "resolving": "解析中",
+      "loading": "載入中",
+      "loaded": "已載入",
+      "load_failed": "載入失敗",
+      "parked": "保持預熱",
+      "first_token": "第一個 token",
+      "generation": "生成",
+      "generation_failed": "生成失敗",
+      "idle": "閒置",
+      "unloaded": "已卸載"
     },
     "phase": {
-      "loading": null,
-      "ready": null,
-      "generating": null,
-      "idle": null,
-      "warm": null,
-      "failed": null
+      "loading": "載入中",
+      "ready": "就緒",
+      "generating": "生成中",
+      "idle": "閒置",
+      "warm": "預熱",
+      "failed": "失敗"
     },
     "timeline": {
-      "title": null,
-      "window": null,
+      "title": "模型時間軸",
+      "window": "時間範圍",
       "windows": {
-        "15m": null,
-        "1h": null,
-        "24h": null,
-        "all": null
+        "15m": "15 分鐘",
+        "1h": "1 小時",
+        "24h": "24 小時",
+        "all": "全部"
       },
-      "empty": null,
-      "live": null,
-      "legend": null
+      "empty": "此時間範圍內沒有模型活動。載入模型即可查看其時間軸。",
+      "live": "現在",
+      "legend": "圖例"
     },
     "list": {
-      "title": null,
-      "empty": null,
-      "select": null
+      "title": "事件",
+      "empty": "沒有符合的事件。模型的載入、回答與卸載會顯示在這裡。",
+      "select": "選取 {time} 的{kind}"
     },
     "detail": {
-      "request": null,
-      "modelRef": null,
-      "engine": null,
-      "cache": null,
-      "speculative": null,
-      "message": null,
-      "error": null,
-      "command": null,
-      "stderr": null,
-      "env": null
+      "request": "請求",
+      "modelRef": "模型 ID",
+      "engine": "引擎",
+      "cache": "快取策略",
+      "speculative": "推測解碼",
+      "message": "訊息",
+      "error": "錯誤",
+      "command": "命令列",
+      "stderr": "引擎最後輸出",
+      "env": "環境變數"
     },
-    "copyEvent": null,
-    "paused": null,
-    "live": null,
-    "offline": null,
+    "copyEvent": "複製事件",
+    "paused": "{count, plural, =0 {已暫停} other {已暫停,新增 # 筆}}",
+    "live": "即時",
+    "offline": "重新連線中",
     "filter": {
-      "model": null,
-      "allModels": null,
-      "level": null,
-      "allLevels": null,
-      "request": null,
-      "search": null
+      "model": "模型",
+      "allModels": "所有模型",
+      "level": "層級",
+      "allLevels": "所有層級",
+      "request": "請求 ID",
+      "search": "搜尋事件"
     },
     "level": {
-      "info": null,
-      "warning": null,
-      "error": null
+      "info": "資訊",
+      "warning": "警告",
+      "error": "錯誤"
     },
-    "pause": null,
-    "resume": null,
-    "latestFailure": null,
-    "selectAll": null,
-    "selectNone": null,
-    "copySelected": null,
-    "exportSelected": null,
+    "pause": "暫停",
+    "resume": "恢復",
+    "latestFailure": "最近一次失敗",
+    "selectAll": "選取顯示的項目",
+    "selectNone": "清除選取",
+    "copySelected": "複製所選({count})",
+    "exportSelected": "匯出所選({count})",
     "lines": {
-      "title": null,
-      "filter": null,
-      "noMatch": null
+      "title": "記錄行",
+      "filter": "篩選記錄行",
+      "noMatch": "沒有符合篩選條件的記錄行。"
     },
     "recent": {
-      "title": null,
-      "open": null,
-      "empty": null
+      "title": "最近活動",
+      "open": "開啟活動",
+      "empty": "目前沒有內容。模型的載入、回答與卸載會顯示在這裡。"
     },
     "field": {
-      "seconds": null,
-      "totalSeconds": null,
-      "memoryBytes": null,
-      "contextTokens": null,
-      "warm": null,
-      "bytes": null,
-      "prefillSeconds": null,
-      "tokS": null,
-      "promptTokens": null,
-      "completionTokens": null,
-      "finishReason": null,
-      "streaming": null,
-      "reason": null,
-      "backend": null,
-      "speculativeDecoding": null,
-      "source": null
+      "seconds": "秒數",
+      "totalSeconds": "總秒數",
+      "memoryBytes": "記憶體",
+      "contextTokens": "上下文",
+      "warm": "來自預熱池",
+      "bytes": "權重",
+      "prefillSeconds": "預填",
+      "tokS": "每秒 token 數",
+      "promptTokens": "提示 token 數",
+      "completionTokens": "生成 token 數",
+      "finishReason": "結束原因",
+      "streaming": "串流",
+      "reason": "原因",
+      "backend": "後端",
+      "speculativeDecoding": "推測解碼",
+      "source": "來源"
     }
   },
   "conversionTab": {
@@ -461,13 +461,13 @@
         "load": "正在載入到 MLX",
         "quantize": "正在量化為 {bits} 位元 g{group}",
         "shard": "正在分片並寫入 safetensors",
-        "measuring": null
+        "measuring": "正在以簡短文字樣本測量品質"
       },
       "detail": {
-        "files": null,
-        "written": null,
-        "writtenOfAbout": null,
-        "modelsScored": null
+        "files": "正在下載來源:{done} / {total} 個檔案",
+        "written": "已寫入 {written} GB",
+        "writtenOfAbout": "已寫入 {written} GB,預計約 {expected} GB(估計值)",
+        "modelsScored": "已評分 {done} / {total} 個模型"
       }
     },
     "varies": "視情況而定",
@@ -494,8 +494,8 @@
     "reQuantizingTitle": "重新量化已量化的來源",
     "backendNote": "後端註記",
     "reQuantizingDetail": "來源已經是約 {bits} 位元。再往下會累積品質損失 — 為了最佳結果,請從原始的 FP16/BF16 權重轉換。",
-    "ggufSourceTitle": null,
-    "ggufSourceDetail": null,
+    "ggufSourceTitle": "GGUF 來源會以完整大小重新下載",
+    "ggufSourceDetail": "GGUF 檔案無法直接轉換為 MLX。系統會從 Hugging Face 下載該檔案所指的原始模型再進行轉換,因此需要網路連線,以及足以存放完整權重的磁碟空間。下載過程不顯示進度;按「取消」即可停止。",
     "mlxLmAvailable": "mlx-lm 轉換在使用中的後端可用。",
     "startNativeSidecar": "啟動原生 sidecar 以啟用轉換。",
     "converting": "正在轉換...",
@@ -530,7 +530,7 @@
     "diskBeforeAfter": "磁碟用量(前 → 後)",
     "modal": {
       "titleConverting": "正在轉換模型",
-      "cancel": null,
+      "cancel": "取消轉換",
       "titleFailed": "轉換失敗",
       "titleComplete": "轉換完成",
       "debugDetails": "除錯詳細資訊",
@@ -548,35 +548,35 @@
       "close": "關閉",
       "ok": "確定"
     },
-    "measureQuality": null,
-    "measureQualityHint": null,
-    "qualityMeasured": null,
-    "qualityChange": null,
-    "qualityDetail": null,
-    "qualityAfterConverting": null,
-    "qualityNotMeasured": null,
-    "qualityOff": null,
-    "bitsPerWeight": null,
-    "bitsPerWeightValue": null,
-    "sizeOnDisk": null,
-    "pickSourceFirst": null
+    "measureQuality": "轉換後測量品質",
+    "measureQualityHint": "將轉換後的模型與來源模型各載入一次,並以簡短的 WikiText-2 樣本比較兩者的困惑度。若任一模型無法放入可用記憶體,則略過。",
+    "qualityMeasured": "品質(實測)",
+    "qualityChange": "困惑度較來源 {change}%",
+    "qualityDetail": "於 {dataset} 的 {samples} 個樣本上的困惑度:來源 {source},轉換後 {converted}。數值越低越好。",
+    "qualityAfterConverting": "轉換後測量",
+    "qualityNotMeasured": "未測量",
+    "qualityOff": "未測量(已關閉)",
+    "bitsPerWeight": "每個權重的位元數",
+    "bitsPerWeightValue": "{bits}(由轉換器測得)",
+    "sizeOnDisk": "磁碟大小",
+    "pickSourceFirst": "請先選擇來源"
   },
   "benchmarkTab": {
     "progress": {
       "title": "正在執行基準測試",
       "phases": {
         "load": "正在將模型載入到記憶體",
-        "datasetPerplexity": null,
-        "datasetAccuracy": null,
-        "evaluatingPerplexity": null,
-        "evaluatingAccuracy": null,
-        "generating": null,
-        "saving": null
+        "datasetPerplexity": "正在載入評估文字",
+        "datasetAccuracy": "正在載入題目",
+        "evaluatingPerplexity": "正在為文字樣本評分",
+        "evaluatingAccuracy": "正在回答題目",
+        "generating": "正在生成最多 {tokens} 個 token",
+        "saving": "正在儲存結果"
       },
       "detail": {
-        "samples": null,
-        "questions": null,
-        "generating": null
+        "samples": "{done} / {total} 個樣本",
+        "questions": "{done} / {total} 題,答對 {correct} 題",
+        "generating": "執行中;引擎會在完成時回報 token 數"
       }
     },
     "modelLabel": "基準測試模型",
@@ -586,7 +586,7 @@
     "modeThroughput": "吞吐量 (tok/s)",
     "modePerplexity": "困惑度(品質)",
     "modeTaskAccuracy": "任務準確度 (MMLU / HellaSwag)",
-    "evalNeedsMlx": null,
+    "evalNeedsMlx": "困惑度與任務準確率僅能在 MLX 模型上執行。請選擇 MLX 模型,或將模式切換為輸送量。",
     "promptPreset": "提示詞預設",
     "dataset": "資料集",
     "samples": "樣本數",
@@ -647,12 +647,12 @@
       "close": "關閉",
       "ok": "確定",
       "cancel": "取消基準測試",
-      "titleCancelled": null,
-      "cancelling": null,
-      "cancelledNothingSaved": null,
-      "cancelledModelUnloaded": null,
-      "cancelledModelKept": null,
-      "cancelUnconfirmed": null
+      "titleCancelled": "基準測試已取消",
+      "cancelling": "正在停止執行…",
+      "cancelledNothingSaved": "執行已停止。歷史記錄中未儲存任何內容。",
+      "cancelledModelUnloaded": "模型已卸載。",
+      "cancelledModelKept": "執行前已載入的模型仍保持載入。",
+      "cancelUnconfirmed": "應用程式已停止等待,但無法連線到後端以停止執行。它可能仍在執行:請查看伺服器頁面。"
     },
     "promptPresets": {
       "balanced": "均衡摘要",
@@ -660,12 +660,12 @@
       "coding": "程式回覆"
     },
     "scoring": {
-      "nextToken": null,
-      "generated": null,
-      "note": null
+      "nextToken": "下一個 token 選擇",
+      "generated": "生成文字(舊方法)",
+      "note": "答案為模型以下一個 token 評分最高的選項字母。此變更之前儲存的執行是以生成文字作為答案;其準確率無法與新的執行相比。"
     },
-    "statTokens": null,
-    "ofMaxTokens": null
+    "statTokens": "已生成 token 數",
+    "ofMaxTokens": "上限 {max}"
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, other {# 次執行}}{filterSuffix}",
@@ -677,8 +677,8 @@
       "both": "兩者"
     },
     "swap": "交換",
-    "copyCsv": null,
-    "csvCopied": null,
+    "copyCsv": "複製 CSV",
+    "csvCopied": "已複製",
     "summary": {
       "totalRuns": "總執行次數",
       "persistentHistory": "持續性歷史",
@@ -688,8 +688,8 @@
       "fastest": "最快",
       "leanestCache": "最精簡快取",
       "bestValue": "最佳值",
-      "lowestPerplexity": null,
-      "noPerplexityRuns": null
+      "lowestPerplexity": "最低困惑度",
+      "noPerplexityRuns": "沒有困惑度的執行"
     },
     "metric": {
       "perplexity": "困惑度",
@@ -703,7 +703,7 @@
       "compression": "壓縮",
       "context": "上下文",
       "strategy": "策略",
-      "scoring": null
+      "scoring": "評分方式"
     },
     "table": {
       "metric": "指標",
@@ -714,8 +714,8 @@
     "compareAgainst": "比較對象:",
     "pickBaseline": "選擇基準執行...",
     "runAnother": "執行另一次基準測試以啟用比較。",
-    "deleteRun": null,
-    "deleteRunConfirm": null,
+    "deleteRun": "刪除執行",
+    "deleteRunConfirm": "要刪除已儲存的執行「{label}」嗎?此操作無法復原。",
     "properties": {
       "heading": "執行屬性",
       "model": "模型",
@@ -740,7 +740,7 @@
       "bits": "位元",
       "context": "上下文",
       "pplValue": "{value} ppl",
-      "load": null
+      "load": "載入"
     },
     "modeLabel": {
       "ppl": "PPL",
@@ -768,7 +768,7 @@
       "save": "儲存",
       "cancel": "取消"
     },
-    "presetModelTitle": null,
+    "presetModelTitle": "會隨範本一併儲存。聊天目前尚未套用。",
     "presetLabel": "預設:{ref}",
     "hasPlaceholders": "範本包含變數預留位置",
     "variableCount": "{count, plural, other {# 個變數}}",
@@ -781,16 +781,16 @@
     "resolvedPreview": "解析後的提示詞預覽",
     "applyToChat": "套用至對話",
     "selectOrCreate": "從清單中選擇範本或建立新範本。",
-    "nameRequired": null,
-    "saveFailed": null,
-    "loadFailed": null,
-    "empty": null,
-    "noMatches": null,
-    "deleteConfirm": null,
-    "variablesInvalid": null,
-    "samplersInvalid": null,
-    "inUseNote": null,
-    "stopUsing": null
+    "nameRequired": "儲存前請先為範本命名。",
+    "saveFailed": "範本未儲存。請檢查欄位後再試一次。",
+    "loadFailed": "無法載入範本。請確認後端是否正在執行。",
+    "empty": "尚無範本。按「新增」即可建立。",
+    "noMatches": "沒有符合搜尋的範本。",
+    "deleteConfirm": "要刪除範本「{name}」嗎?此操作無法復原。",
+    "variablesInvalid": "變數必須是 JSON 陣列(以方括號括起的清單)。未儲存任何內容。",
+    "samplersInvalid": "預設取樣器必須是 JSON 物件(以大括號括起的名稱與值)。未儲存任何內容。",
+    "inUseNote": "在你停止或重新啟動應用程式之前,聊天會在每個對話串中使用此系統提示:",
+    "stopUsing": "停止使用"
   },
   "fineTuning": {
     "loadingAdapters": "正在載入介面卡...",
@@ -807,10 +807,10 @@
     "step3Title": "3. 訓練",
     "step3Body": "即時監控損失與進度",
     "startButton": "開始微調",
-    "notAvailable": null,
-    "notAvailableBody": null,
-    "offline": null,
-    "loadError": null
+    "notAvailable": "此版本無法使用",
+    "notAvailableBody": "尚未提供訓練功能:此頁面只會列出在磁碟上找到的 adapter,且 adapter 目前還無法套用到模型。上方步驟為預計的做法。",
+    "offline": "後端已離線。恢復連線後會列出 adapter。",
+    "loadError": "無法載入 adapter 清單:{message}"
   },
   "pluginsTab": {
     "discovering": "正在探索外掛程式...",
@@ -865,7 +865,7 @@
     "legend3Bit": "3 位元",
     "legend4Bit": "4 位元",
     "legendNativeF16": "原生 f16",
-    "pointTooltipMeasured": null
+    "pointTooltipMeasured": "{label}\n{tokS} tok/s · {cacheGb} GB"
   },
   "logprobSummary": {
     "title": "Token 信心度",
@@ -1050,8 +1050,8 @@
       "uiScaleHelp": "UI 縮放會立即改變應用程式介面的密度。媒體預覽會保留自身的長寬比尺寸。",
       "keepGroupsOpen": "保持所有側邊欄群組展開",
       "keepGroupsOpenHelp": "預設關閉：只有你正在使用的群組保持展開。開啟後所有群組都會展開。",
-      "showExperimentalTabs": null,
-      "showExperimentalTabsHelp": null
+      "showExperimentalTabs": "顯示實驗性分頁",
+      "showExperimentalTabsHelp": "預設為關閉。開啟後,側邊欄會列出尚未完成的頁面。無論開關,這些頁面與路由都仍然存在。"
     },
     "dataDirectory": {
       "title": "資料目錄",
@@ -1497,9 +1497,9 @@
     "moveModels": "將現有模型移動到新路徑",
     "filesProgress": "{copied} / {total} 個檔案",
     "restartBackend": "重新啟動後端",
-    "lmstudioDir": null,
-    "lmstudioHint": null,
-    "saveLmstudioDir": null
+    "lmstudioDir": "LM Studio 模型資料夾",
+    "lmstudioHint": "供「與 LM Studio 共用」使用,它會把 GGUF 連結到此處的 <publisher>/<model>/,而不會複製檔案。請將它與你的模型放在同一個磁碟機上。",
+    "saveLmstudioDir": "儲存資料夾"
   },
   "videoPlaceholderTab": {
     "engines": {
@@ -1606,6 +1606,6 @@
     }
   },
   "secretMask": {
-    "note": null
+    "note": "金鑰在畫面上已隱藏。「複製」一律複製真正的金鑰。"
   }
 }

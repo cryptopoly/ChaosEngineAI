@@ -749,41 +749,41 @@
       "kokoroLineAddon": "{languages} 言語で {count} 種類のクイックボイス。どのマシンでも高速です。音声ランタイムのアドオンです。",
       "kokoroNotInstalled": "未インストール",
       "kokoroAddHint": "音声ランタイム > アドオン でチェックを入れてください。",
-      "gpuDefaultLine": null,
-      "macOnlySummary": null,
-      "macOnlyNote": null,
-      "macOnlyNoteVoices": null,
+      "gpuDefaultLine": "ダウンロードが完了すると、別のモデルを選ばない限り {name} が音声入力モデルになります。",
+      "macOnlySummary": "Apple Silicon Mac 向けのモデル {count} 個",
+      "macOnlyNote": "この PC では動作しないため、読み上げと音声の一覧から除外されています。",
+      "macOnlyNoteVoices": "この PC では動作しないため、これらのモデルと {voices} 個の音声は読み上げと音声の一覧から除外されています。",
       "licenceName": {
-        "Apache-2_0": null,
-        "MIT": null,
-        "CC-BY-4_0": null,
-        "OpenMDW-1_1": null
+        "Apache-2_0": "Apache 2.0",
+        "MIT": "MIT",
+        "CC-BY-4_0": "Creative Commons BY 4.0 (作者のクレジット表示が必要)",
+        "OpenMDW-1_1": "OpenMDW 1.1 (オープンモデルライセンス)"
       },
-      "licenceOpen": null,
+      "licenceOpen": "モデルページでライセンスを確認",
       "sttGuide": {
-        "qwen3-asr-1_7b": null,
-        "qwen3-asr-0_6b": null,
-        "parakeet-tdt-v3": null,
-        "nemotron-3_5-asr": null,
-        "whisper-large-v3-turbo": null,
-        "whisper-small": null,
-        "whisper-base": null,
-        "granite-speech-5_0-2b": null,
-        "nemotron-3_5-transcribe-30b": null
+        "qwen3-asr-1_7b": "NVIDIA GPU のおすすめ: 30 言語と 22 の中国語方言に対応し、言語を自動判別します。",
+        "qwen3-asr-0_6b": "より小型の Qwen3-ASR: 同じ言語に対応し、GPU メモリ使用量が少なく高速です。",
+        "parakeet-tdt-v3": "ヨーロッパ 25 言語に対応した非常に高速なモデル。言語を自動判別し、単語ごとのタイミングも自力で取得します。",
+        "nemotron-3_5-asr": "小型で高速、40 言語のライブ音声向け。言語設定を使うか、自動判別します。",
+        "whisper-large-v3-turbo": "どのマシンでも動作し、99 言語に対応して単語ごとのタイミングを取得します。翻訳はできません。",
+        "whisper-small": "99 言語に対応した小型で高速なモデル。音声を英語に翻訳できる 2 つのうちの 1 つです。",
+        "whisper-base": "最小のモデル: どのマシンでも高速で英語への翻訳もできますが、精度は最も低くなります。",
+        "granite-speech-5_0-2b": "6 言語に対応 (英語が最優先)。言語を自動判別します。",
+        "nemotron-3_5-transcribe-30b": "最大のモデルで 40 言語に対応。約 80 GB のメモリを持つ GPU 向けです。"
       },
-      "sttFit": null,
-      "sttFitAbout": null,
-      "sttFitMeasured": null,
-      "sttFitEstimate": null,
-      "sttDownloading": null,
-      "sttDownloadingName": null,
-      "defaultBadge": null,
-      "defaultTitle": null,
-      "recommendedGpu": null,
-      "recommendedGpuTitle": null,
-      "wordTimings": null,
-      "wordTimingsLine": null,
-      "firstUseLanguageLine": null
+      "sttFit": "収まります · GPU メモリ {gb} GB",
+      "sttFitAbout": "収まります · GPU メモリ 約 {gb} GB (推定)",
+      "sttFitMeasured": "RTX 4090 (24 GB) で測定し、約 1 GB の余裕を加えています。",
+      "sttFitEstimate": "重みのサイズからの推定値で、ここでは測定していません。",
+      "sttDownloading": "{percent}% · {total} GB 中 {done} GB",
+      "sttDownloadingName": "{name} をダウンロード中",
+      "defaultBadge": "デフォルト",
+      "defaultTitle": "別のモデルを選ばない限り、音声入力はこのモデルを使用します。",
+      "recommendedGpu": "この GPU におすすめ",
+      "recommendedGpuTitle": "ダウンロードが完了するとデフォルトになります。",
+      "wordTimings": "単語タイミング",
+      "wordTimingsLine": "単語ごとのタイミング (キャプション、文字起こしエディター) を付与します。単語タイミングを持たない Qwen3-ASR、Granite Speech、Nemotron Transcribe が対象で、Nemotron ASR も使用します。使用中は GPU メモリを約 {vram} GB 追加で消費します。",
+      "firstUseLanguageLine": "選択したがダウンロードしていないモデルは、初めて音声入力するときに取得されます。Whisper、Qwen3-ASR、Nemotron 3.5 ASR は上の言語設定を使用します (自動判別に設定している場合は言語を判別します)。Parakeet、Granite、Nemotron Transcribe は常に自力で言語を判別します。"
     },
     "voices": {
       "addChinese": "中国語（北京語）のボイスを追加",
@@ -856,7 +856,7 @@
       "quickNoteAddon": "Kokoro は音声ランタイムのアドオンです。高速で 1 GB 未満、速度のみに対応。最高評価のものを先頭に表示します。",
       "kokoroMissing": "Kokoro のクイックボイスはインストールされていません。音声 > モデル > 音声ランタイム > アドオン でチェックを入れてください（約 330 MB）。",
       "openModels": "音声モデルを開く",
-      "macOnlyHidden": null
+      "macOnlyHidden": "Apple Silicon Mac 向け音声モデルの音声 {count} 個は、この PC では動作しないため表示されません。"
     },
     "settings": {
       "autoSend": "音声入力が終わったらすぐにメッセージを送信",
@@ -893,7 +893,7 @@
       "fileTypes": "WAV、MP3、M4A、FLAC、OGG、MP4、MOV など",
       "subtitleLibrary": "録音するか、音声・動画ファイルをドロップしてください。文字起こしはライブラリに保存されます。",
       "translateWhich": "英語に翻訳（Whisper Small または Base）",
-      "needsWordTimings": null
+      "needsWordTimings": "単語タイミング ({gb} GB) のダウンロードが完了するまで、{name} ではセグメントの時間のみ取得できます。"
     },
     "stopRecording": "録音を停止",
     "record": "録音",
@@ -1031,19 +1031,19 @@
       "changeVoice": "ボイスを変更",
       "noVoice": "ボイスが選択されていません",
       "queue": {
-        "video": null,
-        "image": null,
-        "music": null,
-        "other": null
+        "video": "動画のレンダリング完了を待っています。完了後すぐに音声が始まります。",
+        "image": "画像ジョブの完了を待っています。完了後すぐに音声が始まります。",
+        "music": "音楽ジョブの完了を待っています。完了後すぐに音声が始まります。",
+        "other": "別のジョブの完了を待っています。完了後すぐに音声が始まります。"
       },
-      "needsSpeechGpu": null
+      "needsSpeechGpu": "音声 GPU アドオンが必要です。音声 > モデル > 音声ランタイム > アドオンでチェックを入れてください。"
     },
     "stop": "停止",
     "studio": {
       "title": "Voice Studio",
       "openModels": "音声モデルを開く",
       "library": "ライブラリ",
-      "needsPackGb": null
+      "needsPackGb": "音声はこのコンピューター上で動作し、音声ランタイム (Kokoro のクイック音声を含めて約 {gb} GB) が必要です。音声 > モデルから一度インストールしてください。"
     },
     "savedToLibrary": "ライブラリに保存しました",
     "saveToLibrary": "ライブラリに保存",
@@ -1225,8 +1225,8 @@
     "runtime": {
       "addon": {
         "chinese": "中国語（北京語）のクイックボイス（8 種、約 60 MB）",
-        "speech-gpu": null,
-        "stt-gpu": null,
+        "speech-gpu": "音声 GPU アドオン: Qwen3-TTS、Chatterbox、VoxCPM2、Orpheus の自然な音声、NVIDIA GPU でのボイスデザインとクローン (約 {size})",
+        "stt-gpu": "音声認識 GPU アドオン: NVIDIA GPU 上の Qwen3-ASR、Parakeet、Nemotron、Granite (約 {size})",
         "kokoro": "Kokoro のクイックボイス（約 330 MB）"
       },
       "addons": "アドオン",
@@ -1251,7 +1251,7 @@
       "updateFeatures": "チャットの音声通話と文字起こしの話者ラベルのために音声ランタイムを更新します（モデル約 40 MB を追加。1〜2 分）。",
       "workerOnly": "音声ワーカーのみ。モデルはまだありません",
       "partsNoKokoro": "ディスク上 {total} GB: 音声パッケージ {packages} GB、発話区切り検出と話者ラベル {small} GB。Kokoro クイックボイスはインストールされていません。データは一切送信されません。",
-      "aboutTickedGb": null
+      "aboutTickedGb": "下でチェックしたアドオンを含めて約 {gb} GB: 音声パッケージ、ターン検出、話者ラベル、およびチェックした各アドオン。音声入力モデルと音声モデルは、このページで別途ダウンロードします。オンラインには何も送信されません。"
     }
   },
   "residentChatModelNote": "読み込み済みのチャットモデルがこのメモリのうち約 {gb} GB を使用しています。アンロードするとその分が解放されます。",
@@ -1400,7 +1400,7 @@
       "asks": "このライセンスがあなたに求めること",
       "gatedNote": "このモデルはゲート付きです。先に Hugging Face で規約に同意し、その後トークンを使ってここからダウンロードしてください（設定 > Hugging Face）。",
       "readFull": "ライセンス全文を読む",
-      "readLive": null,
+      "readLive": "Hugging Face で最新のライセンスを確認",
       "openHub": "Hugging Face で開く",
       "notNow": "今はしない",
       "accepted": "同意しました",
@@ -1552,8 +1552,8 @@
       "needDownload": "「ミュージックモデル」から {name} をダウンロードしてください（約 {size} GB）。先に Hugging Face でライセンスに同意してください。",
       "needTextEncoder": "サウンドモデルにテキストエンコーダーがありません。「ミュージックモデル」からもう一度ダウンロードしてください。",
       "needPack": "サウンドには小さなパック（約 1 GB）も必要です。「ミュージックモデル」からインストールしてください。",
-      "needPackCuda": null,
-      "needLicenceStableAudio3": null,
+      "needPackCuda": "サウンドには、NVIDIA ビルドの PyTorch を含むパック (約 {size} GB) も必要です。音楽とオーディオのモデルからインストールしてください。",
+      "needLicenceStableAudio3": "{name} を使うには、先にそのライセンスと、テキストエンコーダーの Gemma 利用規約への同意が必要です。音楽とオーディオのモデルを開いて確認してください。",
       "prompt": "サウンドを説明",
       "placeholder": "重い木のドアがきしみながら開く、近接マイク",
       "english": "英語が最も適しています。効果音とループ向けで、歌や音声には向きません。",
@@ -1579,18 +1579,18 @@
       "cpuOnly": "この音声は GPU ではなく CPU で実行されています。大幅に遅く、数分かかることがあります。キャンセルできます。"
     },
     "copy": {
-      "title": null,
-      "why": null,
-      "wayDeveloper": null,
-      "waySameDrive": null,
-      "button": null,
-      "resume": null,
-      "progress": null,
-      "status": null,
-      "eta": null,
-      "cancel": null,
-      "cancelled": null,
-      "done": null
+      "title": "音楽モデルのファイルをコピーする必要があります",
+      "why": "この PC では、ダウンロードしたモデルファイルから音楽フォルダーへのリンクが許可されなかったため、{count} 個のファイル ({size} GB) をコピーする必要があります。追加のディスク容量が必要ですが、実行は一度だけです。",
+      "wayDeveloper": "開発者モード (Windows の設定 > システム > 開発者向け) をオンにして、リンクを許可してください。",
+      "waySameDrive": "または、モデルキャッシュをアプリのデータと同じドライブ ({targetDrive}) に置いてください。",
+      "button": "今すぐコピー ({size} GB、約 {minutes} 分)",
+      "resume": "もう一度コピー ({size} GB、約 {minutes} 分)",
+      "progress": "コピーの進捗",
+      "status": "{size} GB 中 {done} GB · {percent}%",
+      "eta": "残り約 {minutes} 分",
+      "cancel": "キャンセル",
+      "cancelled": "コピーをキャンセルしました。完了したファイルは保持されるため、もう一度コピーするとそこから再開します。",
+      "done": "完了、読み込み中…"
     }
   },
   "audioPlayer": {
@@ -1669,12 +1669,12 @@
       "trimOutEnd": "テイクの終わり",
       "useClip": "クリップとして使う",
       "noCast": "このプロジェクトにはキャストがありません。ショットは単独でも使えるので問題ありません。雰囲気を統一したい場合は、キャストタブでキャラクターや場所を追加してください。",
-      "vocal": null,
-      "vocalHint": null,
-      "vocalFile": null,
-      "vocalChange": null,
-      "vocalAttach": null,
-      "vocalRemove": null
+      "vocal": "リップシンク用ボーカル",
+      "vocalHint": "口の動きが追従する WAV または FLAC: クリップはこのショットの静止画から始まり、3〜8 秒の長さで、この音を保持します。ビデオモデルとして LTX-2.3 が必要です (4 ビットの NVIDIA モデルには 24 GB のカードが必要)。",
+      "vocalFile": "ボーカルファイル (WAV または FLAC)",
+      "vocalChange": "ボーカルを変更",
+      "vocalAttach": "ボーカルを添付",
+      "vocalRemove": "ボーカルを削除"
     },
     "empty": "まだショットがありません。ショットを追加して、プロンプトを入力するか素材をインポートしてください。",
     "estimate": {
@@ -2621,7 +2621,7 @@
       "statusSummary": "インストール済みを先に"
     },
     "title": "ミュージックモデル",
-    "unavailable": null,
+    "unavailable": "音楽生成には Apple Silicon Mac または NVIDIA GPU が必要です。",
     "sounds": {
       "pack": {
         "failedTitle": "サウンドパックをインストールできませんでした。",
@@ -2979,8 +2979,8 @@
     "alternative": "ここではより高速: {name}。"
   },
   "musicUnsupported": {
-    "reason": null,
-    "soundReason": null,
+    "reason": "音楽生成には、Apple Silicon Mac、または Windows か Linux 上の NVIDIA GPU が必要です。このコンピューターには何もインストールもダウンロードもされません。",
+    "soundReason": "このバージョンでは、サウンドエフェクトは Apple Silicon Mac で動作します。NVIDIA GPU への対応は予定されています。このコンピューターにはサウンド用の何もインストールもダウンロードもされません。",
     "badge": "このコンピューターではまだ利用できません"
   },
   "territoryGate": {

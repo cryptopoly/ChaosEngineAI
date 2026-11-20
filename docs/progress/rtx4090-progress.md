@@ -2124,3 +2124,11 @@ Add-on size: the voice venv with the add-on is 8.38 GB; torch 4.55 GB plus the a
 Checks: pytest `tests/test_voice*.py`, `test_request_guards`, `test_route_contracts`, `test_hub_tracker` pass (1 skip, 1 expected failure, both as before); vitest `src/features/voice` 155 passed; `tsc --noEmit` clean; `i18n:validate` OK; E2E `--phases 8` on the throwaway backend PASS (20 checks), including the new "speak and clone with Chatterbox, VoxCPM2 and Orpheus on the GPU" (spoke all four, cloned with the three cloning rows). Not run: the full pytest suite, the Playwright voice specs, Orpheus on a CUDA llama-server build (measured on the Vulkan build of b12441).
 
 Open: VoxCPM2 on Windows is about twice the real time and holds about 11 GB of RAM (FU-361); listening check (FU-362).
+
+## 2026-11-20: Translation pass, nine shipping locales (D-97, FU-420, FU-421, agent)
+
+Filled every `null` value in `src/locales/<locale>/*.json` for zh-CN, zh-TW, ja, de, ru, ko, fr, es and pt-BR (tlh is out of scope): common 171, studio 66, chat 13, library 3, dashboard 1, so 254 strings per locale, 2286 in all. Only null values were changed, no key added or removed; the diff is one line per string (the files keep their format). Glossary and register came from the existing strings of each locale (de du, fr vous, es tu, ru vy, ko polite, "Storyboard"/"Warm pool"/"Cache strategy" terms reused). Each locale was translated by its own fork and applied with a script that checked every key was present and the `{placeholders}` matched; ICU plural categories are per locale (ru one/few/many/other, ja and ko other only).
+
+Left untranslated on purpose: 3 `common.pluginsTab.*` keys (the Plugins tab is being removed by another stream) and the 4 `meta.supportedLocales.10.*` fields of the tlh entry. `src-tauri/locales/*.yml` and `backend_service/locales/*/messages.po` had nothing pending (the .po files hold only the header).
+
+Checks: `npm run i18n:validate` OK, every locale 99.9 % (5265 of 5270; tlh 77.1 %, experimental); `npx tsc --noEmit` clean; `npx vitest run src/locales src/i18n` 28 passed. Not checked: the strings in the running app, native-speaker quality. 119 doubtful strings are listed in `docs/progress/i18n-translation-doubts-2026-11-20.md` (FU-421, adds to FU-254). Final pass before release: FU-420.

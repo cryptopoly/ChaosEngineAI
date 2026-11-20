@@ -80,7 +80,7 @@
     }
   },
   "recommendation": {
-    "mlxTitle": null,
+    "mlxTitle": "推奨ターゲット: 4 ビットの {modelSize} クラス",
     "mlxDetail": "この予測は、{hardware} 上の推奨される {modelSize} クラスのローカルターゲットに対するものであり、現在選択されているチャットモデルに対するものではありません。",
     "ggufTitle": "推奨ターゲット:{modelSize} GGUF",
     "ggufDetail": "クロスプラットフォームモードでは、幅広いハードウェアサポートのため llama.cpp GGUF が優先されます。"

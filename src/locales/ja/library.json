@@ -782,9 +782,9 @@
         "status": "ステータス"
       },
       "share": {
-        "action": null,
-        "done": null,
-        "already": null
+        "action": "LM Studio と共有",
+        "done": "{where} として LM Studio と共有しました。追加のディスク容量は使用していません。",
+        "already": "すでに LM Studio と共有済みです ({where})。"
       }
     }
   }

@@ -225,7 +225,7 @@
     "pluginSystem": "Plugin-System",
     "pluginsRegistered": "{count, plural, one {# Plugin registriert} other {# Plugins registriert}}",
     "externalPlugins": "Externe Plugins",
-    "installFromDirectory": null,
+    "installFromDirectory": "In dieser Version nicht verfügbar",
     "noModelsMatchFilters": "Keine Modelle entsprechen den aktuellen Filtern",
     "savedOutputs": "Gespeicherte Ausgaben",
     "installedImageModels": "Installierte Bildmodelle",
@@ -326,131 +326,131 @@
   },
   "serverActivity": {
     "views": {
-      "label": null,
-      "overview": null,
-      "activity": null
+      "label": "Server-Ansichten",
+      "overview": "Übersicht",
+      "activity": "Aktivität"
     },
     "summary": {
-      "requested": null,
-      "resolving": null,
-      "loading": null,
-      "loaded": null,
-      "loadedWarm": null,
-      "parked": null,
-      "firstToken": null,
-      "generation": null,
-      "idle": null,
-      "unloaded": null
+      "requested": "Laden angefordert ({backend})",
+      "resolving": "Engine wird gewählt",
+      "loading": "Wird auf {engine} geladen ({size})",
+      "loaded": "Geladen in {seconds}, {memory} im Speicher",
+      "loadedWarm": "Zur warmen Kopie gewechselt",
+      "parked": "Warm gehalten für einen schnellen Rückwechsel",
+      "firstToken": "Erstes Token nach {seconds}",
+      "generation": "{tokens} Tokens mit {rate} tok/s in {seconds}",
+      "idle": "Untätig",
+      "unloaded": "Entladen ({reason})"
     },
     "reason": {
-      "user": null,
-      "swap": null,
-      "memory": null,
-      "idle": null,
-      "error": null
+      "user": "durch dich",
+      "swap": "anderes Modell",
+      "memory": "um Speicher freizugeben",
+      "idle": "untätig",
+      "error": "Fehler"
     },
     "kind": {
-      "requested": null,
-      "resolving": null,
-      "loading": null,
-      "loaded": null,
-      "load_failed": null,
-      "parked": null,
-      "first_token": null,
-      "generation": null,
-      "generation_failed": null,
-      "idle": null,
-      "unloaded": null
+      "requested": "Angefordert",
+      "resolving": "Wird aufgelöst",
+      "loading": "Wird geladen",
+      "loaded": "Geladen",
+      "load_failed": "Laden fehlgeschlagen",
+      "parked": "Warm gehalten",
+      "first_token": "Erstes Token",
+      "generation": "Generierung",
+      "generation_failed": "Generierung fehlgeschlagen",
+      "idle": "Untätig",
+      "unloaded": "Entladen"
     },
     "phase": {
-      "loading": null,
-      "ready": null,
-      "generating": null,
-      "idle": null,
-      "warm": null,
-      "failed": null
+      "loading": "Wird geladen",
+      "ready": "Bereit",
+      "generating": "Generiert",
+      "idle": "Untätig",
+      "warm": "Warm",
+      "failed": "Fehlgeschlagen"
     },
     "timeline": {
-      "title": null,
-      "window": null,
+      "title": "Modell-Timeline",
+      "window": "Zeitfenster",
       "windows": {
-        "15m": null,
-        "1h": null,
-        "24h": null,
-        "all": null
+        "15m": "15 Min.",
+        "1h": "1 Stunde",
+        "24h": "24 Stunden",
+        "all": "Alle"
       },
-      "empty": null,
-      "live": null,
-      "legend": null
+      "empty": "Keine Modellaktivität in diesem Zeitfenster. Lade ein Modell, um seine Timeline zu sehen.",
+      "live": "jetzt",
+      "legend": "Legende"
     },
     "list": {
-      "title": null,
-      "empty": null,
-      "select": null
+      "title": "Ereignisse",
+      "empty": "Keine passenden Ereignisse. Hier erscheinen Modell-Ladevorgänge, Antworten und Entladevorgänge.",
+      "select": "{kind} um {time} auswählen"
     },
     "detail": {
-      "request": null,
-      "modelRef": null,
-      "engine": null,
-      "cache": null,
-      "speculative": null,
-      "message": null,
-      "error": null,
-      "command": null,
-      "stderr": null,
-      "env": null
+      "request": "Anfrage",
+      "modelRef": "Modell-ID",
+      "engine": "Engine",
+      "cache": "Cache-Strategie",
+      "speculative": "Spekulative Decodierung",
+      "message": "Meldung",
+      "error": "Fehler",
+      "command": "Befehlszeile",
+      "stderr": "Letzte Engine-Ausgabe",
+      "env": "Umgebungsvariablen"
     },
-    "copyEvent": null,
-    "paused": null,
-    "live": null,
-    "offline": null,
+    "copyEvent": "Ereignis kopieren",
+    "paused": "{count, plural, =0 {Pausiert} one {Pausiert, # neues} other {Pausiert, # neue}}",
+    "live": "Live",
+    "offline": "Verbindung wird wiederhergestellt",
     "filter": {
-      "model": null,
-      "allModels": null,
-      "level": null,
-      "allLevels": null,
-      "request": null,
-      "search": null
+      "model": "Modell",
+      "allModels": "Alle Modelle",
+      "level": "Stufe",
+      "allLevels": "Alle Stufen",
+      "request": "Anfrage-ID",
+      "search": "Ereignisse durchsuchen"
     },
     "level": {
-      "info": null,
-      "warning": null,
-      "error": null
+      "info": "Info",
+      "warning": "Warnung",
+      "error": "Fehler"
     },
-    "pause": null,
-    "resume": null,
-    "latestFailure": null,
-    "selectAll": null,
-    "selectNone": null,
-    "copySelected": null,
-    "exportSelected": null,
+    "pause": "Pause",
+    "resume": "Fortsetzen",
+    "latestFailure": "Letzter Fehler",
+    "selectAll": "Angezeigte auswählen",
+    "selectNone": "Auswahl aufheben",
+    "copySelected": "Auswahl kopieren ({count})",
+    "exportSelected": "Auswahl exportieren ({count})",
     "lines": {
-      "title": null,
-      "filter": null,
-      "noMatch": null
+      "title": "Protokollzeilen",
+      "filter": "Protokollzeilen filtern",
+      "noMatch": "Keine Protokollzeilen entsprechen dem Filter."
     },
     "recent": {
-      "title": null,
-      "open": null,
-      "empty": null
+      "title": "Letzte Aktivität",
+      "open": "Aktivität öffnen",
+      "empty": "Noch nichts. Hier erscheinen Modell-Ladevorgänge, Antworten und Entladevorgänge."
     },
     "field": {
-      "seconds": null,
-      "totalSeconds": null,
-      "memoryBytes": null,
-      "contextTokens": null,
-      "warm": null,
-      "bytes": null,
-      "prefillSeconds": null,
-      "tokS": null,
-      "promptTokens": null,
-      "completionTokens": null,
-      "finishReason": null,
-      "streaming": null,
-      "reason": null,
-      "backend": null,
-      "speculativeDecoding": null,
-      "source": null
+      "seconds": "Sekunden",
+      "totalSeconds": "Sekunden gesamt",
+      "memoryBytes": "Speicher",
+      "contextTokens": "Kontext",
+      "warm": "Aus dem Warm-Pool",
+      "bytes": "Gewichte",
+      "prefillSeconds": "Prefill",
+      "tokS": "Tokens pro Sekunde",
+      "promptTokens": "Prompt-Tokens",
+      "completionTokens": "Completion-Tokens",
+      "finishReason": "Abschlussgrund",
+      "streaming": "Streaming",
+      "reason": "Grund",
+      "backend": "Backend",
+      "speculativeDecoding": "Spekulative Decodierung",
+      "source": "Quelle"
     }
   },
   "conversionTab": {
@@ -461,13 +461,13 @@
         "load": "In MLX laden",
         "quantize": "Quantisierung auf {bits}-Bit g{group}",
         "shard": "Aufteilen & Schreiben der safetensors",
-        "measuring": null
+        "measuring": "Qualität wird an einer kurzen Textprobe gemessen"
       },
       "detail": {
-        "files": null,
-        "written": null,
-        "writtenOfAbout": null,
-        "modelsScored": null
+        "files": "Quelle wird heruntergeladen: {done} von {total} Dateien",
+        "written": "{written} GB geschrieben",
+        "writtenOfAbout": "{written} GB geschrieben, etwa {expected} GB erwartet (Schätzung)",
+        "modelsScored": "{done} von {total} Modellen bewertet"
       }
     },
     "varies": "Variiert",
@@ -494,8 +494,8 @@
     "reQuantizingTitle": "Erneute Quantisierung einer bereits quantisierten Quelle",
     "backendNote": "Backend-Hinweis",
     "reQuantizingDetail": "Quelle ist bereits ~{bits}-Bit. Weiter herunterzugehen verstärkt den Qualitätsverlust — für beste Ergebnisse aus den originalen FP16/BF16-Gewichten konvertieren.",
-    "ggufSourceTitle": null,
-    "ggufSourceDetail": null,
+    "ggufSourceTitle": "Eine GGUF-Quelle wird erneut in voller Größe heruntergeladen",
+    "ggufSourceDetail": "Eine GGUF-Datei kann nicht direkt in MLX umgewandelt werden. Das in der Datei genannte Originalmodell wird von Hugging Face heruntergeladen und konvertiert; dafür brauchst du eine Netzwerkverbindung und Speicherplatz für die Gewichte in voller Größe. Der Download zeigt keinen Fortschritt; Abbrechen beendet ihn.",
     "mlxLmAvailable": "mlx-lm-Konvertierung ist im aktiven Backend verfügbar.",
     "startNativeSidecar": "Nativen Sidecar starten, um Konvertierung zu aktivieren.",
     "converting": "Wird konvertiert...",
@@ -530,7 +530,7 @@
     "diskBeforeAfter": "Festplatte vorher → nachher",
     "modal": {
       "titleConverting": "Modell wird konvertiert",
-      "cancel": null,
+      "cancel": "Konvertierung abbrechen",
       "titleFailed": "Konvertierung fehlgeschlagen",
       "titleComplete": "Konvertierung abgeschlossen",
       "debugDetails": "Debug-Details",
@@ -548,35 +548,35 @@
       "close": "Schließen",
       "ok": "OK"
     },
-    "measureQuality": null,
-    "measureQualityHint": null,
-    "qualityMeasured": null,
-    "qualityChange": null,
-    "qualityDetail": null,
-    "qualityAfterConverting": null,
-    "qualityNotMeasured": null,
-    "qualityOff": null,
-    "bitsPerWeight": null,
-    "bitsPerWeightValue": null,
-    "sizeOnDisk": null,
-    "pickSourceFirst": null
+    "measureQuality": "Qualität nach der Konvertierung messen",
+    "measureQualityHint": "Lädt das konvertierte Modell und die Quelle je einmal und vergleicht ihre Perplexität an einer kurzen WikiText-2-Probe. Wird übersprungen, wenn eines von beiden nicht in den freien Speicher passt.",
+    "qualityMeasured": "Qualität (gemessen)",
+    "qualityChange": "{change} % Perplexität gegenüber der Quelle",
+    "qualityDetail": "Perplexität an {samples} Proben aus {dataset}: Quelle {source}, konvertiert {converted}. Niedriger ist besser.",
+    "qualityAfterConverting": "Wird nach der Konvertierung gemessen",
+    "qualityNotMeasured": "Nicht gemessen",
+    "qualityOff": "Nicht gemessen (ausgeschaltet)",
+    "bitsPerWeight": "Bits pro Gewicht",
+    "bitsPerWeightValue": "{bits} (vom Konverter gemessen)",
+    "sizeOnDisk": "Größe auf der Festplatte",
+    "pickSourceFirst": "Wähle zuerst eine Quelle"
   },
   "benchmarkTab": {
     "progress": {
       "title": "Benchmark läuft",
       "phases": {
         "load": "Modell wird in den Speicher geladen",
-        "datasetPerplexity": null,
-        "datasetAccuracy": null,
-        "evaluatingPerplexity": null,
-        "evaluatingAccuracy": null,
-        "generating": null,
-        "saving": null
+        "datasetPerplexity": "Auswertungstext wird geladen",
+        "datasetAccuracy": "Fragen werden geladen",
+        "evaluatingPerplexity": "Textproben werden bewertet",
+        "evaluatingAccuracy": "Fragen werden beantwortet",
+        "generating": "Generiert bis zu {tokens} Tokens",
+        "saving": "Ergebnis wird gespeichert"
       },
       "detail": {
-        "samples": null,
-        "questions": null,
-        "generating": null
+        "samples": "{done} von {total} Proben",
+        "questions": "{done} von {total} Fragen, {correct} richtig",
+        "generating": "läuft; die Engine meldet die Token-Anzahl am Ende"
       }
     },
     "modelLabel": "Benchmark-Modell",
@@ -586,7 +586,7 @@
     "modeThroughput": "Durchsatz (tok/s)",
     "modePerplexity": "Perplexität (Qualität)",
     "modeTaskAccuracy": "Aufgabengenauigkeit (MMLU / HellaSwag)",
-    "evalNeedsMlx": null,
+    "evalNeedsMlx": "Perplexität und Aufgabengenauigkeit laufen nur mit MLX-Modellen. Wähle ein MLX-Modell oder stelle den Modus auf Durchsatz um.",
     "promptPreset": "Prompt-Preset",
     "dataset": "Datensatz",
     "samples": "Stichproben",
@@ -647,12 +647,12 @@
       "close": "Schließen",
       "ok": "OK",
       "cancel": "Benchmark abbrechen",
-      "titleCancelled": null,
-      "cancelling": null,
-      "cancelledNothingSaved": null,
-      "cancelledModelUnloaded": null,
-      "cancelledModelKept": null,
-      "cancelUnconfirmed": null
+      "titleCancelled": "Benchmark abgebrochen",
+      "cancelling": "Lauf wird gestoppt...",
+      "cancelledNothingSaved": "Der Lauf wurde gestoppt. Im Verlauf wurde nichts gespeichert.",
+      "cancelledModelUnloaded": "Das Modell wurde entladen.",
+      "cancelledModelKept": "Das Modell, das vor dem Lauf geladen war, bleibt geladen.",
+      "cancelUnconfirmed": "Die App hat aufgehört zu warten, konnte das Backend aber nicht erreichen, um den Lauf zu stoppen. Er läuft möglicherweise noch: Prüfe die Server-Seite."
     },
     "promptPresets": {
       "balanced": "Ausgewogene Zusammenfassung",
@@ -660,12 +660,12 @@
       "coding": "Coding-Antwort"
     },
     "scoring": {
-      "nextToken": null,
-      "generated": null,
-      "note": null
+      "nextToken": "Auswahl über das nächste Token",
+      "generated": "generierter Text (ältere Methode)",
+      "note": "Als Antwort gilt der Antwortbuchstabe, den das Modell als nächstes Token am höchsten bewertet. Vor dieser Änderung gespeicherte Läufe haben die Antwort als Text generiert; ihre Genauigkeit ist mit neuen Läufen nicht vergleichbar."
     },
-    "statTokens": null,
-    "ofMaxTokens": null
+    "statTokens": "Generierte Tokens",
+    "ofMaxTokens": "von {max} erlaubten"
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, one {# Lauf} other {# Läufe}}{filterSuffix}",
@@ -677,8 +677,8 @@
       "both": "Beide"
     },
     "swap": "Tauschen",
-    "copyCsv": null,
-    "csvCopied": null,
+    "copyCsv": "CSV kopieren",
+    "csvCopied": "Kopiert",
     "summary": {
       "totalRuns": "Läufe gesamt",
       "persistentHistory": "Persistenter Verlauf",
@@ -688,8 +688,8 @@
       "fastest": "Schnellster",
       "leanestCache": "Schlankster Cache",
       "bestValue": "Bester Wert",
-      "lowestPerplexity": null,
-      "noPerplexityRuns": null
+      "lowestPerplexity": "Niedrigste Perplexität",
+      "noPerplexityRuns": "Keine Perplexitäts-Läufe"
     },
     "metric": {
       "perplexity": "Perplexität",
@@ -703,7 +703,7 @@
       "compression": "Kompression",
       "context": "Kontext",
       "strategy": "Strategie",
-      "scoring": null
+      "scoring": "Bewertung"
     },
     "table": {
       "metric": "Metrik",
@@ -714,8 +714,8 @@
     "compareAgainst": "Vergleichen mit:",
     "pickBaseline": "Baseline-Lauf wählen...",
     "runAnother": "Weiteren Benchmark ausführen, um Vergleich zu aktivieren.",
-    "deleteRun": null,
-    "deleteRunConfirm": null,
+    "deleteRun": "Lauf löschen",
+    "deleteRunConfirm": "Den gespeicherten Lauf „{label}“ löschen? Das kann nicht rückgängig gemacht werden.",
     "properties": {
       "heading": "Lauf-Eigenschaften",
       "model": "Modell",
@@ -740,7 +740,7 @@
       "bits": "Bits",
       "context": "Kontext",
       "pplValue": "{value} ppl",
-      "load": null
+      "load": "Laden"
     },
     "modeLabel": {
       "ppl": "PPL",
@@ -768,7 +768,7 @@
       "save": "Speichern",
       "cancel": "Abbrechen"
     },
-    "presetModelTitle": null,
+    "presetModelTitle": "Mit der Vorlage gespeichert. Der Chat wendet es noch nicht an.",
     "presetLabel": "Preset: {ref}",
     "hasPlaceholders": "Vorlage hat Variablen-Platzhalter",
     "variableCount": "{count, plural, one {# Variable} other {# Variablen}}",
@@ -781,16 +781,16 @@
     "resolvedPreview": "Aufgelöste Prompt-Vorschau",
     "applyToChat": "Auf Chat anwenden",
     "selectOrCreate": "Vorlage aus der Liste auswählen oder neue erstellen.",
-    "nameRequired": null,
-    "saveFailed": null,
-    "loadFailed": null,
-    "empty": null,
-    "noMatches": null,
-    "deleteConfirm": null,
-    "variablesInvalid": null,
-    "samplersInvalid": null,
-    "inUseNote": null,
-    "stopUsing": null
+    "nameRequired": "Gib der Vorlage vor dem Speichern einen Namen.",
+    "saveFailed": "Die Vorlage wurde nicht gespeichert. Prüfe die Felder und versuche es erneut.",
+    "loadFailed": "Die Vorlagen konnten nicht geladen werden. Prüfe, ob das Backend läuft.",
+    "empty": "Noch keine Vorlagen. Mit Neu erstellst du eine.",
+    "noMatches": "Keine Vorlage passt zur Suche.",
+    "deleteConfirm": "Die Vorlage „{name}“ löschen? Das kann nicht rückgängig gemacht werden.",
+    "variablesInvalid": "Variablen müssen ein JSON-Array sein (eine Liste in eckigen Klammern). Es wurde nichts gespeichert.",
+    "samplersInvalid": "Preset-Sampler müssen ein JSON-Objekt sein (Namen und Werte in geschweiften Klammern). Es wurde nichts gespeichert.",
+    "inUseNote": "Der Chat verwendet diesen System-Prompt in jedem Thread, bis du ihn beendest oder die App neu startest:",
+    "stopUsing": "Nicht mehr verwenden"
   },
   "fineTuning": {
     "loadingAdapters": "Adapter werden geladen...",
@@ -807,10 +807,10 @@
     "step3Title": "3. Trainieren",
     "step3Body": "Loss und Fortschritt in Echtzeit überwachen",
     "startButton": "Fine-Tuning starten",
-    "notAvailable": null,
-    "notAvailableBody": null,
-    "offline": null,
-    "loadError": null
+    "notAvailable": "In dieser Version nicht verfügbar",
+    "notAvailableBody": "Das Training ist noch nicht gebaut: Diese Seite listet nur die Adapter auf, die sie auf der Festplatte findet, und ein Adapter lässt sich noch nicht auf ein Modell anwenden. Die Schritte oben zeigen, was geplant ist.",
+    "offline": "Das Backend ist offline. Die Adapter werden aufgelistet, sobald es wieder da ist.",
+    "loadError": "Die Adapterliste konnte nicht geladen werden: {message}"
   },
   "pluginsTab": {
     "discovering": "Plugins werden gesucht...",
@@ -865,7 +865,7 @@
     "legend3Bit": "3-Bit",
     "legend4Bit": "4-Bit",
     "legendNativeF16": "Nativ f16",
-    "pointTooltipMeasured": null
+    "pointTooltipMeasured": "{label}\n{tokS} tok/s · {cacheGb} GB"
   },
   "logprobSummary": {
     "title": "Token-Konfidenz",
@@ -1050,8 +1050,8 @@
       "uiScaleHelp": "Die UI-Skalierung ändert die Dichte der App-Chrome sofort. Medien-Vorschauen behalten ihre eigene Seitenverhältnis-Anpassung.",
       "keepGroupsOpen": "Alle Seitenleistengruppen geöffnet lassen",
       "keepGroupsOpenHelp": "Standardmäßig aus: Nur die Gruppe, in der du arbeitest, bleibt offen. Einschalten, um jede Gruppe aufgeklappt zu lassen.",
-      "showExperimentalTabs": null,
-      "showExperimentalTabsHelp": null
+      "showExperimentalTabs": "Experimentelle Tabs anzeigen",
+      "showExperimentalTabsHelp": "Standardmäßig aus. Listet Seiten, die noch nicht fertig sind, in der Seitenleiste auf. Die Seiten und Routen bleiben in beiden Fällen erhalten."
     },
     "dataDirectory": {
       "title": "Datenverzeichnis",
@@ -1497,9 +1497,9 @@
     "moveModels": "Vorhandene Modelle an den neuen Pfad verschieben",
     "filesProgress": "{copied} / {total} Dateien",
     "restartBackend": "Backend neu starten",
-    "lmstudioDir": null,
-    "lmstudioHint": null,
-    "saveLmstudioDir": null
+    "lmstudioDir": "LM-Studio-Modellordner",
+    "lmstudioHint": "Wird von „Mit LM Studio teilen“ verwendet, das ein GGUF hier unter <publisher>/<model>/ verlinkt, ohne es zu kopieren. Lege ihn auf dasselbe Laufwerk wie deine Modelle.",
+    "saveLmstudioDir": "Ordner speichern"
   },
   "videoPlaceholderTab": {
     "engines": {
@@ -1606,6 +1606,6 @@
     }
   },
   "secretMask": {
-    "note": null
+    "note": "Der Schlüssel ist auf dem Bildschirm verborgen. Kopieren kopiert immer den echten Schlüssel."
   }
 }

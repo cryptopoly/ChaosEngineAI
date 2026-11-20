@@ -225,7 +225,7 @@
     "pluginSystem": "Система плагинов",
     "pluginsRegistered": "{count, plural, one {Зарегистрирован # плагин} few {Зарегистрировано # плагина} many {Зарегистрировано # плагинов} other {Зарегистрировано # плагина}}",
     "externalPlugins": "Внешние плагины",
-    "installFromDirectory": null,
+    "installFromDirectory": "Недоступно в этой версии",
     "noModelsMatchFilters": "Ни одна модель не соответствует текущим фильтрам",
     "savedOutputs": "Сохранённые выводы",
     "installedImageModels": "Установленные модели изображений",
@@ -326,131 +326,131 @@
   },
   "serverActivity": {
     "views": {
-      "label": null,
-      "overview": null,
-      "activity": null
+      "label": "Представления сервера",
+      "overview": "Обзор",
+      "activity": "Активность"
     },
     "summary": {
-      "requested": null,
-      "resolving": null,
-      "loading": null,
-      "loaded": null,
-      "loadedWarm": null,
-      "parked": null,
-      "firstToken": null,
-      "generation": null,
-      "idle": null,
-      "unloaded": null
+      "requested": "Запрошена загрузка ({backend})",
+      "resolving": "Выбор движка",
+      "loading": "Загрузка на {engine} ({size})",
+      "loaded": "Загружено за {seconds}, в памяти {memory}",
+      "loadedWarm": "Переключено на тёплую копию",
+      "parked": "Держится в тёплом состоянии для быстрого возврата",
+      "firstToken": "Первый токен через {seconds}",
+      "generation": "{tokens} токенов со скоростью {rate} tok/s за {seconds}",
+      "idle": "Простой",
+      "unloaded": "Выгружено ({reason})"
     },
     "reason": {
-      "user": null,
-      "swap": null,
-      "memory": null,
-      "idle": null,
-      "error": null
+      "user": "вами",
+      "swap": "другой моделью",
+      "memory": "для освобождения памяти",
+      "idle": "из-за простоя",
+      "error": "из-за ошибки"
     },
     "kind": {
-      "requested": null,
-      "resolving": null,
-      "loading": null,
-      "loaded": null,
-      "load_failed": null,
-      "parked": null,
-      "first_token": null,
-      "generation": null,
-      "generation_failed": null,
-      "idle": null,
-      "unloaded": null
+      "requested": "Запрошено",
+      "resolving": "Выбор",
+      "loading": "Загрузка",
+      "loaded": "Загружено",
+      "load_failed": "Сбой загрузки",
+      "parked": "Держится тёплой",
+      "first_token": "Первый токен",
+      "generation": "Генерация",
+      "generation_failed": "Сбой генерации",
+      "idle": "Простой",
+      "unloaded": "Выгружено"
     },
     "phase": {
-      "loading": null,
-      "ready": null,
-      "generating": null,
-      "idle": null,
-      "warm": null,
-      "failed": null
+      "loading": "Загрузка",
+      "ready": "Готово",
+      "generating": "Генерация",
+      "idle": "Простой",
+      "warm": "Тёплая",
+      "failed": "Сбой"
     },
     "timeline": {
-      "title": null,
-      "window": null,
+      "title": "Хронология модели",
+      "window": "Интервал времени",
       "windows": {
-        "15m": null,
-        "1h": null,
-        "24h": null,
-        "all": null
+        "15m": "15 мин",
+        "1h": "1 час",
+        "24h": "24 часа",
+        "all": "Всё"
       },
-      "empty": null,
-      "live": null,
-      "legend": null
+      "empty": "В этом интервале нет активности моделей. Загрузите модель, чтобы увидеть её хронологию.",
+      "live": "сейчас",
+      "legend": "Легенда"
     },
     "list": {
-      "title": null,
-      "empty": null,
-      "select": null
+      "title": "События",
+      "empty": "Подходящих событий нет. Здесь появятся загрузки моделей, ответы и выгрузки.",
+      "select": "Выбрать: {kind}, {time}"
     },
     "detail": {
-      "request": null,
-      "modelRef": null,
-      "engine": null,
-      "cache": null,
-      "speculative": null,
-      "message": null,
-      "error": null,
-      "command": null,
-      "stderr": null,
-      "env": null
+      "request": "Запрос",
+      "modelRef": "ID модели",
+      "engine": "Движок",
+      "cache": "Стратегия кэша",
+      "speculative": "Спекулятивное декодирование",
+      "message": "Сообщение",
+      "error": "Ошибка",
+      "command": "Командная строка",
+      "stderr": "Последний вывод движка",
+      "env": "Переменные среды"
     },
-    "copyEvent": null,
-    "paused": null,
-    "live": null,
-    "offline": null,
+    "copyEvent": "Копировать событие",
+    "paused": "{count, plural, =0 {Приостановлено} one {Приостановлено, # новое} few {Приостановлено, # новых} many {Приостановлено, # новых} other {Приостановлено, # новых}}",
+    "live": "В реальном времени",
+    "offline": "Переподключение",
     "filter": {
-      "model": null,
-      "allModels": null,
-      "level": null,
-      "allLevels": null,
-      "request": null,
-      "search": null
+      "model": "Модель",
+      "allModels": "Все модели",
+      "level": "Уровень",
+      "allLevels": "Все уровни",
+      "request": "ID запроса",
+      "search": "Поиск событий"
     },
     "level": {
-      "info": null,
-      "warning": null,
-      "error": null
+      "info": "Инфо",
+      "warning": "Предупреждение",
+      "error": "Ошибка"
     },
-    "pause": null,
-    "resume": null,
-    "latestFailure": null,
-    "selectAll": null,
-    "selectNone": null,
-    "copySelected": null,
-    "exportSelected": null,
+    "pause": "Пауза",
+    "resume": "Возобновить",
+    "latestFailure": "Последний сбой",
+    "selectAll": "Выбрать показанные",
+    "selectNone": "Снять выделение",
+    "copySelected": "Копировать выбранные ({count})",
+    "exportSelected": "Экспортировать выбранные ({count})",
     "lines": {
-      "title": null,
-      "filter": null,
-      "noMatch": null
+      "title": "Строки журнала",
+      "filter": "Фильтр строк журнала",
+      "noMatch": "Нет строк журнала, подходящих под фильтр."
     },
     "recent": {
-      "title": null,
-      "open": null,
-      "empty": null
+      "title": "Недавняя активность",
+      "open": "Открыть «Активность»",
+      "empty": "Пока ничего нет. Здесь появятся загрузки моделей, ответы и выгрузки."
     },
     "field": {
-      "seconds": null,
-      "totalSeconds": null,
-      "memoryBytes": null,
-      "contextTokens": null,
-      "warm": null,
-      "bytes": null,
-      "prefillSeconds": null,
-      "tokS": null,
-      "promptTokens": null,
-      "completionTokens": null,
-      "finishReason": null,
-      "streaming": null,
-      "reason": null,
-      "backend": null,
-      "speculativeDecoding": null,
-      "source": null
+      "seconds": "Секунды",
+      "totalSeconds": "Всего секунд",
+      "memoryBytes": "Память",
+      "contextTokens": "Контекст",
+      "warm": "Из тёплого пула",
+      "bytes": "Веса",
+      "prefillSeconds": "Префилл",
+      "tokS": "Токенов в секунду",
+      "promptTokens": "Токены запроса",
+      "completionTokens": "Токены ответа",
+      "finishReason": "Причина завершения",
+      "streaming": "Потоковая передача",
+      "reason": "Причина",
+      "backend": "Бэкенд",
+      "speculativeDecoding": "Спекулятивное декодирование",
+      "source": "Источник"
     }
   },
   "conversionTab": {
@@ -461,13 +461,13 @@
         "load": "Загрузка в MLX",
         "quantize": "Квантизация в {bits} бит g{group}",
         "shard": "Шардирование и запись safetensors",
-        "measuring": null
+        "measuring": "Измерение качества на коротком текстовом образце"
       },
       "detail": {
-        "files": null,
-        "written": null,
-        "writtenOfAbout": null,
-        "modelsScored": null
+        "files": "загрузка исходной модели: {done} из {total} файлов",
+        "written": "записано {written} ГБ",
+        "writtenOfAbout": "записано {written} ГБ, ожидается около {expected} ГБ (оценка)",
+        "modelsScored": "оценено моделей: {done} из {total}"
       }
     },
     "varies": "Варьируется",
@@ -494,8 +494,8 @@
     "reQuantizingTitle": "Повторная квантизация уже квантизованного источника",
     "backendNote": "Примечание по бэкенду",
     "reQuantizingDetail": "Источник уже ~{bits}-битный. Понижение усиливает потерю качества — для лучшего результата конвертируйте из исходных весов FP16/BF16.",
-    "ggufSourceTitle": null,
-    "ggufSourceDetail": null,
+    "ggufSourceTitle": "Источник GGUF загружается заново в полном размере",
+    "ggufSourceDetail": "Файл GGUF нельзя напрямую преобразовать в MLX. Исходная модель, указанная в файле, загружается с Hugging Face и конвертируется, поэтому нужны подключение к сети и место на диске для весов полного размера. Загрузка не показывает прогресс; кнопка «Отмена» останавливает её.",
     "mlxLmAvailable": "Конвертация mlx-lm доступна в активном бэкенде.",
     "startNativeSidecar": "Запустите нативный сайдкар для включения конвертации.",
     "converting": "Конвертация...",
@@ -530,7 +530,7 @@
     "diskBeforeAfter": "Диск до → после",
     "modal": {
       "titleConverting": "Конвертация модели",
-      "cancel": null,
+      "cancel": "Отменить конвертацию",
       "titleFailed": "Конвертация не удалась",
       "titleComplete": "Конвертация завершена",
       "debugDetails": "Отладочная информация",
@@ -548,35 +548,35 @@
       "close": "Закрыть",
       "ok": "OK"
     },
-    "measureQuality": null,
-    "measureQualityHint": null,
-    "qualityMeasured": null,
-    "qualityChange": null,
-    "qualityDetail": null,
-    "qualityAfterConverting": null,
-    "qualityNotMeasured": null,
-    "qualityOff": null,
-    "bitsPerWeight": null,
-    "bitsPerWeightValue": null,
-    "sizeOnDisk": null,
-    "pickSourceFirst": null
+    "measureQuality": "Измерить качество после конвертации",
+    "measureQualityHint": "Загружает преобразованную и исходную модели по одному разу и сравнивает их перплексию на коротком образце WikiText-2. Пропускается, если одна из них не помещается в свободную память.",
+    "qualityMeasured": "Качество (измерено)",
+    "qualityChange": "{change}% перплексии относительно источника",
+    "qualityDetail": "Перплексия на {samples} образцах из {dataset}: источник {source}, после конвертации {converted}. Чем меньше, тем лучше.",
+    "qualityAfterConverting": "Измеряется после конвертации",
+    "qualityNotMeasured": "Не измерено",
+    "qualityOff": "Не измерено (отключено)",
+    "bitsPerWeight": "Бит на вес",
+    "bitsPerWeightValue": "{bits} (измерено конвертером)",
+    "sizeOnDisk": "Размер на диске",
+    "pickSourceFirst": "Сначала выберите источник"
   },
   "benchmarkTab": {
     "progress": {
       "title": "Запуск бенчмарка",
       "phases": {
         "load": "Загрузка модели в память",
-        "datasetPerplexity": null,
-        "datasetAccuracy": null,
-        "evaluatingPerplexity": null,
-        "evaluatingAccuracy": null,
-        "generating": null,
-        "saving": null
+        "datasetPerplexity": "Загрузка текста для оценки",
+        "datasetAccuracy": "Загрузка вопросов",
+        "evaluatingPerplexity": "Оценка текстовых образцов",
+        "evaluatingAccuracy": "Ответы на вопросы",
+        "generating": "Генерация до {tokens} токенов",
+        "saving": "Сохранение результата"
       },
       "detail": {
-        "samples": null,
-        "questions": null,
-        "generating": null
+        "samples": "образцов: {done} из {total}",
+        "questions": "вопросов: {done} из {total}, верных: {correct}",
+        "generating": "выполняется; движок сообщит число токенов по завершении"
       }
     },
     "modelLabel": "Модель для бенчмарка",
@@ -586,7 +586,7 @@
     "modeThroughput": "Пропускная способность (tok/s)",
     "modePerplexity": "Перплексия (качество)",
     "modeTaskAccuracy": "Точность задачи (MMLU / HellaSwag)",
-    "evalNeedsMlx": null,
+    "evalNeedsMlx": "Перплексия и точность на задачах работают только с моделями MLX. Выберите модель MLX или переключите режим на «Пропускная способность».",
     "promptPreset": "Пресет промпта",
     "dataset": "Датасет",
     "samples": "Сэмплы",
@@ -647,12 +647,12 @@
       "close": "Закрыть",
       "ok": "OK",
       "cancel": "Отменить бенчмарк",
-      "titleCancelled": null,
-      "cancelling": null,
-      "cancelledNothingSaved": null,
-      "cancelledModelUnloaded": null,
-      "cancelledModelKept": null,
-      "cancelUnconfirmed": null
+      "titleCancelled": "Бенчмарк отменён",
+      "cancelling": "Остановка запуска...",
+      "cancelledNothingSaved": "Запуск остановлен. В историю ничего не сохранено.",
+      "cancelledModelUnloaded": "Модель выгружена.",
+      "cancelledModelKept": "Модель, загруженная до запуска, остаётся загруженной.",
+      "cancelUnconfirmed": "Приложение перестало ждать, но не смогло связаться с бэкендом, чтобы остановить запуск. Возможно, он всё ещё идёт: проверьте страницу «Сервер»."
     },
     "promptPresets": {
       "balanced": "Сбалансированное резюме",
@@ -660,12 +660,12 @@
       "coding": "Ответ по программированию"
     },
     "scoring": {
-      "nextToken": null,
-      "generated": null,
-      "note": null
+      "nextToken": "выбор по следующему токену",
+      "generated": "сгенерированный текст (прежний метод)",
+      "note": "Ответом считается буква варианта, которой модель даёт наивысшую оценку как следующему токену. В запусках, сохранённых до этого изменения, ответ генерировался как текст; их точность несопоставима с новыми запусками."
     },
-    "statTokens": null,
-    "ofMaxTokens": null
+    "statTokens": "Сгенерировано токенов",
+    "ofMaxTokens": "из {max} допустимых"
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, one {# запуск} few {# запуска} many {# запусков} other {# запуска}}{filterSuffix}",
@@ -677,8 +677,8 @@
       "both": "Оба"
     },
     "swap": "Поменять",
-    "copyCsv": null,
-    "csvCopied": null,
+    "copyCsv": "Копировать CSV",
+    "csvCopied": "Скопировано",
     "summary": {
       "totalRuns": "Всего запусков",
       "persistentHistory": "Постоянная история",
@@ -688,8 +688,8 @@
       "fastest": "Самый быстрый",
       "leanestCache": "Самый компактный кэш",
       "bestValue": "Лучшее соотношение",
-      "lowestPerplexity": null,
-      "noPerplexityRuns": null
+      "lowestPerplexity": "Наименьшая перплексия",
+      "noPerplexityRuns": "Нет запусков с перплексией"
     },
     "metric": {
       "perplexity": "Перплексия",
@@ -703,7 +703,7 @@
       "compression": "Сжатие",
       "context": "Контекст",
       "strategy": "Стратегия",
-      "scoring": null
+      "scoring": "Оценивание"
     },
     "table": {
       "metric": "Метрика",
@@ -714,8 +714,8 @@
     "compareAgainst": "Сравнить с:",
     "pickBaseline": "Выберите базовый запуск...",
     "runAnother": "Запустите ещё один бенчмарк, чтобы включить сравнение.",
-    "deleteRun": null,
-    "deleteRunConfirm": null,
+    "deleteRun": "Удалить запуск",
+    "deleteRunConfirm": "Удалить сохранённый запуск «{label}»? Это действие нельзя отменить.",
     "properties": {
       "heading": "Параметры запуска",
       "model": "Модель",
@@ -740,7 +740,7 @@
       "bits": "Биты",
       "context": "Контекст",
       "pplValue": "{value} ppl",
-      "load": null
+      "load": "Загрузить"
     },
     "modeLabel": {
       "ppl": "PPL",
@@ -768,7 +768,7 @@
       "save": "Сохранить",
       "cancel": "Отмена"
     },
-    "presetModelTitle": null,
+    "presetModelTitle": "Сохраняется вместе с шаблоном. Чат пока его не применяет.",
     "presetLabel": "пресет: {ref}",
     "hasPlaceholders": "В шаблоне есть плейсхолдеры переменных",
     "variableCount": "{count, plural, one {# переменная} few {# переменные} many {# переменных} other {# переменные}}",
@@ -781,16 +781,16 @@
     "resolvedPreview": "Предпросмотр готового промпта",
     "applyToChat": "Применить к чату",
     "selectOrCreate": "Выберите шаблон из списка или создайте новый.",
-    "nameRequired": null,
-    "saveFailed": null,
-    "loadFailed": null,
-    "empty": null,
-    "noMatches": null,
-    "deleteConfirm": null,
-    "variablesInvalid": null,
-    "samplersInvalid": null,
-    "inUseNote": null,
-    "stopUsing": null
+    "nameRequired": "Задайте шаблону имя перед сохранением.",
+    "saveFailed": "Шаблон не сохранён. Проверьте поля и повторите попытку.",
+    "loadFailed": "Не удалось загрузить шаблоны. Проверьте, что бэкенд запущен.",
+    "empty": "Шаблонов пока нет. Нажмите «Создать», чтобы добавить.",
+    "noMatches": "Нет шаблонов, подходящих под поиск.",
+    "deleteConfirm": "Удалить шаблон «{name}»? Это действие нельзя отменить.",
+    "variablesInvalid": "Переменные должны быть массивом JSON (список в квадратных скобках). Ничего не сохранено.",
+    "samplersInvalid": "Сэмплеры пресета должны быть объектом JSON (имена и значения в фигурных скобках). Ничего не сохранено.",
+    "inUseNote": "Чат использует этот системный промпт во всех ветках, пока вы не остановите его или не перезапустите приложение:",
+    "stopUsing": "Прекратить использование"
   },
   "fineTuning": {
     "loadingAdapters": "Загрузка адаптеров...",
@@ -807,10 +807,10 @@
     "step3Title": "3. Обучение",
     "step3Body": "Следите за loss и прогрессом в реальном времени",
     "startButton": "Начать дообучение",
-    "notAvailable": null,
-    "notAvailableBody": null,
-    "offline": null,
-    "loadError": null
+    "notAvailable": "Недоступно в этой версии",
+    "notAvailableBody": "Обучение ещё не реализовано: эта страница лишь перечисляет найденные на диске адаптеры, а применить адаптер к модели пока нельзя. Шаги выше показывают, что запланировано.",
+    "offline": "Бэкенд не в сети. Адаптеры появятся в списке, когда он вернётся.",
+    "loadError": "Не удалось загрузить список адаптеров: {message}"
   },
   "pluginsTab": {
     "discovering": "Поиск плагинов...",
@@ -865,7 +865,7 @@
     "legend3Bit": "3-бит",
     "legend4Bit": "4-бит",
     "legendNativeF16": "Нативный f16",
-    "pointTooltipMeasured": null
+    "pointTooltipMeasured": "{label}\n{tokS} tok/s · {cacheGb} ГБ"
   },
   "logprobSummary": {
     "title": "Уверенность по токенам",
@@ -1050,8 +1050,8 @@
       "uiScaleHelp": "Масштаб интерфейса немедленно меняет плотность хрома приложения. Превью медиа сохраняют свои размеры по соотношению сторон.",
       "keepGroupsOpen": "Держать все группы боковой панели раскрытыми",
       "keepGroupsOpenHelp": "По умолчанию выключено: открытой остаётся только группа, в которой вы работаете. Включите, чтобы все группы были раскрыты.",
-      "showExperimentalTabs": null,
-      "showExperimentalTabsHelp": null
+      "showExperimentalTabs": "Показывать экспериментальные вкладки",
+      "showExperimentalTabsHelp": "По умолчанию выключено. Показывает в боковой панели страницы, которые ещё не готовы. Сами страницы и маршруты остаются в любом случае."
     },
     "dataDirectory": {
       "title": "Каталог данных",
@@ -1497,9 +1497,9 @@
     "moveModels": "Переместить существующие модели в новый путь",
     "filesProgress": "{copied} / {total} файлов",
     "restartBackend": "Перезапустить бэкенд",
-    "lmstudioDir": null,
-    "lmstudioHint": null,
-    "saveLmstudioDir": null
+    "lmstudioDir": "Папка моделей LM Studio",
+    "lmstudioHint": "Используется функцией «Поделиться с LM Studio», которая связывает файл GGUF с папкой <publisher>/<model>/ здесь без копирования. Держите её на том же диске, что и ваши модели.",
+    "saveLmstudioDir": "Сохранить папку"
   },
   "videoPlaceholderTab": {
     "engines": {
@@ -1606,6 +1606,6 @@
     }
   },
   "secretMask": {
-    "note": null
+    "note": "Ключ скрыт на экране. Копирование всегда копирует настоящий ключ."
   }
 }

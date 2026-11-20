@@ -782,9 +782,9 @@
         "status": "状态"
       },
       "share": {
-        "action": null,
-        "done": null,
-        "already": null
+        "action": "与 LM Studio 共享",
+        "done": "已作为 {where} 与 LM Studio 共享。未占用额外磁盘空间。",
+        "already": "已与 LM Studio 共享（{where}）。"
       }
     }
   }

@@ -1,7 +1,7 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 247 rows with work, decisions or watch items still open, newest first.
+summary: 254 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
@@ -492,6 +492,69 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** When the Windows code is ready (owner asked 2026-11-20), before the `release/v0.10.0` merge
 
 **Notes:** From the sd.cpp Windows build work (FU-300 to FU-302, FU-301): only the staging block was run against a scratch folder; the Nunchaku ready path was untouched but not re-run. Do these with the full E2E, pytest and Playwright runs, then the hands-on checks (D-99).
+
+</details>
+
+<details>
+<summary>FU-386 · InfiniteTalk on Windows: runs after 8 fixes, about 5 h per 5 s clip — Only if a faster path appears (Linux box, flash-attn + Marlin, or a distillation LoRA on the fp8 path)</summary>
+
+**Status or trigger:** Only if a faster path appears (Linux box, flash-attn + Marlin, or a distillation LoRA on the fp8 path)
+
+**Notes:** Commit `50aa0a9`, own venv (torch 2.11, transformers < 5), fp8 single-person weights 31.9 GB (no Wan diffusion shards needed). Fixes: xformers and xfuser stubs, SDPA instead of flash-attn, `inspect.ArgSpec`, optional Kokoro import, `optimum-quanto` `requantize` 4-byte placeholders (56 GB, crash) patched, Marlin JIT disabled, wav2vec2 eager. About 4 min per step per 81-frame 480p chunk, 19.5-20.7 GB VRAM. No sung clip made, so no sync score. Details in `docs/research/lip-sync-singing-experiments-2026-11.md`.
+
+</details>
+
+<details>
+<summary>FU-385 · LipDub (Dub-It) IC-LoRA re-sync pass: gated, not tested — When the owner accepts the gate on Hugging Face</summary>
+
+**Status or trigger:** When the owner accepts the gate on Hugging Face
+
+**Notes:** `Lightricks/LTX-2.3-22b-IC-LoRA-LipDub` holds one file, `ltx-2.3-22b-ic-lora-dubit-0.9.safetensors` (2.47 GB, LTX-2 Community licence); the saved token gets HTTP 403 (gate `auto`, the click-through also asks for marketing consent, so it is the owner's call). Code is ready: `ltx_pipelines.dubit` is in the route (a) spike venv (`E:\tmp\lipsync\venv-ltx`, ltx-pipelines 1.6.2). Test: a take from the recommended recipe as reference, the stem window as audio, scored with `lip_sync_score`; expect about 4-5 min per 5 s shot (same 22B fp8 streamed offload as route a).
+
+</details>
+
+<details>
+<summary>FU-384 · LTX-2.5 is worse at singing with the A2V loop — If LTX-2.5 lip sync is wanted</summary>
+
+**Status or trigger:** If LTX-2.5 lip sync is wanted
+
+**Notes:** Same loop on the app's 4-bit-on-load LTX-2.5: score 0.36 vs 0.44, beats chance 1 / 6 vs 5 / 6, mouth open in the gaps (0.82). Keep lip sync on LTX-2.3. Untried: 2.5's non-distilled path and a lower STG.
+
+</details>
+
+<details>
+<summary>FU-383 · Mouth-shape (SyncNet-style) score and a pitch check — When takes are ranked in the app</summary>
+
+**Status or trigger:** When takes are ranked in the app
+
+**Notes:** The FU-334 score checks opening vs vocal energy and yaw only: it misses wrong mouth shapes, looking down, hands over the face and grins. LatentSync's SyncNet (Apache-2.0) and the landmarker's pitch would cover most.
+
+</details>
+
+<details>
+<summary>FU-382 · Mouth open through silent tails and gaps — Next lip-sync quality pass</summary>
+
+**Status or trigger:** Next lip-sync quality pass
+
+**Notes:** Even good sung takes keep the mouth open in rests (open while silent 0.6-0.8; worse with the explicit prompt and 8 s shots). Ideas to test: end the shot 0.2 s after the phrase, a negative prompt on a CFG pass, or masking the tail frames from a second take.
+
+</details>
+
+<details>
+<summary>FU-381 · Three takes per sung shot, kept by lip_sync_score.pick_best — With FU-380</summary>
+
+**Status or trigger:** With FU-380
+
+**Notes:** Usable take rate 0.72 with one take, 0.87 / 0.93 / 0.98 with 2 / 3 / 4 (hardest line 0.33 -> 0.93). Needs `mediapipe` (Apache-2.0) and the `face_landmarker.task` model (Apache-2.0) in the GPU runtime, licence notice, about 7.5 s CPU per 5 s take; show the other takes one click away; speech keeps 1 take.
+
+</details>
+
+<details>
+<summary>FU-380 · Sung-shot recipe defaults from the singing experiments — With FU-330 / FU-371</summary>
+
+**Status or trigger:** With FU-330 / FU-371
+
+**Notes:** Measured (`docs/research/lip-sync-singing-experiments-2026-11.md`): vocal stem as the audio (mix 0.37 vs stem 0.44), shot cut at a phrase with a 0.4 s lead-in and 3-5 s long (mid-phrase start 0.37, 8 s 0.45), close-up still, the explicit singing wording on (the `lipSyncSinging` switch exists, off by default; turn it on for sung shots), denoise defaults unchanged. Supersedes the open questions in FU-331.
 
 </details>
 

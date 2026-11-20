@@ -13,12 +13,14 @@ a 100-4000 Hz band-pass. Numbers reported (FU-334, measured in ``docs/research/l
   silent, so even good speech scores 0.3-0.5 here).
 - ``balanced``: mean of the two complements, 0.5 for a mouth that ignores the audio, 1.0 for perfect agreement.
 - ``turned_away``: share of frames with the head turned away (or no face found).
-- ``score``: ``(0.5 * balanced + 0.5 * max(0, r) * motion) * (1 - 0.5 * turned_away)``, the one number used to rank takes of the same shot, where
-  ``motion`` (0 to 1) scales r down for a mouth that hardly opens (its jitter can still correlate with the audio).
+- ``score``: ``(0.5 * balanced + 0.5 * max(0, r) * motion) * (1 - turned_away)``, the one number used to rank takes
+  of the same shot, where ``motion`` (0 to 1) scales r down for a mouth that hardly opens (its jitter can still
+  correlate with the audio), and a take in profile for half the shot loses half its score (it hides the mouth).
   It is a ranking aid, not a quality grade: compare it between takes of one shot, not across different songs.
 - ``usable``: r beats chance, ``closed_while_voiced`` <= 0.3 and ``turned_away`` <= 0.3. ``pick_best`` ranks takes
-  usable first, then by ``score``: on the sung test set the score alone picked an unusable take more often as N grew
-  (a profile take with a high r), the gate fixed it (best-of-4 usable 0.98 vs 0.78).
+  usable first, then by ``score``. With the old half-weight turn penalty the score alone picked a profile take more
+  often as N grew (best-of-4 usable 0.78); the gate fixed it (0.98). With the full turn penalty both pick alike on
+  the sung test set; the gate stays as a guard.
 
 The maths (``score_series``) is plain numpy and scipy. Reading a video needs ``cv2`` and ``mediapipe``, which the app's
 venv does not carry; they are imported only in ``mouth_series`` (the experiments ran them from a tools venv).
@@ -177,7 +179,7 @@ def score_series(mouth: Any, env: Any, *, yaw: Any = None, max_lag: int = MAX_LA
         balanced=round(balanced, 4),
         motion=round(motion, 4),
         turned_away=round(turned, 4),
-        score=round((0.5 * balanced + 0.5 * max(0.0, r_safe) * motion) * (1.0 - 0.5 * turned), 4),
+        score=round((0.5 * balanced + 0.5 * max(0.0, r_safe) * motion) * (1.0 - turned), 4),
         mouth_mean=round(float(np.nanmean(mouth)), 4) if face.any() else 0.0,
     )
 

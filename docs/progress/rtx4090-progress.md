@@ -2190,3 +2190,18 @@ at: `e2e/screenshots/29-prompts-chat-1280-detail.png`, `-1280-list.png`, `-375-l
 test covers it without a model). The packaged desktop app was not run. `src/locales/.extract-report.json` was not
 regenerated (it was already far out of date; regenerating made a 13,000-line diff). Per-thread system prompt and
 `/prompt` (FU-410) and template presets (FU-411) are open.
+
+## 2026-11-20: release hygiene (Build Checklist 1 to 6, no Mac, no GPU) and spec 37 triage (agent)
+
+Branch `worktree-agent-af871214e1e76dcd4`, fast-forwarded to `test/rtx4090` at `131f9031` first, not pushed.
+
+- `check-upstreams.py`: two behind. llama.cpp pinned `b12441`, newest `b12576`; TensorFold native `1.2.9`, newest `1.3.1` (FU-510, FU-511). Everything else current.
+- `audit-dependencies.py`: PASS, no high or critical advisory. Not blocking: glib 0.18.5 (moderate, Tauri/Linux GTK chain), torch 2.11.0 (low, `torch.jit.script` memory corruption), katex 0.16.47 (low). 110 packages behind, 27 by a major version (informational).
+- `audit-catalog-repos.py`: PASS, 221 repos / 281 references exist.
+- `THIRD_PARTY_NOTICES.md`: kaldifst, Stable Audio 3, lip sync, MOSS-Image pipeline, stt-gpu add-on were present. Added: Qwen3-ForcedAligner (Apache-2.0), NVIDIA CUDA runtime DLLs beside `sd.exe` (CUDA EULA, non-permissive, FU-513), Nunchaku (Apache-2.0) with the FLUX.1 \[dev] non-commercial Nunchaku weights (FU-513), vLLM in WSL (Apache-2.0).
+- Editorial scan: 378 hits for the Editorial Rules names (FU-512), mostly the LM Studio "Share" and Ollama-compatible API features and their tests and locale strings.
+- `release-constraints.txt` is a Mac Python 3.11.2 freeze; do not rerun on this PC (FU-514).
+- `cargo test`: 8 passed, 0 failed (build 1 m 24 s).
+- Release notes draft: `docs/release/v0.10.0-windows-notes-draft.md`.
+
+**Spec 37 ("Chat in a new thread" on Chat Models).** Root cause: a test assumption, not D-87 and not a product bug. The spec's local model is an MLX repo; the row's `hostCompatible` comes from `workspace.system` (`isVariantCompatibleWithHost`, MLX needs Darwin arm64), so on this Windows PC the row is marked "Cannot run on this machine" and its "Chat in a new thread" button is disabled; the click waits until the 30 s timeout. Failed identically on the base `102d7b43` (temp worktree, ports 8941/8942) and on the tip (8931/8932). Fix: the spec's `/api/workspace` mock also sets `system.platform = "Darwin"`, `arch = "arm64"` (same pattern as spec 21). 3 of 3 passes with `--repeat-each=3` (2.4, 1.5, 1.6 s). Other specs not re-run.

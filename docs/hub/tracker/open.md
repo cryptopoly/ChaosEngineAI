@@ -1,13 +1,58 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 209 rows with work, decisions or watch items still open, newest first.
+summary: 214 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-514 · release-constraints.txt is frozen from the Mac test environment (Python 3.11.2) — Never rerun freeze-release-constraints.py on the Windows PC</summary>
+
+**Status or trigger:** Never rerun `freeze-release-constraints.py` on the Windows PC
+
+**Notes:** The Windows venv (Python 3.12.10) has 91 pins against 126 and no mlx; a rerun there would drop the Mac pins and add `+cu128` torch. The CUDA add-on packages (`kaldifst==1.9.0`, transformers 5.2/5.23, torch 2.9.1 cu128) are pinned in code (`voice_env.py`, `music_requirements.txt`), not in the constraints file, so it does not need a rerun for them. Rerun on the Mac after the last dependency change before the tag.
+
+</details>
+
+<details>
+<summary>FU-513 · Two non-permissive licences ship or are offered: CUDA runtime DLLs beside sd.exe, FLUX.1 \[dev] Nunchaku weights — Before a Windows CUDA bundle is published</summary>
+
+**Status or trigger:** Before a Windows CUDA bundle is published
+
+**Notes:** `THIRD_PARTY_NOTICES.md` now lists both. The NVIDIA CUDA EULA allows redistributing `cudart`, `cublas` and `cublasLt` with the app (about 790 MB); confirm the CUDA EULA text is shipped beside them. `mit-han-lab/svdq-int4-flux.1-dev` carries the FLUX.1 \[dev] non-commercial licence: the row is user-downloaded, check the row's licence note says so.
+
+</details>
+
+<details>
+<summary>FU-512 · Competing desktop AI app names remain in code, comments and docs — Owner decision on the two features</summary>
+
+**Status or trigger:** Owner decision on the two features
+
+**Notes:** Scan 2026-11-20 (`git grep` for the CLAUDE.md Editorial Rules names; the Hugging Face namespace `lmstudio-community` is allowed). User-visible: Settings model-storage "LM Studio models folder" and Library "Share with LM Studio" (`src/locales/*/common.json`, `library.json`, `ModelStoragePanel.tsx`, `ChatModelsPage.tsx`, `ImportModelsPanel.tsx`, `backend_service/routes/storage.py`), "Ollama-compatible apps" (`ConnectPanel.tsx`, `ollama_compat.py`). Not user-visible: `backend_service/helpers/model_import.py`, `routes/models.py`, `helpers/settings.py`, `scripts/e2e_test_suite.py`, `docs/research/m4max-generation-times.md`, `docs/plans/demo-path.md`, `docs/image-generation-mvp.md`. Another agent handles the user-visible copy; the rest needs a decision on whether importing from those folders stays a feature.
+
+</details>
+
+<details>
+<summary>FU-511 · TensorFold native is behind: pinned 1.2.9, newest 1.3.1 — Before the tag, or write down why not</summary>
+
+**Status or trigger:** Before the tag, or write down why not
+
+**Notes:** `check-upstreams.py` 2026-11-20. A bump changes `NATIVE_VERSION` in `_tensorfold_native.py` and needs `capabilities --json` compared with the family rows in `_tensorfold.py` (FU-168). Not bumped by the hygiene pass.
+
+</details>
+
+<details>
+<summary>FU-510 · llama.cpp is behind: pinned b12441, newest tag with prebuilt archives b12576 — Before the v0.10.0 tag, or write down why not</summary>
+
+**Status or trigger:** Before the v0.10.0 tag, or write down why not
+
+**Notes:** `check-upstreams.py` 2026-11-20. A bump moves `LLAMA_CPP_REF` in `scripts/update-llama-cpp.sh` and `LLAMA_CPP_TAG` in `scripts/stage-runtime.mjs`, changes the Windows CUDA digests, and needs the chat rows re-run on the 4090 (the 4090 speed table was measured on b12441). Not bumped by the hygiene pass.
+
+</details>
 
 <details>
 <summary>FU-441 · E2E assertions for the GGUF draft length and sidecar choice (FU-264, FU-266, FU-268) — Next chat speed pass on the 4090</summary>

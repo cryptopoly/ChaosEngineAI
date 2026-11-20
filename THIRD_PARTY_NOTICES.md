@@ -56,6 +56,16 @@ These may be compiled from source and shipped alongside ChaosEngineAI.
   copyright holder named here.
 - **Pinned commit:** `532d2c1` (master-1106), `SDCPP_REF` in `scripts/build-sdcpp.sh`.
 
+#### CUDA runtime DLLs beside `sd.exe` (Windows CUDA builds)
+
+A Windows CUDA build of `sd` (`scripts/build-sdcpp.ps1`) loads `cudart64_*.dll`, `cublas64_*.dll` and
+`cublasLt64_*.dll` (about 790 MB for CUDA 12.8) from its own folder, and `scripts/stage-runtime.mjs` copies whichever
+sit beside it into the installer. These are **NVIDIA proprietary, not permissive**: they are redistributed under the
+NVIDIA CUDA Toolkit End User License Agreement (<https://docs.nvidia.com/cuda/eula/>), which lists them as
+redistributable if shipped with the application, the EULA is kept with them and the licensee does not claim them as
+its own. The build can fetch them from NVIDIA's portable redistributable archives (sha256 checked against NVIDIA's
+redistrib JSON). Release CI does not build `sd`, so the CI bundles carry none.
+
 #### MiniMax H3 weights (user-downloaded, never bundled)
 
 The MiniMax H3 video row (hidden unless released and confirmed, D-76) runs on this
@@ -230,6 +240,16 @@ worker process (``backend_service/lipsync_worker.py``); the vocal's mel spectrog
 and soundfile (BSD-3-Clause), both already shipped. On Apple Silicon it shells out to the same pinned
 ``ltx-2-mlx`` (MIT) ``a2v --distilled`` command (not yet run on a Mac). ffmpeg prepares the vocal and
 muxes it into the clip. No weights are bundled.
+
+### Nunchaku and vLLM in WSL (optional, installed by the user, never bundled)
+
+- **Nunchaku** (<https://github.com/nunchaku-ai/nunchaku>, MIT HAN Lab) - Apache-2.0. The FLUX.1 Schnell and Dev
+  SVDQuant INT4 image rows use it. It is not on PyPI under this name, so the user installs the matching wheel;
+  ChaosEngineAI neither ships nor installs it. The weights are `mit-han-lab/svdq-int4-flux.1-schnell` (Apache-2.0,
+  like the base model) and `mit-han-lab/svdq-int4-flux.1-dev`, which inherits the **FLUX.1 [dev] Non-Commercial
+  License** (non-permissive: non-commercial use only; the user downloads it).
+- **vLLM** - Apache-2.0. "Install vLLM in WSL" (`backend_service/routes/setup/vllm_wsl.py`) runs `pip install vllm`
+  inside the user's own WSL2 distro; nothing is bundled.
 
 ### Sample film (bundled media)
 
@@ -418,7 +438,9 @@ environment, `~/.chaosengine/voice-venv`; not bundled with the app. Run by
 - **Weights** (downloaded by the user from Hugging Face): `Qwen/Qwen3-ASR-1.7B-hf` and `Qwen/Qwen3-ASR-0.6B-hf`
   (Apache-2.0); `nvidia/parakeet-tdt-0.6b-v3` (CC-BY-4.0, attribution: NVIDIA); `ibm-granite/granite-speech-5.0-2b`
   (Apache-2.0); `nvidia/nemotron-3.5-asr-streaming-0.6b` and `nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B`
-  (OpenMDW-1.1, <https://openmdw.ai/license/1-1/>).
+  (OpenMDW-1.1, <https://openmdw.ai/license/1-1/>); `Qwen/Qwen3-ForcedAligner-0.6B-hf` (Apache-2.0, Alibaba Qwen:
+  word timings for the transcripts of the families that return none; Japanese and Korean are not used, so the
+  `nagisa` and `soynlp` packages it would need are not installed).
 
 ### mlx-audio (Apple Silicon TTS)
 

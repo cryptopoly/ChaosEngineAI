@@ -67,6 +67,9 @@ async function withLocalModel(page: Page): Promise<{ loads: Array<Record<string,
     body.library = [LOCAL];
     body.libraryStatus = "ready";
     body.chatSessions = [OLDER];
+    // The model is MLX, which only runs on Apple Silicon; say so, so the row is runnable on any machine running the test
+    // (on Windows or Linux the row is marked "Cannot run on this machine" and its Chat button is disabled).
+    body.system = { ...body.system, platform: "Darwin", arch: "arm64" };
     await route.fulfill({ response, json: body });
   });
   await page.route("**/api/models/load", async (route) => {

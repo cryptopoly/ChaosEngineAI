@@ -168,9 +168,12 @@ def _ffmpeg() -> str:
 
 def prepare_audio_command(exe: str, src: Path, dst: Path, start: float, seconds: float) -> list[str]:
     """ffmpeg arguments that make ``dst``: stereo 48 kHz 16-bit WAV, ``seconds`` long from ``start`` (padded with
-    silence when the clip is shorter)."""
+    silence when the clip is shorter). ffmpeg reads the type from the content, not the name, so a ``.wav`` holding a
+    playlist could fetch URLs: inputs are held to local files like every Storyboard ffmpeg call (``PROTOCOLS``)."""
+    from backend_service.storyboard.ffmpeg_bin import PROTOCOLS
+
     return [
-        exe, "-hide_banner", "-nostdin", "-loglevel", "error", "-y",
+        exe, "-hide_banner", "-nostdin", "-loglevel", "error", "-y", "-protocol_whitelist", PROTOCOLS,
         "-ss", f"{max(0.0, start):.3f}", "-i", str(src),
         "-map", "0:a:0", "-ac", "2", "-ar", str(SAMPLE_RATE),
         "-af", "apad", "-t", f"{seconds:.6f}",
@@ -187,8 +190,10 @@ def prepare_audio(src: Path, dst: Path, start: float, seconds: float) -> None:
 
 
 def mux_command(exe: str, video: Path, wav: Path, out: Path) -> list[str]:
+    from backend_service.storyboard.ffmpeg_bin import PROTOCOLS
+
     return [
-        exe, "-hide_banner", "-nostdin", "-loglevel", "error", "-y",
+        exe, "-hide_banner", "-nostdin", "-loglevel", "error", "-y", "-protocol_whitelist", PROTOCOLS,
         "-i", str(video), "-i", str(wav),
         "-map", "0:v:0", "-map", "1:a:0",
         "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", "-movflags", "+faststart",

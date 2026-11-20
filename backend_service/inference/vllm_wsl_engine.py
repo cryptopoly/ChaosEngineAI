@@ -245,7 +245,7 @@ class VllmWslEngine(BaseInferenceEngine):
         gpu_memory_utilization: float | None = None,
         speculative_config: dict[str, Any] | None = None,
     ) -> list[str]:
-        """Compose the ``wsl -- bash -c "<inner cmd>"`` argv.
+        """Compose the ``wsl --exec bash -c "<inner cmd>"`` argv.
 
         We wrap the python invocation in ``bash -c`` so we can prepend
         the venv's ``bin/`` to ``PATH``. This matters because vLLM's
@@ -319,7 +319,10 @@ class VllmWslEngine(BaseInferenceEngine):
             f"--trust-remote-code "
             f"--enforce-eager"
         )
-        return ["wsl", "--", "bash", "-c", inner]
+        # ``--exec`` runs bash directly. ``wsl -- bash -c`` hands the command line to the distro's default shell first,
+        # which expands ``$(...)``, backticks and ``$VAR`` even inside the ``shlex.quote`` single quotes (they sit in
+        # its double quotes), so a model ref or path naming ``$(...)`` ran as a command (security review 2026-11-20).
+        return ["wsl", "--exec", "bash", "-c", inner]
 
     def _cleanup_process(self) -> None:
         if self.process is not None and self.process.poll() is None:

@@ -2205,3 +2205,23 @@ Branch `worktree-agent-af871214e1e76dcd4`, fast-forwarded to `test/rtx4090` at `
 - Release notes draft: `docs/release/v0.10.0-windows-notes-draft.md`.
 
 **Spec 37 ("Chat in a new thread" on Chat Models).** Root cause: a test assumption, not D-87 and not a product bug. The spec's local model is an MLX repo; the row's `hostCompatible` comes from `workspace.system` (`isVariantCompatibleWithHost`, MLX needs Darwin arm64), so on this Windows PC the row is marked "Cannot run on this machine" and its "Chat in a new thread" button is disabled; the click waits until the 30 s timeout. Failed identically on the base `102d7b43` (temp worktree, ports 8941/8942) and on the tip (8931/8932). Fix: the spec's `/api/workspace` mock also sets `system.platform = "Darwin"`, `arch = "arm64"` (same pattern as spec 21). 3 of 3 passes with `--repeat-each=3` (2.4, 1.5, 1.6 s). Other specs not re-run.
+## 2026-11-20: security review of the branch (agent)
+
+Everything on `test/rtx4090` since `origin/release/v0.10.0`, read against the CLAUDE.md Security rules and tried on a
+throwaway backend (`HOME` on `E:\tmp`, own token, no GPU). Report: [docs/review/security-review-2026-11-20.md](../review/security-review-2026-11-20.md).
+
+Fixed, with regression tests:
+- **High**: the WSL vLLM bridge started vLLM with `wsl -- bash -c`, which runs the line through the default shell
+  first, so `$(...)` in a model ref or path ran as a command despite `shlex.quote` (shown live on this PC). Now
+  `wsl --exec bash -c`. `tests/test_vllm_wsl_engine.py` `WslShellInjectionTests` (live check behind `CHAOSENGINE_TEST_WSL=1`).
+- **Medium**: `make_lipsync_shot` took any WAV or FLAC path as `audio` and put it in a downloadable clip; it now
+  takes an `upload:` handle or an output file, like a Storyboard vocal. `tests/test_lipsync.py`.
+- **Low**: the lip-sync ffmpeg calls now carry `-protocol_whitelist file,pipe` like the Storyboard's. `tests/test_lipsync.py`.
+
+Checked and fine: lip-sync route and Storyboard vocal paths, the weight copy routes, download resume and partial
+pruning, the ASR add-on and MOSS-Image (no `trust_remote_code`, `local_files_only`), downloads and companions, worker
+command lines, `build-sdcpp.ps1` hashes, the licence gate, auth on every new route, no token in logs.
+
+Open: FU-530 (agent picture inputs take any path), FU-531 (installer hashes), FU-532 (bridge `--trust-remote-code`),
+FU-533 (bridge PATH prefix, setup steps on `wsl --`), FU-534 (local paths in music refusals to agents). Not run: a
+real vLLM start through the bridge after the change, a real lip-sync shot.

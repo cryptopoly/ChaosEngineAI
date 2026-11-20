@@ -1,13 +1,58 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 214 rows with work, decisions or watch items still open, newest first.
+summary: 219 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-534 · Local paths in music refusals reach agents — Next agent bridge pass</summary>
+
+**Status or trigger:** Next agent bridge pass
+
+**Notes:** Security review 2026-11-20. The weight-copy notice (`music_env._copy_notice_message`, `copy_plan`) names the checkpoints and cache folders; `make_music` and `make_sound` pass `MusicNotReady` text to agents as tool errors, where the bridge otherwise gives no local paths. Strip folder paths from the agent text (keep them for the UI).
+
+</details>
+
+<details>
+<summary>FU-533 · WSL bridge PATH prefix and the setup steps' wsl -- — Next WSL bridge change</summary>
+
+**Status or trigger:** Next WSL bridge change
+
+**Notes:** Security review 2026-11-20. Under `wsl --` the `export PATH="~/.chaosengine/vllm-venv/bin:$PATH"` prefix was lost in the default shell's parse; the bridge now runs `wsl --exec` (the injection fix) and keeps it, but with a literal `~` that a child's `execvp` does not expand: use `$HOME`. `routes/setup/vllm_wsl.py` `_run_wsl_step` still uses `wsl --` with constant commands only; move it to `--exec` and recheck the probes' quoting on a WSL host.
+
+</details>
+
+<details>
+<summary>FU-532 · WSL vLLM bridge always passes --trust-remote-code — Next WSL bridge change</summary>
+
+**Status or trigger:** Next WSL bridge change
+
+**Notes:** Security review 2026-11-20. Loading any Hub repo through the bridge runs that repo's Python inside WSL, which reaches the Windows profile through `/mnt/c`. Pass it only for catalog rows that need it (Qwen3-VL and the like), as a row flag; check the native vLLM lane the same way.
+
+</details>
+
+<details>
+<summary>FU-531 · Hash-pin the music, sound and voice installers — Next installer change or release audit</summary>
+
+**Status or trigger:** Next installer change or release audit
+
+**Notes:** Security review 2026-11-20. `music_requirements.txt`, `sound_requirements.txt` and the voice add-ons install exact `==` pins without `--require-hashes`, with `--extra-index-url` for the PyTorch CUDA index (pip takes the highest version across both indexes). ACE-Step and Stable Audio 3 install from GitHub archives pinned by commit SHA but not by archive hash. Export with hashes (`uv export` without `--no-hashes`) or record a sha256 per archive.
+
+</details>
+
+<details>
+<summary>FU-530 · Agent image inputs take any picture path — Next agent bridge pass</summary>
+
+**Status or trigger:** Next agent bridge pass
+
+**Notes:** Security review 2026-11-20 ([docs/review/security-review-2026-11-20.md](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/docs/review/security-review-2026-11-20.md)). `generate_image` `images`, `generate_video` `start_image`/`end_image` and `make_lipsync_shot` `start_image` go through `resolve_input_image`, which accepts any PNG, JPEG or WebP on the disk; the Storyboard holds agents to `upload:` handles and output files (`_agent_source`). The picture reaches a downloadable output (frame 0 of a clip, an edit of the image). Decide whether agents get the Storyboard rule everywhere; the lip-sync `audio` already has it.
+
+</details>
 
 <details>
 <summary>FU-514 · release-constraints.txt is frozen from the Mac test environment (Python 3.11.2) — Never rerun freeze-release-constraints.py on the Windows PC</summary>

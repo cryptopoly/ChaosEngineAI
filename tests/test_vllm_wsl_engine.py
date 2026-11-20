@@ -174,14 +174,14 @@ class VllmWslEngineCommandTests(unittest.TestCase):
             max_model_len=8192,
         )
 
-        # Outer shape: ``wsl -- bash -c "<inner>"``. The ``--`` is
-        # essential — without it ``wsl`` tries to interpret subsequent
-        # tokens as its own options.
+        # Outer shape: ``wsl --exec bash -c "<inner>"``. ``--exec`` runs bash
+        # with no default shell in front, which would expand ``$(...)`` inside
+        # the quoted model ref (security review 2026-11-20).
         self.assertEqual(command[0], "wsl")
-        self.assertEqual(command[1], "--")
+        self.assertEqual(command[1], "--exec")
         self.assertEqual(command[2], "bash")
         self.assertEqual(command[3], "-c")
-        self.assertEqual(len(command), 5, "expected wsl -- bash -c <inner> shape")
+        self.assertEqual(len(command), 5, "expected wsl --exec bash -c <inner> shape")
 
     def test_a_local_folder_is_served_under_the_name_chat_uses(self):
         # vLLM serves a model under its --model value; from a folder that is the path, so chat (which sends the
@@ -244,6 +244,29 @@ class VllmWslEngineCommandTests(unittest.TestCase):
         # escapes the space; either way, the original path must
         # round-trip through the shell parse.
         self.assertIn("'/mnt/c/My Models/Qwen3-7B'", inner)
+
+
+class WslShellInjectionTests(unittest.TestCase):
+    """Security review 2026-11-20: ``wsl -- bash -c`` ran the line through the default shell first, so ``$(...)`` in
+    a model ref or path ran as a command despite ``shlex.quote``. The bridge now uses ``wsl --exec``."""
+
+    HOSTILE = "x$(echo PWNED)y`echo PWNED`"
+
+    def test_command_never_goes_through_the_default_shell(self):
+        command = VllmWslEngine(_make_caps())._build_wsl_command(
+            model_arg=self.HOSTILE, port=8000, max_model_len=4096, served_model_name=self.HOSTILE)
+        self.assertEqual(command[:4], ["wsl", "--exec", "bash", "-c"])
+
+    @unittest.skipUnless(sys.platform == "win32" and os.environ.get("CHAOSENGINE_TEST_WSL") == "1",
+                         "live WSL check: set CHAOSENGINE_TEST_WSL=1 on a Windows host with a distro")
+    def test_live_wsl_keeps_a_hostile_name_literal(self):
+        import shlex
+        import subprocess
+
+        command = VllmWslEngine(_make_caps())._build_wsl_command(model_arg="m", port=8000, max_model_len=4096)
+        probe = [*command[:4], f"echo {shlex.quote(self.HOSTILE)}"]
+        out = subprocess.run(probe, capture_output=True, text=True, timeout=60).stdout
+        self.assertEqual(out.strip(), self.HOSTILE)
 
 
 class VllmWslEngineLifecycleTests(unittest.TestCase):

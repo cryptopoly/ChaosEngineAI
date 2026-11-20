@@ -92,6 +92,26 @@ class ShotRuleTests(unittest.TestCase):
             self.assertEqual(lip.resolve_audio(str(wav)), wav.resolve())
 
 
+class SingingPromptTests(unittest.TestCase):
+    """``lipSyncSinging`` (experiment 4 of docs/research/lip-sync-singing-experiments-2026-11.md)."""
+
+    def test_the_cue_is_appended_once(self) -> None:
+        self.assertEqual(lip.singing_prompt("A woman sings in a studio, static camera."),
+                         "A woman sings in a studio, static camera, singing, mouth opening and closing with each syllable.")
+        cued = lip.singing_prompt("a man on a stage")
+        self.assertEqual(lip.singing_prompt(cued), cued)
+
+    def test_a_prompt_that_already_asks_for_syllables_is_kept(self) -> None:
+        prompt = "Close-up of a man singing, mouth opening and closing with each syllable, warm light."
+        self.assertEqual(lip.singing_prompt(prompt), prompt)
+
+    def test_the_request_field_is_off_by_default(self) -> None:
+        from backend_service.models import VideoGenerationRequest
+
+        body = VideoGenerationRequest(modelId=CUDA_REPO, prompt="x", audioPath="a.wav")
+        self.assertFalse(body.lipSyncSinging)
+
+
 class MemoryGateTests(unittest.TestCase):
     need = lip.DEFAULT_NEEDS
 
@@ -392,6 +412,26 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(seen["seed"], 3)
         self.assertTrue(Path(art["videoPath"]).is_file())
 
+    @unittest.skipUnless(_ffmpeg(), "no ffmpeg on this machine")
+    def test_a_sung_vocal_sends_the_singing_cue_and_says_so(self) -> None:
+        sent: list[str] = []
+
+        def fake_run(**kw):
+            sent.append(kw["prompt"])
+            _write_mp4(_ffmpeg(), kw["output"], kw["frames"], kw["fps"])
+            return {"width": kw["width"], "height": kw["height"], "timings": {}, "runtimeLabel": "x"}
+
+        with mock.patch.object(lip, "_run_cuda", side_effect=fake_run):
+            sung = self.post(lipSyncSinging=True)
+            spoken = self.post()
+        self.assertEqual(sung.status_code, 200, sung.text)
+        self.assertEqual(sent[0], lip.singing_prompt("a woman sings to the camera"))
+        self.assertEqual(sent[1], "a woman sings to the camera")
+        art = sung.json()["artifact"]
+        self.assertEqual(art["prompt"], "a woman sings to the camera")  # the gallery keeps the user's prompt
+        self.assertIn("sung vocal", art["runtimeNote"])
+        self.assertNotIn("sung vocal", spoken.json()["artifact"]["runtimeNote"])
+
     def test_cancel_is_409(self) -> None:
         from backend_service.progress import GenerationCancelled
 
@@ -435,7 +475,8 @@ class AgentToolTests(unittest.TestCase):
                     mock.patch("backend_service.routes.video._generate_video_locked") as locked:
                 locked.return_value = {"artifact": {"videoPath": "x.mp4", "hasAudio": True, "numFrames": 121}, "runtime": {}}
                 answer = lipsync_tool.make_lipsync_shot(SimpleNamespace(request=None, app=None),
-                                                        {"prompt": "sings", "start_image": str(still), "audio": str(wav)})
+                                                        {"prompt": "sings", "start_image": str(still), "audio": str(wav),
+                                                         "singing": True})
                 self.assertEqual(answer["jobId"], "j1")
                 self.assertEqual(captured["kind"], "video")
                 self.assertGreater(captured["estimate"], 100)
@@ -443,6 +484,7 @@ class AgentToolTests(unittest.TestCase):
             body = locked.call_args[0][1]
         self.assertEqual(body.audioPath, str(wav.resolve()))
         self.assertEqual(body.numFrames, 121)  # 5 s at 24 fps, 8k+1 covering the clip
+        self.assertTrue(body.lipSyncSinging)
         self.assertTrue(output["hasAudio"])
 
     def test_the_tool_refuses_audio_outside_the_output_folders(self) -> None:

@@ -1,0 +1,303 @@
+# Singing lip sync: what improves it, measured (2026-11-20)
+
+Follow-up to [lip-sync-spike-windows-2026-11.md](lip-sync-spike-windows-2026-11.md) and D-103 (owner: singing sync
+must work fully for v0.10.0). Machine: Windows 11, RTX 4090 24 GB, 64 GB RAM. Engine: the app's phase-1 lip-sync
+worker (`backend_service/lipsync_worker.py`, LTX-2.3 distilled 4-bit, audio held at sigma 0), driven by a warm
+harness that opens its knobs. **I cannot listen to audio**: every statement about sync comes from the automatic
+score below and from frame strips I looked at; what is sung comes from speech-to-text on the vocal stem.
+
+## Verdict: what improves singing sync, ranked
+
+Usable take = mouth follows the vocal above chance, sings at least 70 % of the voiced frames, faces the camera at
+least 70 % of the shot. Baseline = the app's recipe before this study (close-up, neutral prompt, stem, 5 s).
+Numbers are 3 sung lines x 2 seeds unless noted, so a +-0.05 change in mean score is noise.
+
+| Rank | Lever | Effect (measured) | Cost |
+|---|---|---|---|
+| 1 | **Best-of-N takes, picked by `pick_best`** | usable 0.72 (1 take) -> 0.87 (2) -> **0.93 (3)** -> 0.98 (4); hardest line 0.33 -> 0.93 at N=4 | N x 56 s + 7.5 s scoring per take |
+| 2 | **Explicit singing prompt** ("mouth opening and closing with each syllable") | score 0.44 -> 0.49, r 0.35 -> 0.44, beats chance 4/6 -> 5/6, "never sings" takes 1 -> 0 | none (one more open-while-silent tail) |
+| 3 | **Start 0.4 s before a phrase; 3-5 s shots** | mid-phrase start 0.37 vs 0.49 with lead-in; 3 s 0.52, 5 s 0.49, 8 s 0.45 (8 s mouths through gaps) | shot planning only |
+| 4 | **Vocal stem as the audio** (not the mix) | stem 0.44 vs mix 0.37, r 0.35 vs 0.22; adding instrumental always hurt; loudness normalising changed nothing | Demucs, about 1 s per song |
+| 5 | Close-up over medium framing | close 0.49 vs medium 0.45 with the explicit prompt; medium never turned away | none |
+| - | Denoise knobs (steps 12/16, STG 0/2, modality 1/5/8, rescale 0, audio gain, audio sigma) | none helps: best +0.03 (audio sigma 0.1, noise-level); more steps, STG 2, modality 8 hurt (-0.09 to -0.11) | - |
+| - | Non-distilled two-stage (route a) | 0.43, usable 3/6; best single take of the study and a take that never sings | 4.8x time |
+| - | LTX-2.5 with the same loop | 0.36, beats chance 1/6: mouth open through the gaps | same time, 67 GB |
+| - | LipDub re-sync pass | not run: gated, saved token gets 403 | owner accepts the gate |
+| - | InfiniteTalk (Windows, fp8) | runs after 8 fixes; about 5 h per 5 s clip at 40 steps; not scored at full steps | own venv, 32 GB weights |
+
+**Recommended default recipe for the app (sung shots):** LTX-2.3 4-bit distilled with the audio hold (as shipped:
+8 steps, STG 1, modality 3, rescale 0.7, audio sigma 0); Demucs vocal stem as the audio, full mix muxed; the shot
+cut at a phrase boundary with a 0.4 s lead-in, 3-5 s long (split longer phrases rather than run 8 s); a close-up
+head-and-shoulders still with the mouth closed; the explicit singing wording appended to the prompt; **3 takes**,
+kept by `lip_sync_score.pick_best` (4 for a best-quality setting), the other takes one click away. Expected: about
+93 % of sung shots get a usable take, about 3 min 10 s per 5 s shot warm on the 4090.
+
+**What remains unfixable with these tools:** (1) the seed decides whether the face performs at all; no knob, audio
+version or larger model removed that, only more takes. (2) Open mouth in silent tails and gaps (open while silent
+0.6-0.8 even on good takes): the explicit prompt trades shut-mouth singing for mouthing through rests. (3) Sustained
+and hummed notes still drift (the spike's "ooh" case); the envelope score barely sees them. (4) Mouth shapes are not
+checked (no viseme or SyncNet score): "opens with the vocal" is all this shows. (5) Artefacts the score does not see:
+hands up to the face in the tail, looking down (no pitch check), a grin after the phrase. "Studio-grade" singing sync
+is not reached; creator-grade with 3 takes is.
+
+**Not verified:** listening (I cannot hear audio); more than 3 lines, 2 faces, one framing family and 2-6 seeds;
+LipDub (gated); InfiniteTalk at a meaningful step count; LTX-2.5's own non-distilled path; Mac; warm timing inside
+the app's worker (the harness was warm, the app path was not timed).
+
+## The automatic sync score (FU-334, `backend_service/lip_sync_score.py`)
+
+Per frame: mouth opening = inner-lip gap (MediaPipe Face Landmarker landmarks 13/14, Apache-2.0) over face height
+(10/152), 3-frame median; head turn = nose-tip offset from the eye-corner midpoint over the eye distance (about 0
+frontal, 0.7-1.2 in profile; above 0.35 counts as turned away). Voice = band-passed (100-4000 Hz) RMS of the
+**vocal stem of the shot's window** per video frame, whatever audio the model was given, so every variant is judged
+against the same truth. Reported:
+
+| Field | Meaning |
+|---|---|
+| `r` | Pearson r of mouth vs voice, best lag in +-3 frames |
+| `chance_p95` | 95th percentile of the same best-lag r over 200 circular shifts of the voice; `beats_chance` = r above it |
+| `closed_while_voiced` (cwv) | share of voiced frames with the mouth shut: the singing failure |
+| `open_while_silent` (ows) | share of silent frames with the mouth open (gaps between words count, so even good speech gets 0.3-0.5) |
+| `balanced` | mean of (1 - cwv) and (1 - ows); 0.5 = ignores the audio |
+| `motion` | 0-1, how far the mouth really opens (its 95th percentile over 0.04); r is scaled by it, because a shut mouth's landmark jitter can still correlate with the audio |
+| `turned_away` | share of frames turned away or with no face |
+| `score` | `(0.5 * balanced + 0.5 * max(0, r) * motion) * (1 - turned_away)`: ranks takes **of one shot**; not a grade across songs |
+
+Checks on the spike's clips: speech with the audio hold r 0.50 (chance 0.17), score 0.63; the same speech without
+the hold (mouth open through the silent tail) 0.50; Lightricks' route (a) speech 0.59. Unit tests:
+`tests/test_lip_sync_score.py` (13, synthetic series, no MediaPipe needed). The maths needs only numpy and scipy;
+reading a video needs `cv2` + `mediapipe`, which the app venv does not have (the experiments ran them from a tools
+venv). The `motion` and `turned_away` terms were added after looking at the first strips: a closed-mouth take scored
+0.39 on r alone, and a take where the singer turns to profile scored as well as a frontal one.
+
+## Inputs
+
+- **Three sung lines**, all made through the app's own `POST /api/music/generate` on a throwaway backend (port 8954,
+  `HOME` in `E:\tmp\lipsync\home`), **ACE-Step 1.5 XL turbo**, 30 s, `vocalLanguage=en`: `ballad_f` (slow female
+  ballad, 76 bpm, seed 11), `soul_m` (male soul, 96 bpm, seed 23), `pop_f` (upbeat female pop, 118 bpm, seed 37).
+  Whisper Large v3 Turbo (`/api/voice/transcribe`) on the Demucs stem reads back the lyrics in all three (one word
+  changed in two: "a river" for "the river", "for the sunshine" for "pour the sunshine").
+- **Vocal stem**: Demucs `htdemucs` (MIT). **Windows** cut from the stem's activity map so each shot starts 0.4 s
+  before a phrase: ballad 7.2 s ("We were young and we were stronger", then 0.7 s silence), soul 10.8 s ("Oh baby
+  come along with me", one long phrase), pop 3.7 s (a phrase, a 0.6 s gap, the next phrase).
+- **Stills**: FLUX.2 Klein 4B via `/api/images/generate`, 768x512, seed 78: female and male head-and-shoulders
+  ("close") and waist-up ("medium"), frontal, mouth closed.
+- **Default recipe under test** (the app's today): 5.04 s (121 frames, 24 fps), 768x512, distilled 8 steps, no CFG,
+  STG 1, modality guidance 3, guidance rescale 0.7 (the diffusers default, which the worker does not override), audio
+  at sigma 0, prompt "A {young woman | man} sings in a music studio, natural head movement, soft warm light, static
+  camera.", seeds 42 and 7. One warm process: 55-57 s per shot (8 steps at 5.7-6.0 s plus decode), load 35 s once.
+
+## Experiment 2: what audio the model hears
+
+Each line x 2 seeds x 5 versions of the same window: the Demucs stem as-is (`stem`, -17 to -20 dBFS RMS), the full
+mix (`mix`, -12 to -17), stem + 30 % instrumental (`stem30`), the stem normalised to -16 dBFS RMS (`stemn`), and the
+stem + 50 % instrumental normalised to -16 dBFS (`boost`). Scored against the stem.
+
+| Audio | mean score | mean r | beats chance | Clips where the mouth shut through the line |
+|---|---|---|---|---|
+| **stem** | **0.44** | **0.35** | **4 / 6** | 1 (ballad seed 42) |
+| stemn | 0.42 | 0.33 | 4 / 6 | 1 (same) |
+| stem30 | 0.37 | 0.28 | 3 / 6 | 1 (same) |
+| boost | 0.37 | 0.24 | 2 / 6 | 1 (same) |
+| mix | 0.37 | 0.22 | 2 / 6 | 1 (same) |
+
+**The stem is the best input; keep it as the default.** Every bit of instrumental added lowered r. Loudness is not
+the reason: the normalised stem is no better than the plain one. (The spike's "mix beat stem" came from scoring each
+clip against its own audio; scored against the same vocal truth the mix loses.)
+
+**The seed matters far more than the audio.** For a given line and seed the five audio versions give the same
+performance: ballad seed 42 never opens her mouth in any of the five (reads as listening, cwv 1.00); soul seed 7
+turns to profile half-way in all five; ballad seed 7 sings the line well (stem r 0.63) and then also turns to profile.
+The start noise decides *whether* the face performs and where it looks; the audio decides *when* the mouth moves once
+it does. That points at levers that act on the performance (prompt, framing, more takes) rather than on the audio.
+
+Frame strips looked at: all 30. Other things the strips show and the score half-catches: a grin with the mouth open
+after the phrase ends (soul seed 42; counts as open while silent), a hand coming up to the face (pop seed 7), light
+streaks in the male close-up background.
+
+## Experiment 4: prompt wording and framing
+
+Stem audio, same windows and seeds. "Explicit" prompt: "Close-up of a {young woman | man} singing, mouth opening and
+closing with each syllable, expressive face, in a music studio, soft warm light, static camera." "Medium" = the
+waist-up stills instead of head-and-shoulders.
+
+| Variant | mean score | mean r | beats chance | Never sang (cwv > 0.9) | Turned away > 30 % |
+|---|---|---|---|---|---|
+| close, neutral (today) | 0.44 | 0.35 | 4 / 6 | 1 | 2 |
+| **close, explicit** | **0.49** | **0.44** | **5 / 6** | **0** | 1 |
+| medium, neutral | 0.40 | 0.30 | 2 / 6 | 2 | 1 |
+| medium, explicit | 0.45 | 0.35 | 3 / 6 | 0 | **0** |
+
+**The explicit singing prompt is the first real lever**: it removed the "listens instead of singing" failure (ballad
+seed 42 went from a shut mouth through the whole line, cwv 1.00, to singing it, cwv 0.07) and raised r. Its cost is
+the opposite error: the face now often keeps its mouth open or grins after the line ends (open while silent 0.7-0.9
+on several takes), which costs r. **Medium framing** kept every singer facing the camera (0 of 6 turned away with the
+explicit prompt) but follows the vocal less closely (mouth smaller in the frame, r 0.35 vs 0.44); with the neutral
+prompt it was worse than the close-up (two of six never sang). Recommendation so far: head-and-shoulders still +
+explicit singing wording; medium framing only when the shot needs it, with the explicit wording.
+
+Strips: all 18 looked at. The fixed ballad take sings the line with visible open-close on the syllables, then smiles
+with the mouth open in the 0.7 s tail. Soul seed 7 (explicit) has the highest r (0.66) but looks down and away and its
+last frame smears the face; `turned_away` (yaw only) caught 22 %, the downward look is not measured (no pitch check).
+
+## Experiment 1: shot length and where the shot starts
+
+Explicit prompt (experiment 4's winner), stem, close-up, seeds 42 and 7. Each shot starts 0.4 s before a phrase
+(`lead`), except `5s_mid`, which starts 1.5 s *into* the same phrase (no lead-in). The windows hold different audio,
+so compare the pattern, not single numbers.
+
+| Shot | Frames | mean score | mean r | beats chance | mean open while silent | Turned away > 30 % | s per shot |
+|---|---|---|---|---|---|---|---|
+| **3 s, lead-in** | 73 | **0.52** | **0.41** | **5 / 6** | 0.58 | 0 | 37 |
+| 5 s, lead-in | 121 | 0.49 | 0.44 | 5 / 6 | 0.63 | 1 | 56 |
+| 8 s, lead-in | 193 | 0.45 | 0.34 | 2 / 6 | 0.76 | 0 | 88 |
+| 5 s, starts mid-phrase | 121 | 0.37 | 0.30 | 2 / 6 | 0.87 | 1 | 56 |
+
+**Start the shot just before a phrase.** Starting mid-phrase is the worst case: the start still has a shut mouth and
+the face needs about a second to start singing, so the opening words are sung with a closed mouth (strip: frames 0-21
+shut while the vocal is loud), and the takes that recover then mouth on through the gaps. A 0.4 s lead-in avoids it.
+**Shorter is better, 8 s is worse**: in an 8 s shot with a 1-2 s gap between phrases the face keeps singing (or
+grimaces with an open mouth) through the gap (open while silent 0.92 on both soul takes), so r falls. 3-5 s shots cut
+to one phrase plus its lead-in are the sweet spot; this matches the phase-1 rule of 3 to 8 s but argues for cutting
+at phrase boundaries and keeping sung shots at 3-5 s.
+
+Strips: all 18 looked at (the 8 s ones show the open-mouth grimace through the gap; the mid-phrase ones the late
+start; hands come up to the face in one mid-phrase take).
+
+## Experiment 6: LipDub re-sync second pass (not run: gated)
+
+`Lightricks/LTX-2.3-22b-IC-LoRA-LipDub` (model card title "LTX-2.3 22B IC-LoRA Dub-It", last change 2026-10-22):
+one file, `ltx-2.3-22b-ic-lora-dubit-0.9.safetensors`, 2.47 GB (the card still names it `...-lipdub-0.9`), an IC-LoRA
+on LTX-2.3 22B, video and audio control, reference at output resolution; licence LTX-2 Community (same as LTX-2.3:
+free below US$10M yearly revenue). Pipeline: `ltx_pipelines.dubit` (Lightricks' LTX-2 repo), which is already
+installed in the route (a) venv from the spike (`E:\tmp\lipsync\venv-ltx`, ltx-pipelines 1.6.2), so the code side is
+ready. **Blocked by the gate**: the repo is gated (`auto`, "Agree and Access"), and the click-through also asks the
+account holder to consent to marketing offers. The saved Hugging Face token gets HTTP 403 on the file. Accepting is
+the owner's call (I do not accept terms on the account's behalf). Once accepted, the test is one command per clip
+(the take from the main recipe as the reference video, the stem window as the audio) on the existing venv, about
+4-5 minutes per 5 s shot by analogy with route (a) (same 22B fp8 checkpoint and streamed offload). FU-385.
+
+## Experiment 3: denoise settings
+
+Explicit prompt, stem, 5 s lead-in windows, seeds 42 and 7; each knob changed alone from the default (8 distilled
+steps, STG 1, modality guidance 3, guidance rescale 0.7, audio at sigma 0). Paired against the same song and seed
+with the default; "better in" counts the pairs whose score rose.
+
+| Knob | mean score (default 0.485) | paired change | better in | mean r | s per shot |
+|---|---|---|---|---|---|
+| audio sigma 0.1 x the video's (instead of 0) | **0.516** | **+0.03** | 4 / 6 | 0.46 | 56 |
+| audio sigma 0.3 x | 0.488 | +0.00 | 4 / 6 | 0.43 | 56 |
+| modality 3, guidance rescale 0 | 0.465 | -0.02 | 3 / 6 | 0.41 | 56 |
+| STG 0 (two passes a step) | 0.462 | -0.02 | 4 / 6 | 0.39 | **40** |
+| modality 5, rescale 0 | 0.454 | -0.03 | 2 / 6 | 0.38 | 56 |
+| modality 5 | 0.435 | -0.05 | 3 / 6 | 0.42 | 56 |
+| audio-to-video attention x 1.5 | 0.423 | -0.06 | 1 / 6 | 0.34 | 56 |
+| modality 1 (off) | 0.423 | -0.06 | 3 / 6 | 0.31 | 42 |
+| 12 steps (distilled schedule stretched) | 0.398 | -0.09 | 2 / 6 | 0.31 | 78 |
+| modality 8 | 0.387 | -0.10 | 1 / 6 | 0.36 | 56 |
+| 16 steps | 0.387 | -0.10 | 1 / 6 | 0.29 | 101 |
+| STG 2 | 0.383 | -0.10 | 1 / 6 | 0.29 | 56 |
+
+**No denoise knob fixes singing.** Every change is inside the take-to-take noise except three that clearly hurt:
+more steps (the distilled model is trained on its 8 sigmas; stretching the schedule to 12 or 16 steps costs 40-80 %
+more time and lowers r), STG 2, and modality 8. Stronger audio guidance (modality 5 or 8, with or without the 0.7
+rescale that diffusers applies by default, or a 1.5x gain on the audio-to-video attention) does not make the mouth
+follow the vocal more closely; it mostly makes the face mouth through the gaps (open while silent up to 0.80). The
+one small positive, telling the model the audio is at 10 % of the video's noise level instead of clean, is +0.03 on
+6 pairs: too small and too uncertain to change the shipped default without more takes. The cheap end is worth
+knowing: STG 0 or modality 1 drop a transformer pass (40-42 s instead of 56 s) at a small cost.
+
+The two-stage, non-distilled path (Lightricks' route (a): dev 22B fp8, CFG, 30 + 3 steps) is below.
+
+### Experiment 3b: the two-stage, non-distilled path (route a)
+
+Lightricks' `A2VidPipelineTwoStage` in the spike's venv (`ltx-pipelines` 1.6.2): dev 22B fp8, stage 1 at 384x256
+with CFG 3, STG 1, modality 3 for 30 steps, stage 2 x2 upscale and 3 distilled-LoRA steps, `--offload cpu`; same
+explicit prompt, stem, windows, stills and seeds.
+
+| Path | mean score | mean r | beats chance | Good takes (beats chance, frontal, sings) | s per shot | GPU peak |
+|---|---|---|---|---|---|---|
+| route (b), the app's 4-bit distilled, 8 steps | 0.44 | 0.44 | 5 / 6 | 4 / 6 | 56 (warm) | 17.2 GiB torch |
+| route (a), dev fp8 two-stage, 30 + 3 steps | 0.43 | 0.19 | 3 / 6 | 3 / 6 | 267-300 (cold) | 9.0 GB whole card |
+
+Same hit rate, five times the time. Route (a) made the single best take of the whole study (soul seed 42: r 0.80,
+the mouth shuts in the gap between phrases and reopens with the next, a frontal face throughout), but also two
+misses on the ballad (seed 7 never opens; seed 42 opens late and sings on through the silent tail) and one on soul
+seed 7. The full non-distilled model does not fix singing either; its value stays the low-VRAM route (FU-333).
+
+## Experiment 7: LTX-2.5 audio to video
+
+`Lightricks/LTX-2.5` is gated (`auto`), and the saved token can read it; the diffusers repo the app's LTX-2.5 row
+uses (`Lightricks/LTX-2.5-Diffusers`, 67 GB) was already on disk. Loaded the way the app's video runtime loads it
+(`ltx25_loader.load_ltx25_components`: NF4 transformer and NF4 Gemma 4 text encoder, quantised while read; 84 s) into
+`LTX2ImageToVideoPipeline`, with the same audio hold, 8 distilled steps, the LTX-2.5 still CRF (18), the explicit
+prompt, stem, windows and seeds as route (b). The audio VAE config is identical to 2.3's, so the same log-mel input
+works.
+
+| Model | mean score | mean r | beats chance | open while silent | s per shot |
+|---|---|---|---|---|---|
+| **LTX-2.3** 4-bit (route b) | **0.44** | **0.44** | **5 / 6** | 0.59 | 56 |
+| LTX-2.5 4-bit, same loop | 0.36 | 0.20 | 1 / 6 | 0.82 | 55-66 |
+
+**LTX-2.5 is worse at singing**, as the landscape study's user reports said: the faces are livelier (big mouth
+shapes, head moves, a camera push-in, hands up on one take) but the mouth is open almost the whole shot, including
+the gaps (open while silent 0.76-0.94), so it follows the vocal far less (r 0.20; one take of six beats chance).
+Keep lip sync on 2.3. (Not tried: 2.5's own non-distilled path, its prompt enhancer, and a lower STG for its
+livelier motion.)
+
+## Experiment 5: best-of-N takes chosen by the score
+
+The recommended recipe (close-up still, explicit singing prompt, stem, 5 s with a 0.4 s lead-in, default denoise) on
+6 seeds per line (42, 7, 11, 23, 99, 123): 18 takes. A take is **usable** when r beats chance, closed while voiced
+<= 0.3 and turned away <= 0.3 (`SyncScore.usable`). For N takes, every N-subset of a line's 6 takes is considered,
+the take `pick_best` chooses (usable first, then `score`) is checked, and the result averaged over the three lines.
+
+| N | P(the picked take is usable) | mean score of the pick | time per shot, warm (56 s a take + 7.5 s scoring) |
+|---|---|---|---|
+| 1 | 0.72 | 0.45 | about 1 min |
+| 2 | **0.87** | 0.49 | about 2 min |
+| 3 | **0.93** | 0.51 | about 3 min 10 s |
+| 4 | **0.98** | 0.52 | about 4 min 15 s |
+
+Per line: ballad 0.33 / 0.60 / 0.80 / 0.93, soul 0.83 / 1.00 / 1.00 / 1.00, pop 1.00 at every N. **Best-of-N is the
+biggest lever measured**: the slow ballad, where single takes mostly over-act in the silent tail or turn away, goes
+from one usable take in three to 93 % with four. With the half-weight turn penalty the score first had, picking by
+the raw score got worse past N=2 (0.82, 0.82, 0.78 usable for N=2-4: a profile take can have the highest r), which is
+why `pick_best` ranks usable takes first (unit-tested); with the full turn penalty both pick alike here. Scoring a 5 s
+take costs 7.5 s on the CPU (MediaPipe, process start included). Recommendation: 3 takes per sung shot (93 %), 4 for
+a best-quality setting, 1 for speech; keep the other takes one click away. Strips: 12 of the 18 looked at; the extra
+seeds show the same pattern as experiment 4 (the mouth opens in the lead-in, a breath before the phrase; ballad takes
+keep the mouth open in the silent tail).
+## Experiment 8: InfiniteTalk on Windows (installs, far too slow; not scored)
+
+MeiGen-AI InfiniteTalk (Apache-2.0), commit `50aa0a9` (2026-11-20), in its own uv venv (Python 3.12.10, torch
+2.11.0+cu128, transformers 4.57.6, diffusers 0.35.2, optimum-quanto 0.2.6, decord 0.6.0) under `C:\tmp\lipsync-it`
+(E: was short of space). The repo's torch 2.4.1 pin is not needed.
+
+Weights, 31.9 GB, all ungated and fetched without a token: `MeiGen-AI/InfiniteTalk` `quant_models/` only
+(`infinitetalk_single_fp8.safetensors` 19.5 GB, which is the whole DiT with the audio layers, its
+`infinitetalk_single_fp8.json` map, `t5_fp8.safetensors` 6.7 GB and `t5_map_fp8.json`); from
+`Wan-AI/Wan2.1-I2V-14B-480P` only `config.json`, `Wan2.1_VAE.pth` (0.5 GB), the CLIP `.pth` (4.8 GB) and the two
+tokenizer folders (the fp8 path never opens the 66 GB of diffusion shards or the bf16 T5); `TencentGameMate/
+chinese-wav2vec2-base` at `refs/pr/1`. LoRAs (distillation) apply only on the non-quantised path, and the pre-merged
+LoRA fp8 files are another 19.5 GB each, so none was used.
+
+**It runs after 8 local fixes**: (1) xformers 0.0.36 needs a module with no Windows build: removed, an SDPA shim
+stands in for `memory_efficient_attention`; (2) `xfuser` imports `fcntl`: stubbed (single GPU only); (3)
+`flash_attention()` asserts flash-attn: an SDPA branch added; (4) `from inspect import ArgSpec` (gone in 3.11)
+commented out; (5) the Kokoro import (TTS only) wrapped; (6) `optimum-quanto` `requantize` allocates a 4-byte
+placeholder per quantised weight (about 56 GB for 14B) and the process dies with an access violation: patched to a
+1-byte placeholder; (7) the quanto fp8 Marlin kernel needs nvcc + ninja to JIT-build: disabled (plain dequantise);
+(8) transformers 5 returns no wav2vec2 hidden states (pinned below 5, wav2vec2 with eager attention) and
+`TORCHDYNAMO_DISABLE=1` (no triton on Windows).
+
+**Speed rules it out on this card**: about **4 minutes per denoising step per 81-frame chunk** at 480p (fp8 weights
+dequantised on every call, `--num_persistent_param_in_dit 0`, three guidance passes per step; a 33-frame profile put
+29 s in the quantised matmuls, 8 s in casts, 6 s in attention). A 5 s clip is two streamed chunks, so the default 40
+steps is about **5.3 hours per 5 s clip** (about 3,000 s of wall time per second of video, against about 11 s for
+LTX-2.3 route (b)); even 4 steps would be 30+ minutes and is not a meaningful setting without a distillation
+LoRA. VRAM peak 19.5-19.9 GB (81 frames), 20.7 GB streaming; a 125-frame single chunk and streaming with teacache
+both ran out of memory. Host RAM peak not captured. **No sung clip was made, so there is no sync score**: the
+pipeline was proven on the repo's own example at 1-2 steps only. Running it fairly needs either a Linux box with
+flash-attn and the Marlin kernel, or the bf16/LoRA path (66 GB more download, then a 14B bf16 model offloaded from
+64 GB of RAM). Verdict: not a practical tier on a 24 GB Windows card today (FU-386).

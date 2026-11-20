@@ -2377,3 +2377,25 @@ The owner was away; the reviewer's recommendations were built as his standing pr
 **Not done.** FU-473 (Benchmarks Run button; its files belong to the D-105 agent). The shot card's Make clip and Plan's Make / Rework buttons still offer to run with no model. The Balanced pill stays highlighted beside a distilled row's 8 steps. No Install or Download button inside the refusal dialog. Video Studio's SD pill label, disabled pills and 4-bit switch (FU-475). Icon-only status, licence "Other", fit tooltip (FU-476).
 
 **Not verified.** No model ran; the Nunchaku refusal text was checked by unit test, not end to end. The longer default clip on a Mac or a card under 24 GB. macOS, Linux, the packaged app.
+
+## 2026-11-20: singing lip-sync experiments (agent branch, FU-380 to FU-386, D-110; not pushed)
+
+What improves singing sync on LTX-2.3 audio to video, measured on 3 sung ACE-Step 1.5 XL turbo lines (ballad, male soul, upbeat pop) x 2 seeds (6 for best-of-N), 768x512, with the new automatic sync score (`backend_service/lip_sync_score.py`, MediaPipe Face Landmarker; mouth opening vs vocal-stem envelope, chance baseline over circular shifts, closed-while-voiced, open-while-silent, head turn; `pick_best` ranks takes usable first). Full write-up: `docs/research/lip-sync-singing-experiments-2026-11.md`. 162 GPU clips; strips looked at for every experiment (all of experiments 1, 2, 4 and 3b, samples elsewhere).
+
+| Lever | Result |
+|---|---|
+| Best-of-N, picked by the score | usable take 0.72 (1) -> 0.87 (2) -> 0.93 (3) -> 0.98 (4); about 56 s + 7.5 s per take, warm |
+| Explicit singing prompt | score 0.44 -> 0.49, r 0.35 -> 0.44, no "never sings" takes |
+| 0.4 s lead-in, 3-5 s shots | mid-phrase start 0.37, 8 s 0.45, 5 s 0.49, 3 s 0.52 |
+| Vocal stem vs mix | stem 0.44, mix 0.37; loudness normalising no help |
+| Denoise knobs (steps, STG, modality, rescale, audio sigma, gain) | none helps; more steps, STG 2, modality 8 hurt |
+| Route (a) two-stage dev, 30 + 3 steps | 0.43, 4.8x time |
+| LTX-2.5, same loop | 0.36, beats chance 1 / 6 |
+| LipDub IC-LoRA | gated (403 with the saved token), not run |
+| InfiniteTalk (own venv, fp8) | runs on Windows after 8 fixes; about 4 min per step per 81-frame chunk, so about 5 h per 5 s clip at 40 steps |
+
+**Recommended recipe:** shipped denoise defaults; stem audio; phrase cuts with a 0.4 s lead-in, 3-5 s; close-up still; explicit singing wording; 3 takes kept by `pick_best` (D-110 asks for the go-ahead). Unfixable here: the seed decides whether the face performs; mouths open through rests; mouth shapes unchecked.
+
+**Changed.** `lip_sync_score.py` (`usable`, `pick_best`; turn penalty), its tests (`tests/test_lip_sync_score.py`, 17 pass), `lipSyncSinging` prompt switch (`lipsync_runtime.py`, `mcp_bridge/lipsync_tool.py`, `tests/test_lipsync.py`), FU-380 to FU-386, D-110. Scripts and clips: `E:\tmp\lipsync\sing\` (harness, jobs, scores, strips), InfiniteTalk venv and weights `C:\tmp\lipsync-it\`.
+
+**Not verified.** Listening (I cannot hear audio); more lines, faces and seeds; LipDub; InfiniteTalk at a meaningful step count; the recipe inside the app's own worker and Storyboard; Mac.

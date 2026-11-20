@@ -18,6 +18,7 @@ export function ImageModelsView({ ctx }: { ctx: AppTabContext }) {
   return (
     <ImageModelsPage
       catalog={imgState.imageCatalog}
+      catalogLoading={!imgState.imageCatalogSettled}
       latest={imgState.latestImageDiscoverResults}
       searchInput={imgState.imageDiscoverSearchInput}
       onSearchInputChange={imgState.setImageDiscoverSearchInput}

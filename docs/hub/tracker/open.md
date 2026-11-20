@@ -140,52 +140,52 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 
 **Status or trigger:** Open
 
-**Notes:** English only, null elsewhere: `studio:musicStudio.packMissingCuda`, `library:models.fit.needsAccess`. English changed while the nine locales keep the older sentence: `common:benchmarkTab.noRunsYet`, `common:fineTuning.noAdaptersHint`, `studio:imageStudio.recent.emptyHint`, `studio:imageGallery.empty.firstGeneration`, `studio:storyboard.pathPlaceholder`. The failed-run sentence in `useImageState.ts` / `useVideoState.ts` is still a hard-coded English string. Wording to settle: Projects (sidebar) against Storyboard (buttons, "Send to storyboard" in lower case); "CUDA" chips on music rows; the Fine-Tuning line about Apple Silicon on a PC; dead string `musicUnsupported.soundReason`.
+**Notes:** English only, null elsewhere: `studio:musicStudio.packMissingCuda`, `library:models.fit.needsAccess`. English changed while the nine locales keep the older sentence: `common:benchmarkTab.noRunsYet`, `common:fineTuning.noAdaptersHint`, `studio:imageStudio.recent.emptyHint`, `studio:imageGallery.empty.firstGeneration`, `studio:storyboard.pathPlaceholder`. The failed-run sentence in `useImageState.ts` / `useVideoState.ts` is still a hard-coded English string. Wording to settle: Projects (sidebar) against Storyboard (buttons, "Send to storyboard" in lower case); "CUDA" chips on music rows; the Fine-Tuning line about Apple Silicon on a PC; dead string `musicUnsupported.soundReason`. Added by the FU-471 to FU-478 pass, English only, null elsewhere: `studio:videoStudio.lipSyncPointer`, `library:models.image.loadingCatalog`, `library:models.video.loadingCatalog`. `common:image.modal.errorHint` is no longer used by Image Studio (kept in the files).
 
 </details>
 
 <details>
-<summary>FU-478 · Image Studio: default row whose engine is missing; refusal dialog — Open</summary>
+<summary>FU-478 · Image Studio: default row whose engine is missing; refusal dialog — Done 2026-11-20 (agent branch, not pushed)</summary>
 
-**Status or trigger:** Open
+**Status or trigger:** **Done 2026-11-20 (agent branch, not pushed); unit-tested and seen in screenshots, no model run**
 
-**Notes:** With the Nunchaku pack on disk but the Nunchaku package not installed, Image Studio opened on FLUX.1 Schnell Nunchaku INT4 with Generate live. Do not default to a row whose engine is missing. The refusal dialog repeats its title, adds "Adjust the prompt or runtime settings" whatever the cause, has no Download or Install button, and the same text also shows in a banner; the backend sentence in `helpers/image_validation.py` says "Download it in Image Studio first" (the download is on Image Models). Also: three notices for "not installed" on a first run under a chip that says "Real local generation available". Review M2, M8.
-
-</details>
-
-<details>
-<summary>FU-477 · Phone width: H3 licence buttons under the fold, music rows clipped — Open</summary>
-
-**Status or trigger:** Open
-
-**Notes:** At 375 px the MiniMax H3 licence dialog cuts Not now / Confirm in half at its bottom edge since the D-99 text was added (pin the button row); Music and Audio Models rows clip the licence chip, the platform chips and the Accept licence button at the right edge. Review M5; shots `m-B-video-h3-licence-ticked.png`, `m-A-music-models.png`.
+**Notes:** Built: Image Studio never opens on a Nunchaku row while the Nunchaku package is missing (`defaultImageVariantFor`, `imageVariantEngineMissing`, fed by `nativeBackends.nunchakuAvailable`; an automatic pick made before the backend answered is redone, a user pick stays). The backend refuses such a run before any load with "needs the Nunchaku package, which is not installed. Install Nunchaku from Performance boosters in Image Studio, or pick another FLUX.1 row." (it used to fail after the load with "Falling back" and "nothing to fall back to"), and the not-downloaded sentence names Image Models (`_nunchaku_generation_block`; `test_nunchaku_download.py`). The dialog no longer repeats its title or adds "Adjust the prompt", and the page banner no longer repeats the dialog. Open: an Install or Download button inside the dialog. With the Nunchaku pack on disk but the Nunchaku package not installed, Image Studio opened on FLUX.1 Schnell Nunchaku INT4 with Generate live. Do not default to a row whose engine is missing. The refusal dialog repeats its title, adds "Adjust the prompt or runtime settings" whatever the cause, has no Download or Install button, and the same text also shows in a banner; the backend sentence in `helpers/image_validation.py` says "Download it in Image Studio first" (the download is on Image Models). Also: three notices for "not installed" on a first run under a chip that says "Real local generation available". Review M2, M8.
 
 </details>
 
 <details>
-<summary>FU-476 · Models pages: loading state, icon-only status, "Stub diffusion pipeline", licence "Other" — Open</summary>
+<summary>FU-477 · Phone width: H3 licence buttons under the fold, music rows clipped — Done 2026-11-20 (agent branch, not pushed)</summary>
 
-**Status or trigger:** Open
+**Status or trigger:** **Done 2026-11-20 (agent branch, not pushed); unit-tested and seen in screenshots, no model run**
 
-**Notes:** Image and Video Models show "No image models in the catalog yet. Check that the backend is running." while the catalogue loads (over 2.5 s on a first open, backend online): add a loading state (`ModelsPage` `emptyCatalog`). Ten image rows carry the runtime name "Stub diffusion pipeline", printed in the Image Studio header; renaming needs a look at `imageOrVideoVariantPlatformGate`, which reads the string. Status and row actions are icons only; music rows use a text pill in the same column. Licence reads "Other" where the note names it (FLUX 3 Klein, LTX-2.5). "Watching upstream" rows have a greyed download and no explanation. Fit tooltip says "Measured on this machine." for catalogue measurements. Review M1, M6, M7, L1, L2.
-
-</details>
-
-<details>
-<summary>FU-475 · Video Studio defaults and the way to lip sync (D-109) — Open</summary>
-
-**Status or trigger:** Open
-
-**Notes:** Every row opens at 33 frames (1.4 s at 24 fps) under a chip that says "4.0s clip"; the SD pill is highlighted and labelled 896x512 while the size is 768x512; size pills past the model's limit are disabled but look enabled (no `.preset-pill:disabled` style); Expert offers a "4-bit (NF4)" switch on a row that is already 4-bit. Lip sync is reachable only from a shot's editor in Projects: nothing in Video Studio or on the LTX-2.3 row mentions it (D-109). Review M3, M4.
+**Notes:** Built: the licence dialog's body scrolls and Not now / Confirm stay pinned (`.licence-screen`), and the Music and Audio Models table has one shrinkable column so licence chips and Accept licence stay inside a 375 px screen (`.music-models-page .models-table`); both checked in 375 px screenshots. At 375 px the MiniMax H3 licence dialog cuts Not now / Confirm in half at its bottom edge since the D-99 text was added (pin the button row); Music and Audio Models rows clip the licence chip, the platform chips and the Accept licence button at the right edge. Review M5; shots `m-B-video-h3-licence-ticked.png`, `m-A-music-models.png`.
 
 </details>
 
 <details>
-<summary>FU-474 · Projects offers Make with no model installed (High) — Open</summary>
+<summary>FU-476 · Models pages: loading state, icon-only status, "Stub diffusion pipeline", licence "Other" — Partly done 2026-11-20 (agent branch, not pushed)</summary>
 
-**Status or trigger:** Open
+**Status or trigger:** **Partly done 2026-11-20 (agent branch, not pushed)**
 
-**Notes:** Overview and Storyboard show "Make 3 missing" as the primary button, the shot editor "Make this shot", and Plan "Make them in Storyboard" / "Rework with the model", while the same panels say no image, video or chat model is installed. Offer "Open Image Models" / "Open Video Models" instead. The shot editor shows "Estimate: unknown until the first run" beside an "Estimated" chip. The vocal field accepts a 2 s file although the clip must last 3 to 8 s: say so on attach. Review H4, M4. Not verified: what the click answers.
+**Notes:** Built: Image and Video Models say "Loading the image/video models…" until the first catalogue answer (`catalogLoading`, `models.*.loadingCatalog`, English only); the ten "Stub diffusion pipeline" rows show "diffusers" through a new `runtimeLabel` field (`image_runtime_label` in `helpers/images.py`; `runtime` and the platform gate unchanged; `tests/test_image_runtime_label.py`). Open: icon-only status, licence "Other", the fit tooltip wording. Image and Video Models show "No image models in the catalog yet. Check that the backend is running." while the catalogue loads (over 2.5 s on a first open, backend online): add a loading state (`ModelsPage` `emptyCatalog`). Ten image rows carry the runtime name "Stub diffusion pipeline", printed in the Image Studio header; renaming needs a look at `imageOrVideoVariantPlatformGate`, which reads the string. Status and row actions are icons only; music rows use a text pill in the same column. Licence reads "Other" where the note names it (FLUX 3 Klein, LTX-2.5). "Watching upstream" rows have a greyed download and no explanation. Fit tooltip says "Measured on this machine." for catalogue measurements. Review M1, M6, M7, L1, L2.
+
+</details>
+
+<details>
+<summary>FU-475 · Video Studio defaults and the way to lip sync (D-109) — Partly done 2026-11-20 (agent branch, not pushed)</summary>
+
+**Status or trigger:** **Partly done 2026-11-20 (agent branch, not pushed)**
+
+**Notes:** Built: Video Studio opens at the row's own clip length (4.0 s at 24 fps = 97 frames, `defaultNumFramesFor`), so the first clip matches the "4.0s clip" chip; and (D-109) a row with `lipSync` shows one line pointing to the shot editor in Projects (`videoStudio.lipSyncPointer`, English only). Open: the SD pill label against the 768x512 size, disabled size pills that look enabled, the 4-bit switch on a 4-bit row, and a Mac first run at the longer default (the memory check warns, not measured). Every row opens at 33 frames (1.4 s at 24 fps) under a chip that says "4.0s clip"; the SD pill is highlighted and labelled 896x512 while the size is 768x512; size pills past the model's limit are disabled but look enabled (no `.preset-pill:disabled` style); Expert offers a "4-bit (NF4)" switch on a row that is already 4-bit. Lip sync is reachable only from a shot's editor in Projects: nothing in Video Studio or on the LTX-2.3 row mentions it (D-109). Review M3, M4.
+
+</details>
+
+<details>
+<summary>FU-474 · Projects offers Make with no model installed (High) — Done 2026-11-20 (agent branch, not pushed)</summary>
+
+**Status or trigger:** **Done 2026-11-20 (agent branch, not pushed); unit-tested and seen in screenshots, no model run**
+
+**Notes:** Built: Make N missing, Make all unlocked and Make drafts (run bar and Overview), Make this shot and the two Redo buttons (shot editor) are off while the estimate's `missing` names a model that is not installed, with that sentence as the tooltip and on the Overview and the shot editor as text (`modelsMissingReason`; `runBar.test.tsx`, e2e spec 05). Not built: the shot card's Make clip, Plan's "Make them in Storyboard" and "Rework with the model", the "Estimated" chip beside "unknown until the first run", the 2 s vocal warning. Overview and Storyboard show "Make 3 missing" as the primary button, the shot editor "Make this shot", and Plan "Make them in Storyboard" / "Rework with the model", while the same panels say no image, video or chat model is installed. Offer "Open Image Models" / "Open Video Models" instead. The shot editor shows "Estimate: unknown until the first run" beside an "Estimated" chip. The vocal field accepts a 2 s file although the clip must last 3 to 8 s: say so on attach. Review H4, M4. Not verified: what the click answers.
 
 </details>
 
@@ -199,20 +199,20 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-472 · Studio estimates against this month's measurements (High) — Open</summary>
+<summary>FU-472 · Studio estimates against this month's measurements (High) — Done 2026-11-20 (agent branch, not pushed)</summary>
 
-**Status or trigger:** Open
+**Status or trigger:** **Done 2026-11-20 (agent branch, not pushed); unit-tested and seen in screenshots, no model run**
 
-**Notes:** Nunchaku INT4 FLUX.1 Schnell shows "About 2 s, Peak 10.2 GB" in Image Studio and "~10 GB, Fits est." on Models; measured in the app on the 4090: 5.9 s warm, about 18 GB (offload). FLUX 3 Klein opens at 24 steps although its recommended value is 8 (13 s shown, 7.0 s measured at 8); apply the row's recommended steps when it is picked, and hide CFG decay for rows without guidance. The "may struggle on this device" warning shows on rows measured working and marked Tight (FLUX 3 Klein, LTX-2.3): one verdict per row. Review H2. The Klein 2048 px and LTX-2.5 large-size errors of 2026-11-19 are still open under FU-165.
+**Notes:** Built: Nunchaku INT4 schnell carries the measured 5.9 s and a CUDA footprint of 16.5 GB (`footprintBasis: measured`), so Image Studio reads "About 6 s, Peak ~18 GB" and Models "Tight, measured"; the note no longer says sub-second (a 32 GB card is faster than this, not measured in the app). A row with `defaultSteps` / `cfgOverride` starts at them when picked (FLUX 3 Klein 8 steps, about 7 s; `stepsForPickedVariant`, `useImageState`); reopening a saved image keeps its settings. CFG decay is hidden on rows without guidance. A caution the fit verdict already covers (fits or tight, at or under the recommended size and clip) is not shown in Image or Video Studio (`cautionCoveredByFit`); danger stays. Fixtures in `tests/fixtures/time_estimate_cases.json` unchanged (no Nunchaku case). The Balanced pill stays highlighted beside 8 steps. Nunchaku INT4 FLUX.1 Schnell shows "About 2 s, Peak 10.2 GB" in Image Studio and "~10 GB, Fits est." on Models; measured in the app on the 4090: 5.9 s warm, about 18 GB (offload). FLUX 3 Klein opens at 24 steps although its recommended value is 8 (13 s shown, 7.0 s measured at 8); apply the row's recommended steps when it is picked, and hide CFG decay for rows without guidance. The "may struggle on this device" warning shows on rows measured working and marked Tight (FLUX 3 Klein, LTX-2.3): one verdict per row. Review H2. The Klein 2048 px and LTX-2.5 large-size errors of 2026-11-19 are still open under FU-165.
 
 </details>
 
 <details>
-<summary>FU-471 · Models pages overstate the download size before download (High, D-108) — Open, waits on D-108</summary>
+<summary>FU-471 · Models pages overstate the download size before download (High, D-108) — Done 2026-11-20 (agent branch, not pushed)</summary>
 
-**Status or trigger:** Open, waits on D-108
+**Status or trigger:** **Done 2026-11-20 (agent branch, not pushed); unit-tested and seen in screenshots, no model run**
 
-**Notes:** The Size column and Video Studio prefer the sum of every weights file in the Hugging Face repo (`coreWeightsGb`) over the catalogue `sizeGb`: LTX-Video 236.4 GB shown for a 2.0 GB download, LTX-2.5 162.4 for 66.2 on disk, Qwen-Image-2.1 Turbo sd.cpp 60.4 for 3.9 on disk (table in the review, H1). `videoPrimarySizeLabel` / `imagePrimarySizeLabel` in `src/utils/format.ts` and the two `*SizeSortKey` helpers. Right fix: the backend sums the files its own download patterns match and sends that as the download size; until then prefer `sizeGb` for rows not on disk.
+**Notes:** Built (D-108): before a download the Size column, its sort and the Video Studio line show the catalogue `sizeGb` ("2.0 GB download" for LTX-Video, 71.1 GB for LTX-2.5); on disk stays first; the Hub repo totals (`coreWeightsGb`, `repoSizeGb`) only for rows with no catalogue size, and the "full repo" line is gone for catalogue rows (`src/utils/format.ts`, both `*SizeSortKey`, `discoverSort.ts`; `studioNumbers.test.ts`). Not built: the backend sum of the files the download patterns match (companion repos included); left for later, the catalogue figure needs no network and was within 10 % of disk. The Size column and Video Studio prefer the sum of every weights file in the Hugging Face repo (`coreWeightsGb`) over the catalogue `sizeGb`: LTX-Video 236.4 GB shown for a 2.0 GB download, LTX-2.5 162.4 for 66.2 on disk, Qwen-Image-2.1 Turbo sd.cpp 60.4 for 3.9 on disk (table in the review, H1). `videoPrimarySizeLabel` / `imagePrimarySizeLabel` in `src/utils/format.ts` and the two `*SizeSortKey` helpers. Right fix: the backend sums the files its own download patterns match and sends that as the download size; until then prefer `sizeGb` for rows not on disk.
 
 </details>
 

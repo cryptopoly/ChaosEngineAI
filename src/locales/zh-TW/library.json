@@ -704,6 +704,7 @@
     "image": {
       "emptyAttention": "沒有需要留意的影像模型。",
       "emptyCatalog": "目錄中尚無影像模型。請確認後端正在執行。",
+      "loadingCatalog": null,
       "emptyDownloading": "沒有正在下載的影像模型。",
       "emptyInstalled": "尚未安裝影像模型。請從可下載的模型中挑選一個來下載。",
       "intro": "所有影像模型集中在同一份清單。下載後即可在影像工作室中使用；可依已安裝、可下載或下載中篩選。"
@@ -732,6 +733,7 @@
     "video": {
       "intro": "所有影片模型集中在同一份清單。下載後即可在影片工作室中使用；可依已安裝、可下載或下載中篩選。",
       "emptyCatalog": "目錄中尚無影片模型。請確認後端正在執行。",
+      "loadingCatalog": null,
       "emptyInstalled": "尚未安裝影片模型。請從可下載的模型中挑選一個來下載。",
       "emptyDownloading": "沒有正在下載的影片模型。",
       "emptyAttention": "沒有需要留意的影片模型。"

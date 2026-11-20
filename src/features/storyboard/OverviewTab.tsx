@@ -27,7 +27,7 @@ import { RoughCutButton } from "./preview/RoughCutButton";
 import { draftPassTitle, type TFn } from "./RunBar";
 import type { ProjectWorkspaceDeps } from "./ProjectShell";
 import type { ProjectTabId } from "./projectRoute";
-import { batchProgress, filmSeconds, missingShotIds, primaryPass, relativeTime, staleCount, thumbnailOf } from "./storyboardLogic";
+import { batchProgress, filmSeconds, missingShotIds, modelsMissingReason, primaryPass, relativeTime, staleCount, thumbnailOf } from "./storyboardLogic";
 import { useProjectEstimate } from "./useProjectEstimate";
 import type { UseStoryboardResult } from "./useStoryboard";
 import type { UseStoryboardRenderResult } from "./useStoryboardRender";
@@ -92,6 +92,8 @@ export function OverviewTab({ story, project, timeline, deps, render, onTab, onO
   const running = mode === "running";
   const progress = running && story.batch ? batchProgress(story.batch) : null;
   const paused = mode === "paused" && story.batch ? pausedCounts(story.batch, pausedProgressOf(story.batchProgress)) : null;
+  // FU-474: with no image or video model installed for the work, Make stays off and says why (the estimate's sentences).
+  const noModelReason = step.id === "makeMissing" ? modelsMissingReason(estimate) : null;
 
   const stepText: Record<NextStepId, { title: string; body: string; button: string }> = {
     writeShots: {
@@ -228,6 +230,7 @@ export function OverviewTab({ story, project, timeline, deps, render, onTab, onO
                 })}
               </p>
             ) : null}
+            {noModelReason ? <p className="muted-text" role="note">{noModelReason}</p> : null}
             <div className="overview-tab__actions">
               {step.id === "writeShots" ? (
                 <button type="button" className="primary-button" onClick={() => onTab("plan")}>
@@ -238,14 +241,14 @@ export function OverviewTab({ story, project, timeline, deps, render, onTab, onO
                 <button
                   type="button"
                   className="primary-button"
-                  disabled={story.busy}
-                  title={draftPassTitle(t as unknown as TFn, estimate?.passes?.draft)}
+                  disabled={story.busy || noModelReason !== null}
+                  title={noModelReason ?? draftPassTitle(t as unknown as TFn, estimate?.passes?.draft)}
                   onClick={makeDrafts}
                 >
                   {t("board.passes.draft", { defaultValue: "Make drafts" })}
                 </button>
               ) : null}
-              <button type="button" className={step.id === "writeShots" || mode === "drafts" ? "secondary-button" : "primary-button"} disabled={story.busy} onClick={act}>
+              <button type="button" className={step.id === "writeShots" || mode === "drafts" ? "secondary-button" : "primary-button"} disabled={story.busy || noModelReason !== null} title={noModelReason ?? undefined} onClick={act}>
                 {text.button}
               </button>
               {step.id === "writeShots" ? (

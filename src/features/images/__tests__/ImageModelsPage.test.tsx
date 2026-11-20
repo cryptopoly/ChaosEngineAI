@@ -89,6 +89,14 @@ const downloads: Record<string, DownloadStatus> = {
   },
 };
 
+describe("ImageModelsPage loading state (FU-476)", () => {
+  it("says Loading until the first catalogue answer, and the backend sentence only after it", () => {
+    expect(render({ catalogLoading: true })).toContain("Loading the image models…");
+    expect(render({ catalogLoading: true })).not.toContain("Check that the backend is running");
+    expect(render({ catalogLoading: false })).toContain("Check that the backend is running");
+  });
+});
+
 describe("ImageModelsPage", () => {
   it("lists installed and not-installed models on one page with bucket counts", () => {
     const markup = render({ catalog: catalog(), latest: [tracked], activeImageDownloads: downloads });

@@ -146,14 +146,10 @@ export function ImageGenerationModal({
               </p>
             </div>
           ) : imageGenerationError ? (
+            // FU-478: the header already says "Image generation failed", and the backend sentence names the cause
+            // and the way out (download, install, a smaller size); a generic "adjust the prompt" hint misled.
             <div className="callout error">
-              <h3>{t("image.modal.failed", { defaultValue: "Image generation failed" })}</h3>
               <p>{imageGenerationError}</p>
-              <p className="muted-text">
-                {t("image.modal.errorHint", {
-                  defaultValue: "Adjust the prompt or runtime settings, then try again. The gallery keeps any earlier successful outputs.",
-                })}
-              </p>
             </div>
           ) : activeArtifact ? (
             <div className="image-generation-result">

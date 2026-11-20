@@ -217,8 +217,26 @@ class NunchakuInstalledTests(unittest.TestCase):
         (self.pack / "transformer_blocks.safetensors").write_bytes(b"")
         self.assertIn("incomplete", block(self.nunchaku, "completed"), "an empty pack file is not a pack")
         (self.pack / "transformer_blocks.safetensors").write_bytes(b"0")
-        self.assertIsNone(block(self.nunchaku, "completed"))
+        with mock.patch("backend_service.inference.accelerators.nunchaku_available", return_value=True):
+            self.assertIsNone(block(self.nunchaku, "completed"))
         self.assertIsNone(block(self.bf16, None), "only Nunchaku rows are checked here")
+
+    def test_files_on_disk_without_the_package_are_refused_with_the_way_to_install(self) -> None:
+        """FU-478: the load failed after it started, saying it fell back and then that it could not."""
+        block = image_validation._nunchaku_generation_block
+        _write_base_snapshot(self.base, with_transformer_weights=False)
+        self.snapshots[SCHNELL] = self.base
+        self.pack.mkdir()
+        self.snapshots[SCHNELL_PACK] = self.pack
+        (self.pack / "transformer_blocks.safetensors").write_bytes(b"0")
+        with mock.patch("backend_service.inference.accelerators.nunchaku_available", return_value=False):
+            reason = block(self.nunchaku, "completed")
+        self.assertIn("needs the Nunchaku package, which is not installed", reason)
+        self.assertIn("Performance boosters", reason)
+        self.assertNotIn("Falling back", reason)
+
+    def test_a_missing_download_points_to_image_models(self) -> None:
+        self.assertIn("Download it on Image Models first", image_validation._nunchaku_generation_block(self.nunchaku, None))
 
 class NunchakuRouteTests(unittest.TestCase):
     def _request(self, state) -> SimpleNamespace:

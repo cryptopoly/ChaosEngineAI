@@ -63,6 +63,8 @@ import {
 export interface VideoModelsPageProps {
   /** Curated families (``videoState.videoCatalog``). */
   catalog: VideoModelFamily[];
+  /** True until the first catalogue request has answered: the empty list then says "Loading" (FU-476). */
+  catalogLoading?: boolean;
   /** Tracked "latest" rows (``videoState.latestVideoDiscoverResults``). */
   latest: VideoModelVariant[];
   searchInput: string;
@@ -226,6 +228,7 @@ export function videoDeleteLabel(kind: VideoDeleteRepoKind, fallback: string, t:
 
 export function VideoModelsPage({
   catalog,
+  catalogLoading = false,
   latest,
   searchInput,
   onSearchInputChange,
@@ -684,9 +687,11 @@ export function VideoModelsPage({
       narrowGridTemplate={VIDEO_GRID_NARROW}
       narrowHide={[2, 3]}
       renderRow={renderRow}
-      emptyCatalog={t("models.video.emptyCatalog", {
-        defaultValue: "No video models in the catalog yet. Check that the backend is running.",
-      })}
+      emptyCatalog={catalogLoading
+        ? t("models.video.loadingCatalog", { defaultValue: "Loading the video models…" })
+        : t("models.video.emptyCatalog", {
+            defaultValue: "No video models in the catalog yet. Check that the backend is running.",
+          })}
       emptyByAvailability={{
         installed: t("models.video.emptyInstalled", {
           defaultValue: "No video models installed yet. Pick one from the available models to download it.",

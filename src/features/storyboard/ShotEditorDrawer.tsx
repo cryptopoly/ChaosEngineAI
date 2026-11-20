@@ -15,6 +15,7 @@ import {
   draftFromShot,
   drawerEscapeAction,
   importKindOf,
+  modelsMissingReason,
   shotPatchFromDraft,
   toggleReference,
   trapTabTarget,
@@ -59,6 +60,8 @@ export function ShotEditorDrawer({
   const kinds: StoryboardBatchWhat[] = ["both", ...(redoClip ? ["redo-clip" as const] : []), ...(redoStill ? ["redo-still" as const] : [])];
   const estimates = useShotEstimates(project.id, project.revision, shot.id, kinds, !batchRunning && !shot.locked);
   const make = estimates.both ?? null;
+  // FU-474: no image or video model installed for this shot's work: Make this shot stays off and says why.
+  const makeNoModel = modelsMissingReason(make);
   const tf = t as unknown as (key: string, options: Record<string, unknown>) => string;
   const blocked = busy || batchRunning || shot.locked || dirty;
   const blockedTitle = shot.locked
@@ -412,8 +415,8 @@ export function ShotEditorDrawer({
               <button
                 type="button"
                 className="secondary-button"
-                disabled={blocked}
-                title={blockedTitle ?? t("board.remake.clipTitle", { defaultValue: "A new take that keeps this still and makes a new clip with a new seed." })}
+                disabled={blocked || modelsMissingReason(estimates["redo-clip"]) !== null}
+                title={blockedTitle ?? modelsMissingReason(estimates["redo-clip"]) ?? t("board.remake.clipTitle", { defaultValue: "A new take that keeps this still and makes a new clip with a new seed." })}
                 onClick={() => onRedo?.("redo-clip", shot.id)}
               >
                 {redoLabel("redo-clip")}
@@ -423,8 +426,8 @@ export function ShotEditorDrawer({
               <button
                 type="button"
                 className="secondary-button"
-                disabled={blocked}
-                title={blockedTitle ?? t("board.remake.stillTitle", { defaultValue: "A new still with a new seed. The clip stays until you redo it, and the shot shows it is behind." })}
+                disabled={blocked || modelsMissingReason(estimates["redo-still"]) !== null}
+                title={blockedTitle ?? modelsMissingReason(estimates["redo-still"]) ?? t("board.remake.stillTitle", { defaultValue: "A new still with a new seed. The clip stays until you redo it, and the shot shows it is behind." })}
                 onClick={() => onRedo?.("redo-still", shot.id)}
               >
                 {redoLabel("redo-still")}
@@ -444,14 +447,15 @@ export function ShotEditorDrawer({
             <button
               type="button"
               className="primary-button"
-              disabled={blocked}
-              title={blockedTitle}
+              disabled={blocked || makeNoModel !== null}
+              title={blockedTitle ?? makeNoModel ?? undefined}
               onClick={() => onMake(shot.id)}
             >
               {t("board.makeOne", { defaultValue: "Make this shot" })}
             </button>
           }
         />
+        {makeNoModel ? <p className="muted-text" role="note">{makeNoModel}</p> : null}
       </div>
     </aside>
     {confirming ? (

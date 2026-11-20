@@ -28,6 +28,8 @@ export interface VideoModelVariant {
   acceptsEndImage?: boolean;
   /** True for a distilled model that runs its own fixed schedule (LTX-2 on MLX or diffusers): steps, guidance and negative prompt do not apply. */
   fixedSampler?: boolean;
+  /** Set on rows that can lip-sync a start still to a vocal; that runs from a shot's editor in Projects (D-109). */
+  lipSync?: { engine?: string; basis?: string } | null;
   /** Few-step distilled rows (CausVid, lightx2v, LTX distilled): the steps and guidance the Studio starts from. */
   defaultSteps?: number | null;
   cfgOverride?: number | null;

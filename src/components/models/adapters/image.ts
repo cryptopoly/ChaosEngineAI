@@ -67,7 +67,8 @@ function firstPositive(values: Array<number | null | undefined>): number | null 
 }
 
 export function imageSizeSortKey(variant: ImageModelVariant): number | null {
-  return firstPositive([variant.onDiskGb, variant.coreWeightsGb, variant.repoSizeGb, variant.sizeGb]);
+  // D-108: the catalogue size before the Hub repo's weight total.
+  return firstPositive([variant.onDiskGb, variant.sizeGb, variant.coreWeightsGb, variant.repoSizeGb]);
 }
 
 export function imageVariantToEntry(variant: ImageModelVariant, ctx: ImageEntryContext = {}): ImageModelEntry {

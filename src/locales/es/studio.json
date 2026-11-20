@@ -559,7 +559,8 @@
     "ltx2": {
       "engineMessage": "Este modelo funciona con su propio motor MLX (ltx-2-mlx) en la GPU de Apple, con sonido."
     },
-    "willLoadHint": "El modelo seleccionado se cargará en memoria en la próxima generación. La primera carga puede tardar un minuto en las variantes más grandes."
+    "willLoadHint": "El modelo seleccionado se cargará en memoria en la próxima generación. La primera carga puede tardar un minuto en las variantes más grandes.",
+    "lipSyncPointer": null
   },
   "imageGallery": {
     "subtitle": {

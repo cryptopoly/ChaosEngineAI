@@ -88,9 +88,10 @@ function firstPositive(values: Array<number | null | undefined>): number | null 
 }
 
 /** Size used by the Size sort (R13): the pinned GGUF file first, then what
- * is on disk, the weights, the repo, the catalog estimate. */
+ * is on disk, the catalogue size (D-108: what the download pulls), then the
+ * Hub repo's weight total and the repo. */
 export function videoSizeSortKey(variant: VideoModelVariant): number | null {
-  return firstPositive([variant.ggufFileGb, variant.onDiskGb, variant.coreWeightsGb, variant.repoSizeGb, variant.sizeGb]);
+  return firstPositive([variant.ggufFileGb, variant.onDiskGb, variant.sizeGb, variant.coreWeightsGb, variant.repoSizeGb]);
 }
 
 /** Fields an older or newer backend may send that the video type does not

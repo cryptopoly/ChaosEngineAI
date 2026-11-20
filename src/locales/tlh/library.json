@@ -704,6 +704,7 @@
     "image": {
       "emptyAttention": "buS nISbogh mIllogh yab tu'lu'be'.",
       "emptyCatalog": "wej tetlhDaq mIllogh yab tu'lu'. QaptaH'a' qoD pat? yI'ol.",
+      "loadingCatalog": null,
       "emptyDownloading": "lI'lI'bogh mIllogh yab tu'lu'be'.",
       "emptyInstalled": "wej mIllogh yab jomlu'. yab tu'lu'bogh yIwIv 'ej yIlI'.",
       "intro": "wa' tetlhDaq Hoch mIllogh yab. mIllogh vumpa'Daq Dalo'meH wa' yIlI'; jomlu'ta'bogh, tu'lu'bogh, lI'lI'bogh joq tIchev."
@@ -732,6 +733,7 @@
     "video": {
       "intro": "wa' tetlhDaq Hoch mIllogh vIH yab. mIllogh vIH vumpa'Daq Dalo'meH wa' yIlI'; jomlu'ta'bogh, tu'lu'bogh, lI'lI'bogh joq tIchev.",
       "emptyCatalog": "wej tetlhDaq mIllogh vIH yab tu'lu'. QaptaH'a' qoD pat? yI'ol.",
+      "loadingCatalog": null,
       "emptyInstalled": "wej mIllogh vIH yab jomlu'. yab tu'lu'bogh yIwIv 'ej yIlI'.",
       "emptyDownloading": "lI'lI'bogh mIllogh vIH yab tu'lu'be'.",
       "emptyAttention": "buS nISbogh mIllogh vIH yab tu'lu'be'."

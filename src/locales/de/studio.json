@@ -559,7 +559,8 @@
     "ltx2": {
       "engineMessage": "Dieses Modell läuft mit einer eigenen MLX-Engine (ltx-2-mlx) auf der Apple-GPU, mit Ton."
     },
-    "willLoadHint": "Das ausgewählte Modell wird beim nächsten Erzeugen in den Speicher geladen. Das erste Laden kann bei größeren Varianten eine Minute dauern."
+    "willLoadHint": "Das ausgewählte Modell wird beim nächsten Erzeugen in den Speicher geladen. Das erste Laden kann bei größeren Varianten eine Minute dauern.",
+    "lipSyncPointer": null
   },
   "imageGallery": {
     "subtitle": {

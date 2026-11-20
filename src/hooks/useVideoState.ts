@@ -70,6 +70,7 @@ import {
   DEFAULT_VIDEO_STEPS,
   MAX_VIDEO_SEED,
   clampNumFrames,
+  defaultNumFramesFor,
   parseRecommendedResolution,
   recommendedGuidanceForRepo,
 } from "./videoStateDefaults";
@@ -81,6 +82,8 @@ export function useVideoState(
   setActiveTab: (tab: TabId) => void,
 ) {
   const [videoCatalog, setVideoCatalog] = useState<VideoModelFamily[]>([]);
+  // FU-476: false until the first catalogue request has answered (or failed): Video Models says "Loading" meanwhile.
+  const [videoCatalogSettled, setVideoCatalogSettled] = useState(false);
   const [latestVideoDiscoverResults, setLatestVideoDiscoverResults] = useState<VideoModelVariant[]>([]);
   const [videoDiscoverTaskFilter, setVideoDiscoverTaskFilter] = useState<VideoDiscoverTaskFilter>("all");
   // Default: most recently released first. Same contract as image.
@@ -338,10 +341,10 @@ export function useVideoState(
   }, [videoCatalog, selectedVideoModelId, latestVideoDiscoverResults]);
 
   // ── Reset generation knobs when the model changes ───────────
-  // We pull the *resolution* hint from the variant catalog (e.g. "832x480")
-  // but keep frames / steps at our short, MPS-safe defaults so the first
-  // generate succeeds on consumer hardware. The user can dial up via the
-  // Studio controls.
+  // We pull the *resolution* hint and the clip length from the variant
+  // catalog (e.g. "832x480", 4.0 s), so the first clip is the one the
+  // header's "{n}s clip" chip names (FU-475). The pre-flight memory check
+  // warns when that clip is too heavy for the machine.
   useEffect(() => {
     if (!selectedVideoVariant) return;
     const [w, h] = parseRecommendedResolution(
@@ -351,7 +354,7 @@ export function useVideoState(
     );
     setVideoWidth(w);
     setVideoHeight(h);
-    setVideoNumFrames(DEFAULT_VIDEO_NUM_FRAMES);
+    setVideoNumFrames(defaultNumFramesFor(selectedVideoVariant.defaultDurationSeconds, DEFAULT_VIDEO_FPS));
     setVideoFps(DEFAULT_VIDEO_FPS);
     // Distilled rows declare the few steps and the guidance they were trained for; without this the
     // Studio sent 30 steps at guidance 5 and the backend (which only substitutes schema defaults)
@@ -474,6 +477,7 @@ export function useVideoState(
       setVideoCatalog(catalog.value.families);
       setLatestVideoDiscoverResults(catalog.value.latest ?? []);
     }
+    setVideoCatalogSettled(true);
     if (statuses.status === "fulfilled") {
       setActiveVideoDownloads((prev) => buildVariantAwareDownloadMapLocal(statuses.value, prev));
     }
@@ -775,6 +779,7 @@ export function useVideoState(
 
   return {
     videoCatalog,
+    videoCatalogSettled,
     videoCatalogWithLatest,
     setVideoCatalog,
     latestVideoDiscoverResults,

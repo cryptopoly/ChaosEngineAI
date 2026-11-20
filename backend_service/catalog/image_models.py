@@ -151,15 +151,25 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # transformer config), read from the Hub file listings on 2026-11-19.
                 "sizeGb": 16.7,
                 "runtimeFootprintGb": 8.7,  # unchanged estimate (the old 6.7 GB size x 1.3), not measured
+                # FU-472: measured through the app on the RTX 4090 (2026-11-19, 1024 px, 4 steps, CPU offload on a
+                # 24 GB card): about 18.0 GB peak on the card, about 1.6 GB of it the desktop. The Studio adds the
+                # activations for the asked size, so 1024 px reads about 18 GB again.
+                "runtimeFootprintCudaGb": 16.5,
+                "footprintBasis": "measured",
+                "footprintMeasuredOn": "cuda",
                 "fullGpuFootprintGb": 21.0,  # measured 2026-11: 22.7 GB peak fully on a 24 GB RTX 4090, about 1.6 GB of it the desktop
                 "recommendedResolution": "1024x1024",
                 "note": (
-                    "Nunchaku SVDQuant INT4 — sub-second 4-step gen on a "
-                    "4090 with quality near the bf16 baseline. CUDA only, "
-                    "needs Nunchaku installed. Downloads the 6.8 GB INT4 "
-                    "transformer plus the FLUX.1 text encoders and VAE (9.9 GB)."
+                    "Nunchaku SVDQuant INT4: 4-step images with quality near the bf16 baseline. About 6 s "
+                    "at 1024 px on a 24 GB card, where the app keeps part of the pipeline in system RAM; "
+                    "about 1 s with the whole pipeline on a larger card (measured outside the app). CUDA "
+                    "only, needs Nunchaku installed. Downloads the 6.8 GB INT4 transformer plus the "
+                    "FLUX.1 text encoders and VAE (9.9 GB)."
                 ),
-                "estimatedGenerationSeconds": 0.7,
+                # FU-472: 5.9 s warm through the app on the RTX 4090 (2026-11-19, denoise 5.87 s, 1024 px, 4 steps,
+                # CPU offload). A 32 GB or larger card runs it whole on the GPU and should be faster (1.07 s outside
+                # the app, not measured in it), so this overstates there.
+                "estimatedGenerationSeconds": 5.9,
                 "estimateRef": {"width": 1024, "height": 1024, "frames": 1, "steps": 4},  # FU-165 reference: row defaultSteps
                 "releaseDate": "2026-01",
             },

@@ -188,7 +188,12 @@ export default function App() {
   }, [strongBorders]);
 
   // ── Settings / Server / Preview ────────────────────────────
-  const imgState = useImageState(backendOnline, setError, setActiveTab);
+  const imgState = useImageState(
+    backendOnline,
+    setError,
+    setActiveTab,
+    workspace.runtime?.nativeBackends ? workspace.runtime.nativeBackends.nunchakuAvailable === true : null,
+  );
   const videoState = useVideoState(backendOnline, setError, setActiveTab);
   // Music reads its catalog, runtime and library only while the area is switched on.
   const musicState = useMusicState(backendOnline && HOME_STUDIO_ENABLED, setError, setActiveTab);

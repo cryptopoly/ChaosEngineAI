@@ -72,6 +72,9 @@ export interface ImageModelVariant {
   engine?: string | null;
   /** False when the variant's engine has no guidance / negative-prompt input; the Studio hides it. */
   acceptsGuidance?: boolean;
+  /** Distilled or few-step rows: the steps and guidance the Studio starts from when the row is picked (FU-472). */
+  defaultSteps?: number | null;
+  cfgOverride?: number | null;
   /** Reference images the variant takes (0 = none). 1 = a start image with a strength; more = edit / re-draw. */
   maxReferenceImages?: number;
   acceptsNegativePrompt?: boolean;
@@ -80,7 +83,10 @@ export interface ImageModelVariant {
   sharedRepoSiblingIds?: string[];
   sharedRepoKey?: string | null;
   link: string;
+  /** The catalogue's runtime string. The platform gate reads it; show ``runtimeLabel`` instead (FU-476). */
   runtime: string;
+  /** The runtime name to show ("diffusers" for the rows whose ``runtime`` reads "Stub diffusion pipeline"). */
+  runtimeLabel?: string | null;
   styleTags: string[];
   taskSupport: ImageModelTask[];
   sizeGb: number;

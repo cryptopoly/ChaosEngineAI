@@ -22,10 +22,24 @@ describe("Storyboard run bar", () => {
     expect(html).toContain("Estimated");
   });
 
-  it("names a missing model and keeps the count without a time", () => {
+  it("names a missing model, keeps the count without a time and holds Make with the reason (FU-474)", () => {
     const html = bar({ estimate: estimate({ seconds: null, peakGb: null, missing: ["No video model is installed."] }) });
     expect(html).toContain("No video model is installed.");
-    expect(html).toMatch(/class="primary-button">Make 3 missing</);
+    expect(html).toMatch(/class="primary-button" disabled="" title="No video model is installed.">Make 3 missing</);
+    expect(html).toMatch(/disabled="" title="No video model is installed.">Make all unlocked</);
+  });
+
+  it("holds Make drafts too while a model is missing", () => {
+    const html = bar({
+      onMakeDrafts: noop,
+      estimate: estimate({ missing: ["No image model is installed. Install one under Images > Models to see an estimate."] }),
+    });
+    expect(html).toMatch(/disabled="" title="No image model is installed\.[^"]*">Make drafts/);
+  });
+
+  it("leaves Make live when every model is installed", () => {
+    const html = bar();
+    expect(html).not.toMatch(/disabled=""[^>]*>Make 3 missing/);
   });
 
   it("turns red and holds Make until the risk is accepted when it will not fit", () => {

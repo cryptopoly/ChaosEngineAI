@@ -12398,6 +12398,20 @@ button.licence-chip:focus-visible {
 .licence-screen__footer {
   justify-content: flex-end;
 }
+/* FU-477: the body scrolls and Not now / Confirm stay in view; at 375 px the D-99 text pushed them half out of
+   the dialog's bottom edge. */
+.modal-content.licence-screen {
+  overflow: hidden;
+}
+.licence-screen .modal-body {
+  min-height: 0;
+  overflow-y: auto;
+}
+.licence-screen .modal-body > *,
+.licence-screen .modal-header,
+.licence-screen__footer {
+  flex-shrink: 0;
+}
 /* D-76 territory statement: the tick and the collapsed notice on the Models pages. */
 .licence-screen__territory {
   display: flex;
@@ -14224,6 +14238,16 @@ button.licence-chip:focus-visible {
 .music-models__licence-lines {
   margin: 0;
   padding-left: 18px;
+}
+/* FU-477: one column that may shrink. The table's implicit auto column took the width of the longest licence
+   chip and pushed the music rows (chips, Accept licence) past the right edge of a 375 px screen. */
+.music-models-page .models-table {
+  grid-template-columns: minmax(0, 1fr);
+}
+.music-models-page .models-table .licence-chip,
+.music-models-page .models-table .music-models__inline {
+  min-width: 0;
+  max-width: 100%;
 }
 .music-models__inline {
   display: none;

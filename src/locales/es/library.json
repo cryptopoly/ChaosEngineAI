@@ -704,6 +704,7 @@
     "image": {
       "emptyAttention": "Ningún modelo de imagen requiere atención.",
       "emptyCatalog": "Aún no hay modelos de imagen en el catálogo. Comprueba que el backend esté en ejecución.",
+      "loadingCatalog": null,
       "emptyDownloading": "No se está descargando ningún modelo de imagen.",
       "emptyInstalled": "Aún no hay modelos de imagen instalados. Elige uno de los modelos disponibles para descargarlo.",
       "intro": "Todos los modelos de imagen en una sola lista. Descarga uno para usarlo en Estudio de imagen; filtra por instalados, disponibles o en descarga."
@@ -732,6 +733,7 @@
     "video": {
       "intro": "Todos los modelos de video en una sola lista. Descarga uno para usarlo en Estudio de video; filtra por instalados, disponibles o en descarga.",
       "emptyCatalog": "Aún no hay modelos de video en el catálogo. Comprueba que el backend esté en ejecución.",
+      "loadingCatalog": null,
       "emptyInstalled": "Aún no hay modelos de video instalados. Elige uno de los modelos disponibles para descargarlo.",
       "emptyDownloading": "No se está descargando ningún modelo de video.",
       "emptyAttention": "Ningún modelo de video requiere atención."

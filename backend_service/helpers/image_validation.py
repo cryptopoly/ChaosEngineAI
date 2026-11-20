@@ -153,14 +153,26 @@ def _nunchaku_generation_block(variant: dict[str, Any], download_state: str | No
     placeholder picture and a raw Hugging Face error (RTX 4090, 2026-11-19); with the Hub reachable it could
     instead start fetching the whole 24 GB base repo.
     """
-    if not variant.get("nunchakuRepo") or _nunchaku_variant_ready(variant):
+    if not variant.get("nunchakuRepo"):
+        return None
+    if _nunchaku_variant_ready(variant):
+        # FU-478: the files are there but the Nunchaku package is not. The download has no standard transformer to
+        # fall back to, so say so before any load starts (the load used to fail after it, with a note that said
+        # "Falling back to the standard transformer" and then that there was nothing to fall back to).
+        from backend_service.inference.accelerators import nunchaku_available
+
+        if not nunchaku_available():
+            return (
+                f"{variant['name']} needs the Nunchaku package, which is not installed. Install Nunchaku from "
+                "Performance boosters in Image Studio, or pick another FLUX.1 row."
+            )
         return None
     pack_repo = str(variant["nunchakuRepo"])
     if download_state == "downloading":
         return f"{variant['name']} is still downloading. Generate again when the download has finished."
     if _hf_repo_snapshot_dir(pack_repo) is None and _hf_repo_snapshot_dir(str(variant.get("repo") or "")) is None:
         return (
-            f"{variant['name']} is not downloaded. Download it in Image Studio first: it needs the 4-bit pack "
+            f"{variant['name']} is not downloaded. Download it on Image Models first: it needs the 4-bit pack "
             f"{pack_repo} and the text encoders and VAE of {variant['repo']}."
         )
     return _nunchaku_download_validation_error(pack_repo)

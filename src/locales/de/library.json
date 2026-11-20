@@ -704,6 +704,7 @@
     "image": {
       "emptyAttention": "Kein Bildmodell muss geprüft werden.",
       "emptyCatalog": "Noch keine Bildmodelle im Katalog. Prüfe, ob das Backend läuft.",
+      "loadingCatalog": null,
       "emptyDownloading": "Es wird kein Bildmodell heruntergeladen.",
       "emptyInstalled": "Noch keine Bildmodelle installiert. Wähle unter den verfügbaren Modellen eines zum Herunterladen aus.",
       "intro": "Alle Bildmodelle in einer Liste. Lade eines herunter, um es im Bildstudio zu nutzen; filtere nach installiert, verfügbar oder Download läuft."
@@ -732,6 +733,7 @@
     "video": {
       "intro": "Alle Videomodelle in einer Liste. Lade eines herunter, um es im Videostudio zu nutzen; filtere nach installiert, verfügbar oder Download läuft.",
       "emptyCatalog": "Noch keine Videomodelle im Katalog. Prüfe, ob das Backend läuft.",
+      "loadingCatalog": null,
       "emptyInstalled": "Noch keine Videomodelle installiert. Wähle unter den verfügbaren Modellen eines zum Herunterladen aus.",
       "emptyDownloading": "Es wird kein Videomodell heruntergeladen.",
       "emptyAttention": "Kein Videomodell muss geprüft werden."

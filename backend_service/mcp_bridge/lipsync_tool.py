@@ -34,7 +34,7 @@ LIPSYNC_TOOLS: list[dict[str, Any]] = [
             {
                 "prompt": {"type": "string", "minLength": 1, "maxLength": 4000, "description": "The shot: who sings or speaks, framing, light. Keep the camera still."},
                 "start_image": {"type": "string", "description": "Path or upload: handle of the still the clip starts from (a face, frontal works best)."},
-                "audio": {"type": "string", "description": "Path or upload: handle of the vocal clip (WAV or FLAC; mono is fine). A vocal stem or the full mix."},
+                "audio": {"type": "string", "description": "upload: handle, or a file in the app's output folders: the vocal clip (WAV or FLAC; mono is fine). A vocal stem or the full mix."},
                 "audio_start": {"type": "number", "minimum": 0, "maximum": 3600, "description": "Where in the audio the shot starts, in seconds (default 0)."},
                 "seconds": {"type": "number", "minimum": 3, "maximum": 8, "description": "Shot length; default: the audio from audio_start, held to 3 to 8 s. Frames follow 8k+1 at 24 fps."},
                 "model": {"type": "string", "description": "Model id from list_models with lipSync. Default: the installed one."},
@@ -73,6 +73,7 @@ def make_lipsync_shot(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     from backend_service import lipsync_runtime
     from backend_service.helpers.generation_limits import parse_resolution, shot_clip_frames
     from backend_service.helpers.media_input import InputImageError, image_size, resolve_input_image
+    from backend_service.mcp_bridge.storyboard_tools import _agent_source
     from backend_service.models import VideoGenerationRequest
     from backend_service.routes.video import _generate_video_locked
     from backend_service.storyboard import media
@@ -80,7 +81,9 @@ def make_lipsync_shot(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     variant = _lipsync_variant(ctx, args.get("model"))
     try:
         start = resolve_input_image(args["start_image"])
-        audio = lipsync_runtime.resolve_audio(args["audio"])
+        # Like a Storyboard vocal: an upload handle or an output file only. The clip carries this audio as its sound,
+        # so any other path would let an agent copy any WAV or FLAC on the machine (security review 2026-11-20).
+        audio = lipsync_runtime.resolve_audio(_agent_source(args["audio"]))
     except (InputImageError, lipsync_runtime.LipSyncError) as exc:
         raise ToolError(str(exc)) from exc
     audio_start = float(args.get("audio_start", 0.0))

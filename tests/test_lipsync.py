@@ -136,6 +136,14 @@ class CommandTests(unittest.TestCase):
         self.assertIn("1:a:0", args)
         self.assertIn("-shortest", args)
 
+    def test_ffmpeg_reads_local_files_only(self) -> None:
+        # Security review 2026-11-20: ffmpeg picks the demuxer from the content, so a ".wav" that is really a playlist
+        # could make it fetch URLs. Every lip-sync ffmpeg call holds its inputs to local files, like the Storyboard's.
+        for args in (lip.prepare_audio_command("ffmpeg", Path("in.wav"), Path("out.wav"), 0.0, 5.0),
+                     lip.mux_command("ffmpeg", Path("v.mp4"), Path("a.wav"), Path("o.mp4"))):
+            self.assertEqual(args[args.index("-protocol_whitelist") + 1], "file,pipe")
+            self.assertLess(args.index("-protocol_whitelist"), args.index("-i"))
+
     def test_mac_a2v_command_line(self) -> None:
         args = lip.mlx_a2v_command(
             pack=Path("/p"), gemma=Path("/g"), prompt="a singer", width=768, height=512, frames=121, fps=24, seed=7,
@@ -417,6 +425,7 @@ class AgentToolTests(unittest.TestCase):
             still = png(Path(tmp) / "face.png")
             wav = _write_wav(Path(tmp) / "line.wav", 5.0)
             with mock.patch.object(lipsync_tool, "_lipsync_variant", return_value=_variant(CUDA_REPO)), \
+                    mock.patch("backend_service.mcp_bridge.files.output_roots", return_value=[Path(tmp).resolve()]), \
                     mock.patch.object(lipsync_tool.STORE, "submit", side_effect=fake_submit), \
                     mock.patch("backend_service.routes.video._generate_video_locked") as locked:
                 locked.return_value = {"artifact": {"videoPath": "x.mp4", "hasAudio": True, "numFrames": 121}, "runtime": {}}
@@ -430,6 +439,27 @@ class AgentToolTests(unittest.TestCase):
         self.assertEqual(body.audioPath, str(wav.resolve()))
         self.assertEqual(body.numFrames, 121)  # 5 s at 24 fps, 8k+1 covering the clip
         self.assertTrue(output["hasAudio"])
+
+    def test_the_tool_refuses_audio_outside_the_output_folders(self) -> None:
+        # Security review 2026-11-20: the clip carries the vocal as its sound, so an agent naming any WAV on the disk
+        # could have it copied into a downloadable output. Like a Storyboard vocal, only uploads and outputs go in.
+        from types import SimpleNamespace
+
+        from backend_service.mcp_bridge import lipsync_tool
+        from backend_service.mcp_bridge.tools import ToolError
+        from tests.storyboard_fixtures import png
+
+        with tempfile.TemporaryDirectory() as outputs, tempfile.TemporaryDirectory() as private:
+            still = png(Path(outputs) / "face.png")
+            wav = _write_wav(Path(private) / "private.wav", 5.0)
+            with mock.patch.object(lipsync_tool, "_lipsync_variant", return_value=_variant(CUDA_REPO)), \
+                    mock.patch("backend_service.mcp_bridge.files.output_roots", return_value=[Path(outputs).resolve()]), \
+                    mock.patch.object(lipsync_tool.STORE, "submit") as submit:
+                with self.assertRaises(ToolError) as caught:
+                    lipsync_tool.make_lipsync_shot(SimpleNamespace(request=None, app=None),
+                                                   {"prompt": "sings", "start_image": str(still), "audio": str(wav)})
+            submit.assert_not_called()
+        self.assertIn("upload", str(caught.exception))
 
 
 class StoryboardVocalTests(StoryboardRouteCase):

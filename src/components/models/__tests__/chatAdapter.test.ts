@@ -377,3 +377,16 @@ describe("findLibraryItemForRepo (R3)", () => {
     expect(findLibraryItemForRepo([cache], "org/unknown")).toBeNull();
   });
 });
+
+describe("memory cell agrees with the fit badge (FU-453)", () => {
+  it("shows the figure the fit verdict was judged on, not the catalogue's older estimate", () => {
+    const fit = { status: "wont-fit", needGb: 33.5, usableGb: 24, headroomPct: -39, reason: "Weights 28.6 GB + ...", basis: "estimated" } as const;
+    const q8 = { ...makeChatVariant({ id: "org/q8", repo: "org/q8", name: "Q8", sizeGb: 28.6, estimatedMemoryGb: 23.7 }), fit };
+    const plain = makeChatVariant({ id: "org/plain", repo: "org/plain", name: "Plain", estimatedMemoryGb: 3.1 });
+    const entries = buildChatEntries([makeChatFamily({}, [q8, plain])], [], {}, { now: NOW });
+    expect(byId(entries, "catalog:org/q8").source.ramGb).toBe(33.5);
+    expect(byId(entries, "catalog:org/q8").memory?.label).toBe("~33.5 GB");
+    // No verdict from the backend: the catalogue estimate stays.
+    expect(byId(entries, "catalog:org/plain").source.ramGb).toBe(3.1);
+  });
+});

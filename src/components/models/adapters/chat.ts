@@ -476,12 +476,16 @@ export function buildChatEntries(
     const displayQuantization = item ? libraryItemQuantization(item, variant) : variant.quantization;
     const displayBackend = item ? libraryItemBackend(item, variant) : variant.backend;
     const sourceKind = item ? libraryItemSourceKind(item) : null;
-    const ramGb = item ? estimateLibraryItemResidentGb(item, variant) : positiveOrNull(variant.estimatedMemoryGb);
+    const fit = readVariantFit(variant);
+    // The memory cell shows the figure the fit badge beside it was judged on. The catalogue's older rough
+    // estimate disagreed with it on the same row (a 28.6 GB file read "~23.7 GB" next to "Won't fit").
+    const ramGb =
+      positiveOrNull(fit?.needGb) ??
+      (item ? estimateLibraryItemResidentGb(item, variant) : positiveOrNull(variant.estimatedMemoryGb));
     const compressedGb = item
       ? estimateLibraryItemCompressedGb(item, variant)
       : positiveOrNull(variant.estimatedCompressedMemoryGb);
     const sizeGb = item ? item.sizeGb : variant.sizeGb;
-    const fit = readVariantFit(variant);
     entries.push({
       id: `catalog:${variant.id}`,
       area: "chat",

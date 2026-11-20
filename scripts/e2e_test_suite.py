@@ -2637,7 +2637,24 @@ def phase_8(cap: Capability) -> PhaseResult:
         if payload.get("model") != ready[0]["id"] or "voice" not in text.lower():
             return "fail", f"GPU transcribe answered {payload.get('model')!r}: {text[:80]!r}", {}
         detail = {"model": ready[0]["id"], "transcript": text[:60], "wallS": round(time.time() - started, 1)}
-        # Speaker labels: each speaker turn is transcribed on its own (no word timings on these rows).
+        # Word timings (FU-270): the model's own (Parakeet, Nemotron ASR) or the forced aligner's (the audio LLMs, once
+        # the aligner repo is downloaded); without the aligner the reply says so and still gives the text.
+        code, resp = _voice_http(
+            "POST", "/api/voice/transcribe", body=_multipart(boundary, wav, {"model": ready[0]["id"], "words": "true"}),
+            content_type=f"multipart/form-data; boundary={boundary}", timeout=600.0,
+        )
+        if code != 200:
+            return "fail", f"GPU transcribe with words HTTP {code}: {resp[:200]!r}", {}
+        reply = json.loads(resp.decode("utf-8"))
+        words = [w for s in reply.get("segments", []) for w in s.get("words", [])]
+        if words:
+            starts = [w["start"] for w in words]
+            if starts != sorted(starts) or any(w["end"] < w["start"] for w in words):
+                return "fail", "GPU word timings are not in order", {}
+            detail["words"] = len(words)
+        elif "forced aligner" not in str(reply.get("note") or ""):
+            return "fail", f"GPU transcribe with words gave no words and no reason: {reply.get('note')!r}", {}
+        # Speaker labels: each speaker turn is transcribed on its own.
         two = _two_voice_clip() if runtime_payload.get("speakersAvailable") else None
         if two is not None:
             code, resp = _voice_http(

@@ -1,13 +1,31 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 110 shipped, obsoleted or dropped rows, newest first.
+summary: 112 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Shipped, obsoleted or dropped rows (struck through, or marked shipped with no open points left). Kept as the history of why things are the way they are.
 
+
+<details>
+<summary>FU-271 · Pin revisions for the GPU dictation rows, and track Transformers 5.23 in asr-site — Done 2026-11-20 (agent branch).</summary>
+
+**Status or trigger:** **Done 2026-11-20 (agent branch).**
+
+**Notes:** Every row in `catalog/voice_stt_cuda.py` and the forced aligner pin a full commit (checked on the Hub: SHA matches, files present); `start_download` passes it to `snapshot_download` (`voice_runtime.stt_repo_revision`), and a row runs its pinned snapshot when on disk (else the earlier download). CLAUDE.md upstream table and `scripts/check-upstreams.py` have a Transformers (stt-gpu asr-site) row. A bump of a pin or of Transformers needs the rows re-run. Not exercised: a fresh download through the app's button at the pinned commit (mocked spawn only; the model files here were already those commits).
+
+</details>
+
+<details>
+<summary>FU-270 · Word timings for the GPU dictation rows (stt-gpu add-on) — Done 2026-11-20 (agent branch, measured on the RTX 4090</summary>
+
+**Status or trigger:** **Done 2026-11-20 (agent branch, measured on the RTX 4090; not pushed).**
+
+**Notes:** Parakeet TDT and Nemotron ASR give timings natively (`generate(..., return_dict_in_generate=True).durations` with `processor.decode(..., durations=...)`); Qwen3-ASR, Granite and Nemotron Transcribe are aligned by Qwen3-ForcedAligner-0.6B (`Qwen/Qwen3-ForcedAligner-0.6B-hf`, Apache-2.0, 1.84 GB, `catalog/voice_stt_cuda.py` `ALIGNER`), downloaded like any repo; Nemotron ASR prefers it too, because its own times run late by the 320 ms streaming latency. Behind the `words` flag; Whisper unchanged. Median error on a Kokoro clip with known clause boundaries: aligner 20 ms start / 25 ms end, Parakeet 90 / 95, Nemotron ASR native 295 / 110, Whisper turbo 160 / 105. Recordings of 65 s and 155 s (3 and 6 windows for the LLMs) lose or double no word. Details: `docs/progress/rtx4090-progress.md` 2026-11-20. Left: FU-310 to FU-312.
+
+</details>
 
 <details>
 <summary>FU-257 · Tests that make symlinks fail on Windows without Developer Mode — Closed 2026-11-18: the owner turned Developer Mode on (D-96)</summary>

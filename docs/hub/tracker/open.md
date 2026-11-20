@@ -1,13 +1,40 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 171 rows with work, decisions or watch items still open, newest first.
+summary: 172 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-312 · Parakeet's own word timings: early starts and a slow decode — When the aligner is a default download, or a speed complaint</summary>
+
+**Status or trigger:** When the aligner is a default download, or a speed complaint
+
+**Notes:** Parakeet's native word starts are on average 84 ms early and ends 60 ms late (80 ms frames), median error 90 ms against 20 ms for the aligner; the words path costs +0.43 s per 30 s (a Python `DecodeStream` per token; +2.4 s on 155 s). Possible: use the aligner for Parakeet too when it is downloaded and the language is one of its eleven (Parakeet speaks 25), or batch the token decode. Low priority.
+
+</details>
+
+<details>
+<summary>FU-311 · Word timings: languages and audio not run — A recording in the language, a Linux box, or an 80 GB card</summary>
+
+**Status or trigger:** A recording in the language, a Linux box, or an 80 GB card
+
+**Notes:** Only clean Kokoro speech in English and French was measured. Not run: Japanese and Korean (the aligner speaks them, but its word splitting needs nagisa and soynlp, which the add-on does not install, so those rows give a note instead), Chinese and Cantonese (characters as words, no clip), Nemotron ASR on auto-detect in a language outside the aligner's eleven (it tries the aligner; not measured), Nemotron 3.5 Transcribe (64.7 GB; Transformers 5.23 has `Nemotron3_5TranscribeWordTimestampModel`, not wired), accented, noisy, overlapping or musical audio, Linux, the CPU.
+
+</details>
+
+<details>
+<summary>FU-310 · A download row for the forced aligner (word timings) in the Dictation models panel — Next voice UI pass</summary>
+
+**Status or trigger:** Next voice UI pass
+
+**Notes:** The backend downloads `Qwen/Qwen3-ForcedAligner-0.6B-hf` through `/api/models/download` (files and commit pinned) and uses it once present, but the Dictation models panel has no row for it: without it a word-timing request on Qwen3-ASR, Granite or Nemotron Transcribe returns the text, segment times and a note naming the repo. Options: a small "Word timings" row (1.84 GB, Apache-2.0), or a download companion of the Qwen3-ASR rows (`helpers/companions.py`). New English strings need `null` placeholders in the other locales. The aligner adds about 1.9 GiB of GPU memory while loaded (not in the rows' `minVramGb`).
+
+</details>
 
 <details>
 <summary>FU-302 · sd.cpp on Windows: what is not done — Before shipping sd.exe in a Windows bundle</summary>
@@ -114,24 +141,6 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** A good network line; an 80 GB card
 
 **Notes:** 2026-11-19 RTX 4090: download.pytorch.org gave about 90 KB/s, so the add-on's torch 2.9.1 step did not run (the venv got torch 2.11.0+cu128 from the pip cache; the asr-site and import-check commands ran as written). Re-run `POST /api/voice/install {"extras":["kokoro","stt-gpu"]}` and the phase 8 check. Nemotron 3.5 Transcribe 30B-A4B (64.7 GB bf16) is listed fit-gated at 72 GB and untested; its processor and model class were checked on the meta device only. NVIDIA mentions FP8 / NVFP4 builds that might fit 32 to 48 GB cards.
-
-</details>
-
-<details>
-<summary>FU-271 · Pin revisions for the GPU dictation rows, and track Transformers 5.23 in asr-site — Before a release that ships the stt-gpu add-on</summary>
-
-**Status or trigger:** Before a release that ships the stt-gpu add-on
-
-**Notes:** The rows in `catalog/voice_stt_cuda.py` list files but no revision: `/api/models/download` takes none for dictation rows, so a repo change upstream reaches users unchecked (the Qwen3-TTS rows pin one). `voice_env_asr.ASR_SITE_PACKAGES` (transformers 5.23.0, tokenizers 0.23.3, safetensors 0.8.0, regex, accelerate 1.16.0, psutil 7.2.2) has no row in the CLAUDE.md upstream table or `check-upstreams.py`.
-
-</details>
-
-<details>
-<summary>FU-270 · Word timings for the GPU dictation rows (stt-gpu add-on) — Next voice pass on Windows / Linux</summary>
-
-**Status or trigger:** Next voice pass on Windows / Linux
-
-**Notes:** Qwen3-ASR, Parakeet, Nemotron ASR, Granite and Nemotron Transcribe (`voice_worker_asr.py`) return one segment per window (30 s for the audio LLMs, 120 s for the transducers) and no words; a request with `words` gets a note, speaker labels transcribe each speaker turn instead. Parakeet TDT has token timings in Transformers (`processor.decode(..., durations=output.durations)`); Qwen3-ASR has a separate forced aligner (`Qwen3ASRForTokenClassification`, Qwen3-ForcedAligner). Also not run: a recording longer than 30 s on these rows.
 
 </details>
 

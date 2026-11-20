@@ -540,8 +540,30 @@ function stageLlamaBinaries() {
     for (const candidate of sdcppCandidates) {
       if (fs.existsSync(candidate)) {
         copyPath(candidate, path.join(binDest, sdName));
+        // A Windows CUDA build (scripts/build-sdcpp.ps1) loads the CUDA runtime DLLs from its own
+        // folder: cudart64_*, cublas64_*, cublasLt64_* (about 790 MB for CUDA 12.8, redistributable
+        // under NVIDIA's CUDA EULA). Copy whichever sit beside the binary; a CPU build has none.
+        if (process.platform === "win32") {
+          const sdCudaDll = /^(cudart64|cublas64|cublasLt64)_\d+\.dll$/i;
+          const staged = [];
+          for (const entry of fs.readdirSync(path.dirname(candidate))) {
+            if (sdCudaDll.test(entry) && !fs.existsSync(path.join(binDest, entry))) {
+              copyPath(path.join(path.dirname(candidate), entry), path.join(binDest, entry));
+              staged.push(entry);
+            }
+          }
+          console.log(
+            `[stage-runtime] sd.exe staged from ${candidate}` +
+              (staged.length ? ` with CUDA runtime ${staged.join(", ")}` : " (no CUDA runtime DLLs beside it: CPU build)"),
+          );
+        }
         break;
       }
+    }
+    if (!fs.existsSync(path.join(binDest, sdName))) {
+      // Release CI does not build sd, so CI bundles carry sdCpp: null. A local build is picked up from
+      // CHAOSENGINE_SDCPP_BIN_DIR, ~/.chaosengine/bin or ../stable-diffusion.cpp/build/bin.
+      console.log(`[stage-runtime] no ${sdName} found; sdCpp stays null (build it with scripts/build-sdcpp.${process.platform === "win32" ? "ps1" : "sh"})`);
     }
   }
 

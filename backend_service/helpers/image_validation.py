@@ -131,7 +131,8 @@ def _nunchaku_variant_ready(variant: dict[str, Any]) -> bool:
         return False
     if validate_local_diffusers_snapshot(Path(base_dir), str(variant["repo"])) is not None:
         return False
-    return any(Path(pack_dir).glob("*.safetensors"))
+    # A dangling link or an empty file (an unfinished copy) is not a pack.
+    return any(path.is_file() and path.stat().st_size > 0 for path in Path(pack_dir).glob("*.safetensors"))
 
 
 def _nunchaku_download_validation_error(pack_repo: str) -> str | None:
@@ -143,6 +144,26 @@ def _nunchaku_download_validation_error(pack_repo: str) -> str | None:
         f"The download of {variant['name']} is incomplete: it needs {pack_repo} and the text encoders "
         f"and VAE of {variant['repo']}. Retry the download."
     )
+
+
+def _nunchaku_generation_block(variant: dict[str, Any], download_state: str | None) -> str | None:
+    """Why a Nunchaku variant cannot generate yet, or None when its pack and base parts are on disk.
+
+    Without this check the run went to diffusers, failed on the missing files, and answered HTTP 200 with a
+    placeholder picture and a raw Hugging Face error (RTX 4090, 2026-11-19); with the Hub reachable it could
+    instead start fetching the whole 24 GB base repo.
+    """
+    if not variant.get("nunchakuRepo") or _nunchaku_variant_ready(variant):
+        return None
+    pack_repo = str(variant["nunchakuRepo"])
+    if download_state == "downloading":
+        return f"{variant['name']} is still downloading. Generate again when the download has finished."
+    if _hf_repo_snapshot_dir(pack_repo) is None and _hf_repo_snapshot_dir(str(variant.get("repo") or "")) is None:
+        return (
+            f"{variant['name']} is not downloaded. Download it in Image Studio first: it needs the 4-bit pack "
+            f"{pack_repo} and the text encoders and VAE of {variant['repo']}."
+        )
+    return _nunchaku_download_validation_error(pack_repo)
 
 
 def _image_repo_runtime_ready(repo_id: str) -> bool:

@@ -229,7 +229,10 @@ def _prepare(variant: dict[str, Any]) -> None:
     error = readiness_error(variant)
     if error:
         raise MusicNotReady(error)
-    music_env.prepare_checkpoints(music_variants())
+    try:
+        music_env.prepare_checkpoints(music_variants())
+    except music_env.WeightCopyNotice as exc:
+        raise MusicNotReady(str(exc)) from exc
     if is_sound(variant):
         if not music_sound_env.prepare_text_encoder(variant):
             raise MusicNotReady(f"{variant['name']} could not set up its text encoder. Download the model again.")

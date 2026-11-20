@@ -145,6 +145,44 @@ class SdCppImageEngineProbeTests(unittest.TestCase):
         self.assertTrue(probe["available"])
         self.assertEqual(probe["binary"], _FAKE_SD_BIN)
 
+    def _probe_fake_binary(self, payload: bytes, system: str = "Windows", sibling: str | None = None):
+        import tempfile
+
+        from backend_service import sdcpp_video_runtime
+
+        sdcpp_video_runtime._SD_DEVICE_CACHE.clear()
+        sdcpp_video_runtime._SD_DEVICE_NAME_CACHE.clear()
+        with tempfile.TemporaryDirectory() as tmp:
+            binary = Path(tmp) / "sd.exe"
+            binary.write_bytes(b"MZ" + b"\0" * 64 + payload + b"\0" * 64)
+            if sibling:
+                (Path(tmp) / sibling).write_bytes(b"x")
+            with patch("backend_service.sdcpp_image_runtime._resolve_sd_binary", return_value=binary), \
+                 patch("backend_service.sdcpp_video_runtime.platform.system", return_value=system), \
+                 patch("backend_service.helpers.gpu.get_gpu_metrics",
+                       return_value={"gpu_name": "NVIDIA GeForce RTX 4090"}):
+                return SdCppImageEngine().probe()
+
+    def test_cuda_build_reports_cuda_and_the_nvidia_gpu(self):
+        """A CUDA build carries ggml's CUDA back end; the probe names the card (RTX 4090, 2026-11-20)."""
+        probe = self._probe_fake_binary(b"ggml_backend_cuda_buffer_clear")
+        self.assertEqual(probe["device"], "cuda")
+        self.assertEqual(probe["deviceName"], "NVIDIA GeForce RTX 4090")
+
+    def test_cpu_only_build_is_not_labelled_cuda(self):
+        """Every non-Mac host used to read "cuda", including a CPU-only Windows build."""
+        probe = self._probe_fake_binary(b"ggml_backend_cpu_init")
+        self.assertEqual(probe["device"], "cpu")
+        self.assertIsNone(probe["deviceName"])
+
+    def test_shared_cuda_build_is_found_by_its_sibling_library(self):
+        probe = self._probe_fake_binary(b"nothing here", sibling="ggml-cuda.dll")
+        self.assertEqual(probe["device"], "cuda")
+
+    def test_mac_build_reports_mps(self):
+        probe = self._probe_fake_binary(b"ggml_backend_cpu_init", system="Darwin")
+        self.assertEqual(probe["device"], "mps")
+
 
 class SdCppImageEnginePreloadTests(unittest.TestCase):
     def test_preload_supported_repo(self):

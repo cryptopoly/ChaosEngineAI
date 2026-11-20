@@ -1,13 +1,40 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 168 rows with work, decisions or watch items still open, newest first.
+summary: 171 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-302 · sd.cpp on Windows: what is not done — Before shipping sd.exe in a Windows bundle</summary>
+
+**Status or trigger:** Before shipping `sd.exe` in a Windows bundle
+
+**Notes:** Not done: a full `stage-runtime.mjs` / `build.sh` bundle with the CUDA `sd.exe` (only the staging block was run, against a scratch folder; the 790 MB of DLLs must still fit the 1.9 GB NSIS archive guard, unmeasured); the default CUDA architecture list (only `SDCPP_CUDA_ARCHITECTURES=89` was built; ggml's default list for other cards is slower to build and untested); a system-wide CUDA Toolkit path; Image Studio's banner still shows the diffusers device for an sd.cpp row until the first image; catalogue `runtimeFootprintGb` 11.0 for the Qwen-Image 2.1 sd.cpp row vs about 14.4 GB measured (unchanged here).
+
+</details>
+
+<details>
+<summary>FU-301 · Nunchaku row answered HTTP 200 with a placeholder picture when not downloaded — Done (2026-11-20, agent branch), reproduced and re-checked through the app routes on the RTX 4090</summary>
+
+**Status or trigger:** **Done (2026-11-20, agent branch), reproduced and re-checked through the app routes on the RTX 4090**
+
+**Notes:** Reproduced on a throwaway home with an empty model cache: `POST /api/images/generate` for `black-forest-labs/FLUX.1-schnell-nunchaku-int4` answered **200** with a placeholder SVG saved to outputs, `runtimeLabel` "Placeholder image engine" and a raw Hugging Face "local_files_only" error (with the Hub reachable the same run would have started fetching the whole base repo). Fix: the route refuses a Nunchaku row whose pack or base parts are not on disk with a **409** saying "is not downloaded" (or "still downloading" / "incomplete, retry"), before any engine runs (`_nunchaku_generation_block` in `helpers/image_validation.py`); an empty or dangling pack file no longer counts as downloaded; and the image manager raises instead of returning a placeholder when a Nunchaku row fails to load or the diffusers runtime is missing. After the fix the same request answers 409 with the plain message. Tests: `tests/test_nunchaku_download.py` (block states, route 409 without running, no placeholder). The download itself already ends "failed" with a reason when the pack or base parts are missing (validation after the download).
+
+</details>
+
+<details>
+<summary>FU-300 · stable-diffusion.cpp on Windows: CUDA build script, bundle staging, device label — Done (2026-11-20, agent branch), built and run through the app routes on the RTX 4090</summary>
+
+**Status or trigger:** **Done (2026-11-20, agent branch), built and run through the app routes on the RTX 4090**
+
+**Notes:** `scripts/build-sdcpp.ps1` existed but floated on `master` and passed `SD_CUBLAS` (ignored at the pin, so a "CUDA" build came out CPU-only). It now builds the pinned `SDCPP_REF` with `-DSD_CUDA=ON`, loads the MSVC environment itself and builds with the Ninja that ships with the Build Tools, finds a CUDA Toolkit (`CUDAToolkit_ROOT`, `CUDA_PATH`, `nvcc` on PATH) or, with `CHAOSENGINE_SDCPP_CUDA_REDIST=1`, downloads NVIDIA's portable 12.8 archives (sha256 checked, nothing installed system-wide), honours `SDCPP_CUDA_ARCHITECTURES`, and installs `sd.exe` plus `cudart64_12`, `cublas64_12`, `cublasLt64_12` (about 790 MB) beside it; `sd.version` records the backend. `update-sdcpp.ps1` compares against the pin. `stage-runtime.mjs` copies those DLLs with `sd.exe` on Windows and logs when no build is found (release CI still builds no `sd`, so CI bundles keep `sdCpp: null`). `probe()` (image and video) now reads the back end from the binary (`ggml_backend_cuda` inside it, or `ggml-cuda` beside it) and reports `cuda` with the NVIDIA card's name, `cpu` for a CPU build, `mps` on a Mac; every non-Mac host used to read "cuda". A successful sd.cpp image's status carries that device instead of the diffusers one. Measured: script run on a clean throwaway home, CUDA 12.8 redist, arch 89: configure plus build 4 min 34 s (the archive download about 10 min on this line); Qwen-Image-2.1 Q4_K, 1024 px, 40 steps, seed 7 through `/api/images/generate` with the binary found only through `%USERPROFILE%\.chaosengine\bin\sd.exe`: 35.1 s cold, **20.6 s warm** (denoise 16.0 s), peak VRAM 16.0 GB, pixel-identical to the 19 Nov direct run. Tests: `test_sdcpp_image.py`, `test_check_upstreams.py`, `test_stage_runtime_scripts.py`. Open: FU-302.
+
+</details>
 
 <details>
 <summary>FU-280 · CUDA sounds lane: what is not tested — Linux NVIDIA box, a card under 12 GB, or a listening pass</summary>
@@ -46,11 +73,11 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-276 · Windows weight mirror may copy 10 to 20 GB — A Windows user without Developer Mode whose HF cache is on another drive</summary>
+<summary>FU-276 · Windows weight mirror may copy 10 to 20 GB — Done (2026-11-20, agent branch), unit-tested with links forced to fail</summary>
 
-**Status or trigger:** A Windows user without Developer Mode whose HF cache is on another drive
+**Status or trigger:** **Done (2026-11-20, agent branch), unit-tested with links forced to fail; not run on a PC without Developer Mode**
 
-**Notes:** `music_env._place` tries symlink, then hard link, then copy. Symlinks worked on the test PC (Developer Mode), so the copy path was not hit; without symlink rights and with the cache on another volume than `~/.chaosengine/music`, every weight file is copied (disk doubled). Consider junctions or reading weights in place.
+**Notes:** `music_env._place` still tries symlink, then hard link, but a large file that can be neither is no longer copied silently: `prepare_checkpoints` collects them, and the first load stops (`WeightCopyNotice`, a 409 through `MusicNotReady`) with the file count, the size, the two drives and the fixes (Developer Mode, or the cache on the same drive); the next try copies (via a `.partial` file; the acknowledged file list is kept in `checkpoints/.copy-notice.json`). Pointing ACE-Step at the cache instead is not feasible: it reads one merged checkpoints folder built from several repos and rewrites small files there. Decision D-99 (a dialog button would be clearer). Tests: `tests/test_music_env.py` MirrorTests.
 
 </details>
 

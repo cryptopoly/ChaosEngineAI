@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import io
 import os
-import platform
 import subprocess
 import tempfile
 import time
@@ -158,11 +157,15 @@ class SdCppImageEngine:
                     "CHAOSENGINE_SDCPP_BIN) to build and install."
                 ),
             }
+        from backend_service.sdcpp_video_runtime import sd_binary_device, sd_device_name
+
+        device = sd_binary_device(binary)
         return {
             "available": True,
             "reason": None,
             "binary": str(binary),
-            "device": "mps" if platform.system() == "Darwin" else "cuda",
+            "device": device,
+            "deviceName": sd_device_name(device),
         }
 
     def preload(self, repo: str) -> dict[str, Any]:

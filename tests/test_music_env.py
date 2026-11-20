@@ -213,6 +213,45 @@ class MirrorTests(_EnvBox):
         self.assertEqual(link.resolve(), (moved / "model.safetensors").resolve())
 
 
+    def test_without_link_rights_the_copy_is_explained_first_then_done(self) -> None:
+        """FU-276: no symlink rights and the cache on another drive meant a silent 10 to 20 GB copy."""
+        from backend_service import music_runtime
+
+        source = self._snapshot("rev-c", b"c")
+        no_link = OSError(1314, "A required privilege is not held by the client")
+        target = self.data / "checkpoints" / "dit-model" / "model.safetensors"
+        with mock.patch.object(music_env, "hf_snapshot", return_value=source),              mock.patch.object(music_env.os, "symlink", side_effect=no_link),              mock.patch.object(music_env.os, "link", side_effect=OSError(18, "Invalid cross-device link")):
+            # The first attempt (through the music runtime, which the routes answer with a 409) explains and stops.
+            with mock.patch.object(music_runtime, "readiness_error", return_value=None),                  mock.patch("backend_service.catalog.music_models.music_variants", return_value=[self._variant("rev-c")]):
+                with self.assertRaises(music_runtime.MusicNotReady) as notice:
+                    music_runtime._prepare({"name": "test", "engine": "ace-step"})
+            self.assertIsInstance(notice.exception.__cause__, music_env.WeightCopyNotice)
+            message = str(notice.exception)
+            self.assertIn("1 weight file(s)", message)
+            self.assertIn("0.0 GB", message)  # the 16 MB test file
+            self.assertIn("Developer Mode", message)
+            self.assertIn("try again to copy", message)
+            self.assertFalse(target.exists(), "nothing large is copied before the user was told")
+            self.assertEqual((target.parent / "config.json").read_text(), "rev-c", "small files are still copied")
+            # Trying again goes ahead and copies.
+            music_env.prepare_checkpoints([self._variant("rev-c")])
+        self.assertTrue(target.is_file())
+        self.assertFalse(target.is_symlink())
+        self.assertEqual(target.stat().st_size, music_env._LINK_MIN_BYTES)
+        self.assertFalse((self.data / "checkpoints" / ".copy-notice.json").exists())
+
+    def test_the_drives_are_named_when_they_differ(self) -> None:
+        with mock.patch.object(music_env, "_drive", side_effect=lambda path: "E:" if "hub" in str(path) else "C:"):
+            source = self._snapshot("rev-d", b"d")
+            message = music_env._copy_notice_message([(source / "model.safetensors", Path("x"))])
+        self.assertIn("the model cache is on E:, the music folder on C:", message)
+
+    def test_links_still_need_no_notice(self) -> None:
+        source = self._snapshot("rev-e", b"e")
+        with mock.patch.object(music_env, "hf_snapshot", return_value=source):
+            music_env.prepare_checkpoints([self._variant("rev-e")])
+        self.assertTrue((self.data / "checkpoints" / "dit-model" / "model.safetensors").is_symlink())
+
 class InstallJobTests(_EnvBox):
     def setUp(self) -> None:
         super().setUp()

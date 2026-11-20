@@ -95,3 +95,13 @@ class ExpertTests(unittest.TestCase):
         holder.exempt.add(__import__("json").dumps(typed, sort_keys=True))
         self.assertTrue(holder.exempts(typed))
         self.assertFalse(holder.exempts({"prompt": "x", "width": 1920, "height": 1080}))
+
+
+class SubSecondEstimateTests(unittest.TestCase):
+    """FU-430: a draft that takes under half a second must price as 1 s, never 0 s."""
+
+    def test_a_positive_estimate_never_rounds_to_zero(self) -> None:
+        from backend_service.tools import studio_tiers
+
+        src = open(studio_tiers.__file__, encoding="utf-8").read()
+        self.assertIn('max(1, round(seconds))', src)

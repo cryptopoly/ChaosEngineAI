@@ -463,7 +463,7 @@ def _price_settings(item: dict[str, Any], kind: str, model_id: Any, args: dict[s
         item["steps"] = steps
     seconds = variant_seconds(variant, kind, width, height, frames, steps) if width and height else None
     if seconds:
-        item["estimatedSeconds"] = round(seconds)
+        item["estimatedSeconds"] = max(1, round(seconds))
         item.pop("estimateAtRecommended", None)
 
 

@@ -2132,3 +2132,16 @@ Filled every `null` value in `src/locales/<locale>/*.json` for zh-CN, zh-TW, ja,
 Left untranslated on purpose: 3 `common.pluginsTab.*` keys (the Plugins tab is being removed by another stream) and the 4 `meta.supportedLocales.10.*` fields of the tlh entry. `src-tauri/locales/*.yml` and `backend_service/locales/*/messages.po` had nothing pending (the .po files hold only the header).
 
 Checks: `npm run i18n:validate` OK, every locale 99.9 % (5265 of 5270; tlh 77.1 %, experimental); `npx tsc --noEmit` clean; `npx vitest run src/locales src/i18n` 28 passed. Not checked: the strings in the running app, native-speaker quality. 119 doubtful strings are listed in `docs/progress/i18n-translation-doubts-2026-11-20.md` (FU-421, adds to FU-254). Final pass before release: FU-420.
+## 2026-11-20: test coverage audit of the Windows pass (agent)
+
+The owner asked whether every new feature has tests in the suite. Audit and matrix: [docs/review/test-coverage-2026-11-20.md](../review/test-coverage-2026-11-20.md) (38 features, four layers each, checked by grepping the test trees). Before: 12 covered, 25 thin, 1 missing. After: 25 covered, 13 thin, 0 missing.
+
+Added:
+- `scripts/e2e_phases/rtx4090_pass.py`, registered in the suite's phases: chat follow-up rows and the Lightning minimum context (phase 0), `/v1` streamed tool calls on a GGUF (phase 1), a Nunchaku row that is not downloaded refuses with a plain 409 (phase 4), the H3 terms (phase 5, in process while H3 is unreleased), vLLM and TriAttention refused at once on native Windows (phase 6), Studio staging and the plan-card price route (phase 7), the Word timings row and speech-row lanes (phase 8), and the Copy now status routes (phase 11).
+- `scripts/e2e_phases/lipsync.py` (phase 22): `make_lipsync_shot` listed and refusing a missing still, and a Storyboard shot taking a WAV vocal, refusing a text file and clearing it.
+- `e2e/tests/42-rtx4090-pass.spec.ts`: Copy now (offer, progress, Done and retry; Cancel), Voice on a PC (Mac-only fold line, GPU row name, Word timings download with progress and Cancel), and the Storyboard vocal field against the real backend. Spec 24 now uses the new H3 tick sentence and checks the hosted-service notice and the current-licence link.
+- pytest: the extras folder put on `sys.path` before the re-probe (`380cbd27` had no test), and `tests/test_e2e_rtx4090_checks.py` for the new checks' own logic.
+
+Runs: pytest for both files pass; `tsc` clean; vitest (music, voice models, storyboard components, licence) 167 pass; Playwright 42 (5) and 24 (2) pass; `--smoke` on a throwaway backend exit 0; `--phases 5,11,22` pass; the phase 1 stream check alone passed live on Qwen3 0.6B Q4_K_M (GPU lock held).
+
+Found: phase 7's existing "Chat quality tiers" check fails on this PC once the Nunchaku FLUX.1-schnell row is installed (a draft under half a second rounds to 0 s): FU-430. Remaining thin rows need hardware, a real download or install, a second backend, or a Mac: FU-431 to FU-441.

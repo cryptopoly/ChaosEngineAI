@@ -8,20 +8,20 @@ summary: Every FU row from FOLLOW_UPS.md, split into open and closed.
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here.
 
-- [Open and live follow-ups](open.md): **198** rows.
-- [Closed follow-ups](closed.md): **118** rows.
+- [Open and live follow-ups](open.md): **209** rows.
+- [Closed follow-ups](closed.md): **119** rows.
 
 ## Newest ten
 
 | Row | Item | Status |
 |---|---|---|
-| [FU-421](open.md) | Native-speaker review of the 2026-11-20 translations | Before the release notes claim the nine locales |
-| [FU-420](open.md) | Final translation pass before the release | Near the release/v0.10.0 merge (D-97: strings still change) |
-| [FU-399](open.md) | Windows pre-release verification: full bundle build with the CUDA sd.exe, the extra 790 MB | When the Windows code is ready (owner asked 2026-11-20), before the release/v0.10.0 merge |
-| [FU-373](open.md) | Vocal start offset per Storyboard shot | With FU-371 |
-| [FU-372](open.md) | Attach a vocal in the Video Studio | When lip sync is used outside the Storyboard |
-| [FU-371](open.md) | Phase 2: cut a song into lip-sync shots in the Storyboard | Owner's go after phase 1 (D-98) |
-| [FU-370](open.md) | Run Mac lip sync (ltx-2-mlx a2v --distilled) for the first time | Next M4 Max session |
-| [FU-363](open.md) | kaldifst pin for the speech GPU add-on | When kaldifst ships a Windows wheel again |
-| [FU-362](open.md) | Listen to the GPU Chatterbox, VoxCPM2 and Orpheus clips and clones | Owner, before the tag |
-| [FU-361](open.md) | VoxCPM2 on Windows: twice slower than real time, 11 GB of host memory | Next 4090 pass |
+| [FU-441](open.md) | E2E assertions for the GGUF draft length and sidecar choice (FU-264, FU-266, FU-268) | Next chat speed pass on the 4090 |
+| [FU-440](open.md) | Live check that MiniMax H3 videos carry the machine-generated tag | When H3_RELEASED is turned on |
+| [FU-439](open.md) | E2E check for the Windows 260-character path answer in Storyboard | Next Windows E2E work |
+| [FU-438](open.md) | Live check for tool-call repair advice (FU-255) | Next tool-call scorecard run |
+| [FU-437](open.md) | Mac-only E2E gaps from the coverage audit | Next Mac session |
+| [FU-436](open.md) | E2E check of the sd.cpp device label (cpu or cuda read from the binary) | When a route exposes the sd probe |
+| [FU-435](open.md) | Live E2E checks for the WSL vLLM bridge (preflight, DFlash over the bridge, reasoning spli | On the WSL2 box with vLLM installed through the app |
+| [FU-434](open.md) | E2E check that FLUX runs fully on the GPU when it fits and offloads when it does not | When the image runtime reports the offload choice |
+| [FU-433](open.md) | E2E check for the ACE-Step XL refusal on a shared GPU (FU-278) | Next music hardware session on the 4090 |
+| [FU-432](open.md) | E2E check for resuming a paused Hub download from the partial file (FU-275) | When a small, stable test repo is chosen for network checks |

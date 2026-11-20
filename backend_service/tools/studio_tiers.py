@@ -165,6 +165,6 @@ def tiers_table(state: Any) -> list[dict[str, Any]]:
                 if settings["width"] and settings["height"]:
                     seconds = variant_seconds(variant, kind, settings["width"], settings["height"], frames, settings["steps"])
                 tiers[tier] = {**settings, "frames": frames if kind == "video" else None,
-                               "estimatedSeconds": round(seconds) if seconds else None}
+                               "estimatedSeconds": max(1, round(seconds)) if seconds else None}
             table.append({"id": row.get("id"), "name": row.get("name"), "kind": kind, "tiers": tiers})
     return table

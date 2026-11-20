@@ -1,13 +1,22 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 118 shipped, obsoleted or dropped rows, newest first.
+summary: 119 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Shipped, obsoleted or dropped rows (struck through, or marked shipped with no open points left). Kept as the history of why things are the way they are.
 
+
+<details>
+<summary>FU-430 · Chat quality tiers: a sub-second draft prices as 0 s, and the E2E tiers check fails — Done 2026-11-20</summary>
+
+**Status or trigger:** **Done 2026-11-20**
+
+**Notes:** Found by the coverage audit (`docs/review/test-coverage-2026-11-20.md`): phase 7 "Chat quality tiers" fails with `black-forest-labs/FLUX.1-schnell-nunchaku-int4 draft: time 0` once the Nunchaku row is installed, because `tiers_table` rounds a draft under half a second to 0 and the check reads 0 as no estimate. The plan card would also say "0 s". Recommend: round a positive time up to at least 1 s in `backend_service/tools/studio_tiers.py` (and `_price_settings`), so the card says "about 1 s" and the check passes; the price route gave 0 s at 512x512 for the same model.
+
+</details>
 
 <details>
 <summary>FU-360 · Chatterbox, VoxCPM2 and Orpheus listed on the NVIDIA GPU — Done 2026-11-20 (D-102 B, agent branch, not pushed).</summary>

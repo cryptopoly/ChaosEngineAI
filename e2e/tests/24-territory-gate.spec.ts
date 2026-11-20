@@ -9,8 +9,12 @@ import { goTo } from "./helpers";
 
 const KEY = "minimax-h3";
 const H3_ID = "leejet/MiniMax-H3-GGUF~fl2va-pruned-q4km";
+// The tick sentence, live licence link and hosted-service notice as backend_service/licence_gate.py sends them (D-99).
 const SENTENCE =
-  "I confirm that I am not in the European Union, the United Kingdom, the Republic of Korea or the United States, and that I will not use this model or what it makes there.";
+  "I am not in the European Union, the United Kingdom, the Republic of Korea or the United States, and I will not use this model or what it makes there. I accept the MiniMax H3 Community License, including its Acceptable Use Policy, and I am responsible for following it.";
+const LIVE_LICENCE = "https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE";
+const NOTICE =
+  "ChaosEngineAI does not include or distribute MiniMax H3. You download it from Hugging Face yourself, and you are the licensee. If you let other people generate with it (for example through remote connections or the agent bridge), you are offering a hosted service and the licence's duties for services (sections V.2 and V.5) apply to you. MiniMax may update its Acceptable Use Policy; read the current licence on Hugging Face.";
 
 function gateModel(confirmed: boolean) {
   return {
@@ -20,9 +24,10 @@ function gateModel(confirmed: boolean) {
     excludedTerritories: ["European Union", "United Kingdom", "Republic of Korea", "United States"],
     licenceName: "MiniMax H3 Community License",
     licenceUrl: "https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/0919fb684102ef115126612f3fbb84d1027e7317/LICENSE",
+    liveLicenceUrl: LIVE_LICENCE,
     summaryLines: ["Licensed only outside the European Union, the United Kingdom, the Republic of Korea and the United States."],
     confirmSentence: SENTENCE,
-    note: "The weights are never bundled with ChaosEngineAI: you download them from Hugging Face yourself.",
+    note: `${NOTICE} It runs on the stable-diffusion.cpp runtime (sd), which release builds may not include. Not tested by the maintainers.`,
     confirmed,
     confirmedAt: confirmed ? "2026-11-14T10:00:00+0000" : null,
   };
@@ -105,6 +110,10 @@ async function walkThrough(page: Page) {
   await expect(dialog).toBeVisible();
   await expect(dialog).toContainText("Not licensed for use in: European Union, United Kingdom, Republic of Korea, United States.");
   await expect(dialog).toContainText("does not check where you are");
+  // D-99: the hosted-service notice, and the current licence linked beside the pinned one.
+  await expect(dialog).toContainText("you are offering a hosted service");
+  await expect(dialog.getByRole("button", { name: "Read the full licence" })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Read the current licence on Hugging Face" })).toBeVisible();
   const confirm = dialog.getByRole("button", { name: "Confirm" });
   await expect(confirm).toBeDisabled();
 

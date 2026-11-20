@@ -1,13 +1,112 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 198 rows with work, decisions or watch items still open, newest first.
+summary: 209 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-441 · E2E assertions for the GGUF draft length and sidecar choice (FU-264, FU-266, FU-268) — Next chat speed pass on the 4090</summary>
+
+**Status or trigger:** Next chat speed pass on the 4090
+
+**Notes:** Unit tests hold the draft length 2 for the Qwen3.6 35B MTP repos and the one-mmproj and `MTP/` folder rules; the phase 1 GGUF checks run real loads but do not assert either. Put the draft length and the chosen sidecar in the load's runtime note or fields and assert them where those files are on disk.
+
+</details>
+
+<details>
+<summary>FU-440 · Live check that MiniMax H3 videos carry the machine-generated tag — When H3_RELEASED is turned on</summary>
+
+**Status or trigger:** When `H3_RELEASED` is turned on
+
+**Notes:** `tests/test_licence_gate.py` covers the tag; phase 5 checks the notice, the tick sentence and the live link in process while H3 is unreleased. Once released, make one short H3 clip in phase 5 and read `machine_generated` from the file's settings.
+
+</details>
+
+<details>
+<summary>FU-439 · E2E check for the Windows 260-character path answer in Storyboard — Next Windows E2E work</summary>
+
+**Status or trigger:** Next Windows E2E work
+
+**Notes:** `tests/test_storyboard_path_errors.py` maps WinError 206 and 3 to a plain 400. An E2E check needs a storyboard folder deep enough to cross 260 characters: point `CHAOSENGINE_STORYBOARDS_DIR` at a deep temp folder for a throwaway backend, import a take, and expect the 400 sentence. Windows only.
+
+</details>
+
+<details>
+<summary>FU-438 · Live check for tool-call repair advice (FU-255) — Next tool-call scorecard run</summary>
+
+**Status or trigger:** Next tool-call scorecard run
+
+**Notes:** The lone-backslash advice and the other repairs in `agent_call_repair.py` are unit-tested only. Add a scorecard case (`scripts/tool-call-scorecard.py`) whose expected call carries a Windows path, so a real model's slip is repaired or advised as the tests say.
+
+</details>
+
+<details>
+<summary>FU-437 · Mac-only E2E gaps from the coverage audit — Next Mac session</summary>
+
+**Status or trigger:** Next Mac session
+
+**Notes:** The MLX tool block with allowed values and limits (FU-231 part 1, `tests/test_tool_prompt_limits.py`) has no live check: add one to phase 1 that loads a small MLX model with Studio tools and reads the prompt. Lip sync on the Mac (FU-370) has no run at all. Neither can pass on the Windows PC.
+
+</details>
+
+<details>
+<summary>FU-436 · E2E check of the sd.cpp device label (cpu or cuda read from the binary) — When a route exposes the sd probe</summary>
+
+**Status or trigger:** When a route exposes the sd probe
+
+**Notes:** `sd_binary_device` is unit-tested and the Video Studio shows the label, but no route returns the sd probe, so the suite cannot read it. Expose `device` and `deviceName` on the image or video runtime route, then check in phase 4 that a CUDA build reads `cuda` and a CPU build `cpu`.
+
+</details>
+
+<details>
+<summary>FU-435 · Live E2E checks for the WSL vLLM bridge (preflight, DFlash over the bridge, reasoning split, GPU share) — On the WSL2 box with vLLM installed through the app</summary>
+
+**Status or trigger:** On the WSL2 box with vLLM installed through the app
+
+**Notes:** Unit tests cover all of it (`test_vllm_wsl_engine.py`, `test_vllm_wsl_prereqs.py`); phase 6 only reads the install status. Add a phase 1 check that loads a small model through the bridge, asserts the engine, the reasoning split and the GPU share, and a DFlash run with its drafter; skip without WSL vLLM.
+
+</details>
+
+<details>
+<summary>FU-434 · E2E check that FLUX runs fully on the GPU when it fits and offloads when it does not — When the image runtime reports the offload choice</summary>
+
+**Status or trigger:** When the image runtime reports the offload choice
+
+**Notes:** `tests/test_image_cpu_offload.py` covers the decision; phase 4 generates but cannot see which path ran. Put the choice in the image artifact's runtime note, then assert it in phase 4 for an installed FLUX row on a 24 GB card.
+
+</details>
+
+<details>
+<summary>FU-433 · E2E check for the ACE-Step XL refusal on a shared GPU (FU-278) — Next music hardware session on the 4090</summary>
+
+**Status or trigger:** Next music hardware session on the 4090
+
+**Notes:** `tests/test_music_worker.py` holds the plain message; a live check needs another process holding VRAM so XL cannot fit. Add to phase 11 with a skip when the card has room or XL is not downloaded.
+
+</details>
+
+<details>
+<summary>FU-432 · E2E check for resuming a paused Hub download from the partial file (FU-275) — When a small, stable test repo is chosen for network checks</summary>
+
+**Status or trigger:** When a small, stable test repo is chosen for network checks
+
+**Notes:** Only `tests/test_download_resume.py` covers the HF resume wrapper. An E2E check needs a real download: start a small repo, pause it part way, resume, and assert the bytes already on disk were not fetched again. Needs network; skip offline.
+
+</details>
+
+<details>
+<summary>FU-431 · E2E check for the Windows Job Object (workers end when the backend is force-killed) — Next E2E harness work on Windows</summary>
+
+**Status or trigger:** Next E2E harness work on Windows
+
+**Notes:** `tests/test_windows_job.py` kills a parent with `taskkill /F` and checks the grandchild dies, but no E2E check proves the real backend attaches its job: the suite cannot kill the backend it is testing. Add a phase 7 check that starts a second throwaway backend, loads a small GGUF, force-kills it and asserts llama-server is gone.
+
+</details>
 
 <details>
 <summary>FU-421 · Native-speaker review of the 2026-11-20 translations — Before the release notes claim the nine locales</summary>

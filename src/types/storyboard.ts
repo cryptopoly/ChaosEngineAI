@@ -115,6 +115,8 @@ export interface StoryboardShot {
   referenceImages: string[];
   startFrom: StoryboardStartFrom;
   endImage: string | null;
+  /** Lip sync (D-103): the vocal clip (WAV or FLAC, under media/) the shot's clip follows. */
+  vocalClip?: string | null;
   seconds: number;
   seed: number | null;
   locked: boolean;
@@ -417,6 +419,7 @@ export interface StoryboardOpArgs {
   import_take: { shotId: string; clip?: string; still?: string };
   /** The picture a clip should end on (LTX-2 models only); `image` is a path, an `upload:` handle or a project `media/` path, empty or absent clears it. */
   set_end_image: { shotId: string; image?: string | null };
+  set_vocal_clip: { shotId: string; audio?: string | null };
   relink: { id: string; path: string };
   add_audio: StoryboardAudioFields & {
     kind: StoryboardAudioClip["kind"];

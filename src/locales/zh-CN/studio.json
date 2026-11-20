@@ -1668,7 +1668,13 @@
       "trimOut": "出点（秒）",
       "trimOutEnd": "版本结尾",
       "useClip": "用作视频片段",
-      "noCast": "此项目中没有角色。没关系：镜头可以独立存在。在“角色表”标签中添加人物或场景，即可保持统一风格。"
+      "noCast": "此项目中没有角色。没关系：镜头可以独立存在。在“角色表”标签中添加人物或场景，即可保持统一风格。",
+      "vocal": null,
+      "vocalHint": null,
+      "vocalFile": null,
+      "vocalChange": null,
+      "vocalAttach": null,
+      "vocalRemove": null
     },
     "empty": "还没有镜头。添加一个镜头，然后写提示词或导入素材。",
     "estimate": {

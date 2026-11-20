@@ -214,6 +214,9 @@ class Shot(_Model):
     # "text": no picture at all, a text-to-video clip made from the motion prompt, on any video model.
     startFrom: Literal["generate", "upload", "previous-shot", "text"] = "generate"
     endImage: RelPath | None = None
+    # Lip sync (D-103): a vocal clip (WAV or FLAC) the clip's mouth follows; the clip is made by an LTX-2.3 lip-sync run
+    # from the shot's still, 3 to 8 s, and carries this audio as its sound.
+    vocalClip: RelPath | None = None
     seconds: float = Field(4.0, ge=0.5, le=60)
     seed: int | None = Field(None, ge=0, le=2**31 - 1)
     locked: bool = False

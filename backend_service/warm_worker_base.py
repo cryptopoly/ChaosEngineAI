@@ -173,8 +173,30 @@ def load_engine(default_factory: Callable[[], Any]) -> Any:
     return module.create_engine()
 
 
+def protocol_input() -> Any:
+    """The request stream; on Windows it is moved off the process's standard input first (as ``music_worker``).
+
+    A thread blocked in ``ReadFile`` on a synchronous pipe blocks every other call on that handle, and a DLL that
+    starts its own C runtime queries the standard handles while it loads (numpy's, inside ``import torch``). With
+    the main thread waiting for the next request, the engine thread's ``import torch`` hung until a line arrived:
+    the lip-sync worker sat at 20 MB for minutes on Windows (FU-139 is the same bug in the music worker). So the
+    pipe is read through a duplicate and standard input is pointed at ``NUL``.
+    """
+    if os.name != "nt":
+        return sys.stdin
+    import msvcrt
+
+    protocol_fd = os.dup(0)
+    null_fd = os.open(os.devnull, os.O_RDONLY)
+    os.dup2(null_fd, 0)
+    ctypes.windll.kernel32.SetStdHandle(-10, msvcrt.get_osfhandle(0))  # STD_INPUT_HANDLE
+    sys.stdin = open(0, encoding="utf-8", closefd=False)  # noqa: SIM115 - NUL, for libraries that read it
+    return open(protocol_fd, encoding="utf-8")  # noqa: SIM115 - lives as long as the worker
+
+
 def serve(engine_factory: Callable[[], Any], *, engine_version: str = "unknown", tee_lines: bool = False) -> None:
     """Run the worker until stdin closes."""
+    requests = protocol_input()
     protocol = Protocol()
     tee = LineTee(sys.stderr) if tee_lines else None
     if tee is not None:
@@ -273,7 +295,7 @@ def serve(engine_factory: Callable[[], Any], *, engine_version: str = "unknown",
 
     threading.Thread(target=engine_thread, name="warm-engine", daemon=True).start()
     protocol.reply({"id": None, "ok": True, "ready": True, "pid": os.getpid(), "engine_version": engine_version})
-    for raw in sys.stdin:
+    for raw in requests:
         raw = raw.strip()
         if not raw:
             continue

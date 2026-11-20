@@ -60,6 +60,8 @@ def fingerprint(project: Project, shot: Shot) -> str:
         "refs": refs,
         "defaults": [getattr(project.defaults, key) for key in _PICTURE_DEFAULTS],
     }
+    if shot.vocalClip:  # only set on lip-sync shots, so older takes keep their fingerprint
+        basis["vocal"] = shot.vocalClip
     take = shot.active()
     used = (take.settings or {}).get("style") if take is not None else None
     if used in ("pictures", "words"):  # only a take that used the style turns stale when the style changes

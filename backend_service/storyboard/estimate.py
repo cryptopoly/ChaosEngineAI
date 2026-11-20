@@ -56,6 +56,16 @@ def _clip_frames(variant: dict[str, Any], shot: Shot, fps: int) -> int:
     return shot_clip_frames(str(variant.get("repo") or ""), shot.seconds, fps)
 
 
+def _clip_seconds(variant: dict[str, Any], shot: Shot, width: int, height: int, fps: int) -> float | None:
+    """A shot with a vocal clip is a lip-sync run, priced from the row's measured lip-sync figures."""
+    frames = _clip_frames(variant, shot, fps)
+    if shot.vocalClip:
+        from backend_service.lipsync_runtime import estimate_seconds
+
+        return estimate_seconds(variant, width, height, frames)
+    return variant_seconds(variant, "video", width, height, frames)
+
+
 def _measured(project: Project, kind: str, model_name: str | None, render_pass: str = "final") -> list[float]:
     """Seconds per still, or per second of clip, from takes of this pass this project made with ``model_name``."""
     rates: list[float] = []
@@ -134,8 +144,7 @@ def estimate(
             if kind == "still":
                 part = (variant_seconds(variant, "image", width, height) or float(catalog)) * len(shots)
             elif variant.get("estimateRef"):
-                part = sum(variant_seconds(variant, "video", width, height, _clip_frames(variant, shot, project.defaults.fps))
-                           or float(catalog) for shot in shots)
+                part = sum(_clip_seconds(variant, shot, width, height, project.defaults.fps) or float(catalog) for shot in shots)
             else:
                 base = variant.get("defaultDurationSeconds")
                 part = sum(float(catalog) * (shot.seconds / float(base) if base else 1.0) for shot in shots)

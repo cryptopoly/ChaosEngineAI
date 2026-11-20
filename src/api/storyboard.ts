@@ -165,6 +165,7 @@ export const storyboardOps = {
   setKept: wrap("set_kept"),
   importTake: wrap("import_take"),
   setEndImage: wrap("set_end_image"),
+  setVocalClip: wrap("set_vocal_clip"),
   relink: wrap("relink"),
   addAudio: wrap("add_audio"),
   editAudio: wrap("edit_audio"),

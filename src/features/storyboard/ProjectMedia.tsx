@@ -79,6 +79,13 @@ export function ProjectImage({ projectId, rel, version, className, alt = "", thu
   return <img className={className} src={url} alt={alt} loading="lazy" />;
 }
 
+/** A sound file of the project (a lip-sync shot's vocal) as a small player. */
+export function ProjectAudio({ projectId, rel, version, className }: ProjectMediaProps) {
+  const url = useProjectFileUrl(projectId, rel, version);
+  if (!url) return <span className={`project-media-empty ${className ?? ""}`.trim()} aria-hidden="true" />;
+  return <audio className={className} src={url} preload="metadata" controls />;
+}
+
 /** A clip as a still frame (metadata only) or, with `controls`, a player. */
 export function ProjectVideo({
   projectId,

@@ -3810,6 +3810,10 @@ PHASES[214] = phase_21_server_activity  # stream E: Server Activity (model event
 PHASES[215] = phase_gguf_routing  # stream GGUF: format read from the files, not the name
 PHASES[216] = phase_routing_hints  # stream ROUTING: the model's path decides the repo, not the hints (L-16)
 
+from e2e_phases import lipsync as _lipsync  # noqa: E402
+
+PHASES[22] = lambda cap: _lipsync.run(cap, sys.modules[__name__])  # lip sync (D-103): skips without weights or a 24 GB card
+
 
 def _write_reports(report_dir: Path, started: datetime, ended: datetime,
                     phases: list[PhaseResult], cap: Capability) -> tuple[Path, Path]:

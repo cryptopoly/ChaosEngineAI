@@ -1668,7 +1668,13 @@
       "trimOut": "Recorte del final (s)",
       "trimOutEnd": "Final de la toma",
       "useClip": "Usar como clip",
-      "noCast": "No hay reparto en este proyecto. No pasa nada: un plano puede ir solo. Añade personajes o lugares en la pestaña Reparto para mantener un mismo aspecto."
+      "noCast": "No hay reparto en este proyecto. No pasa nada: un plano puede ir solo. Añade personajes o lugares en la pestaña Reparto para mantener un mismo aspecto.",
+      "vocal": null,
+      "vocalHint": null,
+      "vocalFile": null,
+      "vocalChange": null,
+      "vocalAttach": null,
+      "vocalRemove": null
     },
     "empty": "Aún no hay planos. Añade un plano y dale un prompt o importa material.",
     "estimate": {

@@ -123,6 +123,15 @@ def studio_generators(request: Any, batch_id: str, folder: Path) -> dict[str, Ca
         fields: dict[str, Any] = {"modelId": variant["id"], "prompt": prompt, "numFrames": frames, "fps": fps,
                                   "width": project.defaults.width, "height": project.defaults.height}
         takes_start, takes_end = image_input_support(str(variant.get("repo") or ""))
+        if shot.vocalClip:  # lip sync (D-103): the clip follows the shot's vocal and starts from its still
+            from backend_service.lipsync_runtime import supports
+
+            if not supports(variant):
+                raise RuntimeError(f"{variant.get('name') or 'This video model'} cannot lip-sync. Pick LTX-2.3 distilled "
+                                   "4-bit (NVIDIA) or LTX-2.3 q4 (Mac) as the project's video model, or remove the vocal.")
+            if still is None or shot.endImage:
+                raise RuntimeError("A lip-sync shot starts from a still and has no end frame.")
+            fields["audioPath"] = str(media.inside(folder, shot.vocalClip))
         if shot.startFrom == "text":
             pass  # text-to-video by the shot's own choice: no picture goes in, on any model
         elif takes_start:

@@ -1668,7 +1668,13 @@
       "trimOut": "Corte do fim (s)",
       "trimOutEnd": "Fim do take",
       "useClip": "Usar como clipe",
-      "noCast": "Nenhum elenco neste projeto. Tudo bem: um plano pode existir sozinho. Adicione personagens ou lugares na aba Elenco para manter um visual."
+      "noCast": "Nenhum elenco neste projeto. Tudo bem: um plano pode existir sozinho. Adicione personagens ou lugares na aba Elenco para manter um visual.",
+      "vocal": null,
+      "vocalHint": null,
+      "vocalFile": null,
+      "vocalChange": null,
+      "vocalAttach": null,
+      "vocalRemove": null
     },
     "empty": "Ainda não há planos. Adicione um plano e dê a ele um prompt ou importe filmagens.",
     "estimate": {

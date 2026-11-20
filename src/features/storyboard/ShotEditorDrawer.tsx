@@ -7,7 +7,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import type { ImageOutputArtifact, StoryboardBatchWhat, StoryboardProject, StoryboardShot, VideoOutputArtifact } from "../../types";
 import { PathField } from "./PathField";
 import { ReferenceImagePicker } from "./ReferenceImagePicker";
-import { ProjectImage } from "./ProjectMedia";
+import { ProjectAudio, ProjectImage } from "./ProjectMedia";
 import type { RunOp } from "./useStoryboard";
 import { canRedoClip, canRedoStill } from "./remakeLogic";
 import { useShotEstimates } from "./useShotEstimates";
@@ -298,6 +298,42 @@ export function ShotEditorDrawer({
             onClose={() => setPickingEnd(false)}
           />
         ) : null}
+
+        <fieldset className="shot-editor__refs shot-editor__vocal">
+          <legend className="eyebrow">{t("board.editor.vocal", { defaultValue: "Vocal for lip sync" })}</legend>
+          <p className="muted-text">
+            {t("board.editor.vocalHint", {
+              defaultValue:
+                "A WAV or FLAC the mouth follows: the clip starts from this shot's still, lasts 3 to 8 s and keeps this sound. Needs LTX-2.3 as the video model (the 4-bit NVIDIA model wants a 24 GB card).",
+            })}
+          </p>
+          {shot.vocalClip ? (
+            <ProjectAudio projectId={project.id} rel={shot.vocalClip} version={shot.vocalClip} className="shot-editor__vocal-player" />
+          ) : null}
+          <PathField
+            label={t("board.editor.vocalFile", { defaultValue: "Vocal file (WAV or FLAC)" })}
+            buttonLabel={
+              shot.vocalClip
+                ? t("board.editor.vocalChange", { defaultValue: "Change vocal" })
+                : t("board.editor.vocalAttach", { defaultValue: "Attach vocal" })
+            }
+            extensions={["wav", "flac"]}
+            disabled={busy || batchRunning}
+            onSubmit={(path) => void op("set_vocal_clip", { shotId: shot.id, audio: path })}
+          />
+          {shot.vocalClip ? (
+            <div className="shot-editor__actions">
+              <button
+                type="button"
+                className="secondary-button"
+                disabled={busy || batchRunning}
+                onClick={() => void op("set_vocal_clip", { shotId: shot.id, audio: "" })}
+              >
+                {t("board.editor.vocalRemove", { defaultValue: "Remove vocal" })}
+              </button>
+            </div>
+          ) : null}
+        </fieldset>
 
         <div className="shot-editor__actions">
           <button type="button" className="primary-button" disabled={!dirty || busy} onClick={() => void save()}>

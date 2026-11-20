@@ -1668,7 +1668,13 @@
       "trimOut": "Qav pe' (lup)",
       "trimOutEnd": "nID Dor",
       "useClip": "mIllogh vIH yIlo'",
-      "noCast": "Qu'vamDaq ghot ghom tu'lu'be'. qay'be': nIteb QaplaH 'ay'. chen polmeH ghot ghom 'echletDaq ghot pagh Daq tIchel."
+      "noCast": "Qu'vamDaq ghot ghom tu'lu'be'. qay'be': nIteb QaplaH 'ay'. chen polmeH ghot ghom 'echletDaq ghot pagh Daq tIchel.",
+      "vocal": null,
+      "vocalHint": null,
+      "vocalFile": null,
+      "vocalChange": null,
+      "vocalAttach": null,
+      "vocalRemove": null
     },
     "empty": "wej 'ay' tu'lu'. 'ay' yIchel, ghIq QIn yInob pagh mIllogh vIH yIqem.",
     "estimate": {

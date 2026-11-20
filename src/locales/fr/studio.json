@@ -1668,7 +1668,13 @@
       "trimOut": "Fin du rognage (s)",
       "trimOutEnd": "Fin de la prise",
       "useClip": "Utiliser comme clip",
-      "noCast": "Aucun personnage dans ce projet. Ce n'est pas un problème : un plan peut exister seul. Ajoutez des personnages ou des lieux dans l'onglet Distribution pour conserver un style."
+      "noCast": "Aucun personnage dans ce projet. Ce n'est pas un problème : un plan peut exister seul. Ajoutez des personnages ou des lieux dans l'onglet Distribution pour conserver un style.",
+      "vocal": null,
+      "vocalHint": null,
+      "vocalFile": null,
+      "vocalChange": null,
+      "vocalAttach": null,
+      "vocalRemove": null
     },
     "empty": "Pas encore de plans. Ajoutez un plan, puis donnez-lui un prompt ou importez des images.",
     "estimate": {

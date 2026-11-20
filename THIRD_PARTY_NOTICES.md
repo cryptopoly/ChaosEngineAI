@@ -221,6 +221,16 @@ derived from Lightricks LTX-2.3 under the LTX-2 community licence (free below
 US$10 million annual revenue), and ``mlx-community/gemma-3-12b-it-4bit`` (the
 text encoder) is under the Gemma terms of use. Neither is bundled.
 
+### Lip sync (LTX-2.3 audio to video)
+
+Lip sync adds no new package or weights. On NVIDIA it runs the 4-bit diffusers row
+``OzzyGT/LTX-2.3-Distilled-bnb-nf4`` (diffusers, Apache 2.0; the conversion is Apache 2.0, the
+LTX-2.3 weights stay under the LTX-2 community licence, free below US$10 million annual revenue) in a
+worker process (``backend_service/lipsync_worker.py``); the vocal's mel spectrogram uses librosa (ISC)
+and soundfile (BSD-3-Clause), both already shipped. On Apple Silicon it shells out to the same pinned
+``ltx-2-mlx`` (MIT) ``a2v --distilled`` command (not yet run on a Mac). ffmpeg prepares the vocal and
+muxes it into the clip. No weights are bundled.
+
 ### Sample film (bundled media)
 
 `backend_service/storyboard/sample/film/` ships a four-shot sample project (about 1.4 MB) that this app made on

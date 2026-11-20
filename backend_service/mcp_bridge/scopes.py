@@ -13,7 +13,7 @@ _READ_ACTIONS = {"list", "get"}
 
 # Tools that start a job and so count against the per-token cap.
 JOB_TOOLS = {"generate_image", "generate_video", "speak", "transcribe", "make_music", "storyboard_generate", "storyboard_render",
-             "speak_cloned", "make_sound"}
+             "speak_cloned", "make_sound", "make_lipsync_shot"}
 _CLONE_TOOLS = {"list_cloned_voices", "speak_cloned"}
 
 
@@ -91,6 +91,7 @@ ANNOTATIONS: dict[str, dict[str, Any]] = {
     "transcribe": _ann("Transcribe audio"),
     "make_music": _ann("Make music"),
     "make_sound": _ann("Make sound effect"),
+    "make_lipsync_shot": _ann("Make lip-sync shot"),
     "upload_file": _ann("Upload file"),
     "storyboard_project": _ann("Storyboard project", destructive=True),
     "storyboard_shot": _ann("Storyboard shot", destructive=True),

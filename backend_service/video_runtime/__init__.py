@@ -1207,6 +1207,10 @@ class VideoRuntimeManager:
                 return self._get_mlx_video().unload(repo).to_dict()
             if repo is None and self._ltx2_mlx is not None:
                 self._ltx2_mlx.release("unloaded")  # the warm ltx-2-mlx worker, when it idles
+            if repo is None:
+                from backend_service.lipsync_runtime import release_worker
+
+                release_worker("unloaded")  # the warm lip-sync worker, when it idles
             return _MODEL_THREAD.run(self._engine.unload, repo).to_dict()
 
     def generate(self, config: VideoGenerationConfig) -> tuple[GeneratedVideo, dict[str, Any]]:

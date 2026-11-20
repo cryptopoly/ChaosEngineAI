@@ -113,6 +113,9 @@ def _row(family: dict[str, Any], variant: dict[str, Any], kind: str) -> dict[str
         from backend_service.video_runtime.repos import image_input_support
 
         row["acceptsImageInput"], row["acceptsEndImage"] = image_input_support(repo)
+        from backend_service.lipsync_runtime import supports as lipsync_supports
+
+        row["lipSync"] = lipsync_supports(variant)  # make_lipsync_shot takes this row
     return row
 
 

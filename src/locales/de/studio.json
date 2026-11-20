@@ -1619,7 +1619,13 @@
       "trimOut": "Ende kürzen (s)",
       "trimOutEnd": "Ende des Takes",
       "useClip": "Als Clip verwenden",
-      "noCast": "Keine Besetzung in diesem Projekt. Das ist in Ordnung: Ein Shot kann allein stehen. Füge auf dem Reiter „Besetzung“ Figuren oder Orte hinzu, um einen Look beizubehalten."
+      "noCast": "Keine Besetzung in diesem Projekt. Das ist in Ordnung: Ein Shot kann allein stehen. Füge auf dem Reiter „Besetzung“ Figuren oder Orte hinzu, um einen Look beizubehalten.",
+      "vocal": null,
+      "vocalHint": null,
+      "vocalFile": null,
+      "vocalChange": null,
+      "vocalAttach": null,
+      "vocalRemove": null
     },
     "empty": "Noch keine Einstellungen. Füge eine Einstellung hinzu und gib ihr einen Prompt oder importiere Material.",
     "estimate": {

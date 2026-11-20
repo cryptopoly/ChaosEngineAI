@@ -74,17 +74,17 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
     {
         "name": "storyboard_shot",
         "description": "Edit: shots. add(fields), edit(shot_id, fields), remove, reorder(order), lock, unlock, "
-        "pick_take(take_id), redo (marks for the next generate), import(path of a clip or still), "
-        "end_image(path; none clears; LTX-2).",
+        "pick_take(take_id), redo (mark for next run), import(clip or still), "
+        "end_image(LTX-2), vocal(WAV/FLAC to lip-sync); path or none.",
         "inputSchema": _obj({
-            "action": {"type": "string", "enum": ["add", "edit", "remove", "reorder", "lock", "unlock", "pick_take", "redo", "import", "end_image"]},
+            "action": {"type": "string", "enum": ["add", "edit", "remove", "reorder", "lock", "unlock", "pick_take", "redo", "import", "end_image", "vocal"]},
             "project_id": _PID, "revision": _REV,
             "shot_id": {"type": "string"}, "take_id": {"type": "string"},
             "fields": {**_FIELDS, "description": "title, stillPrompt, motionPrompt, startFrom (generate|upload|previous-shot|text), "
                        "seconds, seed (leave unset on shots with referenceImages: the reference's seed returns a copy of it), trimIn, trimOut, "
                        "speed, transition{type,seconds}, nativeSoundDb, index."},
             "order": {"type": "array", "items": {"type": "string"}, "maxItems": 500},
-            "path": {"type": "string", "description": "upload: handle, or a file in the app's output folders (import, end_image)."},
+            "path": {"type": "string", "description": "upload: handle, or a file in the app's output folders (import, end_image, vocal)."},
         }, ["action", "project_id", "revision"]),
     },
     {
@@ -480,6 +480,9 @@ def storyboard_shot(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         # No path clears it; a path is an upload handle or a file in the output folders, like any agent input.
         path = str(args.get("path") or "").strip()
         return _summary(_op(args, "set_end_image", {**shot, "image": _cast_source(path) if path else None}))
+    if action == "vocal":  # lip sync (D-103): the next clip of this shot follows this vocal
+        path = str(args.get("path") or "").strip()
+        return _summary(_op(args, "set_vocal_clip", {**shot, "audio": _cast_source(path) if path else None}))
     _need(args, "path")
     from backend_service.storyboard.media import IMAGE_EXTS
 

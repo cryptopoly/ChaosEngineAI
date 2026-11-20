@@ -1619,7 +1619,13 @@
       "trimOut": "Trim out (s)",
       "trimOutEnd": "End of take",
       "useClip": "Use as clip",
-      "noCast": "No cast in this project. That is fine: a shot can stand alone. Add characters or places on the Cast tab to keep a look."
+      "noCast": "No cast in this project. That is fine: a shot can stand alone. Add characters or places on the Cast tab to keep a look.",
+      "vocal": "Vocal for lip sync",
+      "vocalHint": "A WAV or FLAC the mouth follows: the clip starts from this shot's still, lasts 3 to 8 s and keeps this sound. Needs LTX-2.3 as the video model (the 4-bit NVIDIA model wants a 24 GB card).",
+      "vocalFile": "Vocal file (WAV or FLAC)",
+      "vocalChange": "Change vocal",
+      "vocalAttach": "Attach vocal",
+      "vocalRemove": "Remove vocal"
     },
     "empty": "No shots yet. Add a shot, then give it a prompt or import footage.",
     "estimate": {

@@ -116,6 +116,11 @@ class SetEndImage(_Args):
     image: str | None = Field(None, max_length=4096)  # an upload handle, an output file or a project file; empty clears it
 
 
+class SetVocalClip(_Args):
+    shotId: Id
+    audio: str | None = Field(None, max_length=4096)  # a WAV or FLAC path, upload handle or project file; empty clears it
+
+
 class Relink(_Args):
     id: Id
     path: str = Field(min_length=1, max_length=4096)
@@ -250,6 +255,7 @@ _FILE_ARGS: dict[str, tuple[tuple[str, set[str]], ...]] = {
     "edit_reference": (("image", {"image"}), ("addImage", {"image"})),
     "import_take": (("still", {"image"}), ("clip", {"video"})),
     "set_end_image": (("image", {"image"}),),
+    "set_vocal_clip": (("audio", {"audio"}),),
     "relink": (("path", {"image", "video", "audio"}),),
     "add_audio": (("path", {"audio", "video"}),),
 }
@@ -446,6 +452,21 @@ def set_end_image(p: Project, folder: Path, a: SetEndImage) -> None:
     shot.endImage, _digest, _src = _import(folder, a.image, {"image"}, f"media/{shot.id}/end-{stamp}")
 
 
+def set_vocal_clip(p: Project, folder: Path, a: SetVocalClip) -> None:
+    """The vocal a lip-sync clip follows (D-103): WAV or FLAC, copied into the shot's media; empty clears it."""
+    shot = _shot(p, a.shotId)
+    if not a.audio:
+        shot.vocalClip = None
+        return
+    from backend_service.lipsync_runtime import AUDIO_EXTENSIONS
+
+    stamp = int(time.time() * 1000)
+    rel, _digest, _src = _import(folder, a.audio, {"audio"}, f"media/{shot.id}/vocal-{stamp}")
+    if Path(rel).suffix not in AUDIO_EXTENSIONS:
+        raise OpError("A vocal clip is a WAV or FLAC file.")  # the op fails, so the copied file is removed again
+    shot.vocalClip = rel
+
+
 def relink(p: Project, folder: Path, a: Relink) -> None:
     shot, clip = p.shot(a.id), p.clip(a.id)
     if shot is None and clip is None:
@@ -596,6 +617,7 @@ OPS: dict[str, tuple[type[_Args], Callable[[Project, Path, Any], None], bool]] =
     "set_kept": (SetKept, set_kept, True),
     "import_take": (ImportTake, import_take, True),
     "set_end_image": (SetEndImage, set_end_image, True),
+    "set_vocal_clip": (SetVocalClip, set_vocal_clip, True),
     "relink": (Relink, relink, False),
     "add_audio": (AddAudio, add_audio, True),
     "edit_audio": (EditAudio, edit_audio, True),

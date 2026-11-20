@@ -488,6 +488,13 @@ def _generate_video_locked(request: Request, body: VideoGenerationRequest) -> di
         validation_error = _video_variant_validation_error(variant)
         detail = validation_error or f"{variant['name']} is not installed locally yet."
         raise HTTPException(status_code=409, detail=detail)
+    if body.audioPath:  # lip sync (D-103): its own worker, gate and audio handling
+        from backend_service.routes.video_lipsync import generate_lipsync_locked
+
+        return generate_lipsync_locked(request, body, variant)
+    from backend_service import lipsync_runtime
+
+    lipsync_runtime.release_worker("a video job without a vocal started")  # never two LTX pipelines at once
 
     _unload_idle_image_runtime_for_video(request, "video generation")
     from backend_service.music_runtime import free_idle_worker

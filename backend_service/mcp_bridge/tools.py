@@ -647,6 +647,11 @@ from backend_service.mcp_bridge.sound_tool import SOUND_HANDLERS, SOUND_TOOLS  #
 TOOLS.extend(SOUND_TOOLS)
 HANDLERS.update(SOUND_HANDLERS)
 
+from backend_service.mcp_bridge.lipsync_tool import LIPSYNC_HANDLERS, LIPSYNC_TOOLS  # noqa: E402
+
+TOOLS.extend(LIPSYNC_TOOLS)
+HANDLERS.update(LIPSYNC_HANDLERS)
+
 from backend_service.mcp_bridge.library_tools import LIBRARY_HANDLERS, LIBRARY_TOOLS  # noqa: E402
 
 TOOLS.extend(LIBRARY_TOOLS)

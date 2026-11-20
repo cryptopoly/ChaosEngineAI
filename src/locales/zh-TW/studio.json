@@ -1619,7 +1619,13 @@
       "trimOut": "出點（秒）",
       "trimOutEnd": "版本結尾",
       "useClip": "用作影片片段",
-      "noCast": "此專案沒有角色。沒關係:單一鏡頭可以獨立存在。若要保持風格一致,請在角色頁籤中新增人物或場景。"
+      "noCast": "此專案沒有角色。沒關係:單一鏡頭可以獨立存在。若要保持風格一致,請在角色頁籤中新增人物或場景。",
+      "vocal": null,
+      "vocalHint": null,
+      "vocalFile": null,
+      "vocalChange": null,
+      "vocalAttach": null,
+      "vocalRemove": null
     },
     "empty": "還沒有鏡頭。新增一個鏡頭，然後寫提示詞或匯入素材。",
     "estimate": {

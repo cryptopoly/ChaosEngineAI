@@ -68,6 +68,7 @@ def _hydrate_video_artifact(payload: dict[str, Any]) -> dict[str, Any]:
         "hasAudio": _artifact_has_audio(payload),
         "startImagePath": str(payload.get("startImagePath") or "") or None,
         "endImagePath": str(payload.get("endImagePath") or "") or None,
+        "audioPath": str(payload.get("audioPath") or "") or None,  # lip sync: the vocal clip the mouth follows
         "projectId": str(payload.get("projectId") or "") or None,
         "projectName": str(payload.get("projectName") or "") or None,
         "shotId": str(payload.get("shotId") or "") or None,

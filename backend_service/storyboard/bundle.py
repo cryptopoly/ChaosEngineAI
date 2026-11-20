@@ -54,6 +54,8 @@ def referenced(project: Project) -> dict[str, str | None]:
     for shot in project.shots:
         if shot.endImage:
             files.setdefault(shot.endImage, None)
+        if shot.vocalClip:  # the vocal a lip-sync shot follows (D-103)
+            files.setdefault(shot.vocalClip, None)
         for take in shot.takes:
             if take.still:
                 files[take.still] = take.hashes.get("still")

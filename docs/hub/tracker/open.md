@@ -1,13 +1,49 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 189 rows with work, decisions or watch items still open, newest first.
+summary: 192 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-373 · Vocal start offset per Storyboard shot — With FU-371</summary>
+
+**Status or trigger:** With FU-371
+
+**Notes:** `audioStartSeconds` exists on the request, but `Shot` has no field for it, so a Storyboard shot always uses its vocal file from 0 s.
+
+</details>
+
+<details>
+<summary>FU-372 · Attach a vocal in the Video Studio — When lip sync is used outside the Storyboard</summary>
+
+**Status or trigger:** When lip sync is used outside the Storyboard
+
+**Notes:** The API (`audioPath`) and the agent tool take it; only the Storyboard Shot drawer has a field for it. A Video Studio audio picker, shown for rows with `lipSync`, would show the 3 to 8 s rule and the estimate.
+
+</details>
+
+<details>
+<summary>FU-371 · Phase 2: cut a song into lip-sync shots in the Storyboard — Owner's go after phase 1 (D-98)</summary>
+
+**Status or trigger:** Owner's go after phase 1 (D-98)
+
+**Notes:** Not started on purpose. Phase 1 takes one vocal per shot (`Shot.vocalClip`, the whole file from 0 s). Phase 2: slice the song's vocal (stem or mix, FU-331) at the cut plan's shot boundaries with a 0.3-0.5 s pre-roll, attach each slice, two takes per sung shot, rank with FU-334. Phase 1 hint for the pre-roll: a Kokoro line that starts at 0 s and fills the shot scored r 0.27 against chance 0.36-0.40 though the strip shows the mouth talking and shutting after the line; the spike's clip with a 0.4 s lead-in scored 0.50 (chance 0.16).
+
+</details>
+
+<details>
+<summary>FU-370 · Run Mac lip sync (ltx-2-mlx a2v --distilled) for the first time — Next M4 Max session</summary>
+
+**Status or trigger:** Next M4 Max session
+
+**Notes:** Wired behind the same `audioPath` API for `dgrauet/ltx-2.3-mlx-q4` (`lipsync_runtime.mlx_a2v_command`, unit tests check the command line against ltx-2-mlx 0.18.0's parser), never run. Check: the pack's `audio_vae.safetensors` holds the encoder half a2v needs (the download list was made for text to video), time and peak memory per 5 s 768x512 shot, sync on the spike's speech clip, that the output carries our prepared vocal after the re-mux. Then fill the row's `lipSync` block (now `basis: untested`) and an estimate.
+
+</details>
 
 <details>
 <summary>FU-335 · ACE-Step 1.5 turbo ignored the lyrics in 3 of 3 tries — Next music pass</summary>
@@ -51,15 +87,6 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** With FU-330
 
 **Notes:** Both routes open and close the mouth with sung phrases but a held or hummed passage can stay closed while the singer is audible (same passage across seeds 42/7 and both routes). Modality guidance 5 instead of 3 changed nothing. Full mix scored as well as the Demucs vocal stem on route (b) (r 0.41 vs 0.23 against their own envelopes), so the stem default is unproven. Test 10+ sung shots: stem vs mix, 0.3-0.5 s pre-roll, 2 takes, a tighter face framing; decide the default from that.
-
-</details>
-
-<details>
-<summary>FU-330 · Build LTX-2.3 audio to video on Windows with our own loop (route b of the lip-sync spike) — When D-103 is decided for route (b)</summary>
-
-**Status or trigger:** When D-103 is decided for route (b)
-
-**Notes:** Spike 2026-11-20 (`docs/research/lip-sync-spike-windows-2026-11.md`): the app's `OzzyGT/LTX-2.3-Distilled-bnb-nf4` row in diffusers 0.42.1 lip-syncs a spoken line (mouth/audio r 0.50, chance 0.16) when the clip's audio-VAE latent is passed as `audio_latents` and a transformer pre-hook keeps the audio tokens clean with audio timestep and sigma 0 on every call. 110-126 s per 5.04 s 768x512 shot cold (35 s load), 21.8 GB GPU peak, 37 GB host RAM. Without the hook the face lurches and the mouth stays open (control). Work: `audioPath` on LTX-2.3 diffusers img2video, frames from the slice (8k+1), stereo up-mix, mux the full mix, warm-worker reuse, E2E check (speech clip, correlation above its shuffled baseline). Sketch in the research page.
 
 </details>
 

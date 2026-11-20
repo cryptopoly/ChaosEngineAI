@@ -225,6 +225,28 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "estimatedGenerationSeconds": 70.0,
                 "estimateRef": {"width": 768, "height": 512, "frames": 97, "steps": 8, "ignoresSteps": True},  # FU-165 reference: 4 s x 24 fps + 1; distilled 8-step schedule
                 "slowOn": [SLOW_CPU_ONLY_EXPECTED],
+                # Lip sync (D-103 route b, lipsync_runtime): a start still plus a vocal clip (3 to 8 s) in a worker
+                # process, the audio held fixed while the picture is denoised. Measured in the spike on an RTX 4090
+                # 24 GB with 64 GB RAM, 768x512, 121 frames (5.04 s): 110-126 s per shot in a fresh process (load
+                # 35 s, denoise 64-69 s, decode and mux), whole-card GPU peak 21.8 GB above idle, host RAM peak
+                # 36.4-37.0 GB. Phase 1 through the app routes (2026-11-20, same card): 157 s cold (load 64 s), 70 s with
+                # the worker warm, whole-card peak 22.5 GB above idle on the cold shot, worker RSS 34 GB. The gate refuses
+                # below a 24 GB card, about 22 GB free on it, or 37 GB free RAM.
+                # Weights: LTX-2 community licence (free below US$10M annual revenue).
+                "lipSync": {
+                    "engine": "diffusers LTX2ImageToVideoPipeline, audio held fixed",
+                    "basis": "measured",
+                    "measuredOn": "RTX 4090 24 GB, 64 GB RAM, Windows 11",
+                    "secondsPerShot": 118.0,
+                    "secondsRange": [110.0, 126.0],
+                    "secondsPerShotWarm": 70.0,  # phase 1, pipeline kept in the worker between shots
+                    "estimateRef": {"width": 768, "height": 512, "frames": 121},
+                    "cardGb": 24.0,
+                    "freeVramGb": 22.0,
+                    "hostRamGb": 37.0,
+                    "minSeconds": 3.0,
+                    "maxSeconds": 8.0,
+                },
                 "availableLocally": False,
                 "releaseDate": "2026-03",
             },
@@ -444,6 +466,11 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "downloadCompanions": [
                     {"repo": "mlx-community/gemma-3-12b-it-4bit", "patterns": ["*"]},
                 ],
+                # Lip sync (a start still plus a vocal clip, 3 to 8 s) through ltx-2-mlx `a2v --distilled`. Wired
+                # but NEVER RUN on a Mac: no time or memory measured, and whether this pack's audio_vae file holds
+                # the encoder half a2v needs is not checked (FU-370). Weights: LTX-2 community licence (free below
+                # US$10M annual revenue).
+                "lipSync": {"engine": "ltx-2-mlx a2v --distilled", "basis": "untested", "minSeconds": 3.0, "maxSeconds": 8.0},
                 "availableLocally": False,
                 "releaseDate": "2026-03",
             },

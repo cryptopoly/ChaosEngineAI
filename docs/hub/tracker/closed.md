@@ -1,13 +1,22 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 112 shipped, obsoleted or dropped rows, newest first.
+summary: 113 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Shipped, obsoleted or dropped rows (struck through, or marked shipped with no open points left). Kept as the history of why things are the way they are.
 
+
+<details>
+<summary>FU-330 · Build LTX-2.3 audio to video on Windows with our own loop (route b of the lip-sync spike) — Phase 1 shipped 2026-11-20 (owner chose route b).</summary>
+
+**Status or trigger:** **Phase 1 shipped 2026-11-20** (owner chose route b).
+
+**Notes:** `backend_service/lipsync_runtime.py` + `lipsync_worker.py` (warm worker from the backend's own Python), `audioPath` / `audioStartSeconds` on `POST /api/video/generate`, honest gate (24 GB card, ~22 GB free on it, 37 GB free RAM), `lipSync` block on the 4-bit row, agent tool `make_lipsync_shot`, Storyboard `vocalClip` (`set_vocal_clip` op, `storyboard_shot` action `vocal`, Shot drawer field), E2E phase 22, `tests/test_lipsync.py`. Real 4090 run through the routes (`docs/progress/rtx4090-progress.md`, 2026-11-20 lip sync phase 1): 157 s cold (load 64 s), 69-70 s per 5 s shot with the worker warm, whole-card peak 22.5 GB above idle, worker RSS 34 GB; the spike's speech clip gave mouth/audio r 0.50 (chance 0.16) as in the spike; Cancel answered 409 in 5.7 s with the worker kept. The shared warm-worker loop now moves the protocol off stdin on Windows (the worker hung in `import torch`, as FU-139). Open: FU-370 to FU-373, FU-331, FU-334. Was: spike 2026-11-20 (`docs/research/lip-sync-spike-windows-2026-11.md`): the app's `OzzyGT/LTX-2.3-Distilled-bnb-nf4` row in diffusers 0.42.1 lip-syncs a spoken line (mouth/audio r 0.50, chance 0.16) when the clip's audio-VAE latent is passed as `audio_latents` and a transformer pre-hook keeps the audio tokens clean with audio timestep and sigma 0 on every call. 110-126 s per 5.04 s 768x512 shot cold (35 s load), 21.8 GB GPU peak, 37 GB host RAM. Without the hook the face lurches and the mouth stays open (control). Work: `audioPath` on LTX-2.3 diffusers img2video, frames from the slice (8k+1), stereo up-mix, mux the full mix, warm-worker reuse, E2E check (speech clip, correlation above its shuffled baseline). Sketch in the research page.
+
+</details>
 
 <details>
 <summary>FU-271 · Pin revisions for the GPU dictation rows, and track Transformers 5.23 in asr-site — Done 2026-11-20 (agent branch).</summary>

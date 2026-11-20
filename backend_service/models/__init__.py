@@ -523,3 +523,7 @@ class VideoGenerationRequest(BaseModel):
     startImagePath: str | None = Field(default=None, max_length=1024)
     endImagePath: str | None = Field(default=None, max_length=1024)
     imageStrength: float = Field(default=1.0, ge=0.1, le=1.0)
+    # Lip sync (D-103): a vocal clip (WAV or FLAC path or ``upload:`` handle) the clip's mouth follows, read from
+    # ``audioStartSeconds`` for the clip's length. LTX-2.3 rows only, 3 to 8 s, with a start still; it is the clip's sound.
+    audioPath: str | None = Field(default=None, min_length=1, max_length=1024)
+    audioStartSeconds: float = Field(default=0.0, ge=0.0, le=3600.0)

@@ -34,6 +34,7 @@ _SETTING_KEYS = (
     "fps",
     "startImagePath",
     "endImagePath",
+    "audioPath",  # lip sync: the vocal clip (file name only, below)
     "imageStrength",
     "referenceImagePaths",
     "createdAt",
@@ -46,7 +47,7 @@ _SETTING_KEYS = (
 
 # Input-image paths are kept as file names only: the file travels, the folder names (and the user's
 # account name inside them) must not. The artifact's own JSON in the library keeps the full paths.
-_PATH_KEYS = ("startImagePath", "endImagePath", "referenceImagePaths")
+_PATH_KEYS = ("startImagePath", "endImagePath", "audioPath", "referenceImagePaths")
 
 
 def _file_name(value: Any) -> str:

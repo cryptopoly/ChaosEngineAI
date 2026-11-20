@@ -215,4 +215,21 @@ describe("ShotEditorDrawer", () => {
     expect(withEnd).toContain("Change end frame");
     expect(withEnd).toContain("Remove end frame");
   });
+
+  it("attaches a vocal for lip sync, and removing it only once one is set", () => {
+    const project = { id: "p_1", references: { characters: [], places: [] } } as unknown as StoryboardProject;
+    const render = (vocalClip: string | null) =>
+      renderToStaticMarkup(
+        <ShotEditorDrawer
+          project={project} shot={{ ...shot(), vocalClip }} index={0} imageGallery={[]} videoGallery={[]}
+          busy={false} batchRunning={false} op={async () => true} onMake={noop} onClose={noop}
+        />,
+      );
+    expect(render(null)).toContain("Vocal for lip sync");
+    expect(render(null)).toContain("Attach vocal");
+    expect(render(null)).not.toContain("Remove vocal");
+    const withVocal = render("media/s_1/vocal-1.wav");
+    expect(withVocal).toContain("Change vocal");
+    expect(withVocal).toContain("Remove vocal");
+  });
 });

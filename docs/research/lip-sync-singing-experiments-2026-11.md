@@ -127,3 +127,16 @@ at phrase boundaries and keeping sung shots at 3-5 s.
 
 Strips: all 18 looked at (the 8 s ones show the open-mouth grimace through the gap; the mid-phrase ones the late
 start; hands come up to the face in one mid-phrase take).
+
+## Experiment 6: LipDub re-sync second pass (not run: gated)
+
+`Lightricks/LTX-2.3-22b-IC-LoRA-LipDub` (model card title "LTX-2.3 22B IC-LoRA Dub-It", last change 2026-10-22):
+one file, `ltx-2.3-22b-ic-lora-dubit-0.9.safetensors`, 2.47 GB (the card still names it `...-lipdub-0.9`), an IC-LoRA
+on LTX-2.3 22B, video and audio control, reference at output resolution; licence LTX-2 Community (same as LTX-2.3:
+free below US$10M yearly revenue). Pipeline: `ltx_pipelines.dubit` (Lightricks' LTX-2 repo), which is already
+installed in the route (a) venv from the spike (`E:\tmp\lipsync\venv-ltx`, ltx-pipelines 1.6.2), so the code side is
+ready. **Blocked by the gate**: the repo is gated (`auto`, "Agree and Access"), and the click-through also asks the
+account holder to consent to marketing offers. The saved Hugging Face token gets HTTP 403 on the file. Accepting is
+the owner's call (I do not accept terms on the account's behalf). Once accepted, the test is one command per clip
+(the take from the main recipe as the reference video, the stem window as the audio) on the existing venv, about
+4-5 minutes per 5 s shot by analogy with route (a) (same 22B fp8 checkpoint and streamed offload). FU row added.

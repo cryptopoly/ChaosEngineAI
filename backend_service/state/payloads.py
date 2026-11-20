@@ -272,14 +272,19 @@ def workspace(state: ChaosEngineState) -> dict[str, Any]:
     except Exception:
         pass
     library = state._library()
-    recommendation = _best_fit_recommendation(system_stats)
+    speed_lookup = measured_speed_lookup(state)
+    featured_models = _model_family_payloads(system_stats, library, measured_speed_for=speed_lookup)
+    # The Dashboard names the catalogue's best-fit row, judged by the same fit as the Models page (FU-456).
+    from backend_service.helpers.chat_picks import apply_chat_picks
+
+    recommendation = apply_chat_picks(
+        _best_fit_recommendation(system_stats), featured_models, system_stats, measured_speed_for=speed_lookup,
+    )
     launch_preferences = state._launch_preferences()
     return {
         "system": system_stats,
         "recommendation": recommendation,
-        "featuredModels": _model_family_payloads(
-            system_stats, library, measured_speed_for=measured_speed_lookup(state),
-        ),
+        "featuredModels": featured_models,
         "library": library,
         "libraryStatus": "ready" if state._library_scan_done.is_set() else "scanning",
         "settings": state._settings_payload(library),

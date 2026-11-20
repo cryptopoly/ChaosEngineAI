@@ -303,26 +303,19 @@ def _best_fit_recommendation(system_stats: dict[str, Any]) -> dict[str, Any]:
         and bool(system_stats.get("mlxUsable", False))
     )
 
-    if memory_gb >= 64:
+    # The size class is only the fallback wording (and the activity feed's line); the Dashboard shows the
+    # catalogue's best-fit row and that row's own headroom when one fits (helpers.chat_picks, FU-456). The
+    # constant headroom per class (43 to 68 %) was not a measurement and is gone: ``None`` until a row is picked.
+    cache_label = "Native f16"
+    if memory_gb >= 48:
         model_size = "70B"
-        cache_label = "Native f16"
-        headroom_percent = 68
-    elif memory_gb >= 48:
-        model_size = "70B"
-        cache_label = "Native f16"
-        headroom_percent = 65
     elif memory_gb >= 36:
         model_size = "32B"
-        cache_label = "Native f16"
-        headroom_percent = 54
     elif memory_gb >= 24:
         model_size = "14B"
-        cache_label = "Native f16"
-        headroom_percent = 49
     else:
         model_size = "7B"
-        cache_label = "Native f16"
-        headroom_percent = 43
+    headroom_percent = None
 
     if is_macos_mlx:
         # The weights fit at 4-bit; the cache label is the KV cache, not the weights, so it stays out of the title.
@@ -354,6 +347,8 @@ def _best_fit_recommendation(system_stats: dict[str, Any]) -> dict[str, Any]:
         "targetModel": model_size,
         "cacheLabel": cache_label,
         "headroomPercent": headroom_percent,
+        "bestFit": None,
+        "chatPicks": [],
         "titleKey": title_key,
         "detailKey": detail_key,
         "payload": payload,

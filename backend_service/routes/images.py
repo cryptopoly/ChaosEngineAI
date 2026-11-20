@@ -26,6 +26,7 @@ from backend_service.helpers.images import (
 from backend_service.helpers.huggingface import _hf_repo_snapshot_dir
 from backend_service.helpers.image_validation import (
     _nunchaku_download_validation_error,
+    _nunchaku_generation_block,
     _nunchaku_variant_for_pack,
     _transformer_weights_present,
 )
@@ -329,6 +330,13 @@ def _generate_image_locked(request: Request, body: ImageGenerationRequest) -> di
     state.add_log("images", "info", f"Resolved variant: {variant.get('name')} (repo={variant.get('repo')})")
     _require_territory(variant)
     body = _checked_reference_images(body, variant)
+    # A Nunchaku row whose pack or base parts are not on disk refuses here, not with a placeholder picture.
+    nunchaku_block = _nunchaku_generation_block(
+        variant, state._downloads.get(str(variant.get("nunchakuRepo") or ""), {}).get("state"),
+    )
+    if nunchaku_block:
+        state.add_log("images", "warning", nunchaku_block)
+        raise HTTPException(status_code=409, detail=localized_detail(request, nunchaku_block))
     # Free an idle video model first, so the memory it held counts as free
     # in the gate below.
     _unload_idle_video_runtime_for_image(request, "image generation")

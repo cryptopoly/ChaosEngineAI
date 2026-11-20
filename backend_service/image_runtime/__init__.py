@@ -1225,6 +1225,9 @@ class ImageRuntimeManager:
                     status = self._diffusers.probe().to_dict()
                     status["activeEngine"] = "sd.cpp"
                     status["message"] = "Generated via stable-diffusion.cpp subprocess."
+                    # The diffusers probe describes torch, not the sd binary that ran.
+                    status["device"] = probe.get("device")
+                    status["deviceName"] = probe.get("deviceName")
                     return images, status
                 except GenerationCancelled:
                     raise
@@ -1263,7 +1266,8 @@ class ImageRuntimeManager:
                     )
                 return images, result_status
             except Exception as exc:
-                if _is_cuda_torch_unavailable_error(exc):
+                # A Nunchaku row that cannot load says why; a placeholder picture would read as success.
+                if _is_cuda_torch_unavailable_error(exc) or config.nunchakuRepo:
                     raise
                 fallback_note = (
                     "The diffusers runtime failed, so ChaosEngineAI fell back to the placeholder engine for this run. "
@@ -1290,4 +1294,6 @@ class ImageRuntimeManager:
                 )
                 return self._placeholder.generate(config, runtime_note=fallback_note), fallback_status.to_dict()
 
+        if config.nunchakuRepo:
+            raise RuntimeError(status.message)
         return self._placeholder.generate(config, runtime_note=status.message), status.to_dict()

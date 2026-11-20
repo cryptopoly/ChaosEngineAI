@@ -204,6 +204,22 @@ class NunchakuInstalledTests(unittest.TestCase):
         self.assertTrue(image_validation._image_variant_available_locally(self.bf16, library))
 
 
+    def test_generation_is_refused_until_pack_and_base_parts_are_on_disk(self) -> None:
+        """It answered HTTP 200 with a placeholder picture and a raw Hub error (RTX 4090, 2026-11-20)."""
+        block = image_validation._nunchaku_generation_block
+        self.assertIn("is not downloaded", block(self.nunchaku, None))
+        self.assertIn("still downloading", block(self.nunchaku, "downloading"))
+        _write_base_snapshot(self.base, with_transformer_weights=False)
+        self.snapshots[SCHNELL] = self.base
+        self.assertIn("incomplete", block(self.nunchaku, "failed"))
+        self.pack.mkdir()
+        self.snapshots[SCHNELL_PACK] = self.pack
+        (self.pack / "transformer_blocks.safetensors").write_bytes(b"")
+        self.assertIn("incomplete", block(self.nunchaku, "completed"), "an empty pack file is not a pack")
+        (self.pack / "transformer_blocks.safetensors").write_bytes(b"0")
+        self.assertIsNone(block(self.nunchaku, "completed"))
+        self.assertIsNone(block(self.bf16, None), "only Nunchaku rows are checked here")
+
 class NunchakuRouteTests(unittest.TestCase):
     def _request(self, state) -> SimpleNamespace:
         return SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(chaosengine=state)))
@@ -245,6 +261,46 @@ class NunchakuRouteTests(unittest.TestCase):
         self.assertEqual(self._delete(base_has_transformer=True), [SCHNELL_PACK])
         self.assertEqual(self._delete(base_has_transformer=False, base_busy=True), [SCHNELL_PACK])
 
+
+    def test_generate_answers_409_without_running_when_the_pack_is_missing(self) -> None:
+        from fastapi import HTTPException
+
+        from backend_service.models import ImageGenerationRequest
+
+        state = mock.Mock()
+        state._downloads = {}
+        request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(chaosengine=state)), state=SimpleNamespace())
+        body = ImageGenerationRequest(modelId="black-forest-labs/FLUX.1-schnell-nunchaku-int4", prompt="an apple")
+        with mock.patch.object(image_validation, "_hf_repo_snapshot_dir", return_value=None),              mock.patch.object(image_routes, "_generate_image_artifacts") as run:
+            with self.assertRaises(HTTPException) as caught:
+                image_routes._generate_image_locked(request, body)
+        self.assertEqual(caught.exception.status_code, 409)
+        self.assertIn("is not downloaded", caught.exception.detail["message"])
+        run.assert_not_called()
+
+
+class NunchakuNoPlaceholderTests(unittest.TestCase):
+    def test_a_failed_nunchaku_load_raises_instead_of_a_placeholder_picture(self) -> None:
+        from backend_service.image_runtime import ImageGenerationConfig, ImageRuntimeManager
+
+        manager = ImageRuntimeManager()
+        config = ImageGenerationConfig(
+            modelId="black-forest-labs/FLUX.1-schnell-nunchaku-int4", modelName="FLUX.1 Schnell Nunchaku",
+            repo=SCHNELL, prompt="an apple", negativePrompt="", width=512, height=512, steps=2, guidance=1.0,
+            batchSize=1, seed=1, nunchakuRepo=SCHNELL_PACK,
+        )
+        ready = SimpleNamespace(realGenerationAvailable=True, to_dict=lambda: {}, device="cuda",
+                                pythonExecutable=None, loadedModelRepo=None)
+        missing = RuntimeError("This Nunchaku model has no standard transformer to fall back to.")
+        with mock.patch.object(manager._diffusers, "probe", return_value=ready),              mock.patch("backend_service.image_runtime._MODEL_THREAD.run", side_effect=missing),              mock.patch.object(manager._placeholder, "generate") as placeholder:
+            with self.assertRaises(RuntimeError):
+                manager.generate(config)
+            placeholder.assert_not_called()
+        not_ready = SimpleNamespace(realGenerationAvailable=False, message="torch is not installed", to_dict=lambda: {})
+        with mock.patch.object(manager._diffusers, "probe", return_value=not_ready),              mock.patch.object(manager._placeholder, "generate") as placeholder:
+            with self.assertRaisesRegex(RuntimeError, "torch is not installed"):
+                manager.generate(config)
+            placeholder.assert_not_called()
 
 class NunchakuFallbackNoteTests(unittest.TestCase):
     def test_a_missing_pack_is_said_in_plain_words(self) -> None:

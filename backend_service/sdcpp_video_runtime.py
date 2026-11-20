@@ -119,6 +119,59 @@ def _resolve_sd_binary() -> Path | None:
     return None
 
 
+_SD_DEVICE_CACHE: dict[tuple[str, int, int], str] = {}
+_SD_DEVICE_NAME_CACHE: dict[str, str | None] = {}
+
+
+def sd_binary_device(binary: Path) -> str:
+    """The back end the ``sd`` binary was built with: ``mps`` on a Mac (Metal build), ``cuda`` when it carries
+    ggml's CUDA back end, else ``cpu``.
+
+    Every non-Mac host used to read ``cuda``, so a CPU-only Windows build was labelled as a GPU one (RTX 4090,
+    2026-11-19). A static build has the CUDA back end inside the binary; a shared build has ``ggml-cuda`` beside it.
+    Read once per path, size and modification time (the CUDA build is about 100 MB).
+    """
+    if platform.system() == "Darwin":
+        return "mps"
+    try:
+        stat = binary.stat()
+    except OSError:
+        return "cpu"
+    key = (str(binary), stat.st_size, int(stat.st_mtime))
+    cached = _SD_DEVICE_CACHE.get(key)
+    if cached:
+        return cached
+    device = "cpu"
+    if any((binary.parent / name).exists() for name in ("ggml-cuda.dll", "libggml-cuda.so")):
+        device = "cuda"
+    else:
+        import mmap
+
+        try:
+            with open(binary, "rb") as handle, mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ) as data:
+                if data.find(b"ggml_backend_cuda") != -1:
+                    device = "cuda"
+        except (OSError, ValueError):
+            device = "cpu"
+    _SD_DEVICE_CACHE[key] = device
+    return device
+
+
+def sd_device_name(device: str) -> str | None:
+    """The NVIDIA GPU's name for a CUDA build (from nvidia-smi, once per process); None otherwise."""
+    if device != "cuda":
+        return None
+    if "value" not in _SD_DEVICE_NAME_CACHE:
+        try:
+            from backend_service.helpers.gpu import get_gpu_metrics
+
+            name = get_gpu_metrics().get("gpu_name")
+        except Exception:
+            name = None
+        _SD_DEVICE_NAME_CACHE["value"] = str(name).strip() if name else None
+    return _SD_DEVICE_NAME_CACHE["value"]
+
+
 class SdCppVideoEngine:
     """Subprocess wrapper around stable-diffusion.cpp for video GGUF.
 
@@ -147,7 +200,7 @@ class SdCppVideoEngine:
                     "See FU-008 in FOLLOW_UPS.md."
                 ),
             )
-        device = "mps" if platform.system() == "Darwin" else "cuda"
+        device = sd_binary_device(binary)
         return VideoRuntimeStatus(
             activeEngine="sd.cpp",
             realGenerationAvailable=True,

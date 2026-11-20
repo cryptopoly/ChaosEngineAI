@@ -167,12 +167,15 @@ def worker_env() -> dict[str, str]:
 # Weights layout
 # ---------------------------------------------------------------------------
 
-def _place(source: Path, target: Path, refresh: bool = False) -> bool:
+def _place(
+    source: Path, target: Path, refresh: bool = False, pending_copies: list[tuple[Path, Path]] | None = None,
+) -> bool:
     """Link a large file (symlink, else hard link, else copy); copy a small one. Returns True when placed.
 
     An existing file is kept (the library rewrites its small model files in the layout), except: a symlink
     that dangles or points anywhere but this snapshot file is re-linked, and ``refresh`` (the pinned
-    revision changed) replaces everything.
+    revision changed) replaces everything. With ``pending_copies``, a large file that cannot be linked is
+    listed there instead of copied, so the caller can say what the copy costs first (FU-276).
     """
     real = source.resolve()
     if target.is_symlink():
@@ -195,20 +198,74 @@ def _place(source: Path, target: Path, refresh: bool = False) -> bool:
                 return True
             except OSError:
                 continue
+        if pending_copies is not None:
+            pending_copies.append((real, target))
+            return False
     shutil.copyfile(real, target)
     return True
 
 
-def mirror_tree(source: Path, target: Path, refresh: bool = False) -> int:
+def mirror_tree(
+    source: Path, target: Path, refresh: bool = False, pending_copies: list[tuple[Path, Path]] | None = None,
+) -> int:
     """Mirror ``source`` (a Hub snapshot) into ``target``; returns files placed. Hidden entries skipped."""
     placed = 0
     for path in sorted(source.rglob("*")):
         relative = path.relative_to(source)
         if any(part.startswith(".") for part in relative.parts) or not path.is_file():
             continue
-        if _place(path, target / relative, refresh):
+        if _place(path, target / relative, refresh, pending_copies):
             placed += 1
     return placed
+
+
+class WeightCopyNotice(RuntimeError):
+    """Large weight files can only be copied into the layout; the message says how much and why (FU-276)."""
+
+
+def _copy_notice_path() -> Path:
+    return checkpoints_dir() / ".copy-notice.json"
+
+
+def _drive(path: Path) -> str:
+    return path.resolve().drive or path.resolve().anchor
+
+
+def _copy_notice_message(pending: list[tuple[Path, Path]]) -> str:
+    total_gb = sum(real.stat().st_size for real, _ in pending) / 1024 ** 3
+    cache_drive, music_drive = _drive(pending[0][0]), _drive(checkpoints_dir())
+    why = "Symbolic links need Developer Mode on Windows (Settings > System > For developers)"
+    if cache_drive and music_drive and cache_drive.lower() != music_drive.lower():
+        why += (f", and a hard link only works on one drive: the model cache is on {cache_drive}, "
+                f"the music folder on {music_drive}")
+    return (
+        f"Setting up the music model needs {len(pending)} weight file(s) copied into {checkpoints_dir()} "
+        f"({total_gb:.1f} GB more disk), because this PC did not allow a link to the downloaded files. {why}. "
+        "Turn on Developer Mode, or keep the model cache on the same drive as the app's data, to avoid the copy; "
+        "or try again to copy them now."
+    )
+
+
+def _copy_pending(pending: list[tuple[Path, Path]]) -> None:
+    """Copy the files a link could not place, after the user was told the size once (retry = go ahead)."""
+    if not pending:
+        _copy_notice_path().unlink(missing_ok=True)
+        return
+    key = sorted(str(target) for _, target in pending)
+    try:
+        acknowledged = json.loads(_copy_notice_path().read_text(encoding="utf-8")).get("targets")
+    except (OSError, ValueError, AttributeError):
+        acknowledged = None
+    if acknowledged != key:
+        _copy_notice_path().parent.mkdir(parents=True, exist_ok=True)
+        _copy_notice_path().write_text(json.dumps({"targets": key}, indent=1), encoding="utf-8")
+        raise WeightCopyNotice(_copy_notice_message(pending))
+    for real, target in pending:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        partial = target.with_name(target.name + ".partial")
+        shutil.copyfile(real, partial)
+        os.replace(partial, target)
+    _copy_notice_path().unlink(missing_ok=True)
 
 
 def _manifest_path() -> Path:
@@ -259,17 +316,21 @@ def prepare_checkpoints(variants: list[dict[str, Any]]) -> list[str]:
     placed: list[str] = []
     root = checkpoints_dir()
     manifest = read_mirror_manifest()
+    pending: list[tuple[Path, Path]] = []
     for variant in variants:
         repo, revision = str(variant["repo"]), str(variant["revision"])
         snapshot = hf_snapshot(repo, revision)
         if snapshot is None:
             continue
         target = root / variant["checkpointSubdir"] if variant.get("checkpointSubdir") else root
-        mirror_tree(snapshot, target, refresh=manifest.get(repo) not in (None, revision))
+        mirror_tree(snapshot, target, refresh=manifest.get(repo) not in (None, revision), pending_copies=pending)
         if manifest.get(repo) != revision:
             manifest[repo] = revision
             _write_mirror_manifest(manifest)
         placed.append(repo)
+    # Without symlink rights and with the cache on another drive every weight file would be copied
+    # (10 to 20 GB): the first attempt says so and stops, the next one copies (FU-276).
+    _copy_pending(pending)
     return placed
 
 

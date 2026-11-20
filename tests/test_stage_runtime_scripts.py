@@ -173,3 +173,25 @@ class ReleaseBuildScriptTests(unittest.TestCase):
             source.index("const NSIS_ARCHIVE_LIMIT_BYTES"),
             source.index("\nmain();"),
         )
+
+
+class SdCppWindowsStagingTests(unittest.TestCase):
+    """A Windows CUDA sd.exe needs the CUDA runtime DLLs beside it in the bundle (2026-11-20)."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        source = (ROOT / "scripts" / "stage-runtime.mjs").read_text(encoding="utf-8")
+        cls.block = source[source.index('const sdName = binaryName("sd")'):source.index("return warnings;", source.index('const sdName = binaryName("sd")'))]
+
+    def test_the_dlls_sd_loads_are_staged_on_windows_only(self) -> None:
+        self.assertIn('process.platform === "win32"', self.block)
+        match = re.search(r"const sdCudaDll = /(.+)/i;", self.block)
+        self.assertTrue(match, "the sd.exe CUDA DLL pattern moved")
+        pattern = re.compile(match.group(1), re.IGNORECASE)
+        for name in ("cudart64_12.dll", "cublas64_12.dll", "cublasLt64_12.dll", "cudart64_13.dll"):
+            self.assertTrue(pattern.match(name), name)
+        for name in ("sd.exe", "cudnn64_9.dll", "nvcuda.dll", "cublas64_12.dll.bak"):
+            self.assertFalse(pattern.match(name), name)
+
+    def test_a_missing_build_is_reported_not_fatal(self) -> None:
+        self.assertIn("sdCpp stays null", self.block)

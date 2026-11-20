@@ -28,6 +28,18 @@ class PinTests(unittest.TestCase):
         self.assertRegex(build or "", r"^[0-9a-f]{40}$")
         self.assertEqual(cu.read_pin("scripts/update-sdcpp.sh", cu.SDCPP_PIN_PATTERN), build)
 
+    def test_the_windows_sdcpp_scripts_build_the_same_pin_with_cuda(self):
+        """build-sdcpp.ps1 floated on master and passed SD_CUBLAS, which the pinned commit ignores (2026-11-20)."""
+        build = cu.read_pin("scripts/build-sdcpp.sh", cu.SDCPP_PIN_PATTERN)
+        windows_pin = r'\$SdcppRef\s+= if \(\$env:SDCPP_REF\)\s+\{ \$env:SDCPP_REF \}\s+else \{ "([0-9a-f]{40})" \}'
+        self.assertEqual(cu.read_pin("scripts/build-sdcpp.ps1", windows_pin), build)
+        self.assertEqual(cu.read_pin("scripts/update-sdcpp.ps1", windows_pin), build)
+        source = (cu.ROOT / "scripts" / "build-sdcpp.ps1").read_text(encoding="utf-8")
+        self.assertIn('"-DSD_CUDA=ON"', source)
+        self.assertNotIn('"-DSD_CUBLAS=ON"', source)
+        for dll in ("cudart64_*.dll", "cublas64_*.dll", "cublasLt64_*.dll"):
+            self.assertIn(dll, source)
+
 
 class DecodeTests(unittest.TestCase):
     def test_curl_output_is_read_as_utf8_not_the_console_code_page(self):

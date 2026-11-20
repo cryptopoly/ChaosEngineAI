@@ -2093,3 +2093,34 @@ torch reserved peak 17.2 GiB on every shot (as the spike). The spike's own input
 Tests: `tests/test_lipsync.py` (30: shot rule, gate messages, ffmpeg prep and mux, the Mac command line, the real worker process with a fake engine incl. warm reuse and Cancel, route codes 400/409/503/200 with the pipeline stubbed, the agent tool, the Storyboard vocal op, fingerprint and estimate); touched suites pass (video routes, storyboard routes/tools/estimate/store, mcp bridge, output metadata, route contracts, ltx2/mflux warm workers). tsc, vitest (storyboard), i18n:validate pass.
 
 Not verified: the Mac path (`ltx-2-mlx a2v --distilled`, FU-370) never ran; singing in the app (spike only, FU-331); a Storyboard batch end to end with a vocal shot (unit tests only); the agent tool against a real MCP client; the E2E phase 22 run as a whole (its pieces ran by hand above); listening and mouth shapes; 3 s and 8 s shots (only 5.04 s ran).
+## 2026-11-20: Chatterbox, VoxCPM2 and Orpheus measured and listed on the GPU (D-102 B, FU-322, FU-360, agent)
+
+Owner choice B: measure and list before the tag. Throwaway backend from this branch on port 8931 (`HOME` and `USERPROFILE` = `E:\tmp\vg-home`, `HF_HUB_CACHE=E:\AI Models`, `CHAOSENGINE_LLAMA_SERVER` = the Vulkan build of the pinned b12441, GPU lock `E:\tmp\gpu.lock` held while measuring). Fresh voice venv installed through `POST /api/voice/install {"extras":["kokoro","speech-gpu"]}`; weights at the pinned revisions (VoxCPM2 4.96 GB and Orpheus Q8_0 3.5 GB were downloaded, about 3 to 5 minutes each with 8 parallel files; the Chatterbox repos were already there); the cloning rows' watermark through `POST /api/voice/clone/models/download`. Every number below came through `/api/voice/speak` and `/api/voice/clone/voices`.
+
+Method, as for the Qwen3-TTS rows: worker started with a Kokoro line, then the 12-word line cold and warm (cold minus warm = load), then the fixed 600-character text (6 chunks), seed 7. GPU: the whole card over idle from `nvidia-smi` (per-process memory reads N/A under WDDM), plus PyTorch's peak reserved, now written to `worker.log` after each request. Host RAM: RSS of the worker and its children (llama-server for Orpheus).
+
+| Row | Load (s) | Short line warm (s) | s per 10 s of speech | RTF | GPU over idle (GiB) | Torch reserved (GiB) | Host RAM (GB) |
+|---|---|---|---|---|---|---|---|
+| Chatterbox-Turbo | 24.3 (17.9 on a repeat) | 2.3 | **5.7** (5.6 repeat) | 0.57 | 3.38 | 2.94 | 4.8 |
+| Turbo, cloned | 19.0 | 2.1 | **5.9** | 0.58 | 4.25 | 3.42 | 4.9 |
+| Chatterbox Multilingual V3 | 23.9 | 3.9 | **12.0** | 1.20 | 3.80 | 3.39 | 4.4 |
+| V3, cloned | 25.9 | 4.9 | **11.4** | 1.14 | 4.64 | 3.80 | 4.7 |
+| VoxCPM2, designed | 27.6 | 7.7 | **19.9** | 1.99 | 6.28 | 5.89 | 11.2 |
+| VoxCPM2, cloned (exact) | 26.1 | 6.6 | **19.0** | 1.90 | 6.59 | 6.18 | 11.0 |
+| Orpheus `tara` (Vulkan llama-server) | 16.9 | 3.9 | **7.8** | 0.78 | 3.89 | n/a | 4.8 |
+
+Catalogue rows (`catalog/voice_models_cuda.py`): load, per-10 s and short line from the first table rows, `peakGb` the higher of speak and clone, `minVramGb` = peak + 0.7 (Turbo 5.0, V3 5.3, VoxCPM2 7.3, Orpheus 4.6), `minComputeCap` 7.0 on the PyTorch rows only. With measured numbers `listed` is true, so `/api/voice/models` offers all four without `CHAOSENGINE_VOICE_UNMEASURED` (checked: `unmeasuredListed` false, four rows `supported`, Fit "fits").
+
+Output sanity: every clip at the row's rate (24 kHz, VoxCPM2 48 kHz), 3.4 to 5.2 s for the short line and 29.6 to 41.5 s for the long text, RMS -17.5 to -29 dBFS, 13 to 24 % quiet frames (Orpheus's short line 45 %: a trailing pause). Whisper Large v3 Turbo through `/api/voice/transcribe` read every long clip back at 0.98 to 0.99 word match and every short one word for word (only "riverbank" joined; Turbo "quickbrown"). The clone sample was an 8.5 s Kokoro Heart clip (synthetic, no person's voice); cloned clips carry "Labelled as AI-made and watermarked." **Not verified: nobody listened** (likeness of the clones, the V3 long clip that peaks at full scale): FU-362.
+
+Fixed on the way (each with a test):
+- **The speech GPU add-on no longer installed on Windows.** `wetext` pulls any `kaldifst`; 1.9.1 (published 2026-11-19) has no Windows wheel and its source build fails. Pinned `kaldifst==1.9.0` (Apache-2.0, wheels for Windows and Linux x86_64). FU-363 to move it later.
+- **Three cloning downloads at once failed one with WinError 32**: each ran `pip install audioseal` into the same venv. `voice_env.install_watermark` now runs one at a time.
+- **A long cloned text ran 3 to 5 times slower than the voice itself** (Turbo clone 32.5 s per 10 s against 5.7): the AudioSeal read-back after marking took 73 s on the CPU for 33 s of speech (mark 3.1 s); on the GPU 0.4 + 0.1 s. `voice_worker_watermark._device` now picks CUDA when PyTorch sees it (the Mac keeps the CPU). After: Turbo clone 5.9, V3 clone 11.4 (was 25.3), VoxCPM2 clone 19.0 (was 25.0).
+- The add-on's import check now imports what each listed family loads: `from voxcpm import VoxCPM`, `perth`, `fugashi`, `unidic_lite`, `onnxruntime` as well as the two Chatterbox modules (verified in the new venv: `speech gpu ok`). The Qwen3-TTS `qwen-site` folder (transformers 4.57.3) and Chatterbox's 5.2 were not touched; the install still ends `qwen ok`.
+
+Add-on size: the voice venv with the add-on is 8.38 GB; torch 4.55 GB plus the add-on's other packages make the add-on about 6 GB (the 2.0 GB of `nvidia` libraries belong to the base CUDA pack), so the English label now says "Speech GPU add-on: Qwen3-TTS, Chatterbox, VoxCPM2 and Orpheus natural voices, voice design and cloning on the NVIDIA GPU (about 6 GB)"; other locales stay `null`. `voice_env.EXTRAS` already named all four.
+
+Checks: pytest `tests/test_voice*.py`, `test_request_guards`, `test_route_contracts`, `test_hub_tracker` pass (1 skip, 1 expected failure, both as before); vitest `src/features/voice` 155 passed; `tsc --noEmit` clean; `i18n:validate` OK; E2E `--phases 8` on the throwaway backend PASS (20 checks), including the new "speak and clone with Chatterbox, VoxCPM2 and Orpheus on the GPU" (spoke all four, cloned with the three cloning rows). Not run: the full pytest suite, the Playwright voice specs, Orpheus on a CUDA llama-server build (measured on the Vulkan build of b12441).
+
+Open: VoxCPM2 on Windows is about twice the real time and holds about 11 GB of RAM (FU-361); listening check (FU-362).

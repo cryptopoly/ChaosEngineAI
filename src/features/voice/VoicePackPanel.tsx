@@ -115,7 +115,7 @@ export function InstallLog({ pack }: { pack: VoicePackJob }) {
 const ADDON_LABELS: Record<string, string> = {
   kokoro: "Kokoro quick voices (about 330 MB)",
   chinese: "Mandarin Chinese quick voices (8 voices, about 60 MB)",
-  "speech-gpu": "Speech GPU add-on: Qwen3-TTS natural voices, voice design and cloning on the NVIDIA GPU (about {size})",
+  "speech-gpu": "Speech GPU add-on: Qwen3-TTS, Chatterbox, VoxCPM2 and Orpheus natural voices, voice design and cloning on the NVIDIA GPU (about {size})",
   "stt-gpu": "Speech-to-text GPU add-on: Qwen3-ASR, Parakeet, Nemotron and Granite on the NVIDIA GPU (about {size})",
 };
 

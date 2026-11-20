@@ -1,4 +1,4 @@
-"""Speech models on Windows and Linux with an NVIDIA GPU (D-70 Phase 6, FU-149). NOT VERIFIED: written on a Mac.
+"""Speech models on Windows and Linux with an NVIDIA GPU (D-70 Phase 6, FU-149). Measured on an RTX 4090 (Windows 11).
 
 Same keys of information as ``voice_models.VOICE_MODELS``, with ``lanes: ["cuda"]`` and the upstream PyTorch or
 GGUF weights instead of the MLX conversions:
@@ -15,9 +15,9 @@ GGUF weights instead of the MLX conversions:
   decoder in ONNX on onnxruntime (no PyTorch, no vLLM).
 
 Each row pins a full revision (checked through the Hub API with no token on 2026-11-09; none is gated) and lists
-only the ``files`` it needs, so the 13.9 GB Chatterbox repo downloads its V3 files only. No row has measured
-numbers yet, so none is offered (``listed``) until the RTX 4090 session measures it (docs/plans/rtx4090-test.md
-section 2); ``CHAOSENGINE_VOICE_UNMEASURED=1`` lists them for that session.
+only the ``files`` it needs, so the 13.9 GB Chatterbox repo downloads its V3 files only. Every row has numbers
+measured on an RTX 4090 through the app's routes (Qwen3-TTS 2026-11-11, the other four 2026-11-20, FU-360), so every
+row is offered (``listed``) on a PC with the add-on and a GPU that ``voice_gpu`` accepts.
 """
 
 from __future__ import annotations
@@ -53,6 +53,26 @@ def _qwen(key: str, name: str, summary: str, variant: str, revision: str, size_g
         "minVramGb": round(peak + 0.7, 1), **_QWEN_GPU_NEEDS,
         "estimates": {
             "basis": "measured", "measuredOn": _QWEN_MEASURED_ON, "coldStartSeconds": cold,
+            "secondsPer10sAudio": per10, "wallSecondsShortLine": short, "peakGb": peak, "idleGb": peak,
+        },
+    }
+
+
+_WAVE2_MEASURED_ON = "NVIDIA RTX 4090 24 GB, Windows 11, driver 591.86, 2026-11-20"
+
+
+def _wave2_measured(*, cold: float, per10: float, short: float, peak: float, torch_rows: bool = True) -> dict[str, Any]:
+    """GPU needs and numbers for a Chatterbox, VoxCPM2 or Orpheus row, from the live run through the app's routes
+    (docs/progress/rtx4090-progress.md, FU-360), measured the way the Qwen3-TTS rows were: the worker started with a
+    Kokoro line first, ``cold`` the first short line minus the same line warm (the model load), ``per10`` the wall
+    seconds per 10 s of speech for the fixed 600-character text in the backend's 6 chunks, ``short`` one 12-word line
+    warm, ``peak`` the whole card's memory over idle (nvidia-smi, GiB, CUDA context included; per-process figures read
+    N/A under Windows' WDDM) across speaking and cloning, whichever was higher. ``minVramGb`` is the peak plus 0.7 GB.
+    Orpheus runs in llama-server (the bundled Vulkan build, b12441), so it has no PyTorch compute-capability floor."""
+    return {
+        "minVramGb": round(peak + 0.7, 1), **(_QWEN_GPU_NEEDS if torch_rows else {}),
+        "estimates": {
+            "basis": "measured", "measuredOn": _WAVE2_MEASURED_ON, "coldStartSeconds": cold,
             "secondsPer10sAudio": per10, "wallSecondsShortLine": short, "peakGb": peak, "idleGb": peak,
         },
     }
@@ -106,7 +126,7 @@ CUDA_VOICE_MODELS: list[dict[str, Any]] = [
         "sampleRate": 24_000,
         "minReferenceS": 5.0,
         "builtinWatermark": "perth",
-        "estimates": None,
+        **_wave2_measured(cold=24.3, per10=5.67, short=2.34, peak=4.25),
     },
     {
         "key": "chatterbox-mtl-cuda",
@@ -130,7 +150,7 @@ CUDA_VOICE_MODELS: list[dict[str, Any]] = [
         "sampleRate": 24_000,
         "minReferenceS": 3.0,
         "builtinWatermark": "perth",
-        "estimates": None,
+        **_wave2_measured(cold=23.9, per10=11.96, short=3.9, peak=4.64),
     },
     {
         "key": "voxcpm2-cuda",
@@ -153,7 +173,7 @@ CUDA_VOICE_MODELS: list[dict[str, Any]] = [
         "companions": [],
         "sampleRate": 48_000,
         "minReferenceS": 3.0,
-        "estimates": None,
+        **_wave2_measured(cold=27.6, per10=19.86, short=7.74, peak=6.59),
     },
     {
         "key": "orpheus-3b-gguf",
@@ -183,6 +203,6 @@ CUDA_VOICE_MODELS: list[dict[str, Any]] = [
         "chunkChars": 250,
         "maxTokens": 2400,
         "minReferenceS": None,
-        "estimates": None,
+        **_wave2_measured(cold=16.9, per10=7.8, short=3.91, peak=3.89, torch_rows=False),
     },
 ]

@@ -8,8 +8,8 @@ summary: Every FU row from FOLLOW_UPS.md, split into open and closed.
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here.
 
-- [Open and live follow-ups](open.md): **194** rows.
-- [Closed follow-ups](closed.md): **116** rows.
+- [Open and live follow-ups](open.md): **196** rows.
+- [Closed follow-ups](closed.md): **118** rows.
 
 ## Newest ten
 
@@ -20,8 +20,8 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 | [FU-372](open.md) | Attach a vocal in the Video Studio | When lip sync is used outside the Storyboard |
 | [FU-371](open.md) | Phase 2: cut a song into lip-sync shots in the Storyboard | Owner's go after phase 1 (D-98) |
 | [FU-370](open.md) | Run Mac lip sync (ltx-2-mlx a2v --distilled) for the first time | Next M4 Max session |
+| [FU-363](open.md) | kaldifst pin for the speech GPU add-on | When kaldifst ships a Windows wheel again |
+| [FU-362](open.md) | Listen to the GPU Chatterbox, VoxCPM2 and Orpheus clips and clones | Owner, before the tag |
+| [FU-361](open.md) | VoxCPM2 on Windows: twice slower than real time, 11 GB of host memory | Next 4090 pass |
+| [FU-360](closed.md) | Chatterbox, VoxCPM2 and Orpheus listed on the NVIDIA GPU | Done 2026-11-20 (D-102 B, agent branch, not pushed). |
 | [FU-352](open.md) | Dictation and Word timings downloads not tried end to end | Next 4090 session with bandwidth |
-| [FU-351](open.md) | Dictation cards: per-model guidance is unmeasured; Chat popover on default change | Next 4090 session |
-| [FU-350](open.md) | Backend text may still say "(GPU)" on a PC | Next voice UI pass |
-| [FU-340](open.md) | MiniMax H3 licence changes built; release still waits for a lawyer (D-99) | Built 2026-11-20, H3_RELEASED still False. |
-| [FU-335](open.md) | ACE-Step 1.5 turbo ignored the lyrics in 3 of 3 tries | Next music pass |

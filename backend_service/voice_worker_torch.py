@@ -423,7 +423,26 @@ def synthesize(request: dict[str, Any], _decode_audio: Callable[..., Any] | None
     model = _load(family, str(request["source"]), str(request.get("device") or "cuda"))
     _seed(request.get("seed"))
     if family == "voxcpm2":
-        return voxcpm_call(model, request)
-    if family == "qwen3-tts":
-        return qwen_call(model, request)
-    return chatterbox_call(model, request)
+        result = voxcpm_call(model, request)
+    elif family == "qwen3-tts":
+        result = qwen_call(model, request)
+    else:
+        result = chatterbox_call(model, request)
+    log_gpu_peak(family)
+    return result
+
+
+def log_gpu_peak(family: str) -> None:
+    """Write PyTorch's peak GPU memory for the request to the worker log (the catalogue's ``minVramGb`` comes from
+    it), the way the speech-to-text worker does. A diagnostic only."""
+    try:
+        import sys
+
+        import torch  # type: ignore[import-not-found]
+
+        if torch.cuda.is_available():
+            gb = 1024 ** 3
+            print(f"tts: {family} peak allocated {torch.cuda.max_memory_allocated() / gb:.2f} GiB, "
+                  f"peak reserved {torch.cuda.max_memory_reserved() / gb:.2f} GiB", file=sys.stderr, flush=True)
+    except Exception:  # noqa: BLE001 - a diagnostic only
+        pass

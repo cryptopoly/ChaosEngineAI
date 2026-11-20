@@ -1,13 +1,22 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 116 shipped, obsoleted or dropped rows, newest first.
+summary: 118 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Shipped, obsoleted or dropped rows (struck through, or marked shipped with no open points left). Kept as the history of why things are the way they are.
 
+
+<details>
+<summary>FU-360 · Chatterbox, VoxCPM2 and Orpheus listed on the NVIDIA GPU — Done 2026-11-20 (D-102 B, agent branch, not pushed).</summary>
+
+**Status or trigger:** **Done 2026-11-20 (D-102 B, agent branch, not pushed).**
+
+**Notes:** Measured through the app's routes on a throwaway backend (RTX 4090, Windows 11, driver 591.86; fresh voice venv with the speech GPU add-on; Orpheus on the bundled Vulkan llama-server b12441). Seconds per 10 s of speech / load / GPU peak over idle (higher of speak and clone): Chatterbox-Turbo 5.7 / 24 s / 4.25 GiB, Orpheus 7.8 / 17 s / 3.89 GiB, Chatterbox Multilingual V3 12.0 / 24 s / 4.64 GiB, VoxCPM2 19.9 / 28 s / 6.59 GiB. Rows carry `estimates` (basis measured), `minVramGb` (peak + 0.7) and, for the PyTorch rows, `minComputeCap` 7.0, so `listed` is true without `CHAOSENGINE_VOICE_UNMEASURED`. Whisper Large v3 Turbo transcribed every clip (word match 0.98 to 0.99 on the 600-character text). Found and fixed on the way: kaldifst 1.9.1 (2026-11-19, pulled by wetext) has no Windows wheel, so a new add-on install failed (pinned 1.9.0); three cloning downloads at once raced on the AudioSeal pip install (WinError 32; now one at a time); the AudioSeal read-back took 73 s on the CPU for 33 s of cloned speech, so cloned Turbo ran at 32 s per 10 s (watermark now on the GPU when PyTorch sees one: 5.9 s per 10 s). E2E: phase 8 check "speak and clone with Chatterbox, VoxCPM2 and Orpheus on the GPU".
+
+</details>
 
 <details>
 <summary>FU-330 · Build LTX-2.3 audio to video on Windows with our own loop (route b of the lip-sync spike) — Phase 1 shipped 2026-11-20 (owner chose route b).</summary>
@@ -24,6 +33,15 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** **Done 2026-11-20 (agent branch, D-102 C/D; not pushed)**
 
 **Notes:** Every card has one line on what it is for (keyed per model, translatable), the licence by name ("OpenMDW 1.1 (open model licence)", Whisper now MIT) linking to the model's Hugging Face page, a fit chip for GPU rows ("Fits · 5 GB GPU memory", hover says measured on the RTX 4090; Nemotron Transcribe says estimate), a Default badge beside Downloaded and "Recommended for this GPU" on the GPU default-to-be; downloads show a `role="progressbar"` bar, "37% · 0.58 of 1.58 GB" and Cancel (`/api/models/download/cancel`) and pick up a running download after a reload. The footer now says Whisper, Qwen3-ASR and Nemotron 3.5 ASR use the Language (Parakeet, Granite and Nemotron Transcribe find it). Left: FU-351.
+
+</details>
+
+<details>
+<summary>FU-322 · Speech GPU add-on: what it installs and what is offered — Done 2026-11-20 (owner choice B: measure and list</summary>
+
+**Status or trigger:** **Done 2026-11-20 (owner choice B: measure and list; agent branch, not pushed).**
+
+**Notes:** The add-on installs the Chatterbox and VoxCPM packages (most of its 5 GB) but only the five Qwen3-TTS CUDA rows are listed; the wave-2 CUDA rows stay hidden until measured (`CHAOSENGINE_VOICE_UNMEASURED`). The English UI label now names Qwen3-TTS only; the backend label in `voice_env.EXTRAS`, the usage docs and the translated labels (now `null`) still name all four. Either measure and list the three families on the 4090, or stop installing their packages; then make every label say the same. Done: the three families were measured on the RTX 4090 and are listed (FU-360); `voice_env.EXTRAS` already named all four, the English UI label now names Qwen3-TTS, Chatterbox, VoxCPM2 and Orpheus with the measured size (about 6 GB), the usage docs list the four rows; translated labels stay `null`.
 
 </details>
 

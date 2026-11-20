@@ -42,9 +42,21 @@ def bits_value(bits: list[int]) -> int:
 
 
 def _device() -> str:
-    """CPU by default: measured on an M-series Mac (2026-11-08) at 0.19 s to mark and 0.10 s to detect
-    10 s of speech, the same as MPS (0.16 / 0.12 s), without MPS kernel builds or GPU contention."""
-    return os.environ.get("CHAOSENGINE_WATERMARK_DEVICE") or "cpu"
+    """CPU on a Mac: measured on an M-series Mac (2026-11-08) at 0.19 s to mark and 0.10 s to detect
+    10 s of speech, the same as MPS (0.16 / 0.12 s), without MPS kernel builds or GPU contention.
+
+    The NVIDIA GPU when PyTorch sees one (the speech GPU add-on): on the RTX 4090 PC (Windows 11, torch 2.9.1)
+    the detector's read-back took 73 s on the CPU for 33 s of cloned speech, against 0.5 s for mark and read-back
+    on the GPU, so a long cloned text ran three times slower than real time (2026-11-20)."""
+    forced = os.environ.get("CHAOSENGINE_WATERMARK_DEVICE")
+    if forced:
+        return forced
+    try:
+        import torch  # type: ignore[import-not-found]
+
+        return "cuda" if torch.cuda.is_available() else "cpu"
+    except Exception:  # noqa: BLE001 - no torch build with CUDA: the CPU
+        return "cpu"
 
 
 def _load(role: str, path: str) -> Any:

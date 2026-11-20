@@ -661,7 +661,6 @@
       "reinstallSmall": "Neu installieren"
     },
     "models": {
-      "recommended": "Empfohlen",
       "downloaded": "Heruntergeladen",
       "use": "Fürs Diktieren verwenden",
       "download": "Herunterladen",
@@ -712,7 +711,6 @@
         "makes": "Erzeugt",
         "makesAll": "Alles"
       },
-      "firstUseLine": "Ein Modell, das du ausgewählt, aber noch nicht heruntergeladen hast, wird beim ersten Diktieren geholt. Whisper nutzt die Sprache; Parakeet und Nemotron erkennen sie selbst.",
       "licence": "Lizenz: {name}",
       "makes": {
         "clone": "Klonen",
@@ -751,7 +749,41 @@
       "kokoroLineAddon": "{count} Schnellstimmen in {languages} Sprachen. Schnell auf jedem Rechner; ein Zusatz der Stimm-Laufzeit.",
       "kokoroNotInstalled": "Nicht installiert",
       "kokoroAddHint": "Unter Stimm-Laufzeit > Zusätze anhaken.",
-      "gpuDefaultLine": null
+      "gpuDefaultLine": null,
+      "macOnlySummary": null,
+      "macOnlyNote": null,
+      "macOnlyNoteVoices": null,
+      "licenceName": {
+        "Apache-2_0": null,
+        "MIT": null,
+        "CC-BY-4_0": null,
+        "OpenMDW-1_1": null
+      },
+      "licenceOpen": null,
+      "sttGuide": {
+        "qwen3-asr-1_7b": null,
+        "qwen3-asr-0_6b": null,
+        "parakeet-tdt-v3": null,
+        "nemotron-3_5-asr": null,
+        "whisper-large-v3-turbo": null,
+        "whisper-small": null,
+        "whisper-base": null,
+        "granite-speech-5_0-2b": null,
+        "nemotron-3_5-transcribe-30b": null
+      },
+      "sttFit": null,
+      "sttFitAbout": null,
+      "sttFitMeasured": null,
+      "sttFitEstimate": null,
+      "sttDownloading": null,
+      "sttDownloadingName": null,
+      "defaultBadge": null,
+      "defaultTitle": null,
+      "recommendedGpu": null,
+      "recommendedGpuTitle": null,
+      "wordTimings": null,
+      "wordTimingsLine": null,
+      "firstUseLanguageLine": null
     },
     "voices": {
       "addChinese": "Mandarin-Chinesisch-Stimmen hinzufügen",
@@ -823,7 +855,8 @@
       "fallbackNoteNone": "Keine Ersatzstimme festgelegt: Kann eine gewählte Stimme nicht sprechen, zeigen Vorlesen und Anrufe einen Fehler, statt die Stimme zu wechseln.",
       "quickNoteAddon": "Kokoro, ein Zusatz der Stimm-Laufzeit. Schnell, unter 1 GB, nur auf Geschwindigkeit ausgelegt. Die am besten bewertete wird zuerst gezeigt.",
       "kokoroMissing": "Die Kokoro-Schnellstimmen sind nicht installiert. Hake sie unter Voice > Modelle > Stimm-Laufzeit > Zusätze an (etwa 330 MB).",
-      "openModels": "Voice-Modelle öffnen"
+      "openModels": "Voice-Modelle öffnen",
+      "macOnlyHidden": null
     },
     "settings": {
       "autoSend": "Nachricht senden, sobald das Diktat beendet ist",
@@ -859,7 +892,8 @@
       "chooseFiles": "Dateien wählen",
       "fileTypes": "WAV, MP3, M4A, FLAC, OGG, MP4, MOV und mehr",
       "subtitleLibrary": "Nimm auf oder ziehe Audio- und Videodateien hierher. Transkripte werden in der Bibliothek gespeichert.",
-      "translateWhich": "Ins Englische übersetzen (Whisper Small oder Base)"
+      "translateWhich": "Ins Englische übersetzen (Whisper Small oder Base)",
+      "needsWordTimings": null
     },
     "stopRecording": "Aufnahme beenden",
     "record": "Aufnehmen",
@@ -1007,9 +1041,9 @@
     "stop": "Stoppen",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "Voice läuft auf diesem Computer und braucht die Stimm-Laufzeit (etwa 2,3 GB). Installiere sie einmal unter Voice > Modelle.",
       "openModels": "Sprachmodelle öffnen",
-      "library": "Bibliothek"
+      "library": "Bibliothek",
+      "needsPackGb": null
     },
     "savedToLibrary": "In der Bibliothek gespeichert",
     "saveToLibrary": "In der Bibliothek speichern",
@@ -1217,7 +1251,7 @@
       "updateFeatures": "Aktualisiere die Stimm-Laufzeit für Sprachanrufe im Chat und Sprecherkennzeichnungen in Transkripten (ergänzt etwa 40 MB Modelle; ein bis zwei Minuten).",
       "workerOnly": "der Voice-Worker, noch kein Modell",
       "partsNoKokoro": "{total} GB auf der Festplatte: Sprachpakete {packages} GB, Erkennung der Sprecherwechsel und Sprecherkennzeichnungen {small} GB; die Kokoro-Schnellstimmen sind nicht installiert. Nichts wird online gesendet.",
-      "aboutOptional": "Etwa 2 GB: die Sprachpakete, Erkennung der Sprecherwechsel und Sprecherkennzeichnungen, dazu die Kokoro-Schnellstimmen, wenn unten angehakt. Diktier- und Sprachmodelle sind auf dieser Seite separate Downloads. Nichts wird online gesendet."
+      "aboutTickedGb": null
     }
   },
   "residentChatModelNote": "Ein geladenes Chat-Modell belegt etwa {gb} GB dieses Speichers; beim Entladen wird er freigegeben.",

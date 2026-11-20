@@ -661,7 +661,6 @@
       "reinstallSmall": "Reinstalar"
     },
     "models": {
-      "recommended": "Recomendado",
       "downloaded": "Descargado",
       "use": "Usar para dictar",
       "download": "Descargar",
@@ -712,7 +711,6 @@
         "makes": "Genera",
         "makesAll": "Todo"
       },
-      "firstUseLine": "Un modelo que eliges pero no has descargado se baja la primera vez que dictas. Whisper usa el idioma; Parakeet y Nemotron lo detectan solos.",
       "licence": "Licencia: {name}",
       "makes": {
         "clone": "Clonación",
@@ -751,7 +749,41 @@
       "kokoroLineAddon": "{count} voces rápidas en {languages} idiomas. Rápido en cualquier equipo; un complemento del entorno de voz.",
       "kokoroNotInstalled": "No instalado",
       "kokoroAddHint": "Márcalo en Entorno de voz > Complementos.",
-      "gpuDefaultLine": null
+      "gpuDefaultLine": null,
+      "macOnlySummary": null,
+      "macOnlyNote": null,
+      "macOnlyNoteVoices": null,
+      "licenceName": {
+        "Apache-2_0": null,
+        "MIT": null,
+        "CC-BY-4_0": null,
+        "OpenMDW-1_1": null
+      },
+      "licenceOpen": null,
+      "sttGuide": {
+        "qwen3-asr-1_7b": null,
+        "qwen3-asr-0_6b": null,
+        "parakeet-tdt-v3": null,
+        "nemotron-3_5-asr": null,
+        "whisper-large-v3-turbo": null,
+        "whisper-small": null,
+        "whisper-base": null,
+        "granite-speech-5_0-2b": null,
+        "nemotron-3_5-transcribe-30b": null
+      },
+      "sttFit": null,
+      "sttFitAbout": null,
+      "sttFitMeasured": null,
+      "sttFitEstimate": null,
+      "sttDownloading": null,
+      "sttDownloadingName": null,
+      "defaultBadge": null,
+      "defaultTitle": null,
+      "recommendedGpu": null,
+      "recommendedGpuTitle": null,
+      "wordTimings": null,
+      "wordTimingsLine": null,
+      "firstUseLanguageLine": null
     },
     "voices": {
       "addChinese": "Añadir voces de chino mandarín",
@@ -823,7 +855,8 @@
       "fallbackNoteNone": "No hay voz alternativa definida: si una voz elegida no puede hablar, la lectura en voz alta y las llamadas muestran un error en lugar de cambiar de voz.",
       "quickNoteAddon": "Kokoro, un complemento del entorno de voz. Rápido, menos de 1 GB, solo velocidad. Se muestra primero la mejor valorada.",
       "kokoroMissing": "Las voces rápidas de Kokoro no están instaladas. Márcalas en Voz > Modelos > Entorno de voz > Complementos (unos 330 MB).",
-      "openModels": "Abrir Modelos de voz"
+      "openModels": "Abrir Modelos de voz",
+      "macOnlyHidden": null
     },
     "settings": {
       "autoSend": "Enviar el mensaje en cuanto termine el dictado",
@@ -859,7 +892,8 @@
       "chooseFiles": "Elegir archivos",
       "fileTypes": "WAV, MP3, M4A, FLAC, OGG, MP4, MOV y más",
       "subtitleLibrary": "Graba, o suelta archivos de audio y video. Las transcripciones se guardan en la Biblioteca.",
-      "translateWhich": "Traducir al inglés (Whisper Small o Base)"
+      "translateWhich": "Traducir al inglés (Whisper Small o Base)",
+      "needsWordTimings": null
     },
     "stopRecording": "Detener la grabación",
     "record": "Grabar",
@@ -1007,9 +1041,9 @@
     "stop": "Detener",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "La voz se ejecuta en este equipo y necesita el entorno de voz (unos 2.3 GB). Instálalo una vez desde Voz > Modelos.",
       "openModels": "Abrir Modelos de voz",
-      "library": "Biblioteca"
+      "library": "Biblioteca",
+      "needsPackGb": null
     },
     "savedToLibrary": "Guardado en la biblioteca",
     "saveToLibrary": "Guardar en la biblioteca",
@@ -1217,7 +1251,7 @@
       "updateFeatures": "Actualiza el entorno de voz para las llamadas de voz en el Chat y las etiquetas de hablante en las transcripciones (añade unos 40 MB de modelos; uno o dos minutos).",
       "workerOnly": "el proceso de voz, aún sin modelo",
       "partsNoKokoro": "{total} GB en disco: paquetes de habla {packages} GB, detección de turnos y etiquetas de hablante {small} GB; las voces rápidas de Kokoro no están instaladas. No se envía nada a internet.",
-      "aboutOptional": "Unos 2 GB: los paquetes de habla, la detección de turnos y las etiquetas de hablante, más las voces rápidas de Kokoro si las marcas abajo. El dictado y los modelos de habla se descargan aparte, en esta página. No se envía nada a internet."
+      "aboutTickedGb": null
     }
   },
   "residentChatModelNote": "Un modelo de chat cargado ocupa unos {gb} GB de esta memoria; descargarlo la libera.",

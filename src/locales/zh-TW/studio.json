@@ -661,7 +661,6 @@
       "reinstallSmall": "重新安裝"
     },
     "models": {
-      "recommended": "推薦",
       "downloaded": "已下載",
       "use": "用於語音輸入",
       "download": "下載",
@@ -712,7 +711,6 @@
         "makes": "產出",
         "makesAll": "全部"
       },
-      "firstUseLine": "您選取但尚未下載的模型,會在您首次使用語音輸入時下載。Whisper 會使用所選語言;Parakeet 與 Nemotron 會自行判斷語言。",
       "licence": "授權:{name}",
       "makes": {
         "clone": "複製",
@@ -751,7 +749,41 @@
       "kokoroLineAddon": "{count} 種快速語音,支援 {languages} 種語言。在任何電腦上都很快;為語音執行階段的附加元件。",
       "kokoroNotInstalled": "未安裝",
       "kokoroAddHint": "請在 語音執行階段 > 附加元件 中勾選。",
-      "gpuDefaultLine": null
+      "gpuDefaultLine": null,
+      "macOnlySummary": null,
+      "macOnlyNote": null,
+      "macOnlyNoteVoices": null,
+      "licenceName": {
+        "Apache-2_0": null,
+        "MIT": null,
+        "CC-BY-4_0": null,
+        "OpenMDW-1_1": null
+      },
+      "licenceOpen": null,
+      "sttGuide": {
+        "qwen3-asr-1_7b": null,
+        "qwen3-asr-0_6b": null,
+        "parakeet-tdt-v3": null,
+        "nemotron-3_5-asr": null,
+        "whisper-large-v3-turbo": null,
+        "whisper-small": null,
+        "whisper-base": null,
+        "granite-speech-5_0-2b": null,
+        "nemotron-3_5-transcribe-30b": null
+      },
+      "sttFit": null,
+      "sttFitAbout": null,
+      "sttFitMeasured": null,
+      "sttFitEstimate": null,
+      "sttDownloading": null,
+      "sttDownloadingName": null,
+      "defaultBadge": null,
+      "defaultTitle": null,
+      "recommendedGpu": null,
+      "recommendedGpuTitle": null,
+      "wordTimings": null,
+      "wordTimingsLine": null,
+      "firstUseLanguageLine": null
     },
     "voices": {
       "addChinese": "新增國語語音",
@@ -823,7 +855,8 @@
       "fallbackNoteNone": "未設定備用語音:若所選語音無法發聲,朗讀與通話會顯示錯誤,而不會切換語音。",
       "quickNoteAddon": "Kokoro,為語音執行階段的附加元件。速度快、小於 1 GB,僅著重速度。評級最高者優先顯示。",
       "kokoroMissing": "尚未安裝 Kokoro 快速語音。請在 語音 > 模型 > 語音執行階段 > 附加元件 中勾選(約 330 MB)。",
-      "openModels": "開啟語音模型"
+      "openModels": "開啟語音模型",
+      "macOnlyHidden": null
     },
     "settings": {
       "autoSend": "語音輸入結束後立即傳送訊息",
@@ -859,7 +892,8 @@
       "chooseFiles": "選擇檔案",
       "fileTypes": "WAV、MP3、M4A、FLAC、OGG、MP4、MOV 等",
       "subtitleLibrary": "錄音,或拖曳音訊與影片檔案至此。逐字稿會保存在圖庫中。",
-      "translateWhich": "翻譯成英文(Whisper Small 或 Base)"
+      "translateWhich": "翻譯成英文(Whisper Small 或 Base)",
+      "needsWordTimings": null
     },
     "stopRecording": "停止錄音",
     "record": "錄音",
@@ -1007,9 +1041,9 @@
     "stop": "停止",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "語音在此電腦上執行,需要語音執行階段(約 2.3 GB)。請從 語音 > 模型 安裝一次。",
       "openModels": "開啟語音模型",
-      "library": "圖庫"
+      "library": "圖庫",
+      "needsPackGb": null
     },
     "savedToLibrary": "已儲存到資料庫",
     "saveToLibrary": "儲存到資料庫",
@@ -1217,7 +1251,7 @@
       "updateFeatures": "更新語音執行階段,以啟用對話中的語音通話與逐字稿的說話者標籤(新增約 40 MB 模型;約需一至兩分鐘)。",
       "workerOnly": "語音工作程序,尚無模型",
       "partsNoKokoro": "磁碟上共 {total} GB:語音套件 {packages} GB、輪次偵測與說話者標籤 {small} GB;Kokoro 快速語音尚未安裝。不會傳送任何資料至網路。",
-      "aboutOptional": "約 2 GB:語音套件、輪次偵測與說話者標籤,若勾選下方項目則另含 Kokoro 快速語音。語音輸入與語音模型為本頁另行下載的項目。不會傳送任何資料至網路。"
+      "aboutTickedGb": null
     }
   },
   "residentChatModelNote": "已載入的聊天模型佔用了其中約 {gb} GB 記憶體；卸載它即可釋放這部分記憶體。",

@@ -164,6 +164,13 @@ for (const phone of [false, true]) {
       const row = page.locator('[data-model-id="qwen3-tts-custom-1.7b-cuda"]');
       await row.locator("button[aria-expanded]").first().click().catch(() => {});
       await shoot(page, "05-models-all-sizes-detail", phone);
+      // P1 (D-102 A): the Mac-only models behind one closed line; opened here.
+      const macOnly = page.locator(".voice-models__mac-only summary");
+      if (await macOnly.isVisible().catch(() => false)) {
+        await macOnly.click();
+        await macOnly.scrollIntoViewIfNeeded();
+        await shoot(page, "05-models-mac-only-open", phone);
+      }
     });
 
     test("06 Speak, the voice drawer, Voices, the clone form, Transcribe", async ({ page }) => {

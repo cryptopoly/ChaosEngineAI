@@ -16213,6 +16213,46 @@ select.music-library__select {
 .voice-models__inline {
   display: none;
 }
+/* On a PC: the Mac-only speech models behind one closed line (D-102 A). */
+.voice-models__mac-only {
+  margin-top: 10px;
+  padding: 9px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 12px);
+  background: var(--panel-alt);
+}
+.voice-models__mac-only > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.voice-models__mac-only p {
+  margin: 6px 0;
+  font-size: 0.82rem;
+}
+.voice-models__mac-only-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.82rem;
+}
+/* Dictation cards: what the model is for, and the download bar (D-102 D, P2). */
+.voice-model-card__guide {
+  font-size: 0.82rem;
+  margin: 4px 0 0;
+}
+.voice-model-card__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 160px;
+  min-width: 140px;
+}
+.voice-model-card__progress .progress-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.78rem;
+}
 @media (max-width: 1439px) {
   .voice-models__inline {
     display: flex;

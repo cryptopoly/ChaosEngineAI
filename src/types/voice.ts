@@ -14,12 +14,28 @@ export interface SttModel {
   translate?: boolean;
   /** False until the voice pack is installed. */
   backendInstalled?: boolean;
-  /** GPU rows: the weights' licence, a note in English ("Untested here."), the GPU memory they need. */
-  licence?: string;
+  /** The weights' licence id ("Apache-2.0", "MIT", ...); GPU rows also a note in English ("Untested here.") and the GPU memory they need. */
+  licence?: string | null;
   note?: string | null;
   minVramGb?: number;
+  /** GPU rows: ``minVramGb`` comes from a run on an RTX 4090 ("measured") or from the weights' size ("estimate"). */
+  vramBasis?: "measured" | "estimate";
+  /** GPU rows: word timings need the forced aligner (``VoiceRuntime.aligner``). */
+  needsAligner?: boolean;
   /** GPU rows: why this GPU cannot run it (memory or compute capability), or null. */
   gpuFacts?: { kind: "memory" | "compute"; need: number; have: number } | null;
+}
+
+export interface SttAligner {
+  key: string;
+  /** Hugging Face repo, downloaded through ``/api/models/download``. */
+  id: string;
+  name: string;
+  sizeGb: number;
+  licence: string;
+  /** GPU memory it adds while loaded. */
+  vramGb: number;
+  installed: boolean;
 }
 
 export interface TtsVoice {
@@ -118,6 +134,8 @@ export interface VoiceRuntime {
   inMemory?: VoiceInMemory[];
   install: VoiceInstallJob;
   sttModels: SttModel[];
+  /** The forced aligner, the "Word timings" download for the GPU dictation models (D-101); null or absent elsewhere. */
+  aligner?: SttAligner | null;
   ttsVoices: TtsVoice[];
   settings: VoiceSettings;
 }

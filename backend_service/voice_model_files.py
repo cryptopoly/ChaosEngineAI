@@ -174,11 +174,13 @@ def remove_speech_model(key: str) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 def stt_repo(key: str) -> str:
-    """The repo of a listed dictation model, by catalog key or repo id. Raises ValueError for anything else."""
-    from backend_service.voice_runtime import list_stt_models  # noqa: PLC0415
+    """The repo of a listed dictation model or of the forced aligner ("Word timings", D-101), by catalog key or repo
+    id. Raises ValueError for anything else."""
+    from backend_service.voice_runtime import aligner_row, list_stt_models  # noqa: PLC0415
 
     wanted = (key or "").strip()
-    for model in list_stt_models():
+    aligner = aligner_row()
+    for model in [*list_stt_models(), *([aligner] if aligner else [])]:
         if wanted and wanted in (model.get("key"), model.get("id")):
             return str(model["id"])
     raise ValueError(f"Unknown dictation model '{wanted}'.")

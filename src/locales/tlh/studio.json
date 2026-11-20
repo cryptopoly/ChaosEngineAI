@@ -661,7 +661,6 @@
       "reinstallSmall": "yIjomqa'"
     },
     "models": {
-      "recommended": "chuplu'",
       "downloaded": "lI'lu'ta'",
       "use": "ghItlhmeH yIlo'",
       "download": "yIlI'",
@@ -712,7 +711,6 @@
         "makes": null,
         "makesAll": null
       },
-      "firstUseLine": null,
       "licence": null,
       "makes": {
         "clone": null,
@@ -751,7 +749,41 @@
       "kokoroLineAddon": null,
       "kokoroNotInstalled": null,
       "kokoroAddHint": null,
-      "gpuDefaultLine": null
+      "gpuDefaultLine": null,
+      "macOnlySummary": null,
+      "macOnlyNote": null,
+      "macOnlyNoteVoices": null,
+      "licenceName": {
+        "Apache-2_0": null,
+        "MIT": null,
+        "CC-BY-4_0": null,
+        "OpenMDW-1_1": null
+      },
+      "licenceOpen": null,
+      "sttGuide": {
+        "qwen3-asr-1_7b": null,
+        "qwen3-asr-0_6b": null,
+        "parakeet-tdt-v3": null,
+        "nemotron-3_5-asr": null,
+        "whisper-large-v3-turbo": null,
+        "whisper-small": null,
+        "whisper-base": null,
+        "granite-speech-5_0-2b": null,
+        "nemotron-3_5-transcribe-30b": null
+      },
+      "sttFit": null,
+      "sttFitAbout": null,
+      "sttFitMeasured": null,
+      "sttFitEstimate": null,
+      "sttDownloading": null,
+      "sttDownloadingName": null,
+      "defaultBadge": null,
+      "defaultTitle": null,
+      "recommendedGpu": null,
+      "recommendedGpuTitle": null,
+      "wordTimings": null,
+      "wordTimingsLine": null,
+      "firstUseLanguageLine": null
     },
     "voices": {
       "addChinese": "Mandarin Chinese ghogh tIchel",
@@ -823,7 +855,8 @@
       "fallbackNoteNone": null,
       "quickNoteAddon": null,
       "kokoroMissing": null,
-      "openModels": null
+      "openModels": null,
+      "macOnlyHidden": null
     },
     "settings": {
       "autoSend": "ghItlhghach rInDI' QIn yIngeH SIbI'",
@@ -859,7 +892,8 @@
       "chooseFiles": "nav tIwIv",
       "fileTypes": null,
       "subtitleLibrary": null,
-      "translateWhich": null
+      "translateWhich": null,
+      "needsWordTimings": null
     },
     "stopRecording": "qon yImev",
     "record": "yIqon",
@@ -1007,9 +1041,9 @@
     "stop": "yImev",
     "studio": {
       "title": "ghogh vumpa'",
-      "needsPack": null,
       "openModels": "ghogh yab yIpoSmoH",
-      "library": null
+      "library": null,
+      "needsPackGb": null
     },
     "savedToLibrary": "ghomDaq pollu'ta'",
     "saveToLibrary": "ghomDaq yIpol",
@@ -1217,7 +1251,7 @@
       "updateFeatures": null,
       "workerOnly": null,
       "partsNoKokoro": null,
-      "aboutOptional": null
+      "aboutTickedGb": null
     }
   },
   "residentChatModelNote": "qawHaqvamvo' ~{gb} GB ghaj chu'lu'ta'bogh ja'chuq yab; chu'Ha'lu'chugh qawHaqvetlh chImchoH.",

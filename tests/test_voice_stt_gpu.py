@@ -135,7 +135,53 @@ class CatalogueTests(unittest.TestCase):
         self.assertEqual(rows["parakeet-tdt-v3"]["licence"], "CC-BY-4.0")
         self.assertIsNone(rows["qwen3-asr-1.7b"]["note"])
         self.assertIn("Untested here", rows["nemotron-3.5-transcribe-30b"]["note"])
-        self.assertNotIn("licence", rows["whisper-base"])
+        # Every row names its weights' licence now, Whisper too (D-102 D: licence on every dictation card).
+        self.assertEqual(rows["whisper-base"]["licence"], "MIT")
+        self.assertNotIn("note", rows["whisper-base"])
+        # The GPU memory figure says whether it was measured; word timings say whether they need the aligner.
+        self.assertEqual(rows["qwen3-asr-1.7b"]["vramBasis"], "measured")
+        self.assertEqual(rows["nemotron-3.5-transcribe-30b"]["vramBasis"], "estimate")
+        self.assertTrue(rows["qwen3-asr-1.7b"]["needsAligner"])
+        self.assertTrue(rows["granite-speech-5.0-2b"]["needsAligner"])
+        self.assertFalse(rows["nemotron-3.5-asr"]["needsAligner"])  # it has its own timings
+        self.assertFalse(rows["parakeet-tdt-v3"]["needsAligner"])
+        self.assertNotIn("needsAligner", rows["whisper-base"])
+
+    def test_every_row_has_a_licence_on_both_lanes(self) -> None:
+        with mock.patch.object(voice_env, "lane", return_value="mlx"), \
+                mock.patch.object(voice_env, "is_installed", return_value=True), \
+                mock.patch.object(voice_runtime, "_hf_snapshot_path", return_value=None):
+            mac = voice_runtime.list_stt_models()
+        for row in [*mac, *_rows(ready=True), *_rows(ready=False)]:
+            self.assertTrue(row["licence"], row["key"])
+
+    def test_the_aligner_is_a_word_timings_download_only_with_the_gpu_models(self) -> None:
+        def aligner(ready: bool, installed: bool) -> dict | None:
+            with mock.patch.object(voice_env, "lane", return_value="portable"), \
+                    mock.patch.object(voice_env_asr, "stt_gpu_ready", return_value=ready), \
+                    mock.patch.object(voice_runtime, "aligner_snapshot", return_value=Path("al") if installed else None):
+                return voice_runtime.aligner_row()
+
+        self.assertIsNone(aligner(False, False))
+        row = aligner(True, False)
+        self.assertEqual((row["id"], row["sizeGb"], row["licence"], row["installed"]),
+                         ("Qwen/Qwen3-ForcedAligner-0.6B-hf", 1.84, "Apache-2.0", False))
+        self.assertTrue(aligner(True, True)["installed"])
+        with mock.patch.object(voice_env, "lane", return_value="mlx"):
+            self.assertIsNone(voice_runtime.aligner_row())
+
+    def test_the_aligner_can_be_deleted_by_key_or_repo(self) -> None:
+        from backend_service import voice_model_files
+
+        row = {"key": "qwen3-forced-aligner-0.6b", "id": "Qwen/Qwen3-ForcedAligner-0.6B-hf"}
+        with mock.patch.object(voice_runtime, "list_stt_models", return_value=[]), \
+                mock.patch.object(voice_runtime, "aligner_row", return_value=row):
+            self.assertEqual(voice_model_files.stt_repo("qwen3-forced-aligner-0.6b"), row["id"])
+            self.assertEqual(voice_model_files.stt_repo(row["id"]), row["id"])
+        with mock.patch.object(voice_runtime, "list_stt_models", return_value=[]), \
+                mock.patch.object(voice_runtime, "aligner_row", return_value=None), \
+                self.assertRaises(ValueError):
+            voice_model_files.stt_repo("qwen3-forced-aligner-0.6b")
 
     def test_download_patterns(self) -> None:
         patterns = voice_runtime.stt_repo_allow_patterns("nvidia/parakeet-tdt-0.6b-v3")
@@ -260,6 +306,8 @@ class GuardTests(unittest.TestCase):
 
     def test_why_there_are_no_word_timings(self) -> None:
         self.assertIn("forced aligner", voice_runtime._no_word_timings_note("aligner-missing"))
+        # It points at the Word timings download (D-101).
+        self.assertIn("Dictation models > Word timings", voice_runtime._no_word_timings_note("aligner-missing"))
         self.assertIn("does not speak this language", voice_runtime._no_word_timings_note("language"))
         self.assertIn("could not be worked out", voice_runtime._no_word_timings_note("failed"))
 

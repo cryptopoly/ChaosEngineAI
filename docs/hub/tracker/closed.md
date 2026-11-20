@@ -1,13 +1,40 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 112 shipped, obsoleted or dropped rows, newest first.
+summary: 115 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Shipped, obsoleted or dropped rows (struck through, or marked shipped with no open points left). Kept as the history of why things are the way they are.
 
+
+<details>
+<summary>FU-323 · Dictation models panel on a GPU PC — Done 2026-11-20 (agent branch, D-102 C/D</summary>
+
+**Status or trigger:** **Done 2026-11-20 (agent branch, D-102 C/D; not pushed)**
+
+**Notes:** Every card has one line on what it is for (keyed per model, translatable), the licence by name ("OpenMDW 1.1 (open model licence)", Whisper now MIT) linking to the model's Hugging Face page, a fit chip for GPU rows ("Fits · 5 GB GPU memory", hover says measured on the RTX 4090; Nemotron Transcribe says estimate), a Default badge beside Downloaded and "Recommended for this GPU" on the GPU default-to-be; downloads show a `role="progressbar"` bar, "37% · 0.58 of 1.58 GB" and Cancel (`/api/models/download/cancel`) and pick up a running download after a reload. The footer now says Whisper, Qwen3-ASR and Nemotron 3.5 ASR use the Language (Parakeet, Granite and Nemotron Transcribe find it). Left: FU-351.
+
+</details>
+
+<details>
+<summary>FU-321 · A PC lists speech models and voices that only run on a Mac — Done 2026-11-20 (agent branch, D-102 A</summary>
+
+**Status or trigger:** **Done 2026-11-20 (agent branch, D-102 A; not pushed)**
+
+**Notes:** On the portable lane `useVoiceCatalog` leaves out rows whose `lanes` lack `cuda` (unless downloaded) and the voices only those rows speak (cloned and quick voices stay), so Models reads "6 of 6 models" on the 4090 and Voices drops Turbo, Chatterbox and Orpheus. Models ends with one closed line "9 models for Apple Silicon Macs" listing them with size and licence; Voices ends with "10 voices ... are not listed". "(GPU)" is dropped from the names on a PC; a collapsed family opens on the recommended natural row. The rule is data-driven: CUDA rows for Chatterbox, VoxCPM2 or Orpheus appear as soon as the catalogue lists them (FU-322). Left: FU-350.
+
+</details>
+
+<details>
+<summary>FU-310 · A download row for the forced aligner (word timings) in the Dictation models panel — Done 2026-11-20 (agent branch, D-101</summary>
+
+**Status or trigger:** **Done 2026-11-20 (agent branch, D-101; not pushed)**
+
+**Notes:** Own "Word timings" card in Dictation models while the GPU dictation models are offered (`voice_runtime.aligner_row`, `aligner` in `/api/voice/runtime`): one sentence on what it does, 1.84 GB, Apache 2.0 linked, about 1.9 GB of GPU memory while in use, Download with a bar and Cancel, Delete (`/api/voice/stt/delete` takes its key). Rows carry `needsAligner`; Transcribe shows "... gives segment times only until the Word timings download (1.84 GB) is in" with Open Voice Models, and the backend note names Voice > Models > Dictation models > Word timings. Not tried: a real aligner download and a word-timing run after it from the UI.
+
+</details>
 
 <details>
 <summary>FU-271 · Pin revisions for the GPU dictation rows, and track Transformers 5.23 in asr-site — Done 2026-11-20 (agent branch).</summary>

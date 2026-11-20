@@ -32,10 +32,12 @@ def _platform() -> str:
 # One logical model per row, with a weight source per backend: mlx-whisper
 # reads MLX safetensors, faster-whisper CTranslate2 conversions, parakeet-mlx
 # its own MLX port. CTranslate2 sources are the repos faster-whisper itself
-# maps its size names to (``faster_whisper.utils._MODELS``, 1.2.1).
+# maps its size names to (``faster_whisper.utils._MODELS``, 1.2.1). ``licence`` is the weights' licence (Whisper's are
+# OpenAI's MIT weights; the conversions keep it); a GPU row's own ``gpu.licence`` says the same for its source.
 _STT_MODELS: list[dict[str, Any]] = [
     {
         "key": "parakeet-tdt-v3",
+        "licence": "CC-BY-4.0",
         "name": "Parakeet TDT 0.6B v3",
         "languages": "25 European languages",
         "default": True,
@@ -48,6 +50,7 @@ _STT_MODELS: list[dict[str, Any]] = [
         # prompting (2026-10-23, OpenMDW-1.1 weights); MLX port and 8-bit
         # conversion by mlx-community, run through mlx-audio.
         "key": "nemotron-3.5-asr",
+        "licence": "OpenMDW-1.1",
         "name": "Nemotron 3.5 ASR 0.6B",
         "languages": "40 languages, automatic detection",
         "default": False,
@@ -56,6 +59,7 @@ _STT_MODELS: list[dict[str, Any]] = [
     },
     {
         "key": "whisper-large-v3-turbo",
+        "licence": "MIT",
         "name": "Whisper Large v3 Turbo",
         "languages": "99 languages",
         "default": True,
@@ -70,6 +74,7 @@ _STT_MODELS: list[dict[str, Any]] = [
     },
     {
         "key": "whisper-small",
+        "licence": "MIT",
         "name": "Whisper Small",
         "languages": "99 languages",
         "default": False,
@@ -82,6 +87,7 @@ _STT_MODELS: list[dict[str, Any]] = [
     },
     {
         "key": "whisper-base",
+        "licence": "MIT",
         "name": "Whisper Base",
         "languages": "99 languages",
         "default": False,
@@ -166,6 +172,25 @@ def aligner_snapshot() -> Path | None:
     return _hf_snapshot_path(gpu.ALIGNER["repo"])
 
 
+def aligner_row() -> dict[str, Any] | None:
+    """The forced aligner as the Dictation models panel's "Word timings" download (D-101), while the GPU dictation
+    models are offered on this machine (the speech-to-text GPU add-on is in); None elsewhere."""
+    if GPU_BACKEND not in _lane_backends():
+        return None
+    from backend_service.catalog import voice_stt_cuda as gpu  # noqa: PLC0415
+
+    aligner = gpu.ALIGNER
+    return {
+        "key": aligner["key"],
+        "id": aligner["repo"],
+        "name": aligner["name"],
+        "sizeGb": aligner["sizeGb"],
+        "licence": aligner["licence"],
+        "vramGb": aligner["vramGb"],
+        "installed": aligner_snapshot() is not None,
+    }
+
+
 def _hf_snapshot_path(repo_id: str) -> Path | None:
     from backend_service.helpers.hf_cache_paths import _hf_repo_cache_dir, _hf_repo_snapshot_dir  # noqa: PLC0415
 
@@ -198,12 +223,18 @@ def list_stt_models() -> list[dict[str, Any]]:
                 "translate": entry["translate"],
                 "backend": backend,
                 "backendInstalled": installed,
+                "licence": entry.get("licence"),
             }
             if backend == GPU_BACKEND:
                 from backend_service import voice_gpu  # noqa: PLC0415
+                from backend_service.catalog import voice_stt_cuda as gpu_catalog  # noqa: PLC0415
 
                 gpu = entry["gpu"]
+                aligner = gpu_catalog.ALIGNER
                 row.update(licence=gpu["licence"], note=gpu.get("note"), minVramGb=gpu["minVramGb"],
+                           vramBasis="measured" if gpu.get("vramMeasured", True) else "estimate",
+                           # Word timings need the forced aligner (the audio LLMs); Nemotron ASR only prefers it.
+                           needsAligner=gpu["family"] in aligner["families"] and gpu["family"] not in aligner["optionalFor"],
                            gpuFacts=voice_gpu.facts(_gpu_row(entry, repo)))
             rows.append(row)
             break
@@ -546,7 +577,8 @@ def _no_word_timings_note(reason: Any) -> str:
 
         aligner = gpu.ALIGNER
         return (f"Word timings for this model need the forced aligner {aligner['repo']} ({aligner['sizeGb']} GB, "
-                f"{aligner['licence']}): download it, or use a Whisper model. Segment times are given.")
+                f"{aligner['licence']}): download it under Voice > Models > Dictation models > Word timings, or use a "
+                "Whisper model. Segment times are given.")
     if reason == "language":
         return "The forced aligner does not speak this language, so only segment times are given; Whisper gives word timings."
     return "Word timings could not be worked out for this audio, so only segment times are given; Whisper gives word timings."

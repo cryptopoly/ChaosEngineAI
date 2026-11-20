@@ -68,6 +68,36 @@ export function unsupportedModelText(
   return t("voice.speak.appleOnly", { defaultValue: "Apple Silicon Macs only for now." });
 }
 
+/**
+ * A speech model that only runs on an Apple Silicon Mac, seen on a PC (D-102 A): no GPU lane and not on disk. Such
+ * rows are folded under one closed line instead of filling the table with rows that can only say no.
+ */
+export function macOnlyOnThisPc(row: Pick<VoiceModelRow, "lanes" | "installed">, lane: string | null | undefined): boolean {
+  return lane === "portable" && Array.isArray(row.lanes) && !row.lanes.includes("cuda") && !row.installed;
+}
+
+/**
+ * What a PC shows (D-102 A, P1): the models it can run, with "(GPU)" dropped from their names once the Mac twins are
+ * folded away, and the voices that one of those models speaks (cloned and quick voices always stay). Elsewhere every
+ * row and voice is kept and ``macOnly`` is empty.
+ */
+export function splitForLane(
+  models: VoiceModelRow[],
+  voices: VoiceEntry[],
+  lane: string | null | undefined,
+): { models: VoiceModelRow[]; voices: VoiceEntry[]; macOnly: VoiceModelRow[]; hiddenVoices: number } {
+  const macOnly = models.filter((row) => macOnlyOnThisPc(row, lane));
+  if (macOnly.length === 0) return { models, voices, macOnly, hiddenVoices: 0 };
+  const hidden = new Set(macOnly.map((row) => row.key));
+  const shown = models
+    .filter((row) => !hidden.has(row.key))
+    .map((row) => ({ ...row, name: row.name.replace(/\s*\(GPU\)$/, "") }));
+  const keep = (voice: VoiceEntry) =>
+    voice.kind === "clone" || voice.kind === "builtin" || voice.models.length === 0 || voice.models.some((key) => !hidden.has(key));
+  const kept = voices.filter(keep);
+  return { models: shown, voices: kept, macOnly, hiddenVoices: voices.length - kept.length };
+}
+
 /** The confirm before a speech model is deleted: what goes, its size, what stays because another model uses it. */
 export function speechDeleteConfirmText(plan: SpeechModelDeletePlan, sizeGb: number | null | undefined, t: T = tStudio): string {
   const gb = plan.sizeGb > 0 ? plan.sizeGb : (sizeGb ?? 0);
@@ -106,6 +136,72 @@ export function gpuDefaultPending(models: SttModel[]): SttModel | undefined {
   return first && !first.installed && !first.gpuFacts ? first : undefined;
 }
 
+// i18n-extract: voice.models.licenceName.Apache-2_0
+// i18n-extract: voice.models.licenceName.MIT
+// i18n-extract: voice.models.licenceName.CC-BY-4_0
+// i18n-extract: voice.models.licenceName.OpenMDW-1_1
+const LICENCE_NAMES: Record<string, string> = {
+  "Apache-2.0": "Apache 2.0",
+  MIT: "MIT",
+  "CC-BY-4.0": "Creative Commons BY 4.0 (credit the author)",
+  "OpenMDW-1.1": "OpenMDW 1.1 (open model licence)",
+};
+
+/** A readable licence name for a dictation card ("OpenMDW-1.1" -> "OpenMDW 1.1 (open model licence)"); unknown ids as sent. */
+export function licenceLabel(id: string | null | undefined, t: T = tStudio): string | null {
+  if (!id) return null;
+  return LICENCE_NAMES[id] ? t(`voice.models.licenceName.${id.replace(/\./g, "_")}`, { defaultValue: LICENCE_NAMES[id] }) : id;
+}
+
+/** Where a dictation model's licence is read: its Hugging Face page, which carries the licence text. */
+export function licenceUrl(repo: string): string {
+  return `https://huggingface.co/${repo}`;
+}
+
+// i18n-extract: voice.models.sttGuide.qwen3-asr-1_7b
+// i18n-extract: voice.models.sttGuide.qwen3-asr-0_6b
+// i18n-extract: voice.models.sttGuide.parakeet-tdt-v3
+// i18n-extract: voice.models.sttGuide.nemotron-3_5-asr
+// i18n-extract: voice.models.sttGuide.whisper-large-v3-turbo
+// i18n-extract: voice.models.sttGuide.whisper-small
+// i18n-extract: voice.models.sttGuide.whisper-base
+// i18n-extract: voice.models.sttGuide.granite-speech-5_0-2b
+// i18n-extract: voice.models.sttGuide.nemotron-3_5-transcribe-30b
+/** One line per dictation model on what it is for (D-102 D, P2), by catalog key. */
+export const STT_GUIDES: Record<string, string> = {
+  "qwen3-asr-1.7b": "The pick for an NVIDIA GPU: 30 languages and 22 Chinese dialects, finds the language itself.",
+  "qwen3-asr-0.6b": "A smaller Qwen3-ASR: less GPU memory and quicker, for the same languages.",
+  "parakeet-tdt-v3": "Very fast for 25 European languages; finds the language itself and times each word on its own.",
+  "nemotron-3.5-asr": "Small and quick, made for live speech in 40 languages; uses the Language setting or finds it.",
+  "whisper-large-v3-turbo": "Works on any machine in 99 languages and times each word; does not translate.",
+  "whisper-small": "Small and quick in 99 languages; one of the two that can translate speech into English.",
+  "whisper-base": "The smallest: quick on any machine and can translate into English, but the least accurate.",
+  "granite-speech-5.0-2b": "Six languages, English first; finds the language itself.",
+  "nemotron-3.5-transcribe-30b": "The largest, 40 languages; for a GPU with about 80 GB of memory.",
+};
+
+export function sttGuideText(key: string | undefined, t: T = tStudio): string | null {
+  if (!key || !STT_GUIDES[key]) return null;
+  return t(`voice.models.sttGuide.${key.replace(/\./g, "_")}`, { defaultValue: STT_GUIDES[key] });
+}
+
+/**
+ * The fit chip of a GPU dictation row that this GPU can run: the GPU memory it needs, saying whether the figure was
+ * measured (an RTX 4090 run) or is an estimate from the weights. Null for rows without a figure (Whisper, the Mac).
+ */
+export function sttFitText(model: Pick<SttModel, "minVramGb" | "vramBasis" | "gpuFacts">, t: T = tStudio): { text: string; title: string } | null {
+  if (model.minVramGb == null || model.gpuFacts) return null;
+  const measured = model.vramBasis !== "estimate";
+  return {
+    text: measured
+      ? t("voice.models.sttFit", { defaultValue: "Fits · {gb} GB GPU memory", gb: model.minVramGb })
+      : t("voice.models.sttFitAbout", { defaultValue: "Fits · about {gb} GB GPU memory (estimate)", gb: model.minVramGb }),
+    title: measured
+      ? t("voice.models.sttFitMeasured", { defaultValue: "Measured on an RTX 4090 (24 GB), with about 1 GB of room added." })
+      : t("voice.models.sttFitEstimate", { defaultValue: "An estimate from the size of the weights; not measured here." }),
+  };
+}
+
 /** The confirm before a dictation model is deleted. */
 export function sttDeleteConfirmText(name: string, sizeGb: number, t: T = tStudio): string {
   return t("voice.models.delete.confirmStt", {
@@ -142,11 +238,11 @@ export const COLLAPSE_FAMILY_FROM = 3;
 
 /**
  * Rows a collapsed family keeps showing, by family id: every downloaded, downloading, just-cancelled or failed row, or
- * when none is, the first row that can run here (on a PC the Apple-only rows come first in the catalog), then the first
+ * when none is, the preferred row (the recommended natural model), else the first row that can run here (on a PC the Apple-only rows come first in the catalog), then the first
  * GPU row (the speech GPU add-on is not in yet), then the first row. Families with fewer than COLLAPSE_FAMILY_FROM rows
  * are absent (never collapsed).
  */
-export function collapsedFamilyRows(entries: VoiceModelEntry[]): Map<string, { total: number; shown: Set<string> }> {
+export function collapsedFamilyRows(entries: VoiceModelEntry[], preferred?: string | null): Map<string, { total: number; shown: Set<string> }> {
   const byFamily = new Map<string, VoiceModelEntry[]>();
   for (const entry of entries) {
     if (isKokoro(entry.source)) continue;
@@ -158,7 +254,8 @@ export function collapsedFamilyRows(entries: VoiceModelEntry[]): Map<string, { t
     if (members.length < COLLAPSE_FAMILY_FROM) continue;
     const keep = members.filter((m) => !isKokoro(m.source) && (m.source.installed || ["downloading", "cancelled", "failed"].includes(m.source.download.state)));
     const rows = members.map((m) => ({ id: m.id, row: m.source as VoiceModelRow }));
-    const first = rows.find((m) => m.row.supported) ?? rows.find((m) => (m.row.lanes ?? []).includes("cuda")) ?? rows[0];
+    // The recommended natural row (the install card's pick) when it is in this family, else the first that runs here.
+    const first = rows.find((m) => m.id === preferred && m.row.supported) ?? rows.find((m) => m.row.supported) ?? rows.find((m) => (m.row.lanes ?? []).includes("cuda")) ?? rows[0];
     result.set(family, { total: members.length, shown: new Set(keep.length ? keep.map((m) => m.id) : [first.id]) });
   }
   return result;

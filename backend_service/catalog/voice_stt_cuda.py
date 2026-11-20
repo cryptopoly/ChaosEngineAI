@@ -9,7 +9,8 @@ computer's GPU by ``voice_gpu`` before a request runs. Repos, licences and file 
 Every row pins a full Hugging Face ``revision`` (the repo's commit on 2026-11-20, FU-271) and the download fetches
 exactly it (``voice_runtime.stt_repo_revision``), so a repo change upstream cannot change what users run until this
 table changes. Bump a revision with the model's notes, after a run on the new files. ``ALIGNER`` is the forced aligner
-that gives the audio-LLM rows their word timings (FU-270); it has no row of its own in the model list.
+that gives the audio-LLM rows their word timings (FU-270); it is not a dictation model, so the Dictation models panel
+shows it as its own small "Word timings" download (``voice_runtime.aligner_row``, D-101).
 
 ``voice_runtime`` merges these into its catalogue: ``GPU_STT_MODELS`` are new rows, ``GPU_STT_SOURCES`` adds a GPU
 source to a row that already runs on the Mac.
@@ -35,10 +36,11 @@ _TRANSDUCER_FILES = [
 # ``minVramGb``: the worker's own PyTorch peak (reserved) on the RTX 4090 run, 2026-11-19, 9.4 s clip, plus about 1 GB
 # for the CUDA context and margin: Qwen3-ASR 1.7B 3.97 GiB, 0.6B 1.63, Parakeet 2.49, Nemotron ASR 2.55, Granite 4.38.
 # Nemotron 3.5 Transcribe is the 64.7 GB of bf16 weights (32.4B parameters, counted on the meta device) plus room.
+# ``vramMeasured`` False: the figure is worked out from the weights, not a run (the card shows it as an estimate).
 def _gpu(family: str, licence: str, min_vram_gb: float, files: list[str], revision: str,
-         note: str | None = None) -> dict[str, Any]:
+         note: str | None = None, vram_measured: bool = True) -> dict[str, Any]:
     return {"family": family, "licence": licence, "minVramGb": min_vram_gb, "minComputeCap": _CAP, "files": files,
-            "revision": revision, "note": note}
+            "revision": revision, "note": note, "vramMeasured": vram_measured}
 
 
 # Qwen3-ForcedAligner-0.6B (Transformers conversion, Apache-2.0, 1.84 GB bf16): word timings for a transcript, in
@@ -46,6 +48,8 @@ def _gpu(family: str, licence: str, min_vram_gb: float, files: list[str], revisi
 # minutes of audio (the worker aligns window by window, 30 s each). Japanese and Korean are not used: splitting their
 # words needs the nagisa and soynlp packages, which the add-on does not install.
 ALIGNER: dict[str, Any] = {
+    "key": "qwen3-forced-aligner-0.6b",
+    "name": "Qwen3-ForcedAligner 0.6B",
     "repo": "Qwen/Qwen3-ForcedAligner-0.6B-hf",
     "revision": "c07281df297b9905d24a508279258cccf987a064",
     "sizeGb": 1.84,
@@ -55,6 +59,8 @@ ALIGNER: dict[str, Any] = {
     # (late by its streaming latency) and only prefers the aligner's when it is downloaded.
     "families": ("qwen3-asr", "granite-speech", "nemotron-transcribe", "nemotron-asr"),
     "optionalFor": ("nemotron-asr",),
+    # GPU memory it adds while loaded (FU-310), beside the transcription model.
+    "vramGb": 1.9,
 }
 
 
@@ -104,7 +110,8 @@ GPU_STT_MODELS: list[dict[str, Any]] = [
         "gpu": _gpu("nemotron-transcribe", "OpenMDW-1.1", 72.0, [
             *_LLM_FILES, "alignment_tokenizer/tokenizer.json", "alignment_tokenizer/tokenizer_config.json",
             "llm_backbone/config.json",
-        ], "c17667641642c4265ff2b7037dd101b7d4567634", note="Needs a GPU with about 72 GB of memory. Untested here."),
+        ], "c17667641642c4265ff2b7037dd101b7d4567634", note="Needs a GPU with about 72 GB of memory. Untested here.",
+            vram_measured=False),
     },
 ]
 

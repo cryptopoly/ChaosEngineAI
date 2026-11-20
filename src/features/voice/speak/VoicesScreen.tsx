@@ -515,6 +515,14 @@ export function VoicesScreen({ catalog, speakVoiceId, onUseInSpeak, onDesign, on
               <ul className="voice-list">{designed.map(row)}</ul>,
             )
           : null}
+        {catalog.hiddenVoices ? (
+          <p className="muted-text voice-voices__mac-only">
+            {t("voice.voices.macOnlyHidden", {
+              defaultValue: "{count} voices of the speech models for Apple Silicon Macs are not listed: they do not run on this PC.",
+              count: catalog.hiddenVoices,
+            })}
+          </p>
+        ) : null}
       </div>
 
       {drawerUse ? (

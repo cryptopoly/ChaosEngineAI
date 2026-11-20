@@ -661,7 +661,6 @@
       "reinstallSmall": "再インストール"
     },
     "models": {
-      "recommended": "おすすめ",
       "downloaded": "ダウンロード済み",
       "use": "音声入力に使用",
       "download": "ダウンロード",
@@ -712,7 +711,6 @@
         "makes": "生成内容",
         "makesAll": "すべて"
       },
-      "firstUseLine": "選択したがダウンロードしていないモデルは、初めて音声入力したときに取得されます。Whisper は言語を使用し、Parakeet と Nemotron は自動で言語を判定します。",
       "licence": "ライセンス: {name}",
       "makes": {
         "clone": "クローン",
@@ -751,7 +749,41 @@
       "kokoroLineAddon": "{languages} 言語で {count} 種類のクイックボイス。どのマシンでも高速です。音声ランタイムのアドオンです。",
       "kokoroNotInstalled": "未インストール",
       "kokoroAddHint": "音声ランタイム > アドオン でチェックを入れてください。",
-      "gpuDefaultLine": null
+      "gpuDefaultLine": null,
+      "macOnlySummary": null,
+      "macOnlyNote": null,
+      "macOnlyNoteVoices": null,
+      "licenceName": {
+        "Apache-2_0": null,
+        "MIT": null,
+        "CC-BY-4_0": null,
+        "OpenMDW-1_1": null
+      },
+      "licenceOpen": null,
+      "sttGuide": {
+        "qwen3-asr-1_7b": null,
+        "qwen3-asr-0_6b": null,
+        "parakeet-tdt-v3": null,
+        "nemotron-3_5-asr": null,
+        "whisper-large-v3-turbo": null,
+        "whisper-small": null,
+        "whisper-base": null,
+        "granite-speech-5_0-2b": null,
+        "nemotron-3_5-transcribe-30b": null
+      },
+      "sttFit": null,
+      "sttFitAbout": null,
+      "sttFitMeasured": null,
+      "sttFitEstimate": null,
+      "sttDownloading": null,
+      "sttDownloadingName": null,
+      "defaultBadge": null,
+      "defaultTitle": null,
+      "recommendedGpu": null,
+      "recommendedGpuTitle": null,
+      "wordTimings": null,
+      "wordTimingsLine": null,
+      "firstUseLanguageLine": null
     },
     "voices": {
       "addChinese": "中国語（北京語）のボイスを追加",
@@ -823,7 +855,8 @@
       "fallbackNoteNone": "フォールバックのボイスが設定されていません。選択したボイスが話せない場合、読み上げと通話はボイスを切り替える代わりにエラーを表示します。",
       "quickNoteAddon": "Kokoro は音声ランタイムのアドオンです。高速で 1 GB 未満、速度のみに対応。最高評価のものを先頭に表示します。",
       "kokoroMissing": "Kokoro のクイックボイスはインストールされていません。音声 > モデル > 音声ランタイム > アドオン でチェックを入れてください（約 330 MB）。",
-      "openModels": "音声モデルを開く"
+      "openModels": "音声モデルを開く",
+      "macOnlyHidden": null
     },
     "settings": {
       "autoSend": "音声入力が終わったらすぐにメッセージを送信",
@@ -859,7 +892,8 @@
       "chooseFiles": "ファイルを選択",
       "fileTypes": "WAV、MP3、M4A、FLAC、OGG、MP4、MOV など",
       "subtitleLibrary": "録音するか、音声・動画ファイルをドロップしてください。文字起こしはライブラリに保存されます。",
-      "translateWhich": "英語に翻訳（Whisper Small または Base）"
+      "translateWhich": "英語に翻訳（Whisper Small または Base）",
+      "needsWordTimings": null
     },
     "stopRecording": "録音を停止",
     "record": "録音",
@@ -1007,9 +1041,9 @@
     "stop": "停止",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "音声はこのコンピューターで動作し、音声ランタイム（約 2.3 GB）が必要です。音声 > モデルから一度インストールしてください。",
       "openModels": "音声モデルを開く",
-      "library": "ライブラリ"
+      "library": "ライブラリ",
+      "needsPackGb": null
     },
     "savedToLibrary": "ライブラリに保存しました",
     "saveToLibrary": "ライブラリに保存",
@@ -1217,7 +1251,7 @@
       "updateFeatures": "チャットの音声通話と文字起こしの話者ラベルのために音声ランタイムを更新します（モデル約 40 MB を追加。1〜2 分）。",
       "workerOnly": "音声ワーカーのみ。モデルはまだありません",
       "partsNoKokoro": "ディスク上 {total} GB: 音声パッケージ {packages} GB、発話区切り検出と話者ラベル {small} GB。Kokoro クイックボイスはインストールされていません。データは一切送信されません。",
-      "aboutOptional": "約 2 GB: 音声パッケージ、発話区切り検出と話者ラベル、そして下でチェックした場合は Kokoro クイックボイス。音声入力と音声モデルはこのページの別のダウンロードです。データは一切送信されません。"
+      "aboutTickedGb": null
     }
   },
   "residentChatModelNote": "読み込み済みのチャットモデルがこのメモリのうち約 {gb} GB を使用しています。アンロードするとその分が解放されます。",

@@ -95,6 +95,41 @@ export function VoiceMakesChips({ makes }: { makes: string[] }) {
   );
 }
 
+/**
+ * On a PC: the speech models that only run on an Apple Silicon Mac, behind one closed line (D-102 A). Opened, it lists
+ * them by family with their size, so nothing is hidden for good; none of them offers a Download here.
+ */
+export function MacOnlyModels({ models, hiddenVoices = 0 }: { models: VoiceModelRow[]; hiddenVoices?: number }) {
+  const { t } = useTranslation("studio");
+  if (models.length === 0) return null;
+  return (
+    <details className="voice-models__mac-only">
+      <summary>
+        {t("voice.models.macOnlySummary", { defaultValue: "{count} models for Apple Silicon Macs", count: models.length })}
+      </summary>
+      <p className="muted-text">
+        {hiddenVoices > 0
+          ? t("voice.models.macOnlyNoteVoices", {
+              defaultValue: "They do not run on this PC, so they and their {voices} voices are left out of Speak and Voices.",
+              voices: hiddenVoices,
+            })
+          : t("voice.models.macOnlyNote", { defaultValue: "They do not run on this PC, so they are left out of Speak and Voices." })}
+      </p>
+      <ul className="voice-models__mac-only-list">
+        {models.map((row) => (
+          <li key={row.key}>
+            <strong>{row.name}</strong>
+            <span className="muted-text">
+              {" "}
+              · {row.sizeGb.toFixed(2)} GB{row.licence?.name ? ` · ${row.licence.name}` : ""}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
 export interface SpeechModelsPanelProps {
   catalog: VoiceCatalog;
   runtime: VoiceRuntime;
@@ -138,7 +173,8 @@ export function SpeechModelsPanel({ catalog, runtime, availability, onAvailabili
       : null;
     return buildVoiceEntries(catalog.models, kokoro);
   }, [catalog.models, catalog.kokoro, runtime.installed, runtime.ttsModelInstalled, quick.count, quick.languages, kokoroPart]);
-  const collapsible = useMemo(() => collapsedFamilyRows(entries), [entries]);
+  const preferredKey = recommendedNaturalModel(catalog.models)?.key ?? null;
+  const collapsible = useMemo(() => collapsedFamilyRows(entries, preferredKey), [entries, preferredKey]);
   // A search, a filter or another sort lists every matching row; the collapse is for the plain family view.
   const plainView = search.trim() === "" && makesFilter === "all" && availability === "all" && sortId === "family";
   const catalogOrder = useMemo(() => catalog.models.map((m) => m.key), [catalog.models]);
@@ -410,6 +446,7 @@ export function SpeechModelsPanel({ catalog, runtime, availability, onAvailabili
             {error ? <p className="voice-error" role="alert">{error}</p> : null}
           </>
         }
+        afterList={<MacOnlyModels models={catalog.macOnly ?? []} hiddenVoices={catalog.hiddenVoices} />}
         entries={entries}
         resolveStatus={(entry) => resolveModelStatus(entry, { download: voiceDownloadStatus(entry) })}
         search={{ value: search, onChange: setSearch, placeholder: t("voice.models.search", { defaultValue: "Search models, languages, what they make" }) }}

@@ -72,12 +72,14 @@ for (const phone of [false, true]) {
       const kokoro = page.getByRole("checkbox", { name: "Kokoro quick voices (about 330 MB)" });
       await expect(kokoro).toBeChecked();
       await expect(page.getByRole("checkbox", { name: /Mandarin Chinese quick voices/ })).not.toBeChecked();
-      await expect(page.getByText(/plus the Kokoro quick voices when ticked below/)).toBeVisible();
+      // One size source (runtimeSize.ts): the base plus each ticked add-on, so it changes with the ticks.
+      await expect(page.getByText(/About 2\.6 GB with the add-ons ticked below/)).toBeVisible();
       await fits(page);
       await shot(page, ".voice-runtime", "d-kokoro-runtime-install.png", phone);
       await page.getByRole("button", { name: "Install voice runtime" }).click();
       await expect.poll(() => bodies).toEqual([{ extras: ["kokoro"] }]);
       await kokoro.uncheck();
+      await expect(page.getByText(/About 2\.3 GB with the add-ons ticked below/)).toBeVisible();
       await page.getByRole("button", { name: "Install voice runtime" }).click();
       await expect.poll(() => bodies).toEqual([{ extras: ["kokoro"] }, { extras: [] }]);
     });

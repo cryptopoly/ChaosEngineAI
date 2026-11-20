@@ -58,7 +58,7 @@ function VoiceModelsBody({
 }: VoiceModelsTabProps & { voiceRuntime: VoiceRuntime }) {
   const { t } = useTranslation("studio");
   const pack = useVoicePackJob(voiceRuntime, onRefreshVoiceRuntime);
-  const catalog = useVoiceCatalog(voiceRuntime.installed);
+  const catalog = useVoiceCatalog(voiceRuntime.installed, voiceRuntime.lane);
 
   return (
     <div className="content-grid discover-page voice-page">
@@ -75,7 +75,7 @@ function VoiceModelsBody({
       />
       {voiceRuntime.installed ? (
         <>
-          <DictationModelsPanel runtime={voiceRuntime} onChanged={onRefreshVoiceRuntime} />
+          <DictationModelsPanel runtime={voiceRuntime} onChanged={onRefreshVoiceRuntime} onOpenExternalUrl={onOpenExternalUrl} />
           <SpeechModelsPanel
             catalog={catalog}
             runtime={voiceRuntime}

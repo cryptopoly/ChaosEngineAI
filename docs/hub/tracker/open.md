@@ -10,6 +10,33 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 
 
 <details>
+<summary>FU-352 · Dictation and Word timings downloads not tried end to end — Next 4090 session with bandwidth</summary>
+
+**Status or trigger:** Next 4090 session with bandwidth
+
+**Notes:** The new bar, Cancel and resume-after-reload were seen only with mocked `/api/models/download` answers in the review recipe; a real Qwen3-ASR 0.6B (1.58 GB) and aligner (1.84 GB) download, Cancel mid-way, a reload while downloading, Delete of the aligner, and a Transcribe run with words after the aligner is in were not run.
+
+</details>
+
+<details>
+<summary>FU-351 · Dictation cards: per-model guidance is unmeasured; Chat popover on default change — Next 4090 session</summary>
+
+**Status or trigger:** Next 4090 session
+
+**Notes:** The one-line guides say what each model is for from the model cards (languages, detection, translation, word timings); none ranks accuracy from a run here. Measure WER on a short multi-language set on the 4090 (Qwen3-ASR 1.7B and 0.6B, Parakeet, Nemotron ASR, Whisper turbo, Granite) and put the numbers in the guides. Also: say in Chat's Voice popover when the dictation model switched to Qwen3-ASR after its download (D-102 C mentions it; the badge and line are in).
+
+</details>
+
+<details>
+<summary>FU-350 · Backend text may still say "(GPU)" on a PC — Next voice UI pass</summary>
+
+**Status or trigger:** Next voice UI pass
+
+**Notes:** P1 drops "(GPU)" from speech model names where the catalogue hook hands rows out, so the Models table, Speak and Voices read the same; text the backend writes with a name in it (a voice's `needs` line, notes on a Speak result) was not checked and may still carry the suffix. Drop the suffix in `catalog/voice_models.py` display names once the Mac twins are hidden on a PC, or keep it backend-side only for logs.
+
+</details>
+
+<details>
 <summary>FU-335 · ACE-Step 1.5 turbo ignored the lyrics in 3 of 3 tries — Next music pass</summary>
 
 **Status or trigger:** Next music pass
@@ -68,7 +95,7 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 
 **Status or trigger:** Polish pass
 
-**Notes:** Backend text stays English in every locale (model summaries, language lists, notes, voice descriptions, "measured on"). Delete confirms use the system `confirm()`; the voice-sample picker is the browser's own file input; dictation download progress is not announced. `e2e/tests/14-voice-speak.spec.ts` "Voices groups every voice" fails on Windows because it expects the Mandarin add-on button, which only the Mac lane lists: mock the add-on or skip off the Mac. The app has no light theme (app-wide, not Voice).
+**Notes:** Backend text stays English in every locale (model summaries, language lists, notes, voice descriptions, "measured on"). Delete confirms use the system `confirm()`; the voice-sample picker is the browser's own file input; `e2e/tests/14-voice-speak.spec.ts` "Voices groups every voice" fails on Windows fixed 2026-11-20: the test was wrong, not the UI (Windows has no Mandarin add-on); `voiceMocks.ts` now pins the runtime to the Apple Silicon lane its lists describe. Dictation download progress is now announced (FU-323). The app has no light theme (app-wide, not Voice).
 
 </details>
 
@@ -86,7 +113,7 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 
 **Status or trigger:** After D-102 D
 
-**Notes:** "About 2 GB" on Models, "about 2.3 GB" on the Studio gate, 8.0 GB measured with the speech GPU add-on. Show one figure per lane and add the ticked add-ons' sizes; say what each add-on is for; percent and current step on the bar (it has neither) with `role="progressbar"`; keep the chosen add-ons ticked through a reload while the install runs; Speak's first-run copy when no voice exists at all (Kokoro left out). About 1 day.
+**Notes:** Size copy done 2026-11-20 (agent branch): one source, `src/features/voice/runtimeSize.ts` (base 2.3 GB, Kokoro 0.33, speech GPU 5.7 measured, speech-to-text GPU 2.9 estimated); Models says "About {gb} GB with the add-ons ticked below" and sums the ticks, the add-on labels and the Studio gate ("about 2.6 GB with the Kokoro quick voices") read the same table. Still to do: say what each add-on is for; percent and current step on the bar (it has neither) with `role="progressbar"`; keep the chosen add-ons ticked through a reload while the install runs; Speak's first-run copy when no voice exists at all (Kokoro left out). About 1 day.
 
 </details>
 
@@ -100,29 +127,11 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-323 · Dictation models panel on a GPU PC — After D-102 D</summary>
-
-**Status or trigger:** After D-102 D
-
-**Notes:** Nine cards with one badge. To do: the default-to-be first with a "Recommended for this GPU" badge that survives the download; one line per card on what it is for; licence as a linked chip (raw ids such as OpenMDW-1.1 today, none on Whisper); downloads through the shared control (bar, size, Cancel, live text; today a bare percentage); check which models use the Language setting and correct the footer line; say in Chat's Voice popover when the dictation model changed. About 1 to 1.5 days.
-
-</details>
-
-<details>
 <summary>FU-322 · Speech GPU add-on: what it installs and what is offered — Owner picks (D-102 B)</summary>
 
 **Status or trigger:** Owner picks (D-102 B)
 
 **Notes:** The add-on installs the Chatterbox and VoxCPM packages (most of its 5 GB) but only the five Qwen3-TTS CUDA rows are listed; the wave-2 CUDA rows stay hidden until measured (`CHAOSENGINE_VOICE_UNMEASURED`). The English UI label now names Qwen3-TTS only; the backend label in `voice_env.EXTRAS`, the usage docs and the translated labels (now `null`) still name all four. Either measure and list the three families on the 4090, or stop installing their packages; then make every label say the same.
-
-</details>
-
-<details>
-<summary>FU-321 · A PC lists speech models and voices that only run on a Mac — Owner picks (D-102 A)</summary>
-
-**Status or trigger:** Owner picks (D-102 A)
-
-**Notes:** On the portable lane `catalog.voice_models.listed_models` returns every MLX row, so a PC shows 15 speech rows of which 9 can never run, and Voices lists Turbo, Chatterbox and eight Orpheus voices under Natural. Proposed: hide them on a PC or fold them under one closed "Mac only" line, drop "(GPU)" from the names once the twins are gone, collapse a family to its recommended natural row, and make "Show N sizes" count the hidden rows. About 1 day.
 
 </details>
 
@@ -150,15 +159,6 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** A recording in the language, a Linux box, or an 80 GB card
 
 **Notes:** Only clean Kokoro speech in English and French was measured. Not run: Japanese and Korean (the aligner speaks them, but its word splitting needs nagisa and soynlp, which the add-on does not install, so those rows give a note instead), Chinese and Cantonese (characters as words, no clip), Nemotron ASR on auto-detect in a language outside the aligner's eleven (it tries the aligner; not measured), Nemotron 3.5 Transcribe (64.7 GB; Transformers 5.23 has `Nemotron3_5TranscribeWordTimestampModel`, not wired), accented, noisy, overlapping or musical audio, Linux, the CPU.
-
-</details>
-
-<details>
-<summary>FU-310 · A download row for the forced aligner (word timings) in the Dictation models panel — Next voice UI pass</summary>
-
-**Status or trigger:** Next voice UI pass
-
-**Notes:** The backend downloads `Qwen/Qwen3-ForcedAligner-0.6B-hf` through `/api/models/download` (files and commit pinned) and uses it once present, but the Dictation models panel has no row for it: without it a word-timing request on Qwen3-ASR, Granite or Nemotron Transcribe returns the text, segment times and a note naming the repo. Options: a small "Word timings" row (1.84 GB, Apache-2.0), or a download companion of the Qwen3-ASR rows (`helpers/companions.py`). New English strings need `null` placeholders in the other locales. The aligner adds about 1.9 GiB of GPU memory while loaded (not in the rows' `minVramGb`).
 
 </details>
 

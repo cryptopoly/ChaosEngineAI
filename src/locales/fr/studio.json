@@ -661,7 +661,6 @@
       "reinstallSmall": "Réinstaller"
     },
     "models": {
-      "recommended": "Recommandé",
       "downloaded": "Téléchargé",
       "use": "Utiliser pour la dictée",
       "download": "Télécharger",
@@ -712,7 +711,6 @@
         "makes": "Produit",
         "makesAll": "Tout"
       },
-      "firstUseLine": "Un modèle que vous choisissez sans l'avoir téléchargé est récupéré à votre première dictée. Whisper utilise la langue ; Parakeet et Nemotron la détectent seuls.",
       "licence": "Licence : {name}",
       "makes": {
         "clone": "Clonage",
@@ -751,7 +749,41 @@
       "kokoroLineAddon": "{count} voix rapides en {languages} langues. Rapide sur toute machine ; un module complémentaire du runtime vocal.",
       "kokoroNotInstalled": "Non installé",
       "kokoroAddHint": "Cochez-le dans Runtime vocal > Modules complémentaires.",
-      "gpuDefaultLine": null
+      "gpuDefaultLine": null,
+      "macOnlySummary": null,
+      "macOnlyNote": null,
+      "macOnlyNoteVoices": null,
+      "licenceName": {
+        "Apache-2_0": null,
+        "MIT": null,
+        "CC-BY-4_0": null,
+        "OpenMDW-1_1": null
+      },
+      "licenceOpen": null,
+      "sttGuide": {
+        "qwen3-asr-1_7b": null,
+        "qwen3-asr-0_6b": null,
+        "parakeet-tdt-v3": null,
+        "nemotron-3_5-asr": null,
+        "whisper-large-v3-turbo": null,
+        "whisper-small": null,
+        "whisper-base": null,
+        "granite-speech-5_0-2b": null,
+        "nemotron-3_5-transcribe-30b": null
+      },
+      "sttFit": null,
+      "sttFitAbout": null,
+      "sttFitMeasured": null,
+      "sttFitEstimate": null,
+      "sttDownloading": null,
+      "sttDownloadingName": null,
+      "defaultBadge": null,
+      "defaultTitle": null,
+      "recommendedGpu": null,
+      "recommendedGpuTitle": null,
+      "wordTimings": null,
+      "wordTimingsLine": null,
+      "firstUseLanguageLine": null
     },
     "voices": {
       "addChinese": "Ajouter les voix en mandarin",
@@ -823,7 +855,8 @@
       "fallbackNoteNone": "Aucune voix de secours n'est définie : si une voix choisie ne peut pas parler, la lecture à voix haute et les appels affichent une erreur au lieu de changer de voix.",
       "quickNoteAddon": "Kokoro, un module complémentaire du runtime vocal. Rapide, moins de 1 Go, vitesse uniquement. Les mieux notées sont affichées en premier.",
       "kokoroMissing": "Les voix rapides Kokoro ne sont pas installées. Cochez-les dans Voix > Modèles > Runtime vocal > Modules complémentaires (environ 330 Mo).",
-      "openModels": "Ouvrir les modèles de voix"
+      "openModels": "Ouvrir les modèles de voix",
+      "macOnlyHidden": null
     },
     "settings": {
       "autoSend": "Envoyer le message dès que la dictée est terminée",
@@ -859,7 +892,8 @@
       "chooseFiles": "Choisir des fichiers",
       "fileTypes": "WAV, MP3, M4A, FLAC, OGG, MP4, MOV et autres",
       "subtitleLibrary": "Enregistrez, ou déposez des fichiers audio et vidéo. Les transcriptions sont conservées dans la Bibliothèque.",
-      "translateWhich": "Traduire en anglais (Whisper Small ou Base)"
+      "translateWhich": "Traduire en anglais (Whisper Small ou Base)",
+      "needsWordTimings": null
     },
     "stopRecording": "Arrêter l'enregistrement",
     "record": "Enregistrer",
@@ -1007,9 +1041,9 @@
     "stop": "Arrêter",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "La voix fonctionne sur cet ordinateur et nécessite le runtime vocal (environ 2,3 Go). Installez-le une fois depuis Voix > Modèles.",
       "openModels": "Ouvrir Modèles vocaux",
-      "library": "Bibliothèque"
+      "library": "Bibliothèque",
+      "needsPackGb": null
     },
     "savedToLibrary": "Enregistré dans la bibliothèque",
     "saveToLibrary": "Enregistrer dans la bibliothèque",
@@ -1217,7 +1251,7 @@
       "updateFeatures": "Mettez à jour le runtime vocal pour les appels vocaux dans la discussion et les étiquettes des locuteurs sur les transcriptions (ajoute environ 40 Mo de modèles ; une à deux minutes).",
       "workerOnly": "le worker vocal, pas encore de modèle",
       "partsNoKokoro": "{total} Go sur le disque : paquets de parole {packages} Go, détection des tours de parole et étiquettes des locuteurs {small} Go ; les voix rapides Kokoro ne sont pas installées. Rien n'est envoyé en ligne.",
-      "aboutOptional": "Environ 2 Go : les paquets de parole, la détection des tours de parole et les étiquettes des locuteurs, plus les voix rapides Kokoro si cochées ci-dessous. La dictée et les modèles de parole sont des téléchargements distincts sur cette page. Rien n'est envoyé en ligne."
+      "aboutTickedGb": null
     }
   },
   "residentChatModelNote": "Un modèle de chat chargé occupe environ {gb} Go de cette mémoire ; le décharger la libère.",

@@ -661,7 +661,6 @@
       "reinstallSmall": "Reinstalar"
     },
     "models": {
-      "recommended": "Recomendado",
       "downloaded": "Baixado",
       "use": "Usar para ditado",
       "download": "Baixar",
@@ -712,7 +711,6 @@
         "makes": "Gera",
         "makesAll": "Tudo"
       },
-      "firstUseLine": "Um modelo escolhido mas não baixado é obtido na primeira vez que você ditar. O Whisper usa o idioma; o Parakeet e o Nemotron o detectam sozinhos.",
       "licence": "Licença: {name}",
       "makes": {
         "clone": "Clonagem",
@@ -751,7 +749,41 @@
       "kokoroLineAddon": "{count} vozes rápidas em {languages} idiomas. Rápido em qualquer máquina; um complemento do runtime de voz.",
       "kokoroNotInstalled": "Não instalado",
       "kokoroAddHint": "Marque em Runtime de voz > Complementos.",
-      "gpuDefaultLine": null
+      "gpuDefaultLine": null,
+      "macOnlySummary": null,
+      "macOnlyNote": null,
+      "macOnlyNoteVoices": null,
+      "licenceName": {
+        "Apache-2_0": null,
+        "MIT": null,
+        "CC-BY-4_0": null,
+        "OpenMDW-1_1": null
+      },
+      "licenceOpen": null,
+      "sttGuide": {
+        "qwen3-asr-1_7b": null,
+        "qwen3-asr-0_6b": null,
+        "parakeet-tdt-v3": null,
+        "nemotron-3_5-asr": null,
+        "whisper-large-v3-turbo": null,
+        "whisper-small": null,
+        "whisper-base": null,
+        "granite-speech-5_0-2b": null,
+        "nemotron-3_5-transcribe-30b": null
+      },
+      "sttFit": null,
+      "sttFitAbout": null,
+      "sttFitMeasured": null,
+      "sttFitEstimate": null,
+      "sttDownloading": null,
+      "sttDownloadingName": null,
+      "defaultBadge": null,
+      "defaultTitle": null,
+      "recommendedGpu": null,
+      "recommendedGpuTitle": null,
+      "wordTimings": null,
+      "wordTimingsLine": null,
+      "firstUseLanguageLine": null
     },
     "voices": {
       "addChinese": "Adicionar vozes em mandarim",
@@ -823,7 +855,8 @@
       "fallbackNoteNone": "Nenhuma voz alternativa definida: se uma voz escolhida não puder falar, a leitura em voz alta e as chamadas mostram um erro em vez de trocar de voz.",
       "quickNoteAddon": "Kokoro, um complemento do runtime de voz. Rápido, abaixo de 1 GB, somente velocidade. As de melhor avaliação aparecem primeiro.",
       "kokoroMissing": "As vozes rápidas Kokoro não estão instaladas. Marque-as em Voz > Modelos > Runtime de voz > Complementos (cerca de 330 MB).",
-      "openModels": "Abrir Modelos de voz"
+      "openModels": "Abrir Modelos de voz",
+      "macOnlyHidden": null
     },
     "settings": {
       "autoSend": "Enviar a mensagem assim que o ditado terminar",
@@ -859,7 +892,8 @@
       "chooseFiles": "Escolher arquivos",
       "fileTypes": "WAV, MP3, M4A, FLAC, OGG, MP4, MOV e outros",
       "subtitleLibrary": "Grave, ou arraste arquivos de áudio e vídeo. As transcrições ficam na Biblioteca.",
-      "translateWhich": "Traduzir para o inglês (Whisper Small ou Base)"
+      "translateWhich": "Traduzir para o inglês (Whisper Small ou Base)",
+      "needsWordTimings": null
     },
     "stopRecording": "Parar gravação",
     "record": "Gravar",
@@ -1007,9 +1041,9 @@
     "stop": "Parar",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "A voz roda neste computador e precisa do runtime de voz (cerca de 2,3 GB). Instale-o uma vez em Voz > Modelos.",
       "openModels": "Abrir Modelos de voz",
-      "library": "Biblioteca"
+      "library": "Biblioteca",
+      "needsPackGb": null
     },
     "savedToLibrary": "Salvo na biblioteca",
     "saveToLibrary": "Salvar na biblioteca",
@@ -1217,7 +1251,7 @@
       "updateFeatures": "Atualize o runtime de voz para chamadas de voz no Chat e rótulos de falante nas transcrições (adiciona cerca de 40 MB de modelos; um ou dois minutos).",
       "workerOnly": "o worker de voz, ainda sem modelo",
       "partsNoKokoro": "{total} GB em disco: pacotes de fala {packages} GB, detecção de turnos e rótulos de falante {small} GB; as vozes rápidas Kokoro não estão instaladas. Nada é enviado à internet.",
-      "aboutOptional": "Cerca de 2 GB: os pacotes de fala, a detecção de turnos e os rótulos de falante, mais as vozes rápidas Kokoro quando marcadas abaixo. Os modelos de ditado e de fala são downloads separados nesta página. Nada é enviado à internet."
+      "aboutTickedGb": null
     }
   },
   "residentChatModelNote": "Um modelo de chat carregado ocupa cerca de {gb} GB dessa memória; descarregá-lo libera esse espaço.",

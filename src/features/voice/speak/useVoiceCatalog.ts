@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { splitForLane } from "../models/voiceModelsLogic";
 import { cancelCloneDownload, deleteSpeechModel, downloadCloneModel, getCloneModels } from "../clone/cloneApi";
 import { getVoiceModels, getVoices } from "../../../api";
 import type { VoiceEntry, VoiceModelRow } from "../../../types";
@@ -25,10 +26,17 @@ export interface VoiceCatalog {
   /** Delete a speech model's files, then list again. Rejects with the backend's reason (in use, downloading). */
   remove?: (key: string) => Promise<void>;
   kokoro?: KokoroInfo | null;
+  /** On a PC: the speech models that only run on an Apple Silicon Mac, left out of ``models`` (D-102 A). */
+  macOnly?: VoiceModelRow[];
+  /** On a PC: how many voices were left out of ``voices`` because only those models speak them. */
+  hiddenVoices?: number;
 }
 
-/** Voices and speech models for the Speak, Voices and Models screens; polls while a model downloads. */
-export function useVoiceCatalog(enabled = true): VoiceCatalog {
+/**
+ * Voices and speech models for the Speak, Voices and Models screens; polls while a model downloads. On the portable
+ * lane (a PC) the Mac-only models and their voices are left out and counted instead (``splitForLane``).
+ */
+export function useVoiceCatalog(enabled = true, lane?: string | null): VoiceCatalog {
   const [voices, setVoices] = useState<VoiceEntry[]>([]);
   const [models, setModels] = useState<VoiceModelRow[]>([]);
   const [kokoro, setKokoro] = useState<KokoroInfo | null>(null);
@@ -97,5 +105,20 @@ export function useVoiceCatalog(enabled = true): VoiceCatalog {
     [refresh],
   );
 
-  return { voices, models, modelsAvailable, cloneAllowed, loaded, error, refresh, download, cancelDownload, remove, kokoro };
+  const split = useMemo(() => splitForLane(models, voices, lane), [models, voices, lane]);
+  return {
+    voices: split.voices,
+    models: split.models,
+    macOnly: split.macOnly,
+    hiddenVoices: split.hiddenVoices,
+    modelsAvailable,
+    cloneAllowed,
+    loaded,
+    error,
+    refresh,
+    download,
+    cancelDownload,
+    remove,
+    kokoro,
+  };
 }

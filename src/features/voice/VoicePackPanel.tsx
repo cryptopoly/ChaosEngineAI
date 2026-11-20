@@ -19,6 +19,7 @@ import {
 import type { VoiceExtra, VoiceInstallJob, VoiceRuntime } from "../../types";
 import { useVoice } from "./VoiceContext";
 import { runtimeRemoveConfirmText } from "./models/voiceModelsLogic";
+import { addonSizeText, runtimeInstallGb } from "./runtimeSize";
 import { kokoroInstalled, runtimePartsSummary, voicePackMode } from "./voicePackState";
 
 function laneDescription(runtime: VoiceRuntime): string {
@@ -114,8 +115,8 @@ export function InstallLog({ pack }: { pack: VoicePackJob }) {
 const ADDON_LABELS: Record<string, string> = {
   kokoro: "Kokoro quick voices (about 330 MB)",
   chinese: "Mandarin Chinese quick voices (8 voices, about 60 MB)",
-  "speech-gpu": "Speech GPU add-on: Qwen3-TTS natural voices, voice design and cloning on the NVIDIA GPU (about 5 GB)",
-  "stt-gpu": "Speech-to-text GPU add-on: Qwen3-ASR, Parakeet, Nemotron and Granite on the NVIDIA GPU (about 3 GB)",
+  "speech-gpu": "Speech GPU add-on: Qwen3-TTS natural voices, voice design and cloning on the NVIDIA GPU (about {size})",
+  "stt-gpu": "Speech-to-text GPU add-on: Qwen3-ASR, Parakeet, Nemotron and Granite on the NVIDIA GPU (about {size})",
 };
 
 /** The add-ons as tick boxes. Before install they choose what the install adds; after it, ticking installs the add-on
@@ -141,7 +142,7 @@ function AddOns({
       {extras.map((extra) => (
         <label key={extra.id} className="checkbox-label">
           <input type="checkbox" checked={chosen(extra)} onChange={(e) => onToggle(extra, e.target.checked)} />
-          {t(`voice.runtime.addon.${extra.id}`, { defaultValue: ADDON_LABELS[extra.id] ?? extra.label })}
+          {t(`voice.runtime.addon.${extra.id}`, { defaultValue: ADDON_LABELS[extra.id] ?? extra.label, size: addonSizeText(extra.id) })}
         </label>
       ))}
       <small className="muted-text">
@@ -234,9 +235,10 @@ export function VoiceRuntimePanel({ runtime, pack, actions }: { runtime: VoiceRu
           defaultValue: "{total} GB on disk: speech packages {packages} GB, turn detection and speaker labels {small} GB; the Kokoro quick voices are not installed. Nothing is sent online.",
           ...parts,
         })
-    : t("voice.runtime.aboutOptional", {
+    : t("voice.runtime.aboutTickedGb", {
         defaultValue:
-          "About 2 GB: the speech packages, turn detection and speaker labels, plus the Kokoro quick voices when ticked below. Dictation and speech models are separate downloads on this page. Nothing is sent online.",
+          "About {gb} GB with the add-ons ticked below: the speech packages, turn detection and speaker labels, plus each ticked add-on. Dictation and speech models are separate downloads on this page. Nothing is sent online.",
+        gb: runtimeInstallGb(runtime.extras.filter((extra) => wanted.has(extra.id)).map((extra) => extra.id)).toFixed(1),
       });
 
   const toggleExtra = async (extra: VoiceExtra, on: boolean) => {

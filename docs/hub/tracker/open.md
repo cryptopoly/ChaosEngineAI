@@ -122,7 +122,7 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 
 **Status or trigger:** Before `test/rtx4090` merges into `release/v0.10.0`
 
-**Notes:** Not provable on the PC (`docs/review/mac-regression-review-2026-11-20.md`): (1) sounds pack reinstall on Apple Silicon (marker schema 2) with the new `stable-audio-3` step and verify import on MPS, then a Stable Audio Open sound; consider skipping the SA3 install on the `mps` lane, since its rows are CUDA-only; (2) lip sync through `ltx-2-mlx a2v --distilled` (never run); (3) a paused and resumed Hub download with xet; (4) ACE-Step on MLX after the CUDA lane changes; (5) Nemotron 3.5 Lightning GGUF with the raised 16K context; (6) Voice > Models collapsed rows and Dictation default; (7) the Image catalog without the Nunchaku rows.
+**Notes:** Not provable on the PC (`docs/review/mac-regression-review-2026-11-20.md`): (1) sounds pack reinstall on Apple Silicon (marker schema 2) with the new `stable-audio-3` step and verify import on MPS, then a Stable Audio Open sound (**2026-11-20, agent branch: the `mps` lane no longer installs or verify-imports `stable-audio-3`, its marker records `sa3: null`, and the worker asks for `stable_audio_3` only off macOS; simulated-host tests in `test_music_sound.py`; the reinstall and a sound on a real Mac are still to do**); (2) lip sync through `ltx-2-mlx a2v --distilled` (never run); (3) a paused and resumed Hub download with xet; (4) ACE-Step on MLX after the CUDA lane changes; (5) Nemotron 3.5 Lightning GGUF with the raised 16K context; (6) Voice > Models collapsed rows and Dictation default; (7) the Image catalog without the Nunchaku rows.
 
 </details>
 
@@ -136,11 +136,11 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-463 · Performance preview shows numbers with no model chosen (Benchmarks &gt; Run, Select Model) — After D-105 C</summary>
+<summary>FU-463 · Performance preview shows numbers with no model chosen (Benchmarks &gt; Run, Select Model) — Done (2026-11-20, agent branch, D-105 C)</summary>
 
-**Status or trigger:** After D-105 C
+**Status or trigger:** **Done (2026-11-20, agent branch, D-105 C)**
 
-**Notes:** "113.7 tok/s est., Very fast", "Disk: 31.2 GB", "Quality 100 %", "Fits easily" before any model is picked. Recommendation: hide the preview until a model is chosen.
+**Notes:** Both now say "Pick a model to see its expected speed, memory and fit." until a model is chosen (`BenchmarkRunTab.tsx`, `ModelLaunchModal.tsx`; screenshots `d105-build/*-07-*`, `*-12-*`). Was: "113.7 tok/s est., Very fast", "Disk: 31.2 GB", "Quality 100 %", "Fits easily" before any model is picked. Recommendation: hide the preview until a model is chosen.
 
 </details>
 
@@ -190,20 +190,20 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-457 · First run: "Start here" on the Dashboard, Chat Models opening on a recommended list (review A, P2) — After D-105 D</summary>
+<summary>FU-457 · First run: "Start here" on the Dashboard, Chat Models opening on a recommended list (review A, P2) — Part done (2026-11-20, agent branch, D-105 D and E)</summary>
 
-**Status or trigger:** After D-105 D
+**Status or trigger:** **Part done (2026-11-20, agent branch, D-105 D and E)**
 
-**Notes:** Dashboard card with the GPU named, one recommended model, Download, then Chat. Models: filters folded, a word beside each status icon, one download line whose size matches the row, with speed and time left (today the cell says 19.1 GB and the bar 20.3 GB because the drafter is counted in one). About 1.5 days.
+**Notes:** Built: the Dashboard "Start here" card while no chat model is on disk (hardware named, the best-fit row with Download and progress, Other recommended models, Open Chat) and Chat Models opening on the five recommended rows with "Show all N models and filters" (`ChatRecommendedList.tsx`). Still open: a word beside each status icon, and one download line whose size matches the row with speed and time left. Original plan: Dashboard card with the GPU named, one recommended model, Download, then Chat. Models: filters folded, a word beside each status icon, one download line whose size matches the row, with speed and time left (today the cell says 19.1 GB and the bar 20.3 GB because the drafter is counted in one). About 1.5 days.
 
 </details>
 
 <details>
-<summary>FU-456 · One source for fit numbers (review A, P1) — After D-105 B and C</summary>
+<summary>FU-456 · One source for fit numbers (review A, P1) — Done (2026-11-20, agent branch, D-105 B and E)</summary>
 
-**Status or trigger:** After D-105 B and C
+**Status or trigger:** **Done (2026-11-20, agent branch, D-105 B and E)**
 
-**Notes:** The Dashboard names the catalogue's best-fit row for this machine instead of the tier table and constant headroom; the memory column is titled for what it measures; `measuredGpuGb` on the other rows run on the 4090. About 1 day. `docs/review/ui-ux-v0100-a/README.md` section 5.
+**Notes:** `helpers/chat_picks.py` picks from each family's `bestFitVariantId` row (the Models page's fit) and attaches `chatPicks` / `bestFit` to the recommendation; the Dashboard shows that row (size, memory needed of usable, speed: this computer's runs, else the row's RTX 4090 `measuredGpuTokS` on a discrete card of 20 GB or more, else the estimate) and its own `fit.headroomPct`; the constant headroom per size class is gone, shown once; the activity line names the hardware class. The memory column reads "GPU memory" on a card with its own memory. `measuredGpuGb` / `measuredGpuTokS` on Gemma 4 12B and 26B-A4B QAT, Bonsai 2 Q2_0, Qwen3.6 UD-IQ4_XS, Lightning Q4_0, Qwen3.6 Q4_K_M. Tests `test_chat_picks.py`, `dashboardBestFit.test.tsx`, `chatRecommended.test.tsx`. Not verified on a smaller GPU or a Mac.
 
 </details>
 

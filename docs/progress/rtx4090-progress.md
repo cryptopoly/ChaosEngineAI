@@ -2282,3 +2282,48 @@ whether "LM Studio" and "Ollama" may be named in the UI against the editorial ru
 menus and update prompt were not seen. macOS, Linux, a smaller GPU and a machine without a GPU were not looked at. The
 full pytest suite, the other 51 browser specs and the backend E2E suite were not run. Contrast was not measured. The
 18.1 GB figure for Nemotron is from an 8,192-context run; the app loads it at 16,384.
+
+## 2026-11-20: D-105 B to E built, and the Mac sounds pack without Stable Audio 3 (agent branch)
+
+Owner travelling; standing "yes" to the reviewers' recommendations, so D-105 B, C, D and E were built on an agent
+branch off `test/rtx4090` (`eb7c85ff`), not pushed. Screenshots at 1280 and 375 px:
+`docs/review/ui-ux-v0100-a/d105-build/` (recipe `99-uxa-build.spec.ts` beside the review; before = `shots/` and `after/`).
+
+- **Dashboard names the best-fit row (B, FU-456).** `helpers/chat_picks.py` takes each family's `bestFitVariantId`
+  row (the Models page's own fit), orders them newest, larger, faster, smaller, and attaches up to five to the
+  recommendation (`chatPicks`, `bestFit`). The Hardware Fit panel shows the row, its download size, the memory it
+  needs of what is usable, and the speed: this computer's own runs first, else the row's RTX 4090 figure on a discrete
+  card of 20 GB or more (new `measuredGpuTokS`), else the bandwidth estimate, each labelled. The headroom bar is that
+  row's `fit.headroomPct`; the constant 43 to 68 % per size class is gone (`None` until a row fits), and the bar is
+  shown once, not twice. The activity line "Hardware profile refreshed" names the hardware class instead of "14B GGUF".
+  On this PC it picks Ternary Bonsai 2 27B Q2_0 (8.2 GB measured, 77 tok/s on the 4090, 66 % headroom).
+- **Measured figures on six 4090 rows (FU-456):** `measuredGpuGb` added to Gemma 4 12B QAT (8.1), 26B-A4B QAT (16.1),
+  Bonsai 2 Q2_0 (8.2), Qwen3.6 UD-IQ4_XS MTP (17.2); `measuredGpuTokS` on those and the two rows that had memory
+  already (Lightning Q4_0 233.4, Qwen3.6 Q4_K_M 177), all from the "Live numbers" table above.
+- **No performance preview without a model (C, FU-463):** Benchmarks > Run and Select Model show "Pick a model to see
+  its expected speed, memory and fit." instead of tok/s, disk, quality and fit for nothing.
+- **Chat Models first run (D, FU-457):** with no chat model on disk and no search or filter, the page opens on the
+  five recommended rows (download, fit, speed, note) with "Show all N models and filters" (kept for the session).
+  Chat's "Browse models" (preset Available) lands there too.
+- **Start here and the column title (E, FU-456, FU-457):** a "Start here" card on the Dashboard while no chat model is
+  on disk (hardware named, the pick with Download and its progress, Other recommended models, Open Chat). The memory
+  column is titled "GPU memory" on a card with its own memory, "RAM" elsewhere.
+- **Mac sounds pack (FU-493 item 1):** `music_sound_env` installs and verify-imports `stable-audio-3` (and
+  `T5GemmaEncoderModel`) on the CUDA lane only; the Mac (`mps`) marker records `sa3: null`, and the worker's package
+  check asks for `stable_audio_3` only off macOS, so a failure there cannot stop Stable Audio Open on a Mac. A Mac
+  pack from v0.10.0 (schema 1) still asks for one reinstall. Simulated hosts (platform and `nvidia-smi` patched):
+  Mac arm64 neither installs nor imports it, Windows and Linux with NVIDIA do both.
+
+**Checks.** `tsc --noEmit` clean; vitest 2,005 passed (173 files, two new: `dashboardBestFit`, `chatRecommended`);
+`i18n:validate` OK (new English strings `null` in the other locales); pytest `test_chat_picks` (new),
+`test_dashboard_recommendation`, `test_model_fit`, `test_route_contracts`, `test_music_sound`, `test_music_env`,
+`test_catalog_text_families`, `test_platform_filter`, `test_hub_tracker` passed; `test_backend_service` passed except
+`test_html_challenge_persists_manifest_and_html_files` (500 on delete), which fails the same way on the base commit
+`eb7c85ff`. Capture spec 2 of 2 against throwaway servers (Vite 8970, backend 8971, `HOME`/`USERPROFILE` on
+`E:\tmp\uxd\home`).
+
+**Not verified.** A real download from Start here; a machine with a chat model on disk and its own measured speed; a
+Mac (the sounds pack on MPS still needs FU-493's real run); a smaller GPU (the RTX 4090 speed is hidden below 20 GB,
+not checked on such a card); the full pytest, browser and E2E suites. The task named FU-458 to FU-462 for the fit
+work; those rows are Windows wording, Chat polish, phone, Server and accessibility, so they stay open and the fit work
+is recorded under FU-456, FU-457 and FU-463.

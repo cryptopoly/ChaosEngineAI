@@ -25,7 +25,7 @@ against the same truth. Reported:
 | `balanced` | mean of (1 - cwv) and (1 - ows); 0.5 = ignores the audio |
 | `motion` | 0-1, how far the mouth really opens (its 95th percentile over 0.04); r is scaled by it, because a shut mouth's landmark jitter can still correlate with the audio |
 | `turned_away` | share of frames turned away or with no face |
-| `score` | `(0.5 * balanced + 0.5 * max(0, r) * motion) * (1 - 0.5 * turned_away)`: ranks takes **of one shot**; not a grade across songs |
+| `score` | `(0.5 * balanced + 0.5 * max(0, r) * motion) * (1 - turned_away)`: ranks takes **of one shot**; not a grade across songs |
 
 Checks on the spike's clips: speech with the audio hold r 0.50 (chance 0.17), score 0.63; the same speech without
 the hold (mouth open through the silent tail) 0.50; Lightricks' route (a) speech 0.59. Unit tests:

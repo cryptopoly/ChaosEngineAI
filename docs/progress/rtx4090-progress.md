@@ -1960,3 +1960,39 @@ Cancel: sent 3 s into a 380 s Medium clip, the route answered 409 "cancelled" 3.
 **Output.** Every clip is FLAC, PCM 24-bit, 44.1 kHz, 2 channels, exactly the length asked for, peak -1.0 dBFS. RMS -11 to -36 dBFS. The glass prompt: most energy at 2 to 8 kHz (centroid 4.4 to 7.6 kHz), about 3 s under -60 dBFS after the hit; rain with thunder: most energy under 2 kHz; the house prompt (Music, Medium): 65 to 88 % under 200 Hz, 1.4 to 3.8 % at 2 to 8 kHz, at most 3.6 s of near-silence in 180 s. Small SFX writes near-identical channels (L minus R at most 0.004, under -47 dBFS); Small Music (L/R correlation 0.69 to 0.82), Medium and Open are real stereo. **I could not listen to any of it**; the numbers say non-silent, full-length, plausible signal, nothing more.
 
 **Tests.** `pytest tests/test_music_*.py test_check_upstreams.py test_licence_gate.py test_mcp_bridge.py test_hub_tracker.py`: 243 passed, 3 failed, the same Windows host failures as before (`test_paths_must_be_absolute_and_inside_the_data_folder`, the two H3 command-line tests, WinError 193). Tests that assert the Mac figures now pin the `mlx` lane (on this PC the 4090 table applies). `npx tsc --noEmit` clean, `npx vitest run src/features/music` 104 passed, `npm run i18n:validate` OK. E2E phase 11 against the test backend: PASS, 7 of 8 checks (the ACE-Step 20 s run skipped: no music pack in this HOME), including the new real Stable Audio 3 clip. Not tested: a Mac (FU-279), Linux, a smaller card, flash-attn (FU-280).
+
+## 2026-11-20: chat catalogue follow-ups FU-259, 263 to 266, 268, 269 (agent)
+
+All numbers: RTX 4090 24 GB, Windows 11, llama.cpp b12441 CUDA, 8,192 context, f16 KV, `--fit on`, reasoning off, ~500-token prompt, 300 generated tokens, cache off, 3 warm runs after a warm-up, GPU lock `E:\tmp\gpu.lock` held, VRAM is nvidia-smi `memory.used` above the idle baseline (whole card, so a neighbouring job could add to it). Two ways of measuring: through the app (`/api/models/load` on a throwaway HOME, llama-server's own timings) for every row that ended up in the catalogue, and the same llama-server started directly with the app's flags for the draft-length sweeps (the app would only have given the one setting it picks). The models came in by a ranged downloader into `E:\AI Models` (nothing there was deleted).
+
+| Row | Setting | Decode tok/s (3 runs) | Accepted | VRAM above idle |
+|---|---|---|---|---|
+| Qwen3.6 35B-A3B UD-IQ4_XS (unsloth, baked-in MTP) | plain | 170.8, 170.0, 170.4 | | 17.2 GB |
+| | MTP n=1 | 197.1, 193.2, 189.9 | 66 to 72 % | |
+| | MTP n=2 (sweep 1 / sweep 2) | 191.0, 208.5, 191.2 / 206.7, 198.0, 200.5 | 49 to 59 % | 17.9 GB |
+| | MTP n=3 (sweep 1 / sweep 2) | 173.6, 163.7, 175.6 / 183.1, 189.9, 165.0 | 35 to 49 % | |
+| | MTP n=4 | 172.1, 163.6, 165.2 | 32 to 36 % | 18.0 GB |
+| Qwen3.6 35B-A3B Q4_K_M (ggml-org, 20.5 GB) | plain (direct / app) | 176.3, 175.7, 175.6 and 177.9, 177.7, 177.6 / 175.8, 175.2, 175.8 | | 20.1 GB |
+| | DFlash drafter, 15 per round | 116.1, 124.0, 117.0 and 116.4, 125.8, 124.2 | 6 to 7 % | 22.7 GB |
+| | `mtp-` Q4_0 sidecar n=2 (direct / app) | 194.2, 215.2, 203.4 / 205.0, 211.9, 203.8 | 45 to 55 % | 21.1 GB |
+| | `mtp-` sidecar n=3 | 197.7, 204.9, 203.5 | 39 to 42 % | 21.2 GB |
+| Gemma 4 31B QAT Q4_0 (17.65 GB) | plain (direct / app) | 44.7, 45.0, 45.1 and 45.0, 45.0, 45.1 / 45.0, 44.9, 44.8 | | 19.3 GB (20.6 with the projector, app) |
+| | `mtp-gemma-4-31B-it` n=2 (direct x2 / app) | 58.2, 59.0, 59.6 and 60.6, 60.5, 62.3 / 58.3, 61.3, 62.4 | 26 to 32 % | 19.8 GB (21.1 app) |
+| | n=1 / n=3 | 55.6, 59.7, 55.6 / 54.8, 57.5, 59.0 | | |
+| Ternary Bonsai 2 27B Q2_0 (7.63 GB) | plain (direct / app) | 77.3, 77.0, 77.1 / 77.6, 75.7, 67.9 | | 8.2 GB (13.8 app, projector loaded) |
+
+**FU-268 (draft length, Qwen3.6 35B-A3B).** n=2 wins (+16 to 18 % over plain); n=3, the old setting, gave +0 to 5 % and n=4 was no better than plain. The three GGUF MoE repos are pinned to 2 in `_MTP_GGUF_DRAFT_N`; the MLX canonical value stays 3.
+
+**FU-263 (ggml-org Qwen3.6 35B-A3B).** The row is re-pinned to Q4_K_M (20.5 GB; Q8_0 remains as the `-MTP-GGUF` row). Its DFlash drafter is 32 % slower than no drafter (6 to 7 % accepted), and the app prefers block drafters, so unfixed it would have run DFlash. `SIDECAR_KINDS_SKIPPED` drops `dflash-` for this repo (download and resolve), leaving the `mtp-` sidecar: through the app with Speculative decoding on, the command line carried `--model-draft mtp-...Q4_0.gguf --spec-type draft-mtp --spec-draft-n-max 2` and decode was 205.0, 211.9, 203.8 (+18 %). Reply read: coherent.
+
+**FU-264 (Gemma 4 31B).** The QAT pairs with unsloth's `mtp-gemma-4-31B-it.gguf`: +31 to 36 % at two per round (45 to about 60 tok/s). Pinned in `PINNED_DRAFTERS`; row size fixed (17.0 to 17.7 GB). One thing I did wrong first: my backend launcher passed `E:\AI Models` unquoted, so the Hub cache root was `E:\AI`, the pinned drafter was not found and the app silently fell back to `ngram-mod` (44.9 tok/s, no gain). The numbers above are from the corrected launch; the fallback itself is the app's designed behaviour but it is silent apart from the load note.
+
+**FU-269 (Bonsai 2 Q2_0).** Loads and decodes on stock b12441, no fork. The Q8_0 mmproj read a generated image correctly. Row added; the stale "needs the PrismML fork" comments narrowed to PQ2_0 and PTQ1_0. Not compared: output quality against the MLX pack.
+
+**FU-265 (Nemotron Lightning tool list).** Fixed by a per-row `minContextTokens` (16,384) applied in `load_model`, with a plain sentence in the load note, and requested context kept as asked. Checked live: tool-call scorecard at `--context 8192` through `/api/models/load` now answers 12 of 12 requests (9,349 prompt tokens) instead of 12 HTTP 400.
+
+**FU-259 (Unsloth GGUF).** `MTP/` sidecars resolve; one mmproj downloads (F16, then Q8_0, then BF16). Unit-tested only: neither the unsloth 26B-A4B Q8_0 nor the 31B Q4_K_M, the two rows that have an `MTP/` folder, was downloaded here (the 31B drafter I fetched is the top-level `mtp-` file). Existing folders that already hold several projectors keep loading the largest (FU-291).
+
+**FU-266 (app download on a slow link).** Checked, no change. Shared with 16 ranged requests and another agent's job the app moved 1.45 GB at 1.3 MB/s (0.35 at the slowest) while the ranged downloader got 7 to 14; alone, 1.08 GB took 51 s (23 MB/s). Resume verified (94 MB partial cut to 71 MB, grew to the end). Whether to add parallel ranges: FU-290.
+
+**Tests.** `test_catalog_text_families`, `test_text_gguf`, `test_llama_fu178`, `test_audit_catalog_repos`, `test_model_fit`, `test_inference` and the new `test_backend_service` load test: see the final run in the commit message; `scripts/audit-catalog-repos.py` re-run. Not run: the full E2E suite, the macOS paths, any MLX Lightning row.

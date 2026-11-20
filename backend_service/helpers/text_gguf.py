@@ -92,6 +92,9 @@ PINNED_DRAFTERS: dict[str, tuple[str, str, str]] = {
     "google/gemma-4-26B-A4B-it-qat-q4_0-gguf": (
         "unsloth/gemma-4-26B-A4B-it-GGUF", "mtp-gemma-4-26B-A4B-it.gguf", "draft-mtp",
     ),
+    # 31B QAT (FU-264, 2026-11-20, RTX 4090, same prompt): 45.0 tok/s plain, 58.9 and 61.1 at n=2 (two runs
+    # of three), 57.0 at n=1, 57.1 at n=3; 19.3 GB of VRAM plain, 19.8 GB with the drafter.
+    "google/gemma-4-31B-it-qat-q4_0-gguf": ("unsloth/gemma-4-31B-it-GGUF", "mtp-gemma-4-31B-it.gguf", "draft-mtp"),
 }
 
 
@@ -169,6 +172,29 @@ def _best_sidecar(names: list[str], prefix: str, model_name: str) -> str | None:
     return min(first_shards or candidates, key=lambda n: (abs(_quant_bits(n) - model_bits), n))
 
 
+# Sidecar kinds a repo ships that measured slower than plain decode, so they are neither downloaded nor run
+# (FU-263). ggml-org's Qwen3.6-35B-A3B Q4_K_M on an RTX 4090 (500-token prompt, 300 tokens): plain 175.9 and
+# 177.7 tok/s, its DFlash drafter 119.0 and 122.1 (6.5 % of the drafted tokens accepted), its mtp- sidecar at
+# two per round 204.3. The DFlash drafter pays on the dense 27B (FU-178), not on this 3B-active MoE.
+SIDECAR_KINDS_SKIPPED: dict[str, frozenset[str]] = {
+    "ggml-org/Qwen3.6-35B-A3B-GGUF": frozenset({"dflash-"}),
+}
+_SIDECAR_SUBDIR = "MTP"
+_MMPROJ_PREFERENCE = ("f16", "q8_0", "bf16")
+
+
+def _best_mmproj(names: list[str]) -> str | None:
+    """One projector out of the precisions a repo ships (FU-259): F16, then Q8_0, then BF16."""
+    candidates = sorted(n for n in names if "mmproj" in Path(n).name.lower() and n.lower().endswith(".gguf"))
+    if not candidates:
+        return None
+    for tag in _MMPROJ_PREFERENCE:
+        for name in candidates:
+            if tag in re.split(r"[-.]", Path(name).name.lower()):
+                return name
+    return candidates[0]
+
+
 def resolve_spec_sidecar(model_gguf_path: str | None) -> tuple[str, str] | None:
     """``(spec_type, sidecar_path)`` for a draft sidecar next to the model.
 
@@ -183,9 +209,17 @@ def resolve_spec_sidecar(model_gguf_path: str | None) -> tuple[str, str] | None:
         return None
     try:
         names = [entry.name for entry in main.parent.iterdir() if entry.is_file()]
+        # Unsloth keeps its sidecars in an ``MTP/`` subfolder (FU-259). Only that
+        # one folder is read, so a neighbouring repo's drafter is still never used.
+        for sub in main.parent.iterdir():
+            if sub.is_dir() and sub.name.lower() == _SIDECAR_SUBDIR.lower():
+                names.extend(f"{sub.name}/{entry.name}" for entry in sub.iterdir() if entry.is_file())
     except OSError:
         return None
+    skipped = SIDECAR_KINDS_SKIPPED.get(repo_id_from_path(main) or "", frozenset())
     for prefix, spec_type in SPEC_SIDECAR_TYPES:
+        if prefix in skipped:
+            continue
         best = _best_sidecar(names, prefix, main.name)
         if best is not None:
             return spec_type, str(main.parent / best)
@@ -197,7 +231,8 @@ def text_repo_allow_patterns(repo_id: str, files: Iterable[dict] | None = None) 
 
     ``None`` for unpinned repos so the caller downloads them in full.
     ``*mmproj*.gguf`` keeps the vision projector the llama.cpp engine
-    wires via ``--mmproj`` (FU-072). When the Hub file list is supplied,
+    wires via ``--mmproj`` (FU-072); with the Hub file list, one projector
+    only (FU-259). When the Hub file list is supplied,
     the best-matching spec-dec sidecar of each kind (FU-089) rides along
     so speculative decoding works offline — one quant each, not every
     precision the repo ships.
@@ -208,7 +243,12 @@ def text_repo_allow_patterns(repo_id: str, files: Iterable[dict] | None = None) 
     patterns = [gguf_file_pattern(gguf_file), "*mmproj*.gguf", "*.md", "LICENSE*"]
     if files is not None:
         names = [str(entry.get("path") or "") for entry in files]
+        mmproj = _best_mmproj(names)
+        if mmproj is not None:
+            patterns[1] = mmproj
         for prefix, _spec_type in SPEC_SIDECAR_TYPES:
+            if prefix in SIDECAR_KINDS_SKIPPED.get(repo_id, frozenset()):
+                continue
             best = _best_sidecar(names, prefix, gguf_file)
             if best is not None:
                 patterns.append(gguf_file_pattern(best))

@@ -74,6 +74,62 @@ class HelperTests(unittest.TestCase):
         self.assertNotIn("dflash-Qwen3.6-27B-BF16.gguf", patterns)
         self.assertEqual(text_gguf.matched_size_bytes(files, patterns), 16 + 2 + 1)
 
+    def test_allow_patterns_one_mmproj_and_the_mtp_subfolder(self) -> None:
+        # FU-259: unsloth ships three mmproj precisions and the sidecar in MTP/.
+        files = [
+            {"path": "Qwen3.6-27B-Q4_K_M.gguf", "sizeBytes": 16},
+            {"path": "mmproj-BF16.gguf", "sizeBytes": 2},
+            {"path": "mmproj-F16.gguf", "sizeBytes": 2},
+            {"path": "mmproj-F32.gguf", "sizeBytes": 4},
+            {"path": "MTP/mtp-Qwen3.6-27B-Q8_0.gguf", "sizeBytes": 1},
+        ]
+        patterns = text_gguf.text_repo_allow_patterns(_QWEN_REPO, files)
+        self.assertIn("mmproj-F16.gguf", patterns)
+        self.assertNotIn("*mmproj*.gguf", patterns)
+        self.assertIn("MTP/mtp-Qwen3.6-27B-Q8_0.gguf", patterns)
+        self.assertEqual(text_gguf.matched_size_bytes(files, patterns), 16 + 2 + 1)
+
+    def test_a_dflash_drafter_that_measured_slower_is_not_downloaded_or_run(self) -> None:
+        # FU-263: on ggml-org's Qwen3.6-35B-A3B the DFlash drafter ran at 120 tok/s against 177 plain.
+        repo = "ggml-org/Qwen3.6-35B-A3B-GGUF"
+        files = [
+            {"path": "Qwen3.6-35B-A3B-Q4_K_M.gguf", "sizeBytes": 20},
+            {"path": "dflash-Qwen3.6-35B-A3B-Q8_0.gguf", "sizeBytes": 1},
+            {"path": "mtp-Qwen3.6-35B-A3B-Q4_0.gguf", "sizeBytes": 1},
+            {"path": "mtp-Qwen3.6-35B-A3B-Q8_0.gguf", "sizeBytes": 2},
+            {"path": "mmproj-Qwen3.6-35B-A3B-BF16.gguf", "sizeBytes": 1},
+            {"path": "mmproj-Qwen3.6-35B-A3B-Q8_0.gguf", "sizeBytes": 1},
+        ]
+        patterns = text_gguf.text_repo_allow_patterns(repo, files)
+        self.assertNotIn("dflash-Qwen3.6-35B-A3B-Q8_0.gguf", patterns)
+        self.assertIn("mtp-Qwen3.6-35B-A3B-Q4_0.gguf", patterns)
+        self.assertIn("mmproj-Qwen3.6-35B-A3B-Q8_0.gguf", patterns)
+        self.assertEqual(text_gguf.matched_size_bytes(files, patterns), 20 + 1 + 1)
+
+    def test_the_skipped_dflash_drafter_is_not_resolved(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            snap = Path(tmp) / "models--ggml-org--Qwen3.6-35B-A3B-GGUF" / "snapshots" / "rev"
+            model = _write(snap / "Qwen3.6-35B-A3B-Q4_K_M.gguf", 16)
+            _write(snap / "dflash-Qwen3.6-35B-A3B-Q8_0.gguf", 1)
+            mtp = _write(snap / "mtp-Qwen3.6-35B-A3B-Q4_0.gguf", 1)
+            self.assertEqual(text_gguf.resolve_spec_sidecar(str(model)), ("draft-mtp", str(mtp)))
+            # Any other repo keeps the block drafter first (FU-178).
+            other = Path(tmp) / "models--someone--Other-GGUF" / "snapshots" / "rev"
+            m2 = _write(other / "Other-Q4_K_M.gguf", 16)
+            df = _write(other / "dflash-Other-Q8_0.gguf", 1)
+            _write(other / "mtp-Other-Q4_0.gguf", 1)
+            self.assertEqual(text_gguf.resolve_spec_sidecar(str(m2)), ("draft-dflash", str(df)))
+
+    def test_one_mmproj_choice_falls_back(self) -> None:
+        self.assertEqual(text_gguf._best_mmproj(["mmproj-F32.gguf", "mmproj-BF16.gguf"]), "mmproj-BF16.gguf")
+        # Bonsai 2 ships a BF16 (0.93 GB) and a Q8_0 (0.63 GB, the one run on the 4090): the smaller one.
+        self.assertEqual(
+            text_gguf._best_mmproj(["Ternary-Bonsai-2-27B-mmproj-BF16.gguf", "Ternary-Bonsai-2-27B-mmproj-Q8_0.gguf"]),
+            "Ternary-Bonsai-2-27B-mmproj-Q8_0.gguf",
+        )
+        self.assertEqual(text_gguf._best_mmproj(["mmproj-F32.gguf"]), "mmproj-F32.gguf")
+        self.assertIsNone(text_gguf._best_mmproj(["a.gguf"]))
+
     def test_repo_id_from_path(self) -> None:
         self.assertEqual(
             text_gguf.repo_id_from_path(
@@ -101,6 +157,14 @@ class ResolverTests(unittest.TestCase):
         _write(snap / "Qwen3.6-27B-Q8_0.gguf", 29)
         _write(snap / "mmproj-Qwen3.6-27B-BF16.gguf", 64)
         self.assertEqual(_resolve_gguf_path(str(snap), None), str(pinned))
+
+    def test_mtp_subfolder_sidecar_is_found(self) -> None:
+        # FU-259: unsloth repos keep the drafter in MTP/, not beside the model.
+        snap = self.root / "models--unsloth--X-GGUF" / "snapshots" / "rev"
+        model = _write(snap / "X-Q8_0.gguf", 16)
+        sidecar = _write(snap / "MTP" / "mtp-X-Q8_0.gguf", 1)
+        _write(snap / "other" / "mtp-Y-Q8_0.gguf", 1)
+        self.assertEqual(text_gguf.resolve_spec_sidecar(str(model)), ("draft-mtp", str(sidecar)))
 
     def test_unpinned_repo_keeps_largest_file(self) -> None:
         snap = self.root / "models--someone--Model-GGUF" / "snapshots" / "rev"
@@ -429,6 +493,16 @@ class GemmaMtpDrafterTests(unittest.TestCase):
                     "llama-server", resolved_gguf=str(model), path=str(model), repo=_GEMMA12_REPO
                 )
         self.assertEqual(args, ["--model-draft", str(drafter), "--spec-type", "draft-mtp", "--spec-draft-n-max", "2"])
+
+    def test_the_31b_qat_row_is_paired_too(self) -> None:
+        # FU-264: ran live on a 4090, 45 tok/s plain, about 60 with the drafter at two per round.
+        from backend_service.helpers.companions import companion_downloads
+
+        repo = "google/gemma-4-31B-it-qat-q4_0-gguf"
+        self.assertEqual(
+            text_gguf.pinned_drafter(repo), ("unsloth/gemma-4-31B-it-GGUF", "mtp-gemma-4-31B-it.gguf", "draft-mtp")
+        )
+        self.assertEqual(companion_downloads(repo), [("unsloth/gemma-4-31B-it-GGUF", ["mtp-gemma-4-31B-it.gguf"])])
 
     def test_the_26b_a4b_qat_row_is_paired_too(self) -> None:
         self.assertEqual(

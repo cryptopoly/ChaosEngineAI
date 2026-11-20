@@ -135,12 +135,26 @@ def is_mtp_gguf_repo(repo: str | None) -> bool:
     return aliased is not None and aliased in MTP_MODEL_MAP
 
 
+# Draft length measured on the llama.cpp GGUF lane, which differs from the canonical value the MLX
+# lane uses. Qwen3.6-35B-A3B UD-IQ4_XS on an RTX 4090 (b12441, 500-token prompt, 300 tokens, three
+# warm runs, 2026-11-20, FU-268): plain 170.4 tok/s, n=1 193.4, n=2 196.9 and 201.7 (two sweeps),
+# n=3 171.0 and 179.3, n=4 167.0. The MoE verifies few tokens per round, so a third draft token
+# costs more than it wins.
+_MTP_GGUF_DRAFT_N: dict[str, int] = {
+    "ggml-org/Qwen3.6-35B-A3B-MTP-GGUF": 2,
+    "am17an/Qwen3.6-35BA3B-MTP-GGUF": 2,
+    "unsloth/Qwen3.6-35B-A3B-MTP-GGUF": 2,
+}
+
+
 def get_mtp_draft_n(repo: str) -> int | None:
     """Return the recommended spec-draft-n-max for *repo*, or None.
 
     Returns None when the repo is not known to carry MTP heads — callers
     should not enable MTP speculative decoding for that model.
     """
+    if repo in _MTP_GGUF_DRAFT_N:
+        return _MTP_GGUF_DRAFT_N[repo]
     if repo in MTP_MODEL_MAP:
         return MTP_MODEL_MAP[repo]
     canonical = _MTP_ALIASES.get(repo)

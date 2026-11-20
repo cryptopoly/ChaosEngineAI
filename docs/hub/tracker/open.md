@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 189 rows with work, decisions or watch items still open, newest first.
+summary: 190 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-399 · Windows pre-release verification: full bundle build with the CUDA sd.exe, the extra 790 MB against the 1.9 GB installer archive limit, a real Nunchaku image after the 409 fix — When the Windows code is ready (owner asked 2026-11-20), before the release/v0.10.0 merge</summary>
+
+**Status or trigger:** When the Windows code is ready (owner asked 2026-11-20), before the `release/v0.10.0` merge
+
+**Notes:** From the sd.cpp Windows build work (FU-300 to FU-302, FU-301): only the staging block was run against a scratch folder; the Nunchaku ready path was untouched but not re-run. Do these with the full E2E, pytest and Playwright runs, then the hands-on checks (D-99).
+
+</details>
 
 <details>
 <summary>FU-335 · ACE-Step 1.5 turbo ignored the lyrics in 3 of 3 tries — Next music pass</summary>

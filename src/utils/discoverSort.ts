@@ -47,11 +47,12 @@ function firstPositiveNumber(values: Array<number | null | undefined>): number |
 }
 
 function sizeSortKey(variant: DiscoverSortable): number | null {
+  // D-108: the catalogue size before the Hub repo's weight total.
   return firstPositiveNumber([
     variant.onDiskGb,
+    variant.sizeGb,
     variant.coreWeightsGb,
     variant.repoSizeGb,
-    variant.sizeGb,
   ]);
 }
 

@@ -112,8 +112,15 @@ export function compactModelSizeLabel(value: string | null | undefined) {
 }
 
 export function imagePrimarySizeLabel(variant: ImageModelVariant) {
+  // D-108: before a download, the catalogue's declared size. The sum of every
+  // weights file in the Hub repo (``coreWeightsGb``) counts all the versions a
+  // repo holds, not the files the download pulls (60.4 GB shown for a 3.9 GB
+  // sd.cpp file); the catalogue size was within 10 % of disk on every row.
   if (typeof variant.onDiskGb === "number" && variant.onDiskGb > 0) {
     return `${sizeLabel(variant.onDiskGb)} on disk`;
+  }
+  if (typeof variant.sizeGb === "number" && variant.sizeGb > 0) {
+    return `${sizeLabel(variant.sizeGb)} download`;
   }
   if (typeof variant.coreWeightsGb === "number" && variant.coreWeightsGb > 0) {
     return `${sizeLabel(variant.coreWeightsGb)} weights`;
@@ -125,6 +132,7 @@ export function imagePrimarySizeLabel(variant: ImageModelVariant) {
 }
 
 export function imageSecondarySizeLabel(variant: ImageModelVariant) {
+  if (typeof variant.sizeGb === "number" && variant.sizeGb > 0) return null; // D-108, see videoSecondarySizeLabel
   if (
     typeof variant.repoSizeGb === "number" &&
     variant.repoSizeGb > 0 &&
@@ -144,17 +152,20 @@ export function videoPrimarySizeLabel(variant: VideoModelVariant) {
   //      the same onDiskGb (~12 GB total), masking per-quant footprint.
   //   2. onDiskGb — actual bytes on disk once downloaded. Ground truth for
   //      single-repo variants.
-  //   3. coreWeightsGb — sum of weight-file siblings from HF. Matches what
-  //      the diffusers allow-pattern download actually pulls.
-  //   4. repoSizeGb — total repo size. Overestimates on video repos with
-  //      legacy non-diffusers checkpoints (Wan 2.2 ships ~109 GB but the
-  //      diffusers subtree is ~14 GB).
-  //   5. curated sizeGb — hardcoded catalog guess, often stale.
+  //   3. curated sizeGb — what the download pulls, companion repos included
+  //      (D-108: within 10 % of disk on every row downloaded on the 4090 PC).
+  //   4. coreWeightsGb — sum of every weight file in the HF repo. Counts all
+  //      the versions a repo holds (LTX-Video: 236.4 GB for a 2.0 GB
+  //      download), so only for rows with no catalogue size.
+  //   5. repoSizeGb — total repo size.
   if (typeof variant.ggufFileGb === "number" && variant.ggufFileGb > 0) {
     return `${sizeLabel(variant.ggufFileGb)} on disk`;
   }
   if (typeof variant.onDiskGb === "number" && variant.onDiskGb > 0) {
     return `${sizeLabel(variant.onDiskGb)} on disk`;
+  }
+  if (typeof variant.sizeGb === "number" && variant.sizeGb > 0) {
+    return `${sizeLabel(variant.sizeGb)} download`;
   }
   if (typeof variant.coreWeightsGb === "number" && variant.coreWeightsGb > 0) {
     return `${sizeLabel(variant.coreWeightsGb)} weights`;
@@ -169,7 +180,9 @@ export function videoSecondarySizeLabel(variant: VideoModelVariant) {
   // When the full repo is meaningfully larger than just the weight files —
   // which is the case for Wan 2.2 (109 GB repo vs ~14 GB weights) — show
   // the full-repo figure so users aren't surprised by a 5-10× disk balloon
-  // when HF pulls the entire tree.
+  // when HF pulls the entire tree. A catalogue row downloads by its own file
+  // patterns, never the whole tree, so the repo total is not shown (D-108).
+  if (typeof variant.sizeGb === "number" && variant.sizeGb > 0) return null;
   if (
     typeof variant.repoSizeGb === "number" &&
     variant.repoSizeGb > 0 &&

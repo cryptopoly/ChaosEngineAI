@@ -750,7 +750,8 @@
       "hideSizes": null,
       "kokoroLineAddon": null,
       "kokoroNotInstalled": null,
-      "kokoroAddHint": null
+      "kokoroAddHint": null,
+      "gpuDefaultLine": null
     },
     "voices": {
       "addChinese": "Mandarin Chinese ghogh tIchel",
@@ -1000,7 +1001,8 @@
         "image": null,
         "music": null,
         "other": null
-      }
+      },
+      "needsSpeechGpu": null
     },
     "stop": "yImev",
     "studio": {

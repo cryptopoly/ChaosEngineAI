@@ -750,7 +750,8 @@
       "hideSizes": "Masquer les tailles",
       "kokoroLineAddon": "{count} voix rapides en {languages} langues. Rapide sur toute machine ; un module complémentaire du runtime vocal.",
       "kokoroNotInstalled": "Non installé",
-      "kokoroAddHint": "Cochez-le dans Runtime vocal > Modules complémentaires."
+      "kokoroAddHint": "Cochez-le dans Runtime vocal > Modules complémentaires.",
+      "gpuDefaultLine": null
     },
     "voices": {
       "addChinese": "Ajouter les voix en mandarin",
@@ -1000,7 +1001,8 @@
         "image": null,
         "music": null,
         "other": null
-      }
+      },
+      "needsSpeechGpu": null
     },
     "stop": "Arrêter",
     "studio": {
@@ -1189,7 +1191,7 @@
     "runtime": {
       "addon": {
         "chinese": "Voix rapides en mandarin (8 voix, environ 60 Mo)",
-        "speech-gpu": "Module GPU vocal : Chatterbox, VoxCPM2 et Orpheus sur le GPU NVIDIA (plusieurs Go)",
+        "speech-gpu": null,
         "stt-gpu": null,
         "kokoro": "Voix rapides Kokoro (environ 330 Mo)"
       },

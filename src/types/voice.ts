@@ -296,6 +296,8 @@ export interface VoiceModelRow {
   default: boolean;
   kind: "base" | "custom" | "design" | "turbo" | "voxcpm" | "chatterbox" | "orpheus";
   family?: VoiceFamily;
+  /** Where the row runs: "mlx" (Apple Silicon) or "cuda" (the speech GPU add-on on an NVIDIA PC). */
+  lanes?: string[];
   capabilities: VoiceCapabilities;
   controls?: VoiceModelControls;
   /** Output sample rate (48 kHz for VoxCPM2). */

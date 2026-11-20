@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(), isTauri: vi.fn(() => false) }));
 
-import type { VoiceEntry, VoiceRuntime } from "../../../../types";
+import type { VoiceEntry, VoiceModelRow, VoiceRuntime } from "../../../../types";
 import { VoiceProvider } from "../../VoiceContext";
 import { VOICE_USE_SETTING } from "../speakLogic";
 import type { VoiceCatalog } from "../useVoiceCatalog";
@@ -168,5 +168,31 @@ describe("VoicesScreen (D-73 S2)", () => {
     expect(html).toContain("Open Voice Models");
     expect(html).not.toContain("Add Mandarin voices");
     expect(row(html, "Heart")).toBe("");
+  });
+
+  it("offers no Download for a voice whose model cannot run here, and says why (a PC lists the Apple-only voices)", () => {
+    const row = (key: string, over: Partial<VoiceModelRow>): VoiceModelRow => ({
+      key, name: key, summary: "", repo: `org/${key}`, sizeGb: 3.54, languages: "English", default: false, kind: "custom", capabilities: caps,
+      supported: true, installed: false, download: { state: "idle", error: null }, ...over,
+    });
+    const preset = (id: string, model: string): VoiceEntry => ({ id, name: id, kind: "preset", language: "en", model, models: [model], capabilities: caps, available: false, chatUse: both });
+    const pc = runtime({ lane: "portable", extras: [{ id: "speech-gpu", label: "", installed: true }] } as Partial<VoiceRuntime>);
+    const html = renderToStaticMarkup(
+      <VoiceProvider value={{ runtime: pc, platform: "Windows", refresh: () => {}, saveSettings: async () => {}, openVoiceModels: () => {} }}>
+        <VoicesScreen
+          catalog={{ ...catalog, voices: [preset("Tara", "apple-only"), preset("Ryan", "gpu")], models: [row("apple-only", { supported: false, lanes: ["mlx"] }), row("gpu", { lanes: ["cuda"] })] }}
+          speakVoiceId=""
+          onUseInSpeak={() => {}}
+          onDesign={() => {}}
+          onGetMore={() => {}}
+        />
+      </VoiceProvider>,
+    );
+    const rows = html.split('<li class="voice-list__row"').slice(1);
+    const tara = rows.find((r) => r.includes("<strong>Tara</strong>")) ?? "";
+    const ryan = rows.find((r) => r.includes("<strong>Ryan</strong>")) ?? "";
+    expect(tara).toContain("Apple Silicon Macs only for now.");
+    expect(tara).not.toContain("Download 3.54 GB");
+    expect(ryan).toContain("Download 3.54 GB");
   });
 });

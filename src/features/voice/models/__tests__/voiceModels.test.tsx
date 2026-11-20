@@ -14,6 +14,9 @@ import { voiceRowToEntry } from "../../../../components/models/adapters/voice";
 import {
   collapsedFamilyRows,
   familyHeadingTracker,
+  gpuDefaultPending,
+  speechGpuAddonMissing,
+  unsupportedModelText,
   runtimeRemoveConfirmText,
   speechDeleteConfirmText,
   sttDeleteConfirmText,
@@ -131,6 +134,31 @@ describe("Speech models on the shared Models table (D-73 M3b)", () => {
     expect(panel({})).toContain("Apple Silicon Macs only for now.");
   });
 
+  it("on a PC without the speech GPU add-on, a GPU row says to tick the add-on and an Apple row stays Apple-only", () => {
+    const pc = runtime({ lane: "portable", extras: [{ id: "speech-gpu", label: "", installed: false }] });
+    const panel = (over: Partial<VoiceModelRow>, rt = pc) =>
+      wrap(
+        <SpeechModelsPanel
+          catalog={{ ...catalog, modelsAvailable: false, models: [model("only-row", "Only row", { supported: false, ...over })] }}
+          runtime={rt}
+          availability="all"
+          onAvailabilityChange={() => {}}
+          onOpenStudio={() => {}}
+        />,
+      );
+    const addon = "Needs the speech GPU add-on. Tick it under Voice &gt; Models &gt; Voice runtime &gt; Add-ons.";
+    expect(panel({ lanes: ["cuda"] })).toContain(addon);
+    expect(panel({ lanes: ["mlx"] })).not.toContain(addon);
+    expect(panel({ lanes: ["mlx"] })).toContain("Apple Silicon Macs only for now.");
+    // With the add-on in, a GPU row that still cannot run has the GPU's numbers; no add-on line.
+    const withAddon = runtime({ lane: "portable", extras: [{ id: "speech-gpu", label: "", installed: true }] });
+    expect(panel({ lanes: ["cuda"], unsupportedFacts: { kind: "memory", need: 5.4, have: 4 } }, withAddon)).not.toContain(addon);
+    expect(unsupportedModelText({ lanes: ["cuda"] }, runtime())).toBe("Apple Silicon Macs only for now.");
+    expect(speechGpuAddonMissing(pc)).toBe(true);
+    expect(speechGpuAddonMissing(withAddon)).toBe(false);
+    expect(speechGpuAddonMissing(runtime())).toBe(false);
+  });
+
   it("offers a natural voice while none is downloaded (first-run callout)", () => {
     const none = wrap(
       <SpeechModelsPanel catalog={{ ...catalog, models: models.map((m) => ({ ...m, installed: false })) }} runtime={runtime()} availability="all" onAvailabilityChange={() => {}} />,
@@ -153,6 +181,24 @@ describe("Dictation models (D-73 M1)", () => {
     expect(whisper).not.toContain("Delete model");
     expect(html).toContain("fetched the first time you dictate");
     expect(html).not.toContain("Downloads on first use if you skip this");
+  });
+
+  it("does not offer a GPU row this GPU cannot run, and says which GPU row becomes the default once downloaded", () => {
+    const gpu = (key: string, name: string, over: Partial<VoiceRuntime["sttModels"][number]> = {}) => ({
+      id: `org/${key}`, key, name, languages: "30 languages", sizeGb: 4.09, installed: false, default: false, backend: "transformers-asr", licence: "Apache-2.0", ...over,
+    });
+    const whisper = { id: "org/whisper", key: "whisper-large-v3-turbo", name: "Whisper Large v3 Turbo", languages: "99 languages", sizeGb: 1.6, installed: false, default: true, backend: "faster-whisper" };
+    const big = gpu("big", "Big 30B", { sizeGb: 67.5, gpuFacts: { kind: "memory", need: 72, have: 24 } });
+    const html = wrap(<DictationModelsPanel runtime={runtime({ lane: "portable", sttModels: [gpu("qwen3-asr-1.7b", "Qwen3-ASR 1.7B"), whisper, big] })} onChanged={() => {}} />);
+    const card = html.slice(html.indexOf('data-stt-model="big"'));
+    expect(card).toContain("Needs about 72 GB of GPU memory; this GPU has 24 GB.");
+    expect(card).not.toContain("Download 67.5 GB");
+    expect(card).toMatch(/<input[^>]*disabled=""[^>]*name="voice-stt-model"|<input[^>]*name="voice-stt-model"[^>]*disabled=""/);
+    expect(html).toContain("Download 4.09 GB");
+    expect(html).toContain("Qwen3-ASR 1.7B becomes the dictation model once it is downloaded, unless you pick another.");
+    expect(gpuDefaultPending([gpu("q", "Q", { installed: true }), whisper])).toBeUndefined();
+    expect(gpuDefaultPending([big, whisper])).toBeUndefined();
+    expect(gpuDefaultPending([whisper])).toBeUndefined();
   });
 
   it("shows a GPU row's licence and note, and why this GPU cannot run it", () => {
@@ -267,6 +313,19 @@ describe("Voice Models rules", () => {
     expect(fold.total).toBe(5);
     expect([...fold.shown]).toEqual(["c", "d", "e"]);
     expect(collapsedFamilyRows(five.slice(0, 2)).size).toBe(0);
+  });
+
+  it("with nothing downloaded, a collapsed family shows the first row that runs here, not an Apple-only row (a PC lists those first)", () => {
+    const pc = [
+      model("a", "a", { supported: false, lanes: ["mlx"] }),
+      model("b", "b", { supported: false, lanes: ["mlx"] }),
+      model("a-cuda", "a (GPU)", { supported: true, lanes: ["cuda"] }),
+      model("b-cuda", "b (GPU)", { supported: true, lanes: ["cuda"] }),
+    ].map((m) => voiceRowToEntry(m));
+    expect([...collapsedFamilyRows(pc).get("qwen3-tts")!.shown]).toEqual(["a-cuda"]);
+    // The add-on is not installed yet, so nothing is supported: the first GPU row, which the add-on would run.
+    const noAddon = pc.map((entry) => voiceRowToEntry({ ...(entry.source as VoiceModelRow), supported: false }));
+    expect([...collapsedFamilyRows(noAddon).get("qwen3-tts")!.shown]).toEqual(["a-cuda"]);
   });
 
   it("lands Use in Speak on a preset of the model, the design voice, or Voices for a model that only clones", () => {

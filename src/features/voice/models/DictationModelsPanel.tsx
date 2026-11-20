@@ -11,7 +11,7 @@ import type { DownloadStatus } from "../../../api";
 import type { SttModel, VoiceRuntime } from "../../../types";
 import { useVoice } from "../VoiceContext";
 import { VOICE_LANGUAGES, voiceLanguageName } from "../voiceLanguages";
-import { sttDeleteConfirmText } from "./voiceModelsLogic";
+import { gpuDefaultPending, sttDeleteConfirmText } from "./voiceModelsLogic";
 
 /** Why this GPU cannot run a GPU dictation row; the same words as the speech models' rows. */
 function gpuFactsText(facts: NonNullable<SttModel["gpuFacts"]>, t: (key: string, options?: Record<string, unknown>) => string): string {
@@ -45,6 +45,9 @@ function SttModelCard({
   const [status, setStatus] = useState<DownloadStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // A GPU row this GPU cannot run (memory, compute capability): not offered for download or dictation, as on the
+  // speech models' rows. One that is already on disk keeps its Delete.
+  const cannotRun = Boolean(model.gpuFacts) && !model.installed;
 
   useEffect(() => {
     if (status?.state !== "downloading") return;
@@ -104,7 +107,7 @@ function SttModelCard({
       </div>
       <div className="voice-model-card__actions">
         <label className="checkbox-label">
-          <input type="radio" name="voice-stt-model" checked={selected} onChange={onSelect} />
+          <input type="radio" name="voice-stt-model" checked={selected} disabled={cannotRun && !selected} onChange={onSelect} />
           {t("voice.models.use", { defaultValue: "Use for dictation" })}
         </label>
         {model.installed ? (
@@ -125,7 +128,7 @@ function SttModelCard({
           )
         ) : status?.state === "downloading" ? (
           <span className="muted-text">{Math.round((status.progress ?? 0) * 100)}%</span>
-        ) : (
+        ) : cannotRun ? null : (
           <button type="button" className="secondary-button" onClick={() => void download()}>
             {t("voice.cost.download", { defaultValue: "Download {gb} GB", gb: model.sizeGb })}
           </button>
@@ -143,6 +146,9 @@ export function DictationModelsPanel({ runtime, onChanged }: { runtime: VoiceRun
   const selectedModel =
     runtime.sttModels.find((m) => m.id === settings.sttModel || m.key === settings.sttModel)?.id ??
     runtime.sttModels.find((m) => m.default)?.id;
+  // The first GPU row is the default once it is on disk (voice_runtime.list_stt_models); until then Whisper is. Said
+  // here while no model was picked by hand, so the switch after the download is not a surprise.
+  const gpuDefault = settings.sttModel ? undefined : gpuDefaultPending(runtime.sttModels);
 
   return (
     <Panel
@@ -177,6 +183,12 @@ export function DictationModelsPanel({ runtime, onChanged }: { runtime: VoiceRun
         {t("voice.models.firstUseLine", {
           defaultValue: "A model you pick but have not downloaded is fetched the first time you dictate. Whisper uses the language; Parakeet and Nemotron find it themselves.",
         })}
+        {gpuDefault
+          ? ` ${t("voice.models.gpuDefaultLine", {
+              defaultValue: "{name} becomes the dictation model once it is downloaded, unless you pick another.",
+              name: gpuDefault.name,
+            })}`
+          : ""}
       </p>
     </Panel>
   );

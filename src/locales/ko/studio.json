@@ -750,7 +750,8 @@
       "hideSizes": "크기 숨기기",
       "kokoroLineAddon": "{languages}개 언어의 빠른 음성 {count}종. 어떤 컴퓨터에서도 빠르며, 음성 런타임의 추가 기능입니다.",
       "kokoroNotInstalled": "설치되지 않음",
-      "kokoroAddHint": "음성 런타임 > 추가 기능에서 선택하세요."
+      "kokoroAddHint": "음성 런타임 > 추가 기능에서 선택하세요.",
+      "gpuDefaultLine": null
     },
     "voices": {
       "addChinese": "중국어(표준어) 음성 추가",
@@ -1000,7 +1001,8 @@
         "image": null,
         "music": null,
         "other": null
-      }
+      },
+      "needsSpeechGpu": null
     },
     "stop": "중지",
     "studio": {
@@ -1189,7 +1191,7 @@
     "runtime": {
       "addon": {
         "chinese": "중국어(표준어) 빠른 음성 (음성 8종, 약 60 MB)",
-        "speech-gpu": "음성 GPU 추가 기능: NVIDIA GPU에서 Chatterbox, VoxCPM2, Orpheus 실행 (수 GB)",
+        "speech-gpu": null,
         "stt-gpu": null,
         "kokoro": "Kokoro 빠른 음성 (약 330 MB)"
       },

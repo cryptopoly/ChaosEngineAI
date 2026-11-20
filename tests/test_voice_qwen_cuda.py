@@ -427,6 +427,9 @@ class GpuGateTests(unittest.TestCase):
             rows = {r["key"]: r for r in voice_clone.list_models(every_model=True)}
         self.assertTrue(rows["qwen3-tts-custom-1.7b-cuda"]["supported"])
         self.assertIsNone(rows["qwen3-tts-custom-1.7b-cuda"]["unsupportedReason"])
+        # Each row says where it runs, so the screen can tell an Apple-only row from one that needs the add-on.
+        self.assertEqual(rows["qwen3-tts-custom-1.7b-cuda"]["lanes"], ["cuda"])
+        self.assertEqual(rows["qwen3-tts-custom-1.7b"]["lanes"], ["mlx"])
 
 
 class WorkerTests(unittest.TestCase):

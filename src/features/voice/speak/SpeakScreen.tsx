@@ -7,6 +7,7 @@ import type { TabId, VoiceEntry } from "../../../types";
 import { useVoice } from "../VoiceContext";
 import { joinWavs, splitSpeech, type SpeechPart } from "../studio/speech";
 import { requestLibraryFilter } from "../libraryVoice";
+import { unsupportedModelText } from "../models/voiceModelsLogic";
 import { SpeakResultRow, type SpeakOutput } from "./SpeakResultRow";
 import { VoicePicker } from "./VoicePicker";
 import { VoiceRow } from "./VoiceRow";
@@ -72,7 +73,7 @@ export function SpeakScreen({
   textRequest?: { text: string; nonce: number } | null;
 }) {
   const { t, i18n } = useTranslation("studio");
-  const { settings } = useVoice();
+  const { settings, runtime } = useVoice();
   const textRef = useRef<HTMLTextAreaElement | null>(null);
   const [designModelKey, setDesignModelKey] = useState("");
   const [language, setLanguage] = useState("");
@@ -413,14 +414,16 @@ export function SpeakScreen({
                     ? note.model.download.phase === "watermark"
                       ? t("voice.clone.installingWatermark", { defaultValue: "Installing the watermark component…" })
                       : t("voice.speak.modelDownloading", { defaultValue: "Downloading {name}…", name: note.model.name })
-                    : `${t("voice.speak.modelNeeds", { defaultValue: "Needs {name} ({gb} GB), not downloaded yet.", name: note.model.name, gb: note.model.sizeGb })} ${t("voice.speak.modelNeedsCost", { defaultValue: "Once downloaded: {detail}.", detail: costs.detail(costLabel(note.model)) })}`
+                    : !note.model.supported
+                      ? `${note.model.name}: ${unsupportedModelText(note.model, runtime)}`
+                      : `${t("voice.speak.modelNeeds", { defaultValue: "Needs {name} ({gb} GB), not downloaded yet.", name: note.model.name, gb: note.model.sizeGb })} ${t("voice.speak.modelNeedsCost", { defaultValue: "Once downloaded: {detail}.", detail: costs.detail(costLabel(note.model)) })}`
                 : (voice.needs ?? "")}{" "}
-          {note.model && !note.model.installed && !note.downloading ? (
+          {note.model && note.model.supported && !note.model.installed && !note.downloading ? (
             <button type="button" className="secondary-button" onClick={() => void catalog.download(note.model!.key)}>
               {t("voice.models.download", { defaultValue: "Download" })}
             </button>
           ) : null}
-          {styleInfo.unlockWith && !styleInfo.unlockWith.installed && styleInfo.unlockWith.download.state !== "downloading" ? (
+          {styleInfo.unlockWith && styleInfo.unlockWith.key !== note.model?.key && !styleInfo.unlockWith.installed && styleInfo.unlockWith.download.state !== "downloading" ? (
             <button type="button" className="secondary-button" onClick={() => void catalog.download(styleInfo.unlockWith!.key)}>
               {t("voice.speak.downloadForStyle", { defaultValue: "Download {name} for style", name: styleInfo.unlockWith.name })}
             </button>

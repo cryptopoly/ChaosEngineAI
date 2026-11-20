@@ -8,20 +8,20 @@ summary: Every FU row from FOLLOW_UPS.md, split into open and closed.
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here.
 
-- [Open and live follow-ups](open.md): **209** rows.
+- [Open and live follow-ups](open.md): **223** rows.
 - [Closed follow-ups](closed.md): **121** rows.
 
 ## Newest ten
 
 | Row | Item | Status |
 |---|---|---|
-| [FU-441](open.md) | E2E assertions for the GGUF draft length and sidecar choice (FU-264, FU-266, FU-268) | Next chat speed pass on the 4090 |
-| [FU-440](open.md) | Live check that MiniMax H3 videos carry the machine-generated tag | When H3_RELEASED is turned on |
-| [FU-439](open.md) | E2E check for the Windows 260-character path answer in Storyboard | Next Windows E2E work |
-| [FU-438](open.md) | Live check for tool-call repair advice (FU-255) | Next tool-call scorecard run |
-| [FU-437](open.md) | Mac-only E2E gaps from the coverage audit | Next Mac session |
-| [FU-436](open.md) | E2E check of the sd.cpp device label (cpu or cuda read from the binary) | When a route exposes the sd probe |
-| [FU-435](open.md) | Live E2E checks for the WSL vLLM bridge (preflight, DFlash over the bridge, reasoning spli | On the WSL2 box with vLLM installed through the app |
-| [FU-434](open.md) | E2E check that FLUX runs fully on the GPU when it fits and offloads when it does not | When the image runtime reports the offload choice |
-| [FU-433](open.md) | E2E check for the ACE-Step XL refusal on a shared GPU (FU-278) | Next music hardware session on the 4090 |
-| [FU-432](open.md) | E2E check for resuming a paused Hub download from the partial file (FU-275) | When a small, stable test repo is chosen for network checks |
+| [FU-463](open.md) | Performance preview shows numbers with no model chosen (Benchmarks > Run, Select Model) | After D-105 C |
+| [FU-462](open.md) | Accessibility labels, skip link, English left in other languages (review A, P7) | Next accessibility pass |
+| [FU-461](open.md) | Server page: LAN warning, one word per secret, tiles (review A, P6) | Before a release that advertises LAN access |
+| [FU-460](open.md) | Phone layout of Chat, popovers and the Dashboard table (review A, P5) | With the next compact-layout pass |
+| [FU-459](open.md) | Chat polish: plan card fields, job card titles, header overflow, Prompts wording (review A | When Chat is next touched |
+| [FU-458](open.md) | Windows wording on Storage, Skills and Accelerators; first-run jargon (review A, P3) | Before or soon after the v0.10.0 tag |
+| [FU-457](open.md) | First run: "Start here" on the Dashboard, Chat Models opening on a recommended list (revie | After D-105 D |
+| [FU-456](open.md) | One source for fit numbers (review A, P1) | After D-105 B and C |
+| [FU-455](open.md) | Keep going's panel scrolled the Chat thread sideways at 1280 px; web search badge read "SE | Done (2026-11-20, agent branch) |
+| [FU-454](open.md) | Windows and plain-language copy on Settings and the Dashboard | Done (2026-11-20, agent branch) |

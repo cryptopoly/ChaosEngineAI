@@ -84,7 +84,7 @@
     "fetchError": "Impossible de récupérer le diagnostic : {error}",
     "gathering": "Collecte des informations système...",
     "clickRefresh": "Cliquez sur « Actualiser » pour récupérer le diagnostic.",
-    "backendOffline": null,
+    "backendOffline": "Le backend ne répond pas. L'instantané s'affichera dès qu'il répondra de nouveau.",
     "captured": "capturé le {timestamp}",
     "logTail": "Fin du journal du backend ({count, plural, one {# ligne} other {# lignes}})",
     "pipOutput": "Sortie de pip",

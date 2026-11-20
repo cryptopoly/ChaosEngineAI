@@ -84,7 +84,7 @@
     "fetchError": "진단 정보를 가져오지 못했습니다: {error}",
     "gathering": "시스템 정보를 수집하는 중...",
     "clickRefresh": "'새로고침'을 클릭하면 진단 정보를 가져옵니다.",
-    "backendOffline": null,
+    "backendOffline": "백엔드가 응답하지 않습니다. 다시 응답하면 스냅샷이 표시됩니다.",
     "captured": "{timestamp}에 수집",
     "logTail": "백엔드 로그 끝부분({count, plural, other {#줄}})",
     "pipOutput": "pip 출력",

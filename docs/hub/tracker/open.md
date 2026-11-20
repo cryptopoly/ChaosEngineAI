@@ -1,13 +1,139 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 209 rows with work, decisions or watch items still open, newest first.
+summary: 223 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-463 · Performance preview shows numbers with no model chosen (Benchmarks &gt; Run, Select Model) — After D-105 C</summary>
+
+**Status or trigger:** After D-105 C
+
+**Notes:** "113.7 tok/s est., Very fast", "Disk: 31.2 GB", "Quality 100 %", "Fits easily" before any model is picked. Recommendation: hide the preview until a model is chosen.
+
+</details>
+
+<details>
+<summary>FU-462 · Accessibility labels, skip link, English left in other languages (review A, P7) — Next accessibility pass</summary>
+
+**Status or trigger:** Next accessibility pass
+
+**Notes:** No accessible label on the Chat composer, Compare prompt, HTML Challenge title and prompt, "Run from Hugging Face", eight Storage path fields; one unnamed button on Integrations; 14 Tab stops before page content. German shows "Released Nov 2026" and catalogue notes in English. Contrast of the small muted text not measured.
+
+</details>
+
+<details>
+<summary>FU-461 · Server page: LAN warning, one word per secret, tiles (review A, P6) — Before a release that advertises LAN access</summary>
+
+**Status or trigger:** Before a release that advertises LAN access
+
+**Notes:** With LAN on nothing says anyone on the network with the key can use the API; "API key", "API token" and "token" name one secret and Integrations shows a second (agent) token without saying how they differ; tiles repeat ("Port 8961 / Active"); checkboxes sit above their labels. 0.5 day.
+
+</details>
+
+<details>
+<summary>FU-460 · Phone layout of Chat, popovers and the Dashboard table (review A, P5) — With the next compact-layout pass</summary>
+
+**Status or trigger:** With the next compact-layout pass
+
+**Notes:** At 375 px the thread list sits above the thread (about 200 px left for messages), the Voice popover opens at the top of the page, the Dashboard process table is a stack of four header words. About 1 day.
+
+</details>
+
+<details>
+<summary>FU-459 · Chat polish: plan card fields, job card titles, header overflow, Prompts wording (review A, P4) — When Chat is next touched</summary>
+
+**Status or trigger:** When Chat is next touched
+
+**Notes:** Expert fields are unstyled browser inputs; "Use for the rest of this chat" does not say what; job cards are titled `generate_image`, `speak`; Ready wraps under a long model name; Prompts panel says prompts and templates for one thing and repeats the category in the tags; "search terms.Clear Filters" has no space; menu "Preferences…" against the app's "Settings". 0.5 day.
+
+</details>
+
+<details>
+<summary>FU-458 · Windows wording on Storage, Skills and Accelerators; first-run jargon (review A, P3) — Before or soon after the v0.10.0 tag</summary>
+
+**Status or trigger:** Before or soon after the v0.10.0 tag
+
+**Notes:** "MLX cache" folder listed as MISSING on a PC; `~/.cache/...` beside `E:\...` paths; `/path/to/skill-folder` placeholder; Accelerators "CUDA only" on every row with an empty Status column and "a single pip install away"; the "NATIVE F16" header chip; "Cross-platform mode will prefer llama.cpp GGUF..."; "Response metadata is collapsed by default..."; "Their pages and routes stay either way". 0.5 to 1 day.
+
+</details>
+
+<details>
+<summary>FU-457 · First run: "Start here" on the Dashboard, Chat Models opening on a recommended list (review A, P2) — After D-105 D</summary>
+
+**Status or trigger:** After D-105 D
+
+**Notes:** Dashboard card with the GPU named, one recommended model, Download, then Chat. Models: filters folded, a word beside each status icon, one download line whose size matches the row, with speed and time left (today the cell says 19.1 GB and the bar 20.3 GB because the drafter is counted in one). About 1.5 days.
+
+</details>
+
+<details>
+<summary>FU-456 · One source for fit numbers (review A, P1) — After D-105 B and C</summary>
+
+**Status or trigger:** After D-105 B and C
+
+**Notes:** The Dashboard names the catalogue's best-fit row for this machine instead of the tier table and constant headroom; the memory column is titled for what it measures; `measuredGpuGb` on the other rows run on the 4090. About 1 day. `docs/review/ui-ux-v0100-a/README.md` section 5.
+
+</details>
+
+<details>
+<summary>FU-455 · Keep going's panel scrolled the Chat thread sideways at 1280 px; web search badge read "SEAR"; Models header said "Unknown on disk" — Done (2026-11-20, agent branch)</summary>
+
+**Status or trigger:** **Done (2026-11-20, agent branch)**
+
+**Notes:** The panel was anchored to the left edge of its button, the last one in its group, and ran past the thread panel; focusing its first field scrolled the panel. It now opens leftwards (`right: 0`); inside the window at 1280, 1100, 900 and 700 px. Badge text comes from a four-letter slice, so `web_search` maps to "web". The header says "0 GB on disk" with nothing downloaded. Browser spec `43-ui-review-a`.
+
+</details>
+
+<details>
+<summary>FU-454 · Windows and plain-language copy on Settings and the Dashboard — Done (2026-11-20, agent branch)</summary>
+
+**Status or trigger:** **Done (2026-11-20, agent branch)**
+
+**Notes:** Provider keys no longer claim "0600 permissions" (not true on Windows); the Hugging Face token text no longer says "Used by MLX conversion" (it is used for every gated download); the Dashboard subtitle and four offline lines no longer say "sidecar"; the Activity feed on a machine that is not a Mac says "GGUF runtime: yes/no" without three "MLX ...: no" answers (`activity.backendReadiness.detailGguf`). Changed English strings are `null` in the other ten locales.
+
+</details>
+
+<details>
+<summary>FU-453 · Chat Models: the memory cell disagreed with the fit badge beside it — Done (2026-11-20, agent branch)</summary>
+
+**Status or trigger:** **Done (2026-11-20, agent branch)**
+
+**Notes:** The cell showed the catalogue's `estimatedMemoryGb` (a 28.6 GB file read "~23.7 GB") while the badge was judged on the backend's `fit.needGb` (33.5 GB). The cell now shows `fit.needGb` when there is a verdict (`adapters/chat.ts`); test in `chatAdapter.test.ts`. Open: the column is titled "RAM" on a PC where the figure is GPU memory (FU-456).
+
+</details>
+
+<details>
+<summary>FU-452 · Dashboard recommended "70B GGUF" with "Headroom for 70B: 65 %" on a 64 GB PC with a 24 GB card — Part done (2026-11-20, agent branch)</summary>
+
+**Status or trigger:** **Part done (2026-11-20, agent branch)**
+
+**Notes:** `_best_fit_recommendation` was fed system RAM. A machine whose GPU has its own memory is now judged by the card (24 GB gives "14B"); test in `test_dashboard_recommendation.py`. Still open (FU-456): the tier table itself and the headroom percentage, which is a constant per tier (43 to 68), not a measurement.
+
+</details>
+
+<details>
+<summary>FU-451 · Chat rows named "24 GB card" said "Won't fit" on a 24 GB card before download — Done (2026-11-20, agent branch)</summary>
+
+**Status or trigger:** **Done (2026-11-20, agent branch)**
+
+**Notes:** Without the file there is no GGUF layout, so the generic estimate (weights + 10 % + cache) gave 23.0 GB (Nemotron 3.5 Lightning Q4_0) and 24.6 GB (Qwen3.6 35B A3B Q4_K_M). A catalogue row may now carry `measuredGpuGb` (GPU memory on the RTX 4090 at 8,192 context, no drafter): 18.1 and 20.1 GB. `helpers/fit.py` uses it on a discrete NVIDIA card at the default context while no layout is read; basis "measured". Tests in `test_model_fit.py`, one of which checks every "24 GB card" row. Not re-measured at the 16,384 context Nemotron loads with. Open: the same field for the other rows run on the 4090 (Gemma 4 QAT 12B 8.1 GB, 26B-A4B 16.1 GB, Qwen3.6 UD-IQ4_XS 17.2 GB, Bonsai 2 8.2 GB), see FU-456.
+
+</details>
+
+<details>
+<summary>FU-450 · Chat first run: green "Ready" badge with nothing loaded; the model picker said "No models match your search" with an empty library; a long unbroken word ran out of the reply bubble — Done (2026-11-20, UI/UX review A, agent branch)</summary>
+
+**Status or trigger:** **Done (2026-11-20, UI/UX review A, agent branch)**
+
+**Notes:** `ChatHeader` compared two undefined refs as equal. Fixed there, in `ModelLaunchModal` (new string `modelLaunchModal.emptyLibrary`) and with `overflow-wrap: anywhere` on `.markdown-content`. Tests: `chatHeaderReady.test.tsx`, browser spec `43-ui-review-a`. Review: `docs/review/ui-ux-v0100-a/README.md`.
+
+</details>
 
 <details>
 <summary>FU-441 · E2E assertions for the GGUF draft length and sidecar choice (FU-264, FU-266, FU-268) — Next chat speed pass on the 4090</summary>

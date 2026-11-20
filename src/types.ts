@@ -6,6 +6,7 @@ export type {
   SidebarMode,
   SystemStats,
   Recommendation,
+  ChatPick,
 } from "./types/system";
 
 import type {

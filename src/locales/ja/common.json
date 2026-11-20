@@ -653,7 +653,8 @@
       "note": "回答は、モデルが次のトークンとして最も高くスコアリングした選択肢の文字です。この変更より前に保存された実行では回答をテキストとして生成していたため、その精度は新しい実行と比較できません。"
     },
     "statTokens": "生成トークン数",
-    "ofMaxTokens": "上限 {max}"
+    "ofMaxTokens": "上限 {max}",
+    "previewNeedsModel": null
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, other {# 件の実行}}{filterSuffix}",
@@ -1208,7 +1209,8 @@
     "emptyLibrary": null,
     "launchSettings": "起動設定",
     "cancelButton": "キャンセル",
-    "busyConfirm": "そのまま読み込む"
+    "busyConfirm": "そのまま読み込む",
+    "previewNeedsModel": null
   },
   "modelPicker": {
     "weightFileTitle": "重みファイルを選択:{name}",

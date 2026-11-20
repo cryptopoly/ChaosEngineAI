@@ -110,6 +110,7 @@ export function ChatModelsView({ ctx }: { ctx: AppTabContext }) {
       onOpenFamilyDetails={setDetailFamilyId}
       onOpenExternalUrl={(url) => void handleOpenExternalUrl(url)}
       onRevealPath={(path) => void handleRevealPath(path)}
+      recommendedPicks={workspace.recommendation.chatPicks}
     />
   );
 }

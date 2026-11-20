@@ -653,7 +653,8 @@
       "note": "答案為模型以下一個 token 評分最高的選項字母。此變更之前儲存的執行是以生成文字作為答案;其準確率無法與新的執行相比。"
     },
     "statTokens": "已生成 token 數",
-    "ofMaxTokens": "上限 {max}"
+    "ofMaxTokens": "上限 {max}",
+    "previewNeedsModel": null
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, other {# 次執行}}{filterSuffix}",
@@ -1208,7 +1209,8 @@
     "emptyLibrary": null,
     "launchSettings": "啟動設定",
     "cancelButton": "取消",
-    "busyConfirm": "仍然載入"
+    "busyConfirm": "仍然載入",
+    "previewNeedsModel": null
   },
   "modelPicker": {
     "weightFileTitle": "選擇權重檔案: {name}",

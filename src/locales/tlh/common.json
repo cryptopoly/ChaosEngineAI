@@ -653,7 +653,8 @@
       "note": null
     },
     "statTokens": null,
-    "ofMaxTokens": null
+    "ofMaxTokens": null,
+    "previewNeedsModel": null
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, other {# may''}}{filterSuffix}",
@@ -1208,7 +1209,8 @@
     "emptyLibrary": null,
     "launchSettings": "tagh wIv",
     "cancelButton": "yIqIl",
-    "busyConfirm": "yIchu'; qaSjaj"
+    "busyConfirm": "yIchu'; qaSjaj",
+    "previewNeedsModel": null
   },
   "modelPicker": {
     "weightFileTitle": "ngI' nav yIwIv: {name}",

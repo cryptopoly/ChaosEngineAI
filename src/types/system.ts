@@ -84,6 +84,8 @@ export interface SystemStats {
    * against system RAM only -- llama.cpp places the KV cache on GPU when
    * full-offload is on, so the GPU is the binding constraint there. */
   gpuVramTotalGb?: number | null;
+  /** ``false`` on a graphics card with its own memory, ``true`` on shared memory (Apple Silicon, some iGPUs). */
+  gpuUnifiedMemory?: boolean | null;
   availableMemoryGb: number;
   usedMemoryGb: number;
   swapUsedGb: number;
@@ -146,12 +148,40 @@ export interface SystemStats {
   uptimeMinutes: number;
 }
 
+/** A catalogue chat row recommended for this machine (``helpers/chat_picks.py``), judged by the same
+ * ``fit`` the Models page shows. */
+export interface ChatPick {
+  variantId: string;
+  familyId: string;
+  familyName?: string | null;
+  name: string;
+  repo: string;
+  sizeGb: number | null;
+  paramsB: number | null;
+  format?: string | null;
+  quantization?: string | null;
+  releaseDate?: string | null;
+  availableLocally: boolean;
+  fit: import("./models").ModelFit;
+  /** Expected decode speed: this machine's own measured median, else the bandwidth estimate. */
+  tokS: number | null;
+  tokSBasis: "measured" | "estimated" | null;
+  /** "NVIDIA GPU, 24 GB VRAM", "Apple Silicon, 64 GB unified memory"... */
+  hardwareLabel?: string | null;
+}
+
 export interface Recommendation {
   title: string;
   detail: string;
+  /** The best-fit row's name when there is one, else a size class ("14B"). */
   targetModel: string;
   cacheLabel: string;
-  headroomPercent: number;
+  /** The best-fit row's own ``fit.headroomPct``; ``null`` when no catalogue row fits comfortably. */
+  headroomPercent: number | null;
+  /** The catalogue's best-fit chat row for this machine (D-105 B); ``null`` when none fits comfortably. */
+  bestFit?: ChatPick | null;
+  /** Up to five recommended rows, best first (``bestFit`` is the first). */
+  chatPicks?: ChatPick[];
   /** Optional i18n key under `dashboard` namespace for the title. */
   titleKey?: string;
   /** Optional i18n key under `dashboard` namespace for the detail. */

@@ -85,5 +85,31 @@
     "mlxDetail": "Esta previsión es relativa a un objetivo local recomendado de clase {modelSize} en {hardware}, no a un modelo de chat actualmente seleccionado.",
     "ggufTitle": "Objetivo recomendado: {modelSize} GGUF",
     "ggufDetail": "El modo multiplataforma preferirá llama.cpp GGUF para amplio soporte de hardware."
+  },
+  "bestFit": {
+    "subtitle": null,
+    "badge": null,
+    "openModels": null,
+    "seeInModels": null,
+    "download": null,
+    "needsGpu": null,
+    "needsMemory": null,
+    "speedMeasured": null,
+    "speedEstimated": null
+  },
+  "startHere": {
+    "title": null,
+    "subtitle": null,
+    "step1": null,
+    "step2": null,
+    "recommended": null,
+    "download": null,
+    "downloadSize": null,
+    "downloading": null,
+    "downloaded": null,
+    "otherModels": null,
+    "noPick": null,
+    "openModels": null,
+    "openChat": null
   }
 }

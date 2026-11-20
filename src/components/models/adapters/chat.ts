@@ -102,7 +102,7 @@ export interface ChatRowSource {
 
 export type ChatModelEntry = ModelEntry<ChatRowSource>;
 
-export type HostLike = Pick<SystemStats, "platform" | "arch" | "gpuVramTotalGb"> | null | undefined;
+export type HostLike = Pick<SystemStats, "platform" | "arch" | "gpuVramTotalGb" | "gpuUnifiedMemory"> | null | undefined;
 
 export interface ChatEntryContext {
   host?: HostLike;

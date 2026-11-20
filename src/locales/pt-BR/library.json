@@ -95,7 +95,8 @@
       "compressed": "Comprimido",
       "context": "Contexto",
       "status": "Status",
-      "released": "Lançado"
+      "released": "Lançado",
+      "gpuMemory": null
     },
     "status": {
       "downloading": "Baixando",
@@ -785,6 +786,13 @@
         "action": "Compartilhar com o LM Studio",
         "done": "Compartilhado com o LM Studio como {where}. Nenhum espaço extra em disco usado.",
         "already": "Já compartilhado com o LM Studio ({where})."
+      },
+      "recommended": {
+        "subtitle": null,
+        "subtitleBare": null,
+        "intro": null,
+        "best": null,
+        "showAll": null
       }
     }
   }

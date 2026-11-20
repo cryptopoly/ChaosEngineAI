@@ -5,7 +5,10 @@ import { StatCard } from "../../components/StatCard";
 import { GPUCard } from "../../components/GPUCard";
 import { number } from "../../utils/format";
 import { busyEngineLines } from "../../utils/busyEngine";
+import type { DownloadStatus } from "../../api";
 import type { ActivityItem, Recommendation, RuntimeStatus, SystemStats } from "../../types";
+import { hasDedicatedGpu, pickSummary } from "./chatPick";
+import { StartHereCard } from "./StartHereCard";
 
 export interface DashboardTabProps {
   system: SystemStats;
@@ -13,6 +16,12 @@ export interface DashboardTabProps {
   runtime: RuntimeStatus;
   activity: ActivityItem[];
   backendOnline: boolean;
+  /** A chat model is on disk; without one the Dashboard opens on "Start here". Omitted: not shown. */
+  hasChatModel?: boolean;
+  activeDownloads?: Record<string, DownloadStatus>;
+  onDownloadModel?: (repo: string) => void;
+  onOpenChatModels?: () => void;
+  onOpenChat?: () => void;
   /** Stop one leftover model process (not the loaded model's). */
   onStopProcess?: (pid: number) => void | Promise<void>;
   /** Stop parked warm models and every model process nothing is using. */
@@ -26,7 +35,10 @@ function isStopCandidate(process: RunningProcess): boolean {
   return process.owner === "ChaosEngineAI" && !process.modelStatus && process.kind !== "backend";
 }
 
-export function DashboardTab({ system, recommendation, runtime, activity, backendOnline, onStopProcess, onStopIdleProcesses }: DashboardTabProps) {
+export function DashboardTab({
+  system, recommendation, runtime, activity, backendOnline, hasChatModel, activeDownloads, onDownloadModel,
+  onOpenChatModels, onOpenChat, onStopProcess, onStopIdleProcesses,
+}: DashboardTabProps) {
   const { t } = useTranslation("dashboard");
   const { t: tCommon } = useTranslation("common");
   const busyLines = busyEngineLines(tCommon, system.activeGenerations);
@@ -39,9 +51,23 @@ export function DashboardTab({ system, recommendation, runtime, activity, backen
   const diskFree = system.diskFreeGb;
   const diskTotal = system.diskTotalGb;
   const battery = system.battery;
+  const bestFit = recommendation.bestFit ?? null;
+  const gpu = hasDedicatedGpu(system);
+  const headroom = recommendation.headroomPercent;
 
   return (
     <div className="content-grid dashboard-page">
+      {backendOnline && hasChatModel === false ? (
+        <StartHereCard
+          pick={bestFit}
+          hardwareLabel={bestFit?.hardwareLabel || system.hardwareSummary}
+          gpu={gpu}
+          download={bestFit ? activeDownloads?.[bestFit.repo] ?? null : null}
+          onDownload={onDownloadModel}
+          onOpenChatModels={onOpenChatModels}
+          onOpenChat={onOpenChat}
+        />
+      ) : null}
       <Panel
         title={t("liveStats.title")}
         subtitle={t("liveStats.subtitle")}
@@ -73,7 +99,7 @@ export function DashboardTab({ system, recommendation, runtime, activity, backen
             <StatCard
               label={t("liveStats.spareHeadroom")}
               value={t("liveStats.spareHeadroomValue", { value: number(system.spareHeadroomGb, 2) })}
-              hint={t("liveStats.workingHeadroom", { value: number(recommendation.headroomPercent, 0) })}
+              hint={headroom != null ? t("liveStats.workingHeadroom", { value: number(headroom, 0) }) : ""}
             />
           )}
         </div>
@@ -119,11 +145,6 @@ export function DashboardTab({ system, recommendation, runtime, activity, backen
               label={t("liveStats.cpuLoad")}
               value={system.cpuUtilizationPercent}
               valueLabel={t("liveStats.cpuLabel", { value: number(system.cpuUtilizationPercent, 0) })}
-            />
-            <ProgressRow
-              label={t("liveStats.headroomFor", { target: recommendation.targetModel })}
-              value={recommendation.headroomPercent}
-              valueLabel={t("liveStats.headroomLabel", { value: recommendation.headroomPercent })}
             />
             {battery ? (
               <div className={`battery-card${battery.powerSource === "Battery" && battery.percent < 20 ? " battery-card--low" : ""}`}>
@@ -229,25 +250,47 @@ export function DashboardTab({ system, recommendation, runtime, activity, backen
 
       <GPUCard backendOnline={backendOnline} visible={true} />
 
-      <Panel title={t("hardwareFit.title")} subtitle={t("hardwareFit.subtitle")}>
-        <div className="callout">
-          <span className="badge accent">{t("hardwareFit.recommendedTarget")}</span>
-          <h3>
-            {recommendation.titleKey
-              ? t(recommendation.titleKey, { ...(recommendation.payload ?? {}), defaultValue: recommendation.title })
-              : recommendation.title}
-          </h3>
-          <p>
-            {recommendation.detailKey
-              ? t(recommendation.detailKey, { ...(recommendation.payload ?? {}), defaultValue: recommendation.detail })
-              : recommendation.detail}
-          </p>
-        </div>
-        <ProgressRow
-          label={t("liveStats.headroomFor", { target: recommendation.targetModel })}
-          value={recommendation.headroomPercent}
-          valueLabel={t("liveStats.headroomLabel", { value: recommendation.headroomPercent })}
-        />
+      <Panel
+        title={t("hardwareFit.title")}
+        subtitle={bestFit ? t("bestFit.subtitle", { defaultValue: "The catalogue's best fit for this computer, judged as on the Models page." }) : t("hardwareFit.subtitle")}
+      >
+        {bestFit ? (
+          <div className="callout dashboard-best-fit">
+            <span className="badge accent">{t("bestFit.badge", { defaultValue: "Best fit for this computer" })}</span>
+            <h3>{bestFit.name}</h3>
+            <p>{pickSummary(bestFit, gpu, t)}</p>
+            {onOpenChatModels ? (
+              <div className="button-row">
+                <button className="secondary-button" type="button" onClick={onOpenChatModels}>
+                  {bestFit.availableLocally
+                    ? t("bestFit.openModels", { defaultValue: "Open Chat Models" })
+                    : t("bestFit.seeInModels", { defaultValue: "See it in Chat Models" })}
+                </button>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="callout">
+            <span className="badge accent">{t("hardwareFit.recommendedTarget")}</span>
+            <h3>
+              {recommendation.titleKey
+                ? t(recommendation.titleKey, { ...(recommendation.payload ?? {}), defaultValue: recommendation.title })
+                : recommendation.title}
+            </h3>
+            <p>
+              {recommendation.detailKey
+                ? t(recommendation.detailKey, { ...(recommendation.payload ?? {}), defaultValue: recommendation.detail })
+                : recommendation.detail}
+            </p>
+          </div>
+        )}
+        {headroom != null ? (
+          <ProgressRow
+            label={t("liveStats.headroomFor", { target: recommendation.targetModel })}
+            value={Math.max(0, headroom)}
+            valueLabel={t("liveStats.headroomLabel", { value: headroom })}
+          />
+        ) : null}
         <div className="callout quiet">
           <h3>{t("hardwareFit.currentRuntime")}</h3>
           <p>

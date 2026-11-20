@@ -653,7 +653,8 @@
       "note": "La réponse est la lettre du choix que le modèle note le plus haut comme token suivant. Les exécutions enregistrées avant ce changement généraient la réponse sous forme de texte ; leur précision n'est pas comparable à celle des nouvelles exécutions."
     },
     "statTokens": "Tokens générés",
-    "ofMaxTokens": "sur {max} autorisés"
+    "ofMaxTokens": "sur {max} autorisés",
+    "previewNeedsModel": null
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, one {# exécution} other {# exécutions}}{filterSuffix}",
@@ -1208,7 +1209,8 @@
     "emptyLibrary": null,
     "launchSettings": "Paramètres de lancement",
     "cancelButton": "Annuler",
-    "busyConfirm": "Charger quand même"
+    "busyConfirm": "Charger quand même",
+    "previewNeedsModel": null
   },
   "modelPicker": {
     "weightFileTitle": "Sélectionner le fichier de poids : {name}",

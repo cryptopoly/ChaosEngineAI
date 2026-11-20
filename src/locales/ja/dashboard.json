@@ -85,5 +85,31 @@
     "mlxDetail": "この予測は、{hardware} 上の推奨される {modelSize} クラスのローカルターゲットに対するものであり、現在選択されているチャットモデルに対するものではありません。",
     "ggufTitle": "推奨ターゲット:{modelSize} GGUF",
     "ggufDetail": "クロスプラットフォームモードでは、幅広いハードウェアサポートのため llama.cpp GGUF が優先されます。"
+  },
+  "bestFit": {
+    "subtitle": null,
+    "badge": null,
+    "openModels": null,
+    "seeInModels": null,
+    "download": null,
+    "needsGpu": null,
+    "needsMemory": null,
+    "speedMeasured": null,
+    "speedEstimated": null
+  },
+  "startHere": {
+    "title": null,
+    "subtitle": null,
+    "step1": null,
+    "step2": null,
+    "recommended": null,
+    "download": null,
+    "downloadSize": null,
+    "downloading": null,
+    "downloaded": null,
+    "otherModels": null,
+    "noPick": null,
+    "openModels": null,
+    "openChat": null
   }
 }

@@ -85,5 +85,31 @@
     "mlxDetail": "此预测相对于 {hardware} 上推荐的 {modelSize} 级本地目标,而非当前选择的对话模型。",
     "ggufTitle": "推荐目标:{modelSize} GGUF",
     "ggufDetail": "跨平台模式将优先选择 llama.cpp GGUF 以兼容广泛硬件。"
+  },
+  "bestFit": {
+    "subtitle": null,
+    "badge": null,
+    "openModels": null,
+    "seeInModels": null,
+    "download": null,
+    "needsGpu": null,
+    "needsMemory": null,
+    "speedMeasured": null,
+    "speedEstimated": null
+  },
+  "startHere": {
+    "title": null,
+    "subtitle": null,
+    "step1": null,
+    "step2": null,
+    "recommended": null,
+    "download": null,
+    "downloadSize": null,
+    "downloading": null,
+    "downloaded": null,
+    "otherModels": null,
+    "noPick": null,
+    "openModels": null,
+    "openChat": null
   }
 }

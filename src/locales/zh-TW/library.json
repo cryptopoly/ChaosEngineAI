@@ -95,7 +95,8 @@
       "compressed": "壓縮後",
       "context": "上下文",
       "status": "狀態",
-      "released": "發布時間"
+      "released": "發布時間",
+      "gpuMemory": null
     },
     "status": {
       "downloading": "下載中",
@@ -785,6 +786,13 @@
         "action": "與 LM Studio 共用",
         "done": "已以 {where} 與 LM Studio 共用。不佔用額外磁碟空間。",
         "already": "已與 LM Studio 共用({where})。"
+      },
+      "recommended": {
+        "subtitle": null,
+        "subtitleBare": null,
+        "intro": null,
+        "best": null,
+        "showAll": null
       }
     }
   }

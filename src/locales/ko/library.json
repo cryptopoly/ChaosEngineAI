@@ -95,7 +95,8 @@
       "compressed": "압축됨",
       "context": "컨텍스트",
       "status": "상태",
-      "released": "출시일"
+      "released": "출시일",
+      "gpuMemory": null
     },
     "status": {
       "downloading": "다운로드 중",
@@ -785,6 +786,13 @@
         "action": "LM Studio와 공유",
         "done": "{where}(으)로 LM Studio와 공유했습니다. 추가 디스크 공간은 사용하지 않습니다.",
         "already": "이미 LM Studio와 공유되어 있습니다({where})."
+      },
+      "recommended": {
+        "subtitle": null,
+        "subtitleBare": null,
+        "intro": null,
+        "best": null,
+        "showAll": null
       }
     }
   }

@@ -1515,6 +1515,8 @@
       "needDownload": "'음악 모델'에서 {name}을 다운로드하세요(약 {size} GB). 먼저 Hugging Face에서 라이선스에 동의해야 합니다.",
       "needTextEncoder": "사운드 모델에 텍스트 인코더가 없습니다. '음악 모델'에서 다시 다운로드하세요.",
       "needPack": "사운드에는 작은 팩(약 1 GB)도 필요합니다. '음악 모델'에서 설치하세요.",
+      "needPackCuda": null,
+      "needLicenceStableAudio3": null,
       "prompt": "사운드 설명",
       "placeholder": "묵직한 나무 문이 삐걱거리며 열림, 근접 마이크",
       "english": "영어가 가장 잘 맞습니다. 효과음과 루프용이며 노래나 음성에는 맞지 않습니다.",

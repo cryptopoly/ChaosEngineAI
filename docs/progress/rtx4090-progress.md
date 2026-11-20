@@ -1930,3 +1930,33 @@ Model load (`/api/music/preload`): turbo 8.5 to 14.5 s, XL 14 to 45 s (worker st
 **Tested.** Through the app routes on backend port 8977 and a throwaway HOME on E: (SmolLM2-135M, 269 MB file): cancel at 100 MB, restart, partial renamed and cut to 71 MB then grew, status completed in 12 s, no `.incomplete` left. Unit: `tests/test_download_resume.py` (6 tests). Not tested: a multi-GB music repo, a proxy that ignores Range, Linux/macOS.
 
 **FU-278.** `vram_shortfall_message` in `music_worker_acestep.py` runs before each CUDA generate and raises a sentence with free GB, needed GB, "another program may be using the GPU" and the turbo-model suggestion; the offload decision is untouched. Tests in `tests/test_music_worker.py::VramShortfallTests`. The live shared-card case was not re-run (no GPU use this session).
+
+## 2026-11-20: FU-274 sounds on CUDA and Stable Audio 3 (agent)
+
+**Access.** With the owner's saved token (read in-process from the app settings, never printed or written), all three Stable Audio 3 repos (`stable-audio-3-medium`, `-small-sfx`, `-small-music`) and `stable-audio-open-1.0` now answer 206 on `model_config.json`; none returned 403. `stable-audio-3-optimized` is ungated: TensorRT plans for sm_90 and sm_120 only (none for the 4090's sm_89), plus ONNX, TFLite, MLX `.npz` and CPU-AMX `.so` builds, no PyTorch checkpoint, so it is not the better download for this app and was not added.
+
+**Library.** `Stability-AI/stable-audio-3` (MIT, `790793b`, not on PyPI) needs torch 2.7.1, transformers >= 5.8 and nothing the sounds pack does not already pin, so it goes into the sounds venv with `--no-deps` from the commit archive (no git needed). Flash-attn is optional in its code: without it the library prints "flash_attn not installed" and falls back to PyTorch SDPA (and its own fallbacks for the autoencoder's sliding window). Medium ran fine that way on Windows; no flash-attn wheel was installed.
+
+**What changed.** `music_sound_env.lane()` is `cuda` where music runs on an NVIDIA GPU (the Mac-only sentence `music.soundUnsupportedPlatform` is gone from the backend; a host with neither lane gets the music sentence). The pack adds the PyTorch cu128 index on CUDA, verifies `torch.cuda.is_available()` and imports `stable_audio_3`, and its marker (schema 2) records the `stable-audio-3` commit and the lane. The worker engine (`music_worker_stableaudio.py`) loads Stable Audio 3 with `loading_utils.load_diffusion_cond` (float16 on CUDA) and generates through `StableAudioModel.generate` with the step callback (progress and cancel); the T5Gemma conditioner reads the local folder instead of its Hub repo. A CUDA run checks free VRAM first and reports `vram_peak_gb`. Three catalog rows (gated, Stability Community Licence plus the Gemma Terms of Use; `downloadPatterns` skip the thumbnail), the Open rows list `cuda` with measured `estimates.cuda`, the sound memory gate reads host RAM on CUDA, the Sounds screen names the Gemma terms for a Stable Audio 3 row and the CUDA pack size (2 new en strings, null elsewhere). E2E phase 11 checks the open sounds lane and makes one real 5 s Small SFX clip.
+
+**Install, through `POST /api/music/sound/install`** (throwaway HOME `E:\tmp\fu274\home`, port 8951): requirements resolved `torch 2.7.1+cu128`, `torchaudio 2.7.1+cu128`, `torchvision 0.22.1+cu128`, transformers 5.22.2; venv 6.4 GB. pip pulled the 3.27 GB torch wheel in one slow stream, so I cancelled once, installed the already-downloaded wheel from `E:\tmp\fu139\wheels` into the venv by hand and re-ran the route, which then installed the rest, both engines and passed the check. Weights came through `hf_hub_download` into `E:\AI Models` (10 to 25 MB/s); `POST /api/music/download` for Small SFX then completed at 3.25 GiB with the patterns.
+
+**Measured** through the routes, warm worker, one variation, default steps, GPU lock held; wall is the client's time, VRAM is torch's reserved peak (allocated in brackets), host is the worker's working set:
+
+| Model | Clip | Wall (3 runs; 1 at the max) | VRAM peak | Host | Load |
+|---|---|---|---|---|---|
+| SA3 Small SFX | 5 s | 0.97 (first), 0.41, 0.41 s | 1.84 (1.80) GB | 2.1 GB | 10.3 s |
+| SA3 Small SFX | 10 s / 120 s | 0.44, 0.43, 0.43 s / 0.87 s | 1.86 / 1.99 GB | 2.2 GB | |
+| SA3 Small Music | 30 s | 1.02 (first), 0.53, 0.51 s | 1.86 GB | 2.1 GB | 9.3 s |
+| SA3 Small Music | 60 s / 120 s | 0.62, 0.64, 0.63 s / 0.87 s | 1.91 / 2.0 GB | 2.2 GB | |
+| SA3 Medium | 5 s / 10 s | 8.99 (first), 0.76, 0.77 s / 1.2, 1.11, 1.11 s | 6.97 / 8.34 (6.9) GB | 2.2 GB | 17.1 s |
+| SA3 Medium | 30 s / 60 s | 1.74, 1.76, 1.74 s / 2.93, 3.01, 2.97 s | 8.34 GB | 2.2 GB | |
+| SA3 Medium | 180 s / 380 s | 7.4 s / 15.35 s | 8.34 (6.97) GB | 2.5 GB | |
+| Open Small | 5 s / 10 s | 0.78 (first), 0.30, 0.27 s / 0.28 s | 3.6 (2.81) GB | 2.2 GB | 9.8 s |
+| Open 1.0 (100 steps) | 5 s / 10 s | 15.6 s each (full 47 s window) | 13.8 (10.4) GB | 2.3 to 2.6 GB | 11.5 s |
+
+Cancel: sent 3 s into a 380 s Medium clip, the route answered 409 "cancelled" 3.2 s later and the next 5 s clip worked. nvidia-smi totals could not isolate the worker (other agents' processes held 2 to 6 GB of the card between runs), so the table uses torch's own counters.
+
+**Output.** Every clip is FLAC, PCM 24-bit, 44.1 kHz, 2 channels, exactly the length asked for, peak -1.0 dBFS. RMS -11 to -36 dBFS. The glass prompt: most energy at 2 to 8 kHz (centroid 4.4 to 7.6 kHz), about 3 s under -60 dBFS after the hit; rain with thunder: most energy under 2 kHz; the house prompt (Music, Medium): 65 to 88 % under 200 Hz, 1.4 to 3.8 % at 2 to 8 kHz, at most 3.6 s of near-silence in 180 s. Small SFX writes near-identical channels (L minus R at most 0.004, under -47 dBFS); Small Music (L/R correlation 0.69 to 0.82), Medium and Open are real stereo. **I could not listen to any of it**; the numbers say non-silent, full-length, plausible signal, nothing more.
+
+**Tests.** `pytest tests/test_music_*.py test_check_upstreams.py test_licence_gate.py test_mcp_bridge.py test_hub_tracker.py`: 243 passed, 3 failed, the same Windows host failures as before (`test_paths_must_be_absolute_and_inside_the_data_folder`, the two H3 command-line tests, WinError 193). Tests that assert the Mac figures now pin the `mlx` lane (on this PC the 4090 table applies). `npx tsc --noEmit` clean, `npx vitest run src/features/music` 104 passed, `npm run i18n:validate` OK. E2E phase 11 against the test backend: PASS, 7 of 8 checks (the ACE-Step 20 s run skipped: no music pack in this HOME), including the new real Stable Audio 3 clip. Not tested: a Mac (FU-279), Linux, a smaller card, flash-attn (FU-280).

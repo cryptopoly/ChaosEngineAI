@@ -1515,6 +1515,8 @@
       "needDownload": "Lade {name} unter „Musikmodelle“ herunter (etwa {size} GB). Akzeptiere zuerst die Lizenz auf Hugging Face.",
       "needTextEncoder": "Dem Soundmodell fehlt sein Text-Encoder. Lade es unter „Musikmodelle“ erneut herunter.",
       "needPack": "Für Sounds brauchst du außerdem ein kleines Paket (etwa 1 GB). Installiere es unter „Musikmodelle“.",
+      "needPackCuda": null,
+      "needLicenceStableAudio3": null,
       "prompt": "Beschreibe den Sound",
       "placeholder": "schwere Holztür knarrt auf, Nahmikrofon",
       "english": "Englisch funktioniert am besten. Effekte und Loops, keine Songs oder Sprache.",

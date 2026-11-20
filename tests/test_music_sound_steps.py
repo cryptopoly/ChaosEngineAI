@@ -46,6 +46,12 @@ class StepsCatalogTests(unittest.TestCase):
 
 
 class StepsEstimateTests(unittest.TestCase):
+    def setUp(self) -> None:
+        # The Mac figures the steps scale from; a CUDA host would otherwise read the 4090 table (FU-274).
+        lane = mock.patch.object(music_env, "lane", lambda: "mlx")
+        lane.start()
+        self.addCleanup(lane.stop)
+
     def test_default_steps_keep_the_measured_numbers_and_basis(self) -> None:
         for steps in (None, 100):
             run = music_runtime.estimate_run(FULL, 5, 1, steps=steps)

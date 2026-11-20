@@ -1515,6 +1515,8 @@
       "needDownload": "Download {name} from Music and Audio Models (about {size} GB). Accept the licence on Hugging Face first.",
       "needTextEncoder": "The sound model is missing its text encoder. Download it again from Music and Audio Models.",
       "needPack": "Sounds also need a small pack (about 1 GB). Install it from Music and Audio Models.",
+      "needPackCuda": "Sounds also need a pack with the NVIDIA build of PyTorch (about {size} GB). Install it from Music and Audio Models.",
+      "needLicenceStableAudio3": "{name} asks you to accept its licence and the Gemma terms of its text encoder first. Open Music and Audio Models to read them.",
       "prompt": "Describe the sound",
       "placeholder": "heavy wooden door creaking open, close microphone",
       "english": "English works best. Effects and loops, not songs or speech.",

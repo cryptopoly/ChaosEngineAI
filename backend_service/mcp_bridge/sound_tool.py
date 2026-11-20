@@ -19,13 +19,13 @@ SOUND_TOOLS: list[dict[str, Any]] = [
     {
         "name": "make_sound",
         "description": "Make: start a sound-effect job (returns a job id): footsteps, doors, ambience, a loop. 1 to 11 s, or up to "
-        "47 s with the slower 1.0 model (modelId). English prompt, FLAC in the Music Library. Not songs or speech. Needs a gated "
-        "Stable Audio Open model.",
+        "47 s with the slower 1.0 model, or up to 380 s with Stable Audio 3 on an NVIDIA GPU (modelId). English prompt, FLAC in "
+        "the Music Library. Not songs with vocals or speech. Needs a gated Stable Audio model.",
         "inputSchema": _obj(
             {
                 "caption": {"type": "string", "minLength": 1, "maxLength": 300, "description": "The sound: 'heavy wooden door creaking open, close mic'."},
-                "modelId": {"type": "string", "maxLength": 128, "description": "Sound model: 'stabilityai/stable-audio-open-small' (default, up to 11 s) or 'stabilityai/stable-audio-open-1.0' (up to 47 s, slower)."},
-                "seconds": {"type": "number", "minimum": 1, "maximum": sound_max_seconds(), "description": "Length; the chosen model's own maximum applies (11 s Small, 47 s 1.0)."},
+                "modelId": {"type": "string", "maxLength": 128, "description": "Sound model: 'stabilityai/stable-audio-open-small' (default, up to 11 s), 'stabilityai/stable-audio-open-1.0' (up to 47 s, slower), or on an NVIDIA GPU 'stabilityai/stable-audio-3-small-sfx' (up to 120 s), '-small-music' (instrumentals, 120 s) or '-medium' (380 s)."},
+                "seconds": {"type": "number", "minimum": 1, "maximum": sound_max_seconds(), "description": "Length; the chosen model's own maximum applies (11 s Small, 47 s 1.0, 120 s or 380 s Stable Audio 3)."},
                 "loop": {"type": "boolean", "description": "Make the clip a seamless loop (ambience, beats)."},
                 "seed": {"type": "integer", "minimum": 0, "maximum": 2147483647},
                 "variations": {"type": "integer", "minimum": 1, "maximum": 4, "description": "1, 2 or 4 takes with seeds seed, seed+1, ..."},

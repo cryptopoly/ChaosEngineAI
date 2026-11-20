@@ -22,6 +22,7 @@ import {
   validateSoundForm,
   varySoundForm,
   againSoundForm,
+  soundsPackGb,
   type SoundForm,
 } from "../soundsLogic";
 import { rememberLicenceAccepted } from "../musicLicence";
@@ -229,6 +230,14 @@ describe("sound length follows the selected model", () => {
     expect(soundFormFromItem(item, fullSound()).seconds).toBe(40);
     expect(soundFormFromItem(item, soundVariant()).seconds).toBe(11);
     expect(soundFormFromItem(item).seconds).toBe(11);
+  });
+});
+
+describe("sounds pack size", () => {
+  it("is the CUDA build on an NVIDIA GPU and the small pack elsewhere (FU-274)", () => {
+    expect(soundsPackGb("cuda")).toBe(6.4);
+    expect(soundsPackGb("mps")).toBe(1);
+    expect(soundsPackGb(null)).toBe(1);
   });
 });
 

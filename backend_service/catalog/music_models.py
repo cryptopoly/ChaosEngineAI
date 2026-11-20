@@ -8,7 +8,8 @@ so a new measurement is a change here. Weights are pinned to full Hugging Face r
 
 ``platforms`` lists only where a row actually runs. The ACE-Step rows carry ``"cuda"`` since the CUDA lane was
 built and measured on an RTX 4090 (FU-139); ``estimate_run`` reads ``estimates.cuda`` on that lane once it holds a
-``wallSecondsAt`` table. The sound rows stay Apple Silicon only (the CUDA sound lane is not built).
+``wallSecondsAt`` table. The sound rows carry ``"cuda"`` since the CUDA sound lane was built and measured on the
+same card (FU-274); the Stable Audio 3 rows list only ``"cuda"`` (not run on a Mac yet).
 """
 
 from __future__ import annotations
@@ -78,6 +79,51 @@ _STABILITY_LICENCE = _stability_licence(
     "stabilityai/stable-audio-open-small", "ea2772170fc06f80dfd02bea6e57a44d9d4bc9d3", "LICENSE")
 _STABILITY_LICENCE_1_0 = _stability_licence(
     "stabilityai/stable-audio-open-1.0", "f21265c1e2710b3bd2386596943f0007f55f802e", "LICENSE.md")
+
+
+# Stable Audio 3 (read 2026-11-20 at the pinned revisions): LICENSE.md is the same Stability AI Community License
+# (last updated 2024-07-05); the T5Gemma text encoder inside each repo is redistributed under the Gemma Terms of Use
+# (LICENSE_GEMMA.md, NOTICE), whose section 3.2 use restrictions (Gemma Prohibited Use Policy) the gate also accepts.
+def _sa3_licence(repo: str, revision: str) -> dict[str, Any]:
+    licence = _stability_licence(repo, revision, "LICENSE.md")
+    licence["id"] = "stability-community-gemma"
+    licence["name"] = "Stability AI Community Licence + Gemma Terms of Use"
+    licence["summaryLines"] = licence["summaryLines"] + [
+        "Its T5Gemma text encoder is under Google's Gemma Terms of Use: you also accept the Gemma Prohibited Use "
+        "Policy (section 3.2), and a copy you share must carry the Gemma notice file.",
+    ]
+    licence["gemmaUrl"] = f"https://huggingface.co/{repo}/blob/{revision}/LICENSE_GEMMA.md"
+    return licence
+
+
+# Files a Stable Audio 3 row fetches: the model, its config, licences and notice, and the T5Gemma encoder folder.
+_SA3_PATTERNS = ["model.safetensors", "model_config.json", "LICENSE.md", "LICENSE_GEMMA.md", "NOTICE", "README.md",
+                 "t5gemma-b-b-ul2/*"]
+_SA3_DEFAULTS: dict[str, Any] = {
+    # Model card: 8 steps, cfg 1.0, the pingpong sampler (the models are adversarially post-trained for few steps).
+    "variations": 1,
+    "steps": 8,
+    "cfgScale": 1.0,
+    "sampler": "pingpong",
+    "loop": False,
+    "normalizePeakDb": -1.0,
+    "format": "flac24",
+    "sampleRate": 44100,
+    "channels": 2,
+}
+_SA3_STEPS = {"min": 4, "max": 32, "presets": [4, 8, 16]}
+
+
+def _sa3_estimates(cuda: dict[str, Any], disk_gb: float, mb_per_minute: float) -> dict[str, Any]:
+    """Stable Audio 3 has only been measured on CUDA (FU-274), so the row's own figures are the CUDA ones.
+
+    Measured through the app's routes on Windows 11 with an RTX 4090, warm worker, float16, 8 steps, one variation.
+    ``wallSecondsAt`` is the client's wall time per request; ``peakGb`` is torch's reserved VRAM peak (the CUDA context
+    adds about 0.4 GB in nvidia-smi); ``hostPeakGb`` is the worker's working set, which the memory gate checks on CUDA.
+    The work grows with the clip asked for (variable length), so there is no ``fixedWindow``.
+    """
+    cuda = {"basis": "measured", "measuredOn": "NVIDIA RTX 4090 24 GB, Windows 11, 2026-11-20", **cuda}
+    return {**cuda, "diskGb": disk_gb, "outputMbPerMinute": mb_per_minute, "cuda": dict(cuda)}
 
 MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
     {
@@ -234,7 +280,7 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "engineModel": "stable-audio-open-small",
                 "runtime": "stable-audio-tools on PyTorch (isolated sounds environment)",
                 "makes": ["sfx", "loops"],
-                "platforms": ["apple-silicon"],
+                "platforms": ["apple-silicon", "cuda"],
                 "taskSupport": ["txt2sound"],
                 "sizeGb": 2.57,
                 "sizeNote": "The 1.7 GB model plus the 0.9 GB T5-base text encoder (Apache 2.0) it reads prompts with.",
@@ -277,7 +323,19 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "diskGb": 2.57,
                     # 44.1 kHz stereo FLAC 24-bit, noisy material.
                     "outputMbPerMinute": 14.0,
-                    "cuda": {"peakGb": None, "basis": "estimated", "source": "not measured; the CUDA sound lane is not built yet"},
+                    # FU-274: measured through the app's routes on Windows 11, warm worker, float32, 8 steps, one variation.
+                    # peakGb is torch's reserved VRAM peak; hostPeakGb the worker's working set (the CUDA memory gate).
+                    "cuda": {
+                        "basis": "measured",
+                        "measuredOn": "NVIDIA RTX 4090 24 GB, Windows 11, 2026-11-20",
+                        "wallSecondsAt": [[5, 0.27], [10, 0.28]],
+                        "secondsPer10sAudio": 0.28,
+                        "coldStartSeconds": 10.0,
+                        "peakGb": 3.6,
+                        "idleGb": 2.8,
+                        "hostPeakGb": 2.5,
+                        "hostIdleGb": 1.7,
+                    },
                 },
                 # Steps the person may choose (D-74): presets plus a free number inside min..max. The default is
                 # defaultSettings.steps, which is also the step count the estimate was measured at.
@@ -311,7 +369,7 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "engineModel": "stable-audio-open-1.0",
                 "runtime": "stable-audio-tools on PyTorch (isolated sounds environment)",
                 "makes": ["sfx", "loops"],
-                "platforms": ["apple-silicon"],
+                "platforms": ["apple-silicon", "cuda"],
                 "taskSupport": ["txt2sound"],
                 "sizeGb": 5.72,
                 "sizeNote": "The 4.85 GB model plus the 0.9 GB T5-base text encoder (Apache 2.0) it reads prompts with; "
@@ -356,7 +414,19 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
                     "idleGb": 7.1,
                     "diskGb": 5.72,
                     "outputMbPerMinute": 14.0,
-                    "cuda": {"peakGb": None, "basis": "estimated", "source": "not measured; the CUDA sound lane is not built yet"},
+                    # FU-274: measured through the app's routes on Windows 11, warm worker, float32, 100 steps, cfg 7,
+                    # dpmpp-3m-sde; still the full 47 s window whatever the length. peakGb is torch's reserved VRAM peak
+                    # (allocated 10.4 GB), hostPeakGb the worker's working set.
+                    "cuda": {
+                        "basis": "measured",
+                        "measuredOn": "NVIDIA RTX 4090 24 GB, Windows 11, 2026-11-20",
+                        "wallSecondsAt": [[5, 15.56], [10, 15.6]],
+                        "secondsPer10sAudio": None,
+                        "coldStartSeconds": 12.0,
+                        "peakGb": 13.8,
+                        "hostPeakGb": 2.6,
+                        "hostIdleGb": 1.7,
+                    },
                 },
                 # Model card example for stable-audio-tools: 100 steps, cfg 7, dpmpp-3m-sde, sigma 0.3 to 500.
                 "stepsOptions": {"min": 10, "max": 150, "presets": [25, 50, 100]},
@@ -374,6 +444,144 @@ MUSIC_MODEL_FAMILIES: list[dict[str, Any]] = [
                 },
                 "note": "Opt-in, larger and slower sound effects model: clips up to 47 s with better detail, about 5 GB on disk "
                         "and about 3.5 minutes per clip, using about 23 GB of memory while it works. English prompts, stereo 44.1 kHz. Gated: accept the licence on Hugging Face.",
+            },
+        ],
+    },
+    {
+        "id": "stable-audio-3",
+        "name": "Stable Audio 3",
+        "kind": "sound",
+        "provider": "Stability AI",
+        "headline": "Sound effects, loops and instrumentals of variable length; no vocals.",
+        "summary": "Text to audio from Stability AI: Small SFX for effects, Small Music for instrumentals, Medium for both. "
+                   "Runs on PyTorch on an NVIDIA GPU in the sounds pack.",
+        "badges": ["Gated", "Sounds", "Instrumental"],
+        "defaultVariantId": "stabilityai/stable-audio-3-small-sfx",
+        "variants": [
+            {
+                "id": "stabilityai/stable-audio-3-small-sfx",
+                "familyId": "stable-audio-3",
+                "kind": "sound",
+                "pack": "sound",
+                "name": "Stable Audio 3 Small SFX",
+                "provider": "Stability AI",
+                "repo": "stabilityai/stable-audio-3-small-sfx",
+                # Head of the repo on 2026-11-20 (last modified 2026-10-06).
+                "revision": "05ca3857881c94a2b84026b1111c537d78f5f9f0",
+                "link": "https://huggingface.co/stabilityai/stable-audio-3-small-sfx",
+                "engine": "stableaudio",
+                "engineLibrary": "stable-audio-3",
+                "engineModel": "stable-audio-3-small-sfx",
+                "runtime": "stable-audio-3 on PyTorch (isolated sounds environment)",
+                "makes": ["sfx", "loops"],
+                "platforms": ["cuda"],
+                "taskSupport": ["txt2sound"],
+                "sizeGb": 3.49,
+                "sizeNote": "The 2.27 GB model (0.6B diffusion transformer and its autoencoder) plus its 1.22 GB T5Gemma "
+                            "text encoder, both from the same repo.",
+                "requires": [],
+                "checkpointSubdir": "stable-audio-3-small-sfx",
+                "weightFolders": ["stable-audio-3-small-sfx", "stable-audio-3-small-sfx/t5gemma-b-b-ul2"],
+                "downloadPatterns": list(_SA3_PATTERNS),
+                "large": False,
+                "minMemoryGb": None,
+                "unloadsOthers": False,
+                # The config's window is 5,292,032 samples (120 s at 44.1 kHz); the work scales with the clip asked for.
+                "maxSeconds": 120,
+                "minSeconds": 1,
+                "estimatedGenerationSeconds": 0.41,
+                "licence": _sa3_licence("stabilityai/stable-audio-3-small-sfx", "05ca3857881c94a2b84026b1111c537d78f5f9f0"),
+                "estimates": _sa3_estimates({
+                    "wallSecondsAt": [[5, 0.41], [10, 0.43], [120, 0.87]], "secondsPer10sAudio": 0.07, "coldStartSeconds": 11.0,
+                    "vaeSecondsPerAudioSecond": 0.002, "peakGb": 2.0, "idleGb": 1.8, "hostPeakGb": 2.2, "hostIdleGb": 1.6,
+                }, disk_gb=3.49, mb_per_minute=8.0),
+                "stepsOptions": dict(_SA3_STEPS),
+                "defaultSettings": {**_SA3_DEFAULTS, "seconds": 5},
+                "note": "Opt-in sound effects model, 1 to 120 s, stereo 44.1 kHz, English prompts. Gated: accept the licence "
+                        "(and the Gemma terms of its text encoder) on Hugging Face.",
+            },
+            {
+                "id": "stabilityai/stable-audio-3-small-music",
+                "familyId": "stable-audio-3",
+                "kind": "sound",
+                "pack": "sound",
+                "name": "Stable Audio 3 Small Music",
+                "provider": "Stability AI",
+                "repo": "stabilityai/stable-audio-3-small-music",
+                "revision": "8bdfb53c6b0fbc62113cd571fd37373efe15fa14",
+                "link": "https://huggingface.co/stabilityai/stable-audio-3-small-music",
+                "engine": "stableaudio",
+                "engineLibrary": "stable-audio-3",
+                "engineModel": "stable-audio-3-small-music",
+                "runtime": "stable-audio-3 on PyTorch (isolated sounds environment)",
+                "makes": ["instrumental", "loops"],
+                "platforms": ["cuda"],
+                "taskSupport": ["txt2sound"],
+                "sizeGb": 3.49,
+                "sizeNote": "The 2.27 GB model (0.6B diffusion transformer and its autoencoder) plus its 1.22 GB T5Gemma "
+                            "text encoder, both from the same repo.",
+                "requires": [],
+                "checkpointSubdir": "stable-audio-3-small-music",
+                "weightFolders": ["stable-audio-3-small-music", "stable-audio-3-small-music/t5gemma-b-b-ul2"],
+                "downloadPatterns": list(_SA3_PATTERNS),
+                "large": False,
+                "minMemoryGb": None,
+                "unloadsOthers": False,
+                "maxSeconds": 120,
+                "minSeconds": 1,
+                "estimatedGenerationSeconds": 0.51,
+                "licence": _sa3_licence("stabilityai/stable-audio-3-small-music", "8bdfb53c6b0fbc62113cd571fd37373efe15fa14"),
+                "estimates": _sa3_estimates({
+                    "wallSecondsAt": [[30, 0.51], [60, 0.63], [120, 0.87]], "secondsPer10sAudio": 0.07, "coldStartSeconds": 10.0,
+                    "vaeSecondsPerAudioSecond": 0.002, "peakGb": 2.0, "idleGb": 1.8, "hostPeakGb": 2.2, "hostIdleGb": 1.6,
+                }, disk_gb=3.49, mb_per_minute=12.5),
+                "stepsOptions": dict(_SA3_STEPS),
+                "defaultSettings": {**_SA3_DEFAULTS, "seconds": 30},
+                "note": "Opt-in instrumental music model (no vocals), 1 to 120 s, stereo 44.1 kHz; put the tempo in the prompt "
+                        "(for example 120 BPM). Gated: accept the licence and the Gemma terms on Hugging Face.",
+            },
+            {
+                "id": "stabilityai/stable-audio-3-medium",
+                "familyId": "stable-audio-3",
+                "kind": "sound",
+                "pack": "sound",
+                "name": "Stable Audio 3 Medium",
+                "provider": "Stability AI",
+                "repo": "stabilityai/stable-audio-3-medium",
+                "revision": "d4d3579395a8ac0df4ab13b5b1d7138ce7290f81",
+                "link": "https://huggingface.co/stabilityai/stable-audio-3-medium",
+                "engine": "stableaudio",
+                "engineLibrary": "stable-audio-3",
+                "engineModel": "stable-audio-3-medium",
+                "runtime": "stable-audio-3 on PyTorch (isolated sounds environment)",
+                "makes": ["sfx", "instrumental", "loops"],
+                "platforms": ["cuda"],
+                "taskSupport": ["txt2sound"],
+                "sizeGb": 10.44,
+                "sizeNote": "The 9.22 GB model (2B diffusion transformer and its larger autoencoder) plus its 1.22 GB T5Gemma "
+                            "text encoder, both from the same repo.",
+                "requires": [],
+                "checkpointSubdir": "stable-audio-3-medium",
+                "weightFolders": ["stable-audio-3-medium", "stable-audio-3-medium/t5gemma-b-b-ul2"],
+                "downloadPatterns": list(_SA3_PATTERNS),
+                "large": False,
+                "minMemoryGb": None,
+                "unloadsOthers": False,
+                # The config's window is 16,777,216 samples (380 s at 44.1 kHz).
+                "maxSeconds": 380,
+                "minSeconds": 1,
+                "estimatedGenerationSeconds": 1.75,
+                "licence": _sa3_licence("stabilityai/stable-audio-3-medium", "d4d3579395a8ac0df4ab13b5b1d7138ce7290f81"),
+                # The first run after a load takes about 9 s more (kernel warm-up); coldStartSeconds counts it.
+                "estimates": _sa3_estimates({
+                    "wallSecondsAt": [[5, 0.76], [10, 1.11], [30, 1.75], [60, 2.97], [180, 7.4], [380, 15.35]],
+                    "secondsPer10sAudio": 0.4, "coldStartSeconds": 26.0, "vaeSecondsPerAudioSecond": 0.005,
+                    "peakGb": 8.4, "idleGb": 6.7, "hostPeakGb": 2.5, "hostIdleGb": 1.6,
+                }, disk_gb=10.44, mb_per_minute=11.5),
+                "stepsOptions": dict(_SA3_STEPS),
+                "defaultSettings": {**_SA3_DEFAULTS, "seconds": 30},
+                "note": "Opt-in larger model for effects and instrumentals (no vocals), 1 to 380 s, stereo 44.1 kHz. "
+                        "Gated: accept the licence and the Gemma terms on Hugging Face.",
             },
         ],
     },

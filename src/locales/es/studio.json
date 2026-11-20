@@ -1515,6 +1515,8 @@
       "needDownload": "Descarga {name} desde «Modelos de música» (unos {size} GB). Acepta primero la licencia en Hugging Face.",
       "needTextEncoder": "Al modelo de sonido le falta su codificador de texto. Vuelve a descargarlo desde «Modelos de música».",
       "needPack": "Los sonidos también necesitan un paquete pequeño (unos 1 GB). Instálalo desde «Modelos de música».",
+      "needPackCuda": null,
+      "needLicenceStableAudio3": null,
       "prompt": "Describe el sonido",
       "placeholder": "pesada puerta de madera que se abre con un chirrido, micrófono cercano",
       "english": "El inglés funciona mejor. Efectos y bucles, no canciones ni voz.",

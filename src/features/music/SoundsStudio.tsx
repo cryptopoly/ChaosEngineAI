@@ -32,6 +32,7 @@ import {
   soundStepsOptions,
   soundBlocker,
   soundLimits,
+  soundsPackGb,
   validateSoundForm,
   varySoundForm,
   soundFormFromItem,
@@ -194,16 +195,26 @@ export function SoundsStudio({ music, backendOnline, onTabChange, header }: Soun
       offline: t("musicStudio.offline", { defaultValue: "Waiting for the backend…" }),
       loading: t("musicStudio.loading", { defaultValue: "Loading the music models…" }),
       unsupported: unsupportedText(t as unknown as TFn, runtime?.sound?.unavailableReason, runtime?.sound?.unavailableCode),
-      licence: t("musicStudio.sounds.needLicence", {
-        defaultValue: "Sound effects use Stable Audio Open, which asks you to accept its licence first. Open Music and Audio Models to read it.",
-      }),
+      licence: soundVariant?.familyId === "stable-audio-3"
+        ? t("musicStudio.sounds.needLicenceStableAudio3", {
+            defaultValue: "{name} asks you to accept its licence and the Gemma terms of its text encoder first. Open Music and Audio Models to read them.",
+            name: soundVariant.name,
+          })
+        : t("musicStudio.sounds.needLicence", {
+            defaultValue: "Sound effects use Stable Audio Open, which asks you to accept its licence first. Open Music and Audio Models to read it.",
+          }),
       download: t("musicStudio.sounds.needDownload", {
         defaultValue: "Download {name} from Music and Audio Models (about {size} GB). Accept the licence on Hugging Face first.",
         name: soundVariant?.name ?? "Stable Audio Open Small",
         size: (soundVariant?.sizeGb ?? 2.6).toFixed(1),
       }),
       textEncoder: t("musicStudio.sounds.needTextEncoder", { defaultValue: "The sound model is missing its text encoder. Download it again from Music and Audio Models." }),
-      pack: t("musicStudio.sounds.needPack", { defaultValue: "Sounds also need a small pack (about 1 GB). Install it from Music and Audio Models." }),
+      pack: runtime?.sound?.lane === "cuda"
+        ? t("musicStudio.sounds.needPackCuda", {
+            defaultValue: "Sounds also need a pack with the NVIDIA build of PyTorch (about {size} GB). Install it from Music and Audio Models.",
+            size: soundsPackGb("cuda"),
+          })
+        : t("musicStudio.sounds.needPack", { defaultValue: "Sounds also need a small pack (about 1 GB). Install it from Music and Audio Models." }),
     };
     return shell({
       inputs: (

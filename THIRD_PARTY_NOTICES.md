@@ -549,7 +549,7 @@ inference). All are MIT, BSD or Apache except the one below.
   `music_requirements.txt` and verified a generation without it.
   PyWavelets (MIT AND BSD-3-Clause) stays.
 
-## Sound effects (Stable Audio Open Small, optional)
+## Sound effects (Stable Audio Open and Stable Audio 3, optional)
 
 ### Stable Audio Open Small (downloaded by the user, not bundled)
 
@@ -570,7 +570,24 @@ inference). All are MIT, BSD or Apache except the one below.
 - Trained on CC0, CC BY and CC Sampling+ audio (Freesound, Free Music Archive); attribution lists are in the model repo and are
   not fetched by the app.
 
+### Stable Audio 3 Small SFX, Small Music and Medium (downloaded by the user, not bundled)
+
+- **Source:** <https://huggingface.co/stabilityai/stable-audio-3-small-sfx> (revision `05ca3857881c94a2b84026b1111c537d78f5f9f0`),
+  <https://huggingface.co/stabilityai/stable-audio-3-small-music> (`8bdfb53c6b0fbc62113cd571fd37373efe15fa14`) and
+  <https://huggingface.co/stabilityai/stable-audio-3-medium> (`d4d3579395a8ac0df4ab13b5b1d7138ce7290f81`).
+- **Licence:** Stability AI Community License Agreement (last updated July 5, 2024; each repo's `LICENSE.md`, read at the
+  pinned revisions on 2026-11-20). Same terms as for Stable Audio Open: gated, **Powered by Stability AI**, free under
+  US$1,000,000 annual revenue, no training other foundation models on outputs, not redistributed by ChaosEngineAI.
+- **T5Gemma text encoder** (`t5gemma-b-b-ul2`, inside each repo): redistributed by Stability AI under the **Gemma Terms of
+  Use** (`LICENSE_GEMMA.md`); the gate also accepts the use restrictions of section 3.2 (Gemma Prohibited Use Policy). The
+  repos' `NOTICE` file reads: "Gemma is provided under and subject to the Gemma Terms of Use found at
+  ai.google.dev/gemma/terms". The app downloads `LICENSE.md`, `LICENSE_GEMMA.md` and `NOTICE` with the weights.
+- Trained on licensed (AudioSparx) and Creative Commons (Freesound CC0, CC BY, CC Sampling+) audio, per the model cards.
+
 - **stable-audio-tools 0.0.20** - MIT (Stability AI), installed on demand into the isolated sounds environment.
+- **stable-audio-3** - MIT (Stability AI), <https://github.com/Stability-AI/stable-audio-3> at commit
+  `790793b89ddceea612be9ce42ff6830d18f6fa57`, installed on demand (`--no-deps`) into the same sounds environment. On an NVIDIA
+  GPU the environment takes PyTorch 2.7.1 from the PyTorch CUDA 12.8 index (BSD-3); no flash-attn is installed.
 - **T5-base** (`google-t5/t5-base`) - Apache 2.0, downloaded on demand as the text encoder.
 - Sounds-pack dependencies are installed on demand (versions in `backend_service/sound_requirements.txt`): PyTorch and
   torchaudio (BSD-3), transformers and huggingface_hub (Apache 2.0), pytorch-lightning (Apache 2.0), einops, einops-exts,

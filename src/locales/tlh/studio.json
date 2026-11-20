@@ -1515,6 +1515,8 @@
       "needDownload": "QoQ wab yabvo' {name} yIlI' ({size} GB loQ). Hugging FaceDaq chaw' yIlaj nung.",
       "needTextEncoder": "ghItlh ngoqwI' Hutlh wab yab. QoQ wab yabvo' yIlI'qa'.",
       "needPack": "jo mach je poQ wab (1 GB loQ). QoQ wab yabvo' yIjom.",
+      "needPackCuda": null,
+      "needLicenceStableAudio3": null,
       "prompt": "wab yIDel",
       "placeholder": "heavy wooden door creaking open, close microphone",
       "english": "DIvI' Hol lo'chugh, Qapqu'. wab 'ej Qeb neH; bom pagh QIch chenmoHbe'.",

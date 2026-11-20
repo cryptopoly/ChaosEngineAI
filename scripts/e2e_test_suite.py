@@ -3689,15 +3689,23 @@ def phase_11(cap: Capability) -> PhaseResult:
 
         return check(_call, runtime)
 
+    def _real_sound():
+        """FU-274: one real Stable Audio 3 clip on CUDA (checks in e2e_phases/music_platform.py)."""
+        from e2e_phases.music_platform import real_sound
+
+        return real_sound(lambda m, p, b=None: _call(m, p, b, timeout=600.0),
+                          lambda path: _voice_http("GET", path, timeout=60.0), runtime, state["cleanup"])
+
     try:
         for name, fn in [
             ("runtime route shape", _runtime_shape),
-            ("lane matches the host: MLX, CUDA (sounds refused) or one reason and install refused", _platform_reason),
+            ("lane matches the host: MLX, CUDA (music and sounds) or one reason and install refused", _platform_reason),
             ("catalog row carries the licence and UI fields", _catalog),
             ("estimate answers; out-of-range requests are refused", _estimate_and_validation),
             ("sound steps: range in the catalog, scaled estimate, out-of-range refused", _sound_steps),
             ("library list, rename, tag, Range audio and delete on a synthetic item", _library_crud),
             ("a real 20 s instrumental on MLX or CUDA (skips without the music pack or weights)", _real_generation),
+            ("a real 5 s Stable Audio 3 sound on CUDA (skips elsewhere or without the sounds pack or weights)", _real_sound),
         ]:
             phase.checks.append(_check(name, fn))
     finally:

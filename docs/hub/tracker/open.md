@@ -1,13 +1,31 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 166 rows with work, decisions or watch items still open, newest first.
+summary: 168 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-280 · CUDA sounds lane: what is not tested — Linux NVIDIA box, a card under 12 GB, or a listening pass</summary>
+
+**Status or trigger:** Linux NVIDIA box, a card under 12 GB, or a listening pass
+
+**Notes:** Only Windows 11 + RTX 4090 was run. Not tested: Linux x86_64; a smaller card (the worker's VRAM check needs 3 GB for the small rows, 9 GB for Medium, but Open 1.0 peaks at 13.8 GB in float32 and has no check); flash-attn (would be faster; no Windows wheel assumed); Medium's first clip after a load costs about 9 s more. Nobody listened to the clips: the numbers say full length, -1 dBFS peak, not silent, plausible spectra. Small SFX writes near-identical channels (L minus R under -47 dBFS); the music rows are real stereo. The pack install pulls the 3.3 GB torch wheel through pip in one stream (slow through a VPN).
+
+</details>
+
+<details>
+<summary>FU-279 · Stable Audio 3 on Apple Silicon — Next Mac session</summary>
+
+**Status or trigger:** Next Mac session
+
+**Notes:** The sounds pack now installs `stable-audio-3` on every lane (a Mac pack from before asks to be reinstalled once: marker schema 2), but the three Stable Audio 3 rows list only `cuda`: nothing was run on MPS. To do on an M-series Mac: install the pack, run each row (the library loads in float32 off CUDA), measure time and footprint, add `apple-silicon` and Mac `estimates`, and check the Open rows still run after the reinstall.
+
+</details>
 
 <details>
 <summary>FU-278 · ACE-Step XL on a shared GPU — Done (2026-11-20, agent branch), unit-tested</summary>
@@ -46,11 +64,11 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-274 · Sounds on CUDA, and Stable Audio 3 — When the CUDA sound lane is built, or Stability grants access to the SA3 repos</summary>
+<summary>FU-274 · Sounds on CUDA, and Stable Audio 3 — Done (2026-11-20, agent branch), measured through the app routes on the RTX 4090</summary>
 
-**Status or trigger:** When the CUDA sound lane is built, or Stability grants access to the SA3 repos
+**Status or trigger:** **Done (2026-11-20, agent branch), measured through the app routes on the RTX 4090**
 
-**Notes:** The sounds lane (Stable Audio Open, stable-audio-tools) is Mac-only; on CUDA it says so (`music.soundUnsupportedPlatform`). Stable Audio 3 (`stabilityai/stable-audio-3-medium` 9.2 GB + 1.2 GB T5Gemma, `-small-sfx` and `-small-music` 2.3 GB + 1.2 GB; Stability Community Licence plus Gemma Terms of Use; gated `auto`) is **not in the catalog**: the owner's token gets 403 on `model_config.json` for all three (2026-11-19), the model cards point to the new MIT `Stability-AI/stable-audio-3` library (torch 2.7.1, transformers >= 5.8; Medium needs flash-attn 2) rather than the pinned stable-audio-tools 0.0.20, so a row needs access, that library in its own venv, and a live test first.
+**Notes:** The sounds lane is `cuda` wherever music is (`music_sound_env.lane()`), with the music sentence on hosts with neither lane; the pack installs `torch 2.7.1+cu128` from the PyTorch CUDA index, checks `torch.cuda.is_available()`, and also installs the MIT `stable-audio-3` library at `790793b` (`--no-deps`; marker schema 2 records it and the lane). Three gated rows: Stable Audio 3 Small SFX and Small Music (3.49 GB, 1 to 120 s) and Medium (10.44 GB, 1 to 380 s), Stability Community Licence plus the Gemma Terms of Use for the in-repo T5Gemma encoder; float16, 8 steps, SDPA (no flash-attn on Windows). Warm on the 4090: SFX 5 s 0.41 s, Music 60 s 0.63 s, Medium 60 s 3.0 s and 380 s 15.4 s; VRAM peak (torch reserved) 2.0 / 2.0 / 8.3 GB. The Open rows also list `cuda` (Small 0.27 s, 1.0 15.6 s at 100 steps, 13.8 GB). Worker refuses a run with a plain sentence when free VRAM is short. Not adopted: `stable-audio-3-optimized` (TensorRT plans for sm_90 and sm_120 only, none for the 4090's sm_89; ONNX, TFLite, MLX and CPU-AMX builds need runtimes the app does not ship). Open items in FU-279 and FU-280.
 
 </details>
 

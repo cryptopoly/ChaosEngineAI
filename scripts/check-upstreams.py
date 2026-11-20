@@ -204,6 +204,10 @@ def collect() -> list[Row]:
             read_pin("backend_service/music_env.py", r'^ACE_REF = "([0-9a-f]{40})"'),
         ),
         check_commit_pin(
+            "stable-audio-3", "https://github.com/Stability-AI/stable-audio-3.git",
+            read_pin("backend_service/music_sound_env.py", r'^SA3_REF = "([0-9a-f]{40})"'),
+        ),
+        check_commit_pin(
             "TriAttention", "https://github.com/WeianMao/triattention.git",
             read_pin("pyproject.toml", r"triattention\.git@([0-9a-f]{40})"),
         ),

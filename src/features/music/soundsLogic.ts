@@ -63,6 +63,12 @@ export function clampSoundSteps(steps: number | null | undefined, variant?: Step
 export const SOUND_VARIATION_CHOICES = [1, 2, 4] as const;
 /** Pack size shown on the Models page (the install is about 0.9 GB of Python packages). */
 export const SOUNDS_PACK_GB = 1;
+/** On an NVIDIA GPU the pack carries the CUDA build of PyTorch (FU-274, measured on Windows). */
+export const SOUNDS_PACK_GB_CUDA = 6.4;
+
+export function soundsPackGb(lane: string | null | undefined): number {
+  return lane === "cuda" ? SOUNDS_PACK_GB_CUDA : SOUNDS_PACK_GB;
+}
 
 export interface SoundForm {
   caption: string;

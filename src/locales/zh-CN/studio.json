@@ -1515,6 +1515,8 @@
       "needDownload": "请从“音乐模型”下载 {name}（约 {size} GB）。请先在 Hugging Face 上接受许可证。",
       "needTextEncoder": "音效模型缺少文本编码器。请从“音乐模型”重新下载。",
       "needPack": "音效还需要一个小型组件包（约 1 GB）。请从“音乐模型”安装。",
+      "needPackCuda": null,
+      "needLicenceStableAudio3": null,
       "prompt": "描述这个声音",
       "placeholder": "沉重的木门吱呀作响地打开，近距离麦克风",
       "english": "英文效果最好。适合音效和循环音频，不适合歌曲或语音。",

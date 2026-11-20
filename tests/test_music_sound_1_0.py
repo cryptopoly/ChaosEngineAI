@@ -13,7 +13,7 @@ import unittest
 from contextlib import nullcontext
 from unittest import mock
 
-from backend_service import music_runtime
+from backend_service import music_env, music_runtime
 from backend_service.catalog.music_models import music_variants, sound_max_seconds
 from backend_service.helpers import music as music_helpers
 from backend_service.helpers.hardware_class import host_hardware_class  # noqa: F401  (route import side effects)
@@ -41,7 +41,7 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(row["defaultSettings"]["sampler"], "dpmpp-3m-sde")
         self.assertLessEqual(row["defaultSettings"]["seconds"], row["maxSeconds"])
         self.assertEqual(row["defaultSettings"]["sampleRate"], 44100)
-        self.assertEqual(sound_max_seconds(), 47)
+        self.assertEqual(sound_max_seconds(), 380)  # the widest sound row is Stable Audio 3 Medium (FU-274)
 
     def test_the_text_encoder_is_the_one_small_uses(self) -> None:
         self.assertEqual(_row(FULL)["textEncoder"], _row(SOUND)["textEncoder"])
@@ -67,7 +67,7 @@ class CatalogTests(unittest.TestCase):
         self.assertIn("2026-11-08", est["measuredOn"])
         self.assertEqual(est["peakGb"], 22.8)
         self.assertGreater(est["peakGb"], est["idleGb"])
-        self.assertEqual(est["cuda"]["peakGb"], None)
+        self.assertEqual((est["cuda"]["basis"], est["cuda"]["peakGb"]), ("measured", 13.8))  # FU-274, RTX 4090
         self.assertEqual(_row(SOUND)["estimates"]["basis"], "measured")  # Small keeps its real numbers
 
     def test_the_default_sound_row_is_still_small(self) -> None:
@@ -205,6 +205,10 @@ class _FullBox(_SoundBox):
         super().setUp()
         engine_file = self.box.root / "fake_sound_engine.py"
         engine_file.write_text(FULL_ENGINE, encoding="utf-8")
+        # The Mac figures (208 s per clip); a CUDA host would otherwise read the 4090 table (FU-274).
+        lane = mock.patch.object(music_env, "lane", lambda: "mlx")
+        lane.start()
+        self.addCleanup(lane.stop)
 
 
 class RouteTests(_FullBox):
@@ -220,8 +224,11 @@ class RouteTests(_FullBox):
         self.assertIn("Powered by Stability AI", item["licence"])
 
     def test_nothing_longer_than_the_widest_model_is_accepted(self) -> None:
-        response = self.client.post("/api/music/sound/generate", json={"caption": "x", "seconds": 48, "modelId": FULL})
+        response = self.client.post("/api/music/sound/generate", json={"caption": "x", "seconds": 381, "modelId": FULL})
         self.assertEqual(response.status_code, 422)
+        own_limit = self.client.post("/api/music/sound/generate", json={"caption": "x", "seconds": 48, "modelId": FULL})
+        self.assertEqual(own_limit.status_code, 400)
+        self.assertIn("1 to 47 seconds", own_limit.json()["detail"])
         too_short = self.client.post("/api/music/sound/generate", json={"caption": "x", "seconds": 0.5, "modelId": FULL})
         self.assertEqual(too_short.status_code, 422)
 
@@ -237,7 +244,7 @@ class RouteTests(_FullBox):
 
     def test_the_catalog_lists_both_sound_rows(self) -> None:
         families = self.client.get("/api/music/catalog").json()["families"]
-        rows = [v for f in families if f.get("kind") == "sound" for v in f["variants"]]
+        rows = [v for f in families if f.get("kind") == "sound" and f["id"] == "stable-audio-open" for v in f["variants"]]
         self.assertEqual([(r["id"], r["maxSeconds"]) for r in rows], [(SOUND, 11), (FULL, 47)])
         full = rows[1]
         self.assertEqual((full["licence"]["gated"], full["estimates"]["basis"]), (True, "measured"))
@@ -297,7 +304,7 @@ class MakeSoundModelTests(_FullBox):
         from backend_service.mcp_bridge.sound_tool import SOUND_TOOLS
 
         props = SOUND_TOOLS[0]["inputSchema"]["properties"]
-        self.assertEqual(props["seconds"]["maximum"], 47)
+        self.assertEqual(props["seconds"]["maximum"], 380)
         self.assertIn("modelId", props)
         self.assertIn("47 s", SOUND_TOOLS[0]["description"])
 
@@ -307,7 +314,10 @@ class MakeSoundModelTests(_FullBox):
         self.assertIn("Stable Audio Open Small makes sounds of 1 to 11 seconds", str(text))
         is_error, text = self._call("make_sound", {"caption": "x", "seconds": 48, "modelId": FULL})
         self.assertTrue(is_error)
-        self.assertIn("between 1 and 47", str(text))  # the schema's own bound, before the model check
+        self.assertIn("Stable Audio Open 1.0 makes sounds of 1 to 47 seconds", str(text))
+        is_error, text = self._call("make_sound", {"caption": "x", "seconds": 381, "modelId": FULL})
+        self.assertTrue(is_error)
+        self.assertIn("between 1 and 380", str(text))  # the schema's own bound, before the model check
 
     def test_make_sound_with_the_full_model_runs_to_a_path(self) -> None:
         is_error, job = self._call("make_sound", {"caption": "rain", "seconds": 40, "modelId": FULL, "seed": 2})

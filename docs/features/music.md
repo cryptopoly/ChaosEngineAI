@@ -15,12 +15,11 @@ on an M4 Max with 64 GB.
   PyTorch SDPA); the worker runs the DiT in bf16 with no offload on cards of 20 GB or more (ACE-Step's own CPU
   offload below that, or `CHAOSENGINE_MUSIC_OFFLOAD=1`), reports steps and cancels through forward hooks on
   `handler.model.decoder`, and returns `timings.vram_peak_gb`. The memory gate checks host RAM against
-  `estimates.cuda.hostPeakGb` there, not the Mac unified-memory peak. Sound effects (Stable Audio Open) stay
-  Apple Silicon only: on a CUDA host the sounds lane says "Sound effects run on Apple Silicon Macs in this
-  version. NVIDIA GPU support is planned; ..." (code `music.soundUnsupportedPlatform`) and a sound download is
-  refused (409). On a host with neither lane every surface says "Music generation needs an Apple Silicon Mac or
+  `estimates.cuda.hostPeakGb` there, not the Mac unified-memory peak. Sound effects run on the same two lanes
+  (FU-274, see "Sounds" below): `music_sound_env.lane()` is `mps` on Apple Silicon and `cuda` where music runs on
+  an NVIDIA GPU. On a host with neither lane every surface says "Music generation needs an Apple Silicon Mac or
   an NVIDIA GPU on Windows or Linux; nothing is installed or downloaded on this computer."
-  (`music_env.UNSUPPORTED_PLATFORM_REASON`, code `music.unsupportedPlatform`) and install is refused.
+  (`music_env.UNSUPPORTED_PLATFORM_REASON`, code `music.unsupportedPlatform`), for sounds too, and install is refused.
 - **The music pack** (Music > Models, `POST /api/music/install`): its own environment in
   `~/.chaosengine/music-venv`, built with plain pip from the app's own Python (3.11 or 3.12), with ACE-Step 1.5 at
   a pinned commit. About 1.6 GB on a Mac, 6.6 GB on Windows with CUDA torch. If the folder already holds a working pack, the install only checks it.
@@ -68,6 +67,31 @@ You are responsible for rights in lyrics you type. Describe a sound instead of n
   (`POST /api/music/settings` with `idleUnloadMinutes`). `POST /api/music/unload` frees it at once; while a track
   is being made or a model loads it answers 409 (cancel the job first), so a job is never cut off as a failure.
 - Agents: `make_music` on the agent bridge (see [agent bridge](agent-bridge.md)).
+
+## Sounds: Stable Audio Open and Stable Audio 3
+
+The Studio's Sounds mode runs in its own pack (`music_sound_env`, `~/.chaosengine/sound-venv`): `stable-audio-tools`
+0.0.20 for Stable Audio Open Small and 1.0, and the MIT `stable-audio-3` library (commit `790793b`, `--no-deps`) for
+Stable Audio 3. On an NVIDIA GPU the pack installs `torch 2.7.1+cu128` from the PyTorch CUDA index and checks that
+torch sees the GPU; it is about 6.4 GB on Windows (about 0.9 GB on a Mac). No flash-attn is installed: the
+library prints that it is missing and falls back to PyTorch attention (plain SDPA, and its own fallbacks for the
+autoencoder's sliding window); the figures below are with that fallback. All sound rows are gated (Stability AI Community Licence; Stable Audio 3 also the Gemma Terms
+of Use for its T5Gemma text encoder, which sits inside each repo).
+
+| Row | Lengths | Download | RTX 4090 (warm, through the routes) | VRAM peak (torch reserved) |
+|---|---|---|---|---|
+| Stable Audio 3 Small SFX | 1 to 120 s | 3.5 GB | 5 s in 0.41 s, 10 s in 0.43 s, 120 s in 0.87 s | 2.0 GB |
+| Stable Audio 3 Small Music | 1 to 120 s | 3.5 GB | 30 s in 0.51 s, 60 s in 0.63 s, 120 s in 0.87 s | 2.0 GB |
+| Stable Audio 3 Medium | 1 to 380 s | 10.4 GB | 5 s 0.76 s, 10 s 1.1 s, 30 s 1.75 s, 60 s 3.0 s, 380 s 15.4 s | 8.3 GB |
+| Stable Audio Open Small | 1 to 11 s | 2.6 GB | 0.27 s (fixed window) | 3.6 GB |
+| Stable Audio Open 1.0 | 1 to 47 s | 5.7 GB | 15.6 s for any length (100 steps, float32, fixed 47 s window) | 13.8 GB |
+
+Stable Audio 3 runs in float16 on CUDA with the authors' defaults (8 steps, cfg 1, pingpong sampler) and is
+variable length: the work grows with the clip. A model load takes 10 s (small) to 17 s (Medium), and Medium's first
+clip after a load about 9 s more. Before each CUDA run the worker checks free VRAM (3 GB for the small rows, 9 GB for
+Medium, counting what it already holds) and says another program may be using the GPU. Output is FLAC 24-bit,
+44.1 kHz stereo, peak -1 dBFS; Small SFX's two channels are nearly identical (L minus R under -47 dBFS), the
+music rows are real stereo. The Stable Audio 3 rows list only `cuda`: they have not been run on a Mac.
 
 ## Licence
 

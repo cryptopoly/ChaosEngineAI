@@ -215,10 +215,8 @@ class MusicRouteTests(_RouteBox):
                 self.assertEqual(refused.status_code, 409)
                 self.assertEqual(refused.json()["detail"], music_env.UNSUPPORTED_PLATFORM_REASON)
 
-    def test_on_an_nvidia_host_music_runs_and_sounds_say_why_not(self) -> None:
-        """FU-139: the CUDA lane opens music; the sounds lane stays Mac-only with its own sentence and code."""
-        from backend_service import music_sound_env
-
+    def test_on_an_nvidia_host_music_and_sounds_run(self) -> None:
+        """FU-139 opened music on CUDA; FU-274 opens the sounds lane there too (Stable Audio Open and Stable Audio 3)."""
         with mock.patch.object(music_env.platform, "system", return_value="Windows"), \
                 mock.patch.object(music_env.platform, "machine", return_value="AMD64"), \
                 mock.patch.object(music_env, "_nvidia_present", return_value=True), \
@@ -226,20 +224,16 @@ class MusicRouteTests(_RouteBox):
             runtime = self.client.get("/api/music/runtime").json()["runtime"]
             self.assertEqual((runtime["lane"], runtime["unavailableReason"], runtime["unavailableCode"]), ("cuda", None, None))
             sound = runtime["sound"]
-            self.assertEqual((sound["lane"], sound["unavailableCode"]), ("unsupported", "music.soundUnsupportedPlatform"))
-            self.assertEqual(sound["unavailableReason"], music_sound_env.SOUND_UNSUPPORTED_REASON)
+            self.assertEqual((sound["lane"], sound["unavailableReason"], sound["unavailableCode"]), ("cuda", None, None))
             families = {f["id"]: f for f in self.client.get("/api/music/catalog").json()["families"]}
-            for variant in families["ace-step-1.5"]["variants"]:
-                self.assertIn("cuda", variant["platforms"])
-            for variant in families["stable-audio-open"]["variants"]:
-                self.assertNotIn("cuda", variant["platforms"])
+            for family in ("ace-step-1.5", "stable-audio-open", "stable-audio-3"):
+                for variant in families[family]["variants"]:
+                    self.assertIn("cuda", variant["platforms"])
             with mock.patch.object(self.client.app.state.chaosengine, "start_download", return_value={"state": "downloading"}) as start:
-                refused = self.client.post("/api/music/download", json={"repo": "stabilityai/stable-audio-open-small"})
-                self.assertEqual((refused.status_code, refused.json()["detail"]), (409, music_sound_env.SOUND_UNSUPPORTED_REASON))
-                start.assert_not_called()
-                allowed = self.client.post("/api/music/download", json={"repo": "ACE-Step/Ace-Step1.5"})
-                self.assertEqual(allowed.status_code, 200)
-                start.assert_called_once_with("ACE-Step/Ace-Step1.5")
+                for repo in ("stabilityai/stable-audio-open-small", "stabilityai/stable-audio-3-small-sfx", "ACE-Step/Ace-Step1.5"):
+                    allowed = self.client.post("/api/music/download", json={"repo": repo})
+                    self.assertEqual(allowed.status_code, 200, repo)
+                self.assertEqual(start.call_count, 3)
 
     def test_catalog_runtime_estimate_and_unload(self) -> None:
         families = self.client.get("/api/music/catalog").json()["families"]

@@ -750,7 +750,8 @@
       "hideSizes": "隐藏大小",
       "kokoroLineAddon": "{count} 种快速语音，覆盖 {languages} 种语言。在任何机器上都快；是语音运行时的附加组件。",
       "kokoroNotInstalled": "未安装",
-      "kokoroAddHint": "在“语音运行时 > 附加组件”中勾选即可。"
+      "kokoroAddHint": "在“语音运行时 > 附加组件”中勾选即可。",
+      "gpuDefaultLine": null
     },
     "voices": {
       "addChinese": "添加普通话语音",
@@ -1000,7 +1001,8 @@
         "image": null,
         "music": null,
         "other": null
-      }
+      },
+      "needsSpeechGpu": null
     },
     "stop": "停止",
     "studio": {
@@ -1189,7 +1191,7 @@
     "runtime": {
       "addon": {
         "chinese": "普通话快速语音（8 种语音，约 60 MB）",
-        "speech-gpu": "语音 GPU 附加组件：Chatterbox、VoxCPM2 和 Orpheus，在 NVIDIA GPU 上运行（数 GB）",
+        "speech-gpu": null,
         "stt-gpu": null,
         "kokoro": "Kokoro 快速语音（约 330 MB）"
       },

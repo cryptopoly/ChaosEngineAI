@@ -750,7 +750,8 @@
       "hideSizes": "Hide sizes",
       "kokoroLineAddon": "{count} quick voices in {languages} languages. Fast on any machine; an add-on of the voice runtime.",
       "kokoroNotInstalled": "Not installed",
-      "kokoroAddHint": "Tick it under Voice runtime > Add-ons."
+      "kokoroAddHint": "Tick it under Voice runtime > Add-ons.",
+      "gpuDefaultLine": "{name} becomes the dictation model once it is downloaded, unless you pick another."
     },
     "voices": {
       "addChinese": "Add Mandarin Chinese voices",
@@ -1000,7 +1001,8 @@
         "image": "Waiting for the image job to finish. Speech starts right after it.",
         "music": "Waiting for the music job to finish. Speech starts right after it.",
         "other": "Waiting for another job to finish. Speech starts right after it."
-      }
+      },
+      "needsSpeechGpu": "Needs the speech GPU add-on. Tick it under Voice > Models > Voice runtime > Add-ons."
     },
     "stop": "Stop",
     "studio": {
@@ -1189,7 +1191,7 @@
     "runtime": {
       "addon": {
         "chinese": "Mandarin Chinese quick voices (8 voices, about 60 MB)",
-        "speech-gpu": "Speech GPU add-on: Chatterbox, VoxCPM2 and Orpheus on the NVIDIA GPU (several GB)",
+        "speech-gpu": "Speech GPU add-on: Qwen3-TTS natural voices, voice design and cloning on the NVIDIA GPU (about 5 GB)",
         "stt-gpu": "Speech-to-text GPU add-on: Qwen3-ASR, Parakeet, Nemotron and Granite on the NVIDIA GPU (about 3 GB)",
         "kokoro": "Kokoro quick voices (about 330 MB)"
       },

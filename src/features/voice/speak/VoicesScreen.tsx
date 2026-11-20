@@ -10,6 +10,7 @@ import { Drawer } from "../../../components/Drawer";
 import { Panel } from "../../../components/Panel";
 import type { VoiceChatCost, VoiceEntry } from "../../../types";
 import { useVoice } from "../VoiceContext";
+import { speechGpuAddonMissing, speechGpuAddonText, unsupportedModelText } from "../models/voiceModelsLogic";
 import { deleteClonedVoice } from "../clone/cloneApi";
 import { NewVoiceForm } from "../clone/NewVoiceForm";
 import { chineseAddonPending, kokoroInstalled } from "../voicePackState";
@@ -201,7 +202,9 @@ export function VoicesScreen({ catalog, speakVoiceId, onUseInSpeak, onDesign, on
   };
 
   const cloneNote = !catalog.modelsAvailable
-    ? t("voice.clone.macOnly", { defaultValue: "Voice cloning runs on Apple Silicon Macs for now." })
+    ? speechGpuAddonMissing(runtime)
+      ? speechGpuAddonText(tf)
+      : t("voice.clone.macOnly", { defaultValue: "Voice cloning runs on Apple Silicon Macs for now." })
     : t("voice.clone.notHere", { defaultValue: "Cloned voices can only be used from the ChaosEngineAI window on this computer." });
 
   // --- the main-voices strip -------------------------------------------------------------------------------------
@@ -268,7 +271,9 @@ export function VoicesScreen({ catalog, speakVoiceId, onUseInSpeak, onDesign, on
           {voice.kind !== "design" && voice.chatUse?.read ? <ChatCost cost={voice.chatCost} /> : null}
         </span>
         <span className="voice-list__actions">
-          {needsDownload && model ? (
+          {needsDownload && model && !model.supported ? (
+            <span className="muted-text voice-list__unsupported">{unsupportedModelText(model, runtime, tf)}</span>
+          ) : needsDownload && model ? (
             model.download.state === "downloading" ? (
               <span className="muted-text">{t("voice.clone.downloading", { defaultValue: "Downloading…" })}</span>
             ) : (

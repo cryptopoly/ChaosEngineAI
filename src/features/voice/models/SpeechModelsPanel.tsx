@@ -39,7 +39,14 @@ import { costLabel, recommendedNaturalModel, showInstallCard } from "../speak/sp
 import type { VoiceCatalog } from "../speak/useVoiceCatalog";
 import { quickVoiceSummary } from "../voicePackState";
 import type { StudioTarget } from "../VoiceModelsTab";
-import { collapsedFamilyRows, familyHeadingTracker, speechDeleteConfirmText, studioTargetFor, voiceSortOptions } from "./voiceModelsLogic";
+import {
+  collapsedFamilyRows,
+  familyHeadingTracker,
+  speechDeleteConfirmText,
+  studioTargetFor,
+  unsupportedModelText,
+  voiceSortOptions,
+} from "./voiceModelsLogic";
 
 const VOICE_GRID = "minmax(220px, 1.7fr) minmax(160px, 1.2fr) minmax(76px, 0.5fr) minmax(130px, 1fr) minmax(100px, 0.8fr) 168px";
 const VOICE_GRID_NARROW = "minmax(190px, 1.7fr) minmax(70px, 0.5fr) minmax(130px, 1fr) minmax(100px, 0.8fr) 150px";
@@ -73,26 +80,6 @@ const FAMILY_BLURBS: Record<string, string> = {
   voxcpm2: "Voice design and cloning in 30 languages",
   orpheus: "Eight expressive English voices with sound tags",
 };
-
-/** Why a row cannot run here: the GPU's memory or age (the backend sends the numbers), else the Apple-only note. */
-function unsupportedText(row: VoiceModelRow, t: (key: string, options: Record<string, unknown>) => string): string {
-  const facts = row.unsupportedFacts;
-  if (facts?.kind === "memory") {
-    return t("voice.speak.gpuTooSmall", {
-      need: facts.need,
-      have: facts.have,
-      defaultValue: "Needs about {need} GB of GPU memory; this GPU has {have} GB.",
-    });
-  }
-  if (facts?.kind === "compute") {
-    return t("voice.speak.gpuTooOld", {
-      need: facts.need,
-      have: facts.have,
-      defaultValue: "Needs an NVIDIA GPU of compute capability {need} or newer; this one is {have}.",
-    });
-  }
-  return t("voice.speak.appleOnly", { defaultValue: "Apple Silicon Macs only for now." });
-}
 
 export function VoiceMakesChips({ makes }: { makes: string[] }) {
   const { t } = useTranslation("studio");
@@ -317,7 +304,7 @@ export function SpeechModelsPanel({ catalog, runtime, availability, onAvailabili
     const actions = !row.supported && !row.installed ? (
       <div className="media-model-actions model-download-controls">
         <span className="muted-text">
-          {unsupportedText(row, t)}
+          {unsupportedModelText(row, runtime, tf)}
         </span>
       </div>
     ) : downloading ? (

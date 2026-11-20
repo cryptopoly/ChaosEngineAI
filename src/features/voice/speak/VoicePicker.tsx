@@ -1,6 +1,8 @@
 import { useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { VoiceEntry, VoiceModelRow } from "../../../types";
+import { speechGpuAddonMissing, speechGpuAddonText } from "../models/voiceModelsLogic";
+import { useVoice } from "../VoiceContext";
 import { useCostText } from "./costText";
 import { DESIGN_VOICE_ID, chooseModel, costLabel, groupVoices, quickLanguage, quickShortlist } from "./speakLogic";
 import { ActionCard, GroupHead, VoiceCard, type CardCost } from "./VoiceCard";
@@ -52,6 +54,7 @@ export function VoicePicker({
   onAddonInstalled,
 }: VoicePickerProps) {
   const { t, i18n } = useTranslation("studio");
+  const { runtime } = useVoice();
   const costs = useCostText();
   const groups = useMemo(() => groupVoices(voices, i18n.language, modelsAvailable), [voices, i18n.language, modelsAvailable]);
   const languages = useMemo(() => [...new Set(groups.quick.map(quickLanguage))], [groups.quick]);
@@ -172,7 +175,11 @@ export function VoicePicker({
     />
   );
 
-  const appleOnly = !modelsAvailable ? t("voice.speak.appleOnly", { defaultValue: "Apple Silicon Macs only for now." }) : undefined;
+  const appleOnly = !modelsAvailable
+    ? speechGpuAddonMissing(runtime)
+      ? speechGpuAddonText()
+      : t("voice.speak.appleOnly", { defaultValue: "Apple Silicon Macs only for now." })
+    : undefined;
   const uiLanguageName = (() => {
     try {
       return new Intl.DisplayNames([i18n.language], { type: "language" }).of(i18n.language.split("-")[0]) ?? i18n.language;

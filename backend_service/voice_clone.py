@@ -181,6 +181,9 @@ def list_models(*, every_model: bool = False) -> list[dict[str, Any]]:
             "licence": dict(row["licence"]),
             "kind": row["kind"],
             "family": row["family"],
+            # Where the row runs ("mlx", "cuda"), so the screen can tell an Apple-only row from one that needs the
+            # speech GPU add-on.
+            "lanes": list(row["lanes"]),
             "capabilities": dict(row["capabilities"]),
             "controls": dict(row.get("controls") or {}),
             "companions": [{k: c[k] for k in ("repo", "revision", "files")} for c in row.get("companions", [])],

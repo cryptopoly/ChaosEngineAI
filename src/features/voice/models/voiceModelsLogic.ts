@@ -3,7 +3,7 @@
 import i18next from "i18next";
 import { fitSortRank, statusSortRank, type ModelSortOption } from "../../../components/models";
 import { isKokoro, voiceFamilyRank, type VoiceModelEntry } from "../../../components/models/adapters/voice";
-import type { VoiceEntry, VoiceModelRow } from "../../../types";
+import type { SttModel, VoiceEntry, VoiceModelRow, VoiceRuntime } from "../../../types";
 import type { SpeechModelDeletePlan } from "../clone/cloneApi";
 import { DESIGN_VOICE_ID, bestNaturalVoice } from "../speak/speakLogic";
 import type { StudioMode } from "../voiceStudioMode";
@@ -24,6 +24,49 @@ export function studioTargetFor(model: VoiceModelRow, voices: VoiceEntry[], uiLa
 type T = (key: string, options?: Record<string, unknown>) => string;
 
 const tStudio: T = (key, options) => i18next.t(`studio:${key}`, options) as string;
+
+/**
+ * A PC whose NVIDIA GPU could run the speech models, with the speech GPU add-on not installed (the backend lists the
+ * add-on only where it can install). Until it is ticked, no speech model beyond Kokoro runs there.
+ */
+export function speechGpuAddonMissing(runtime: Pick<VoiceRuntime, "lane" | "extras"> | null | undefined): boolean {
+  return runtime?.lane === "portable" && (runtime.extras ?? []).some((extra) => extra.id === "speech-gpu" && !extra.installed);
+}
+
+/** Where to get the speech GPU add-on, for a PC that lacks it. */
+export function speechGpuAddonText(t: T = tStudio): string {
+  return t("voice.speak.needsSpeechGpu", {
+    defaultValue: "Needs the speech GPU add-on. Tick it under Voice > Models > Voice runtime > Add-ons.",
+  });
+}
+
+/**
+ * Why a row cannot run here: the GPU's memory or age (the backend sends the numbers), the missing speech GPU add-on
+ * for a GPU row on a PC, else the Apple-only note.
+ */
+export function unsupportedModelText(
+  row: Pick<VoiceModelRow, "unsupportedFacts" | "lanes">,
+  runtime: Pick<VoiceRuntime, "lane" | "extras"> | null | undefined,
+  t: T = tStudio,
+): string {
+  const facts = row.unsupportedFacts;
+  if (facts?.kind === "memory") {
+    return t("voice.speak.gpuTooSmall", {
+      need: facts.need,
+      have: facts.have,
+      defaultValue: "Needs about {need} GB of GPU memory; this GPU has {have} GB.",
+    });
+  }
+  if (facts?.kind === "compute") {
+    return t("voice.speak.gpuTooOld", {
+      need: facts.need,
+      have: facts.have,
+      defaultValue: "Needs an NVIDIA GPU of compute capability {need} or newer; this one is {have}.",
+    });
+  }
+  if ((row.lanes ?? []).includes("cuda") && speechGpuAddonMissing(runtime)) return speechGpuAddonText(t);
+  return t("voice.speak.appleOnly", { defaultValue: "Apple Silicon Macs only for now." });
+}
 
 /** The confirm before a speech model is deleted: what goes, its size, what stays because another model uses it. */
 export function speechDeleteConfirmText(plan: SpeechModelDeletePlan, sizeGb: number | null | undefined, t: T = tStudio): string {
@@ -52,6 +95,15 @@ export function speechDeleteConfirmText(plan: SpeechModelDeletePlan, sizeGb: num
     );
   }
   return lines.join("\n\n");
+}
+
+/**
+ * The GPU dictation row that will become the default once it is downloaded: the first GPU row (the backend lists the
+ * default-to-be first), while it is not on disk and this GPU can run it. Undefined on a Mac or without the add-on.
+ */
+export function gpuDefaultPending(models: SttModel[]): SttModel | undefined {
+  const first = models.find((m) => m.backend === "transformers-asr");
+  return first && !first.installed && !first.gpuFacts ? first : undefined;
 }
 
 /** The confirm before a dictation model is deleted. */
@@ -90,7 +142,9 @@ export const COLLAPSE_FAMILY_FROM = 3;
 
 /**
  * Rows a collapsed family keeps showing, by family id: every downloaded, downloading, just-cancelled or failed row, or
- * the first row of the catalog order when none is. Families with fewer than COLLAPSE_FAMILY_FROM rows are absent (never collapsed).
+ * when none is, the first row that can run here (on a PC the Apple-only rows come first in the catalog), then the first
+ * GPU row (the speech GPU add-on is not in yet), then the first row. Families with fewer than COLLAPSE_FAMILY_FROM rows
+ * are absent (never collapsed).
  */
 export function collapsedFamilyRows(entries: VoiceModelEntry[]): Map<string, { total: number; shown: Set<string> }> {
   const byFamily = new Map<string, VoiceModelEntry[]>();
@@ -103,7 +157,9 @@ export function collapsedFamilyRows(entries: VoiceModelEntry[]): Map<string, { t
   for (const [family, members] of byFamily) {
     if (members.length < COLLAPSE_FAMILY_FROM) continue;
     const keep = members.filter((m) => !isKokoro(m.source) && (m.source.installed || ["downloading", "cancelled", "failed"].includes(m.source.download.state)));
-    result.set(family, { total: members.length, shown: new Set((keep.length ? keep : [members[0]]).map((m) => m.id)) });
+    const rows = members.map((m) => ({ id: m.id, row: m.source as VoiceModelRow }));
+    const first = rows.find((m) => m.row.supported) ?? rows.find((m) => (m.row.lanes ?? []).includes("cuda")) ?? rows[0];
+    result.set(family, { total: members.length, shown: new Set(keep.length ? keep.map((m) => m.id) : [first.id]) });
   }
   return result;
 }

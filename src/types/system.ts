@@ -163,9 +163,10 @@ export interface ChatPick {
   releaseDate?: string | null;
   availableLocally: boolean;
   fit: import("./models").ModelFit;
-  /** Expected decode speed: this machine's own measured median, else the bandwidth estimate. */
+  /** Expected decode speed: this machine's own measured median, else the row's RTX 4090 figure on a
+   * comparable card, else the bandwidth estimate. */
   tokS: number | null;
-  tokSBasis: "measured" | "estimated" | null;
+  tokSBasis: "measured" | "rtx4090" | "estimated" | null;
   /** "NVIDIA GPU, 24 GB VRAM", "Apple Silicon, 64 GB unified memory"... */
   hardwareLabel?: string | null;
 }

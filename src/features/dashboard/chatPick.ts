@@ -11,9 +11,13 @@ import { number, sizeLabel } from "../../utils";
 export function pickSpeedText(pick: ChatPick, t: TFunction<"dashboard">): string | null {
   if (!pick.tokS || pick.tokS <= 0) return null;
   const value = number(pick.tokS, 0);
-  return pick.tokSBasis === "measured"
-    ? t("bestFit.speedMeasured", { defaultValue: "{value} tok/s, measured on this computer", value })
-    : t("bestFit.speedEstimated", { defaultValue: "about {value} tok/s (estimate)", value });
+  if (pick.tokSBasis === "measured") {
+    return t("bestFit.speedMeasured", { defaultValue: "{value} tok/s, measured on this computer", value });
+  }
+  if (pick.tokSBasis === "rtx4090") {
+    return t("bestFit.speedRtx4090", { defaultValue: "{value} tok/s measured on an RTX 4090", value });
+  }
+  return t("bestFit.speedEstimated", { defaultValue: "about {value} tok/s (estimate)", value });
 }
 
 /** "Needs about 10 GB of 24 GB GPU memory" (``gpu`` when the card has its own memory). */

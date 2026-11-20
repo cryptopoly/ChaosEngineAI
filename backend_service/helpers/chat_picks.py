@@ -4,7 +4,8 @@ Both read the same ``fit`` the Models page shows (``helpers.fit``), so the Dashb
 badge cannot disagree (FU-456, D-105 B). The candidates are each family's best-fit row (``bestFitVariantId``,
 which only ever names a row that ``fits``); they are ordered with the same rule ``best_fit_variant_id`` uses
 inside a family: newest release, then the larger model, then the faster, then the smaller. Speed is this
-machine's own measured median when there is one (chat and benchmark history), else the bandwidth estimate.
+machine's own measured median when there is one (chat and benchmark history), else the row's RTX 4090 figure
+on a comparable card (``measuredGpuTokS``), else the bandwidth estimate.
 The headroom shown beside the pick is that row's own ``fit.headroomPct``, not a constant per size class.
 """
 
@@ -20,6 +21,8 @@ from backend_service.helpers.hardware_class import HardwareClass
 logger = logging.getLogger(__name__)
 
 PICK_LIMIT = 5
+# A catalogue row's RTX 4090 speed (``measuredGpuTokS``) is shown only on a discrete NVIDIA card this large.
+REFERENCE_MIN_GB = 20.0
 
 
 def _speed(
@@ -28,7 +31,9 @@ def _speed(
     measured_speed_for: Callable[[dict[str, Any]], float | None] | None,
     bandwidth: Callable[[], float],
 ) -> tuple[float | None, str | None]:
-    """``(tok/s, "measured" | "estimated")`` or ``(None, None)``."""
+    """``(tok/s, basis)`` or ``(None, None)``. Basis: ``measured`` (this computer's own runs), ``rtx4090`` (the
+    catalogue row's plain-decode figure from the RTX 4090, used only on a discrete NVIDIA card of 20 GB or more,
+    where it is a fair guide), else ``estimated`` (memory bandwidth)."""
     if measured_speed_for is not None:
         try:
             measured = measured_speed_for(variant)
@@ -36,6 +41,9 @@ def _speed(
             measured = None
         if measured:
             return round(float(measured), 1), "measured"
+    reference = _positive(variant.get("measuredGpuTokS"))
+    if reference is not None and hardware.kind == "cuda" and not hardware.unified and hardware.usable_gb >= REFERENCE_MIN_GB:
+        return round(reference, 1), "rtx4090"
     try:
         estimate = estimate_chat_tok_s(
             variant, arch=None, bandwidth_gbps=bandwidth(), cuda=hardware.kind == "cuda" and not hardware.unified,

@@ -95,7 +95,8 @@
     "needsGpu": "needs about {need} GB of {usable} GB GPU memory",
     "needsMemory": "needs about {need} GB of {usable} GB usable memory",
     "speedMeasured": "{value} tok/s, measured on this computer",
-    "speedEstimated": "about {value} tok/s (estimate)"
+    "speedEstimated": "about {value} tok/s (estimate)",
+    "speedRtx4090": "{value} tok/s measured on an RTX 4090"
   },
   "startHere": {
     "title": "Start here",

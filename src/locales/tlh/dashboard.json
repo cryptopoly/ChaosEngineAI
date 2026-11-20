@@ -95,7 +95,8 @@
     "needsGpu": null,
     "needsMemory": null,
     "speedMeasured": null,
-    "speedEstimated": null
+    "speedEstimated": null,
+    "speedRtx4090": null
   },
   "startHere": {
     "title": null,

@@ -57,6 +57,19 @@ class ChatPickTests(unittest.TestCase):
         self.assertEqual(estimated["tokSBasis"], "estimated")
         self.assertGreater(estimated["tokS"], 0)
 
+    def test_the_rows_rtx_4090_figure_is_shown_on_a_comparable_card_only(self):
+        variant = _variant("a")
+        variant["measuredGpuTokS"] = 92.8
+        families = [_family("a", variant, best="a")]
+        self.assertEqual((_picks(families)[0]["tokS"], _picks(families)[0]["tokSBasis"]), (92.8, "rtx4090"))
+        # This computer's own runs win over the reference figure.
+        self.assertEqual(_picks(families, measured_speed_for=lambda v: 80.0)[0]["tokSBasis"], "measured")
+        small = HardwareClass(kind="cuda", bucket="cuda-8", label="NVIDIA GPU, 8 GB VRAM", total_gb=32.0, usable_gb=8.0, unified=False)
+        mac = HardwareClass(kind="apple", bucket="apple-64", label="Apple Silicon, 64 GB", total_gb=64.0, usable_gb=51.8, unified=True)
+        for hardware in (small, mac):
+            pick = chat_picks(families, hardware, bandwidth_gbps=lambda: 400.0)[0]
+            self.assertEqual(pick["tokSBasis"], "estimated", hardware.label)
+
     def test_limit(self):
         families = [_family(f"f{i}", _variant(f"v{i}"), best=f"v{i}") for i in range(9)]
         self.assertEqual(len(_picks(families)), 5)

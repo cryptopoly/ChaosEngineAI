@@ -172,3 +172,19 @@ one small positive, telling the model the audio is at 10 % of the video's noise 
 knowing: STG 0 or modality 1 drop a transformer pass (40-42 s instead of 56 s) at a small cost.
 
 The two-stage, non-distilled path (Lightricks' route (a): dev 22B fp8, CFG, 30 + 3 steps) is below.
+
+### Experiment 3b: the two-stage, non-distilled path (route a)
+
+Lightricks' `A2VidPipelineTwoStage` in the spike's venv (`ltx-pipelines` 1.6.2): dev 22B fp8, stage 1 at 384x256
+with CFG 3, STG 1, modality 3 for 30 steps, stage 2 x2 upscale and 3 distilled-LoRA steps, `--offload cpu`; same
+explicit prompt, stem, windows, stills and seeds.
+
+| Path | mean score | mean r | beats chance | Good takes (beats chance, frontal, sings) | s per shot | GPU peak |
+|---|---|---|---|---|---|---|
+| route (b), the app's 4-bit distilled, 8 steps | 0.44 | 0.44 | 5 / 6 | 4 / 6 | 56 (warm) | 17.2 GiB torch |
+| route (a), dev fp8 two-stage, 30 + 3 steps | 0.43 | 0.19 | 3 / 6 | 3 / 6 | 267-300 (cold) | 9.0 GB whole card |
+
+Same hit rate, five times the time. Route (a) made the single best take of the whole study (soul seed 42: r 0.80,
+the mouth shuts in the gap between phrases and reopens with the next, a frontal face throughout), but also two
+misses on the ballad (seed 7 never opens; seed 42 opens late and sings on through the silent tail) and one on soul
+seed 7. The full non-distilled model does not fix singing either; its value stays the low-VRAM route (FU-333).

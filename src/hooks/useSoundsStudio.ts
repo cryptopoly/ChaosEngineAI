@@ -104,7 +104,7 @@ export function useSoundsStudio({ backendOnline, variant, runtime, refreshRuntim
           results: response.items.map((item: MusicLibraryItem) => ({ item, jobSeconds: response.seconds, seed: item.seed ?? response.seed })),
         });
       } catch (err) {
-        dispatch({ type: "failed", message: err instanceof Error ? err.message : String(err), status: err instanceof MusicApiError ? err.status : null });
+        dispatch({ type: "failed", message: err instanceof Error ? err.message : String(err), status: err instanceof MusicApiError ? err.status : null, copy: err instanceof MusicApiError ? err.copy : null });
       }
       void refreshLibrary();
       void refreshRuntime();

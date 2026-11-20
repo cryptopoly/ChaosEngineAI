@@ -1543,6 +1543,20 @@
       "modelPicker": "サウンドモデル",
       "cpuFallback": "Apple GPU ではこのモデルを実行できなかったため、CPU で再開しました。大幅に遅く、数分かかることがあります。キャンセルできます。",
       "cpuOnly": "この音声は GPU ではなく CPU で実行されています。大幅に遅く、数分かかることがあります。キャンセルできます。"
+    },
+    "copy": {
+      "title": null,
+      "why": null,
+      "wayDeveloper": null,
+      "waySameDrive": null,
+      "button": null,
+      "resume": null,
+      "progress": null,
+      "status": null,
+      "eta": null,
+      "cancel": null,
+      "cancelled": null,
+      "done": null
     }
   },
   "audioPlayer": {

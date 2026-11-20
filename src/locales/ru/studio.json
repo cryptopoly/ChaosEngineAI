@@ -1543,6 +1543,20 @@
       "modelPicker": "Звуковая модель",
       "cpuFallback": "GPU Apple не смог запустить эту модель, поэтому она перезапущена на CPU. Это значительно медленнее: может занять много минут. Можно отменить.",
       "cpuOnly": "Этот звук выполняется на CPU, а не на GPU. Это значительно медленнее: может занять много минут. Можно отменить."
+    },
+    "copy": {
+      "title": null,
+      "why": null,
+      "wayDeveloper": null,
+      "waySameDrive": null,
+      "button": null,
+      "resume": null,
+      "progress": null,
+      "status": null,
+      "eta": null,
+      "cancel": null,
+      "cancelled": null,
+      "done": null
     }
   },
   "audioPlayer": {

@@ -1543,6 +1543,20 @@
       "modelPicker": "wab yab",
       "cpuFallback": "yabvam chu'laHbe' Apple GPU, vaj CPUDaq taghqa'. QItqu': tup law' poQlaH. yIqIllaH.",
       "cpuOnly": "CPUDaq QaptaH wabvam, GPUDaq Qapbe'. QItqu': tup law' poQlaH. yIqIllaH."
+    },
+    "copy": {
+      "title": null,
+      "why": null,
+      "wayDeveloper": null,
+      "waySameDrive": null,
+      "button": null,
+      "resume": null,
+      "progress": null,
+      "status": null,
+      "eta": null,
+      "cancel": null,
+      "cancelled": null,
+      "done": null
     }
   },
   "audioPlayer": {

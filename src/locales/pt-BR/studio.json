@@ -1543,6 +1543,20 @@
       "modelPicker": "Modelo de som",
       "cpuFallback": "A GPU da Apple não conseguiu rodar este modelo, então ele reiniciou na CPU. Isto é bem mais lento: pode levar muitos minutos. Você pode cancelar.",
       "cpuOnly": "Este som está rodando na CPU, não em uma GPU. Isto é bem mais lento: pode levar muitos minutos. Você pode cancelar."
+    },
+    "copy": {
+      "title": null,
+      "why": null,
+      "wayDeveloper": null,
+      "waySameDrive": null,
+      "button": null,
+      "resume": null,
+      "progress": null,
+      "status": null,
+      "eta": null,
+      "cancel": null,
+      "cancelled": null,
+      "done": null
     }
   },
   "audioPlayer": {

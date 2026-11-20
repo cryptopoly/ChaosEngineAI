@@ -129,6 +129,37 @@ def cancel_install(request: Request) -> dict[str, Any]:
     return music_env.cancel_install()
 
 
+@router.post("/api/music/weights/copy")
+def start_weight_copy(request: Request) -> dict[str, Any]:
+    """Copy the music weight files a link could not place (D-100): a tracked job, refused when the disk is full."""
+    from backend_service import music_weight_copy
+
+    state = request.app.state.chaosengine
+
+    def finished(status: dict[str, Any]) -> None:
+        gb = status["totalBytes"] / 1024 ** 3
+        state.add_activity("Music model files copied", f"{status['fileCount']} file(s), {gb:.1f} GB")
+
+    try:
+        return music_weight_copy.start(finished)
+    except music_weight_copy.WeightCopyError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.get("/api/music/weights/copy/status")
+def weight_copy_status() -> dict[str, Any]:
+    from backend_service import music_weight_copy
+
+    return music_weight_copy.status()
+
+
+@router.post("/api/music/weights/copy/cancel")
+def cancel_weight_copy() -> dict[str, Any]:
+    from backend_service import music_weight_copy
+
+    return music_weight_copy.cancel()
+
+
 @router.post("/api/music/sound/install")
 def start_sound_install(request: Request) -> dict[str, Any]:
     from backend_service import music_sound_env

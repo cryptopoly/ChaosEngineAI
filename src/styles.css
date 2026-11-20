@@ -17170,3 +17170,18 @@ select.music-library__select {
     font-size: max(calc(16px / var(--ui-scale, 1)), 1em) !important;
   }
 }
+.music-weight-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+.music-weight-copy__ways {
+  margin: 0;
+  padding-left: 20px;
+}
+.music-weight-copy__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}

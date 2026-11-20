@@ -6,6 +6,7 @@
  */
 import { useEffect, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
+import { MusicWeightCopyPanel } from "./MusicWeightCopyPanel";
 import type { TabRequest } from "../../constants";
 import { Disclosure } from "../../components/Disclosure";
 import { LiveProgress, type LiveProgressPhase } from "../../components/LiveProgress";
@@ -447,7 +448,8 @@ export function MusicStudioTab({ music, backendOnline, onTabChange }: MusicStudi
       {error && !running ? (
         <div className={`callout ${error.kind === "cancelled" ? "quiet" : "error"} music-studio__error`} role={error.kind === "cancelled" ? "status" : "alert"}>
           <p>{headline[error.kind]}</p>
-          {error.detail && error.kind !== "generic" && error.kind !== "offline" ? <p className="muted-text">{error.detail}</p> : null}
+          {error.detail && error.kind !== "generic" && error.kind !== "offline" && !error.copy ? <p className="muted-text">{error.detail}</p> : null}
+          {error.copy ? <MusicWeightCopyPanel info={error.copy} onDone={make} /> : null}
           <div className="button-row">
             {error.kind === "oom" && form.seconds > SECONDS_MIN ? (
               <button

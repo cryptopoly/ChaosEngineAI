@@ -4,7 +4,7 @@
  * Open (Small: 1 to 11 s, 1.0: 1 to 47 s; each catalog row carries its own limits); the models are gated, so
  * readiness also asks whether the licence was accepted.
  */
-import type { MusicLibraryItem, MusicModelVariant, MusicResult, MusicSoundPayload, MusicStepsOptions } from "../../types";
+import type { MusicLibraryItem, MusicModelVariant, MusicResult, MusicSoundPayload, MusicStepsOptions, MusicWeightCopyInfo } from "../../types";
 import { classifyMusicError, SEED_MAX, type MusicErrorInfo } from "./musicLogic";
 
 /** Limits used when no model row is known yet (Small's, the default sound model). */
@@ -188,7 +188,7 @@ export type SoundRunAction =
   | { type: "start"; at: number; form: SoundForm }
   | { type: "cancelRequested" }
   | { type: "succeeded"; results: MusicResult[] }
-  | { type: "failed"; message: string; status: number | null }
+  | { type: "failed"; message: string; status: number | null; copy?: MusicWeightCopyInfo | null }
   | { type: "dismiss" }
   | { type: "forget"; ids: string[] };
 
@@ -205,7 +205,7 @@ export function soundRunReducer(state: SoundRunState, action: SoundRunAction): S
       return { ...state, running: false, startedAt: null, cancelling: false, results: [...action.results, ...state.results].slice(0, MAX_SOUND_RESULTS) };
     case "failed":
       if (!state.running) return state;
-      return { ...state, running: false, startedAt: null, cancelling: false, error: classifyMusicError(action.message, action.status) };
+      return { ...state, running: false, startedAt: null, cancelling: false, error: classifyMusicError(action.message, action.status, action.copy ?? null) };
     case "dismiss":
       return state.running ? state : { ...state, error: null };
     case "forget":

@@ -98,7 +98,7 @@ export function useMusicStudio({ backendOnline, variant, runtime, refreshRuntime
         });
       } catch (err) {
         const status = err instanceof MusicApiError ? err.status : null;
-        dispatch({ type: "failed", error: classifyMusicError(err instanceof Error ? err.message : String(err), status) });
+        dispatch({ type: "failed", error: classifyMusicError(err instanceof Error ? err.message : String(err), status, err instanceof MusicApiError ? err.copy : null) });
       }
       void refreshLibrary();
       void refreshRuntime();

@@ -18,7 +18,7 @@ import uuid
 from pathlib import Path
 from typing import Any, Callable
 
-from backend_service import music_env, music_sound_env
+from backend_service import music_env, music_sound_env, music_weight_copy
 
 # Worker stage -> progress phase the Music Studio shows.
 STAGE_PHASES = {"load": "load", "encode": "encode", "diffusion": "compose", "decode": "decode", "write": "save"}
@@ -37,7 +37,15 @@ _SETTINGS_LOCK = threading.Lock()
 
 
 class MusicNotReady(RuntimeError):
-    """The pack, the weights or a required pack is missing (HTTP 409 with the fix in the message)."""
+    """The pack, the weights or a required pack is missing (HTTP 409 with the fix in the message).
+
+    ``fields`` carries machine-readable extras (the weight-copy facts: ``needsCopy``, ``fileCount``,
+    ``totalBytes``, ``source``, ``target``) that the route puts next to the message.
+    """
+
+    def __init__(self, message: str, fields: dict[str, Any] | None = None) -> None:
+        super().__init__(message)
+        self.fields: dict[str, Any] = dict(fields or {})
 
 
 # ---------------------------------------------------------------------------
@@ -229,10 +237,12 @@ def _prepare(variant: dict[str, Any]) -> None:
     error = readiness_error(variant)
     if error:
         raise MusicNotReady(error)
+    if music_weight_copy.is_running():
+        raise MusicNotReady("The music model files are still being copied. Wait for the copy to finish.")
     try:
         music_env.prepare_checkpoints(music_variants())
     except music_env.WeightCopyNotice as exc:
-        raise MusicNotReady(str(exc)) from exc
+        raise MusicNotReady(str(exc), exc.fields) from exc
     if is_sound(variant):
         if not music_sound_env.prepare_text_encoder(variant):
             raise MusicNotReady(f"{variant['name']} could not set up its text encoder. Download the model again.")

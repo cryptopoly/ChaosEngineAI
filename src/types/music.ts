@@ -130,6 +130,30 @@ export interface MusicInstallJob {
   running: boolean;
 }
 
+/** The facts in a 409 that needs the weight files copied (D-100); the message is the usual plain sentence. */
+export interface MusicWeightCopyInfo {
+  needsCopy: true;
+  fileCount: number;
+  totalBytes: number;
+  source: string;
+  target: string;
+  sourceDrive: string;
+  targetDrive: string;
+}
+
+/** The "Copy now" job (`/api/music/weights/copy/status`). */
+export interface MusicWeightCopyStatus {
+  phase: "idle" | "running" | "done" | "error" | "cancelled";
+  running: boolean;
+  bytesDone: number;
+  totalBytes: number;
+  fileCount: number;
+  filesDone: number;
+  currentFile: string;
+  error: string | null;
+  etaSeconds: number | null;
+}
+
 export interface MusicSettings {
   idleUnloadMinutes: number;
 }

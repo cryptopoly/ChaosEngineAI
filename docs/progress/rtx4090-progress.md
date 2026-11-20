@@ -2052,3 +2052,12 @@ Built what the owner approved from `docs/research/minimax-h3-licence-check-2026-
 - `output_metadata.generation_settings` adds `machine_generated: true` and `model` for any gated row, so H3 mp4s carry the tag the way music FLAC and cloned-voice WAV do.
 - Tests: three new in `tests/test_licence_gate.py` (sentence, old tick lapses, audit kept, notice and links, tag) and one in `Licence.test.tsx`.
 - Checked: `test_licence_gate.py` and `test_output_metadata.py` pass except `test_h3_arguments_follow_the_pinned_doc` and `test_offload_only_off_macos` (WinError 193 on this PC, known host failures); `tsc` clean; vitest for the two licence files 14 passed; `i18n:validate` OK.
+
+## 2026-11-20: Copy now button for music weights (D-100, FU-276, agent)
+
+Owner chose a real Copy now button. Built on the `test/rtx4090` tip.
+
+- Backend: `backend_service/music_weight_copy.py` (tracked copy job: free-space check with margin, bytes done and total, current file, ETA, cancel, `.partial` then size check then rename, finished files skipped on retry); routes `POST /api/music/weights/copy`, `GET /api/music/weights/copy/status`, `POST /api/music/weights/copy/cancel` in `routes/music_library.py`; Activity entry when done. `music_env.mirror_variants` split out of `prepare_checkpoints`; `WeightCopyNotice` and `MusicNotReady` carry `fields`; the 409 detail becomes `{message, needsCopy, fileCount, totalBytes, source, target, sourceDrive, targetDrive}`. A load during a running copy is refused with a plain sentence.
+- Frontend: `MusicWeightCopyPanel.tsx` (offer, copying, cancelled, failed, done states; polls once a second; on done calls the studio's make again) under the failed load in the Music and Sounds studios; `MusicApiError.copy`; `musicStudio.copy.*` strings, English only, null in the other 10 locales.
+- Tests: `tests/test_music_weight_copy.py` (symlink and hard link forced to fail: copy completes with progress numbers, cancel then resume copies only what is left, stale partial restarted, insufficient space refusal, load held, routes, 409 envelope), `tests/test_music_env.py` adjusted, `weightCopy.test.tsx`, `music.test.ts`. `tsc`, `npm test` (1981) and `i18n:validate` pass.
+- Not verified: no PC without Developer Mode (links were forced to fail in tests), no real 14 GB copy or screenshot of the panel, no Playwright spec. `tests/test_music_worker.py::test_paths_must_be_absolute_and_inside_the_data_folder` fails here (worker subprocess timeout); that file is not touched by this change.

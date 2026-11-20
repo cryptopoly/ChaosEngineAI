@@ -213,7 +213,10 @@ def _worker_http_error(exc: Exception) -> HTTPException:
     from backend_service.music_runtime import MusicNotReady
 
     if isinstance(exc, MusicNotReady):
-        return HTTPException(status_code=409, detail=str(exc))
+        # With extras (the weight copy) the detail is the usual {message, ...} envelope, so the client
+        # still shows the message and can read ``needsCopy`` (D-100).
+        detail: Any = {"message": str(exc), **exc.fields} if exc.fields else str(exc)
+        return HTTPException(status_code=409, detail=detail)
     if isinstance(exc, ValueError):
         return HTTPException(status_code=400, detail=str(exc))
     if isinstance(exc, MusicWorkerError):

@@ -9,6 +9,7 @@
  */
 import { useEffect, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { MusicWeightCopyPanel } from "./MusicWeightCopyPanel";
 import type { TabRequest } from "../../constants";
 import { AudioPlayer } from "../../components/AudioPlayer";
 import { Disclosure } from "../../components/Disclosure";
@@ -466,7 +467,8 @@ export function SoundsStudio({ music, backendOnline, onTabChange, header }: Soun
       {error && !running ? (
         <div className={`callout ${error.kind === "cancelled" ? "quiet" : "error"} music-studio__error`} role={error.kind === "cancelled" ? "status" : "alert"}>
           <p>{headline[error.kind]}</p>
-          {error.detail && error.kind !== "generic" && error.kind !== "offline" ? <p className="muted-text">{error.detail}</p> : null}
+          {error.detail && error.kind !== "generic" && error.kind !== "offline" && !error.copy ? <p className="muted-text">{error.detail}</p> : null}
+          {error.copy ? <MusicWeightCopyPanel info={error.copy} onDone={make} /> : null}
           <div className="button-row">
             {error.kind === "notReady" ? (
               <button type="button" className="secondary-button" onClick={() => onTabChange("music-models")}>

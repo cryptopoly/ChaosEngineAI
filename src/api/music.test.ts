@@ -21,6 +21,7 @@ import {
   saveMusicEmbedTag,
   saveMusicSettings,
   startMusicInstall,
+  startMusicWeightCopy,
   updateMusicLibraryItem,
 } from "./music";
 
@@ -94,6 +95,24 @@ describe("music api client", () => {
     expect(error).toBeInstanceOf(MusicApiError);
     expect((error as MusicApiError).message).toBe("Not enough free memory for music: unload the image model first.");
     expect((error as MusicApiError).status).toBe(503);
+  });
+
+  it("keeps the copy facts of a 409 that needs the weight files copied (D-100)", async () => {
+    const detail = {
+      message: "Setting up the music model needs 2 weight file(s) copied",
+      needsCopy: true, fileCount: 2, totalBytes: 100, source: "E:\\hub", target: "C:\\music", sourceDrive: "E:", targetDrive: "C:",
+    };
+    const body = { detail };
+    stubFetch(() => ({ ok: false, status: 409, clone: () => ({ json: async () => body }) as Response, json: async () => body }));
+    const error = (await generateMusic({ caption: "x", seconds: 30 }).catch((err: unknown) => err)) as MusicApiError;
+    expect(error.message).toBe(detail.message);
+    expect(error.copy).toMatchObject({ needsCopy: true, fileCount: 2, totalBytes: 100 });
+  });
+
+  it("starts the weight copy with a POST", async () => {
+    const fetchMock = stubFetch(() => ({ json: async () => ({ phase: "running", running: true }) }));
+    expect((await startMusicWeightCopy()).phase).toBe("running");
+    expect(requestTo(fetchMock, "/api/music/weights/copy").method).toBe("POST");
   });
 
   it("surfaces a cancelled run as a 409 'cancelled'", async () => {

@@ -230,7 +230,9 @@ class MirrorTests(_EnvBox):
             self.assertIn("1 weight file(s)", message)
             self.assertIn("0.0 GB", message)  # the 16 MB test file
             self.assertIn("Developer Mode", message)
-            self.assertIn("try again to copy", message)
+            self.assertIn("copy them now", message)
+            self.assertEqual(notice.exception.fields["fileCount"], 1)
+            self.assertTrue(notice.exception.fields["needsCopy"])
             self.assertFalse(target.exists(), "nothing large is copied before the user was told")
             self.assertEqual((target.parent / "config.json").read_text(), "rev-c", "small files are still copied")
             # Trying again goes ahead and copies.

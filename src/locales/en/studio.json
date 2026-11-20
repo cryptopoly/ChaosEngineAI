@@ -1543,6 +1543,20 @@
       "modelPicker": "Sound model",
       "cpuFallback": "The Apple GPU could not run this model, so it restarted on the CPU. This is much slower: it can take many minutes. You can cancel.",
       "cpuOnly": "This sound is running on the CPU, not a GPU. This is much slower: it can take many minutes. You can cancel."
+    },
+    "copy": {
+      "title": "The music model's files need to be copied",
+      "why": "This PC did not allow a link from the downloaded model files to the music folder, so {count} files ({size} GB) have to be copied. It takes extra disk space and happens once.",
+      "wayDeveloper": "Turn on Developer Mode (Windows Settings, System, For developers) so links are allowed.",
+      "waySameDrive": "Or keep the model cache on the same drive as the app's data ({targetDrive}).",
+      "button": "Copy now ({size} GB, about {minutes} min)",
+      "resume": "Copy again ({size} GB, about {minutes} min)",
+      "progress": "Copy progress",
+      "status": "{done} of {size} GB · {percent}%",
+      "eta": "about {minutes} min left",
+      "cancel": "Cancel",
+      "cancelled": "Copy cancelled. Finished files are kept, so copying again continues from there.",
+      "done": "Done, loading…"
     }
   },
   "audioPlayer": {

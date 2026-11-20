@@ -21,14 +21,28 @@ import type {
   MusicRuntimeStatus,
   MusicSettings,
   MusicSoundPayload,
+  MusicWeightCopyInfo,
+  MusicWeightCopyStatus,
 } from "../types";
 
 export class MusicApiError extends Error {
   readonly status: number;
-  constructor(message: string, status: number) {
+  /** Set when the 409 says the weight files must be copied (D-100): the Studio then offers Copy now. */
+  readonly copy: MusicWeightCopyInfo | null;
+  constructor(message: string, status: number, copy: MusicWeightCopyInfo | null = null) {
     super(message);
     this.name = "MusicApiError";
     this.status = status;
+    this.copy = copy;
+  }
+}
+
+async function readCopyInfo(response: Response): Promise<MusicWeightCopyInfo | null> {
+  try {
+    const detail = (await response.clone().json())?.detail;
+    return detail && typeof detail === "object" && detail.needsCopy === true ? (detail as MusicWeightCopyInfo) : null;
+  } catch {
+    return null;
   }
 }
 
@@ -50,9 +64,11 @@ async function request<T>(
       signal: controller.signal,
     });
     if (!response.ok) {
+      const copy = response.status === 409 ? await readCopyInfo(response) : null;
       throw new MusicApiError(
         await readErrorDetail(response, `Request failed with status ${response.status}`),
         response.status,
+        copy,
       );
     }
     return (await response.json()) as T;
@@ -98,6 +114,20 @@ export async function cancelMusicGeneration(): Promise<boolean> {
 
 export async function preloadMusicModel(modelId: string | null): Promise<MusicRuntimeStatus> {
   return (await request<{ runtime: MusicRuntimeStatus }>("POST", "/api/music/preload", { modelId }, null)).runtime;
+}
+
+// Copy now: the weight files a link could not place (D-100)
+
+export async function startMusicWeightCopy(): Promise<MusicWeightCopyStatus> {
+  return await request<MusicWeightCopyStatus>("POST", "/api/music/weights/copy", {}, 30000);
+}
+
+export async function getMusicWeightCopyStatus(): Promise<MusicWeightCopyStatus> {
+  return await request<MusicWeightCopyStatus>("GET", "/api/music/weights/copy/status", undefined, 10000);
+}
+
+export async function cancelMusicWeightCopy(): Promise<MusicWeightCopyStatus> {
+  return await request<MusicWeightCopyStatus>("POST", "/api/music/weights/copy/cancel", {}, 10000);
 }
 
 export async function unloadMusicModel(): Promise<MusicRuntimeStatus> {

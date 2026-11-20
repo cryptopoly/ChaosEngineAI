@@ -1543,6 +1543,20 @@
       "modelPicker": "聲音模型",
       "cpuFallback": "Apple GPU 無法執行此模型,因此已改在 CPU 上重新啟動。速度會慢很多,可能需要數分鐘。您可以取消。",
       "cpuOnly": "此音效在 CPU 上執行,而非 GPU。速度會慢很多,可能需要數分鐘。您可以取消。"
+    },
+    "copy": {
+      "title": null,
+      "why": null,
+      "wayDeveloper": null,
+      "waySameDrive": null,
+      "button": null,
+      "resume": null,
+      "progress": null,
+      "status": null,
+      "eta": null,
+      "cancel": null,
+      "cancelled": null,
+      "done": null
     }
   },
   "audioPlayer": {

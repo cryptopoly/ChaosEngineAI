@@ -220,7 +220,33 @@ def mirror_tree(
 
 
 class WeightCopyNotice(RuntimeError):
-    """Large weight files can only be copied into the layout; the message says how much and why (FU-276)."""
+    """Large weight files can only be copied into the layout; the message says how much and why (FU-276).
+
+    ``fields`` is the machine-readable form of the same facts (``needsCopy``, ``fileCount``, ``totalBytes``,
+    ``source``, ``target`` and the two drives) so the Studio can offer a Copy now button (D-100).
+    """
+
+    def __init__(self, message: str, fields: dict[str, Any] | None = None) -> None:
+        super().__init__(message)
+        self.fields: dict[str, Any] = dict(fields or {})
+
+
+def copy_plan(pending: list[tuple[Path, Path]]) -> dict[str, Any]:
+    """The facts about the files a link could not place: how many, how big, from where to where."""
+    sources = [str(real.parent) for real, _ in pending]
+    try:
+        source = os.path.commonpath(sources) if sources else ""
+    except ValueError:  # different drives
+        source = sources[0] if sources else ""
+    return {
+        "needsCopy": True,
+        "fileCount": len(pending),
+        "totalBytes": sum(real.stat().st_size for real, _ in pending),
+        "source": source,
+        "target": str(checkpoints_dir()),
+        "sourceDrive": _drive(pending[0][0]) if pending else "",
+        "targetDrive": _drive(checkpoints_dir()),
+    }
 
 
 def _copy_notice_path() -> Path:
@@ -242,7 +268,7 @@ def _copy_notice_message(pending: list[tuple[Path, Path]]) -> str:
         f"Setting up the music model needs {len(pending)} weight file(s) copied into {checkpoints_dir()} "
         f"({total_gb:.1f} GB more disk), because this PC did not allow a link to the downloaded files. {why}. "
         "Turn on Developer Mode, or keep the model cache on the same drive as the app's data, to avoid the copy; "
-        "or try again to copy them now."
+        "or copy them now."
     )
 
 
@@ -259,7 +285,7 @@ def _copy_pending(pending: list[tuple[Path, Path]]) -> None:
     if acknowledged != key:
         _copy_notice_path().parent.mkdir(parents=True, exist_ok=True)
         _copy_notice_path().write_text(json.dumps({"targets": key}, indent=1), encoding="utf-8")
-        raise WeightCopyNotice(_copy_notice_message(pending))
+        raise WeightCopyNotice(_copy_notice_message(pending), copy_plan(pending))
     for real, target in pending:
         target.parent.mkdir(parents=True, exist_ok=True)
         partial = target.with_name(target.name + ".partial")
@@ -311,8 +337,8 @@ def hf_snapshot(repo: str, revision: str) -> Path | None:
     return path if path.is_dir() else None
 
 
-def prepare_checkpoints(variants: list[dict[str, Any]]) -> list[str]:
-    """Mirror every downloaded variant into the checkpoints layout; returns the repos placed."""
+def mirror_variants(variants: list[dict[str, Any]]) -> tuple[list[str], list[tuple[Path, Path]]]:
+    """Mirror every downloaded variant; returns (repos placed, large files a link could not place)."""
     placed: list[str] = []
     root = checkpoints_dir()
     manifest = read_mirror_manifest()
@@ -328,8 +354,14 @@ def prepare_checkpoints(variants: list[dict[str, Any]]) -> list[str]:
             manifest[repo] = revision
             _write_mirror_manifest(manifest)
         placed.append(repo)
+    return placed, pending
+
+
+def prepare_checkpoints(variants: list[dict[str, Any]]) -> list[str]:
+    """Mirror every downloaded variant into the checkpoints layout; returns the repos placed."""
+    placed, pending = mirror_variants(variants)
     # Without symlink rights and with the cache on another drive every weight file would be copied
-    # (10 to 20 GB): the first attempt says so and stops, the next one copies (FU-276).
+    # (10 to 20 GB): the first attempt says so and stops (the Studio offers Copy now), the next copies (FU-276).
     _copy_pending(pending)
     return placed
 

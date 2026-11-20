@@ -16,6 +16,7 @@ import type {
   MusicProgressSnapshot,
   MusicQueueSnapshot,
   MusicResult,
+  MusicWeightCopyInfo,
 } from "../../types";
 
 // ---------------------------------------------------------------------------
@@ -271,6 +272,8 @@ export type MusicErrorKind = "oom" | "notReady" | "cancelled" | "offline" | "inv
 
 export interface MusicErrorInfo {
   kind: MusicErrorKind;
+  /** Set when the weight files must be copied first (D-100); the Studio shows the Copy now panel. */
+  copy?: MusicWeightCopyInfo | null;
   /** The backend's own sentence (plain by design); shown under the headline when it adds something. */
   detail: string;
   /** Raw text for "Technical details". */
@@ -279,7 +282,7 @@ export interface MusicErrorInfo {
 }
 
 /** Sorts a failure by what the user can do about it. */
-export function classifyMusicError(message: string, status: number | null): MusicErrorInfo {
+export function classifyMusicError(message: string, status: number | null, copy: MusicWeightCopyInfo | null = null): MusicErrorInfo {
   const text = (message || "").trim();
   const lower = text.toLowerCase();
   let kind: MusicErrorKind = "generic";
@@ -290,7 +293,18 @@ export function classifyMusicError(message: string, status: number | null): Musi
   else if (status === 409 || /not installed|not downloaded|pack/.test(lower)) kind = "notReady";
   else if (status === 400 || status === 422) kind = "invalid";
   const technical = [status != null && status > 0 ? `HTTP ${status}` : null, text].filter(Boolean).join(" · ");
-  return { kind, detail: kind === "cancelled" ? "" : text, technical, status };
+  return { kind, detail: kind === "cancelled" ? "" : text, technical, status, ...(copy ? { copy } : {}) };
+}
+
+/** Disk speed assumed for the first "about N min" (a copy between two drives; measured speed replaces it). */
+const COPY_BYTES_PER_SECOND = 100 * 1024 * 1024;
+
+export function copyMinutes(totalBytes: number): number {
+  return Math.max(1, Math.round(totalBytes / COPY_BYTES_PER_SECOND / 60));
+}
+
+export function formatCopyGb(bytes: number): string {
+  return (bytes / 1024 ** 3).toFixed(1);
 }
 
 /** The next shorter length for the "Use a shorter length" fix; stays at the minimum. */

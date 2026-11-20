@@ -46,6 +46,20 @@ _WORKER_STALL_S = 600.0  # the load (35 s from the page cache, minutes from a co
 _WORKER_HARD_CANCEL_S = 30.0
 
 
+# Sung vocals (``lipSyncSinging``): measured in docs/research/lip-sync-singing-experiments-2026-11.md (experiment 4),
+# naming the singing in the prompt removed the takes where the face listens with a shut mouth instead of singing
+# (0 of 24 takes with it, 3 of 12 without) and raised the mouth/vocal correlation. Off by default: it is wrong for
+# speech.
+SINGING_CUE = "singing, mouth opening and closing with each syllable"
+
+
+def singing_prompt(prompt: str) -> str:
+    """``prompt`` with the singing cue appended, unless it already asks for the mouth to follow the syllables."""
+    if "syllable" in prompt.lower():
+        return prompt
+    return f"{prompt.strip().rstrip('.')}, {SINGING_CUE}."
+
+
 class LipSyncError(RuntimeError):
     """A request lip sync cannot run: ``status`` is the HTTP code the route answers with."""
 
@@ -398,6 +412,11 @@ def generate(body: Any, variant: dict[str, Any]) -> dict[str, Any]:
         notes.append(f"frames {body.numFrames} changed to {frames} (8k+1)")
     notes.append(f"lip sync: the vocal clip from {body.audioStartSeconds:g} s, {seconds:.2f} s long, held fixed while "
                  f"the picture is made; it is the clip's sound")
+    prompt = body.prompt
+    if getattr(body, "lipSyncSinging", False):
+        prompt = singing_prompt(body.prompt)
+        if prompt != body.prompt:
+            notes.append(f"sung vocal: '{SINGING_CUE}' added to the prompt")
     if engine == "mlx":
         notes.append("Mac lip sync (ltx-2-mlx a2v) has not been tested yet")
 
@@ -415,7 +434,7 @@ def generate(body: Any, variant: dict[str, Any]) -> dict[str, Any]:
             prepare_audio(Path(body.audioPath), wav, body.audioStartSeconds, seconds)
             run = _run_cuda if engine == "cuda" else _run_mlx
             extra = {} if engine == "cuda" else {"model_name": str(variant["name"])}
-            result = run(repo=repo, prompt=body.prompt, width=width, height=height, frames=frames, fps=body.fps,
+            result = run(repo=repo, prompt=prompt, width=width, height=height, frames=frames, fps=body.fps,
                          seed=seed, audio=wav, image=Path(body.startImagePath), output=silent, **extra)
             mux(silent, wav, final)
             data = final.read_bytes()

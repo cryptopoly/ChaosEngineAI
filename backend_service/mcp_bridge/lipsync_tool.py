@@ -29,12 +29,15 @@ LIPSYNC_TOOLS: list[dict[str, Any]] = [
         "description": "Make: start a lip-sync video job (returns a job id): a start still and a vocal clip (WAV or FLAC, "
         "speech or singing) become a 3 to 8 s clip whose mouth follows the audio, with that audio as its sound. Needs an "
         "LTX-2.3 model with lipSync in list_models (4-bit on a 24 GB NVIDIA card with about 37 GB free RAM; the Mac path "
-        "is untested). About 2 minutes per 5 s shot on an RTX 4090. Singing follows phrases, not every word: make two takes.",
+        "is untested). About 1-2 minutes per 5 s shot on an RTX 4090. For singing (measured): a vocal stem, not the mix; set "
+        "singing; start the shot about 0.4 s before a phrase and keep it to 3-5 s; a frontal head-and-shoulders still; "
+        "make three takes and keep the best (about 1 take in 4 sings with a shut mouth or turns away).",
         "inputSchema": _obj(
             {
                 "prompt": {"type": "string", "minLength": 1, "maxLength": 4000, "description": "The shot: who sings or speaks, framing, light. Keep the camera still."},
                 "start_image": {"type": "string", "description": "Path or upload: handle of the still the clip starts from (a face, frontal works best)."},
-                "audio": {"type": "string", "description": "upload: handle, or a file in the app's output folders: the vocal clip (WAV or FLAC; mono is fine). A vocal stem or the full mix."},
+                "audio": {"type": "string", "description": "upload: handle, or a file in the app's output folders: the vocal clip (WAV or FLAC; mono is fine). A vocal stem follows best; the full mix works less well."},
+                "singing": {"type": "boolean", "description": "The vocal is sung: adds singing wording to the prompt (measured to stop takes that listen with a shut mouth). Leave off for speech."},
                 "audio_start": {"type": "number", "minimum": 0, "maximum": 3600, "description": "Where in the audio the shot starts, in seconds (default 0)."},
                 "seconds": {"type": "number", "minimum": 3, "maximum": 8, "description": "Shot length; default: the audio from audio_start, held to 3 to 8 s. Frames follow 8k+1 at 24 fps."},
                 "model": {"type": "string", "description": "Model id from list_models with lipSync. Default: the installed one."},
@@ -110,6 +113,8 @@ def make_lipsync_shot(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     }
     if "seed" in args:
         fields["seed"] = args["seed"]
+    if args.get("singing"):
+        fields["lipSyncSinging"] = True
     try:
         body = VideoGenerationRequest(**fields)
         lipsync_runtime.shot_frames(body.numFrames, body.fps)

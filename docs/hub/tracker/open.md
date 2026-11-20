@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 189 rows with work, decisions or watch items still open, newest first.
+summary: 190 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-340 · MiniMax H3 licence changes built; release still waits for a lawyer (D-99) — Built 2026-11-20, H3_RELEASED still False.</summary>
+
+**Status or trigger:** **Built 2026-11-20, `H3_RELEASED` still False.**
+
+**Notes:** Tick sentence now also accepts the MiniMax H3 Community License and its Acceptable Use Policy (old ticks lapse, audit file keeps them); licence screen and row note carry the hosted-service notice (V.2, V.5) and a link to the live licence page beside the pinned one; H3 videos get `machine_generated: true` and `model: "MiniMax H3"` in the mp4 comment tag through `generation_settings`. **Open:** flip `H3_RELEASED` only after a lawyer answers questions 1 and 3 in `docs/research/minimax-h3-licence-check-2026-11-20.md`; do not ship an `sd` build with H3 support in a worldwide release until question 2 is answered; a Report-misuse route and safeguards page are needed if the answer to question 1 is yes. Not run: no H3 weights downloaded or executed, the H3 command-line tests fail on this PC with WinError 193 (host).
+
+</details>
 
 <details>
 <summary>FU-335 · ACE-Step 1.5 turbo ignored the lyrics in 3 of 3 tries — Next music pass</summary>

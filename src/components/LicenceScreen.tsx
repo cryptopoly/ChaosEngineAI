@@ -21,6 +21,8 @@ export interface TerritoryTerms {
   excludedTerritories: string[];
   /** The exact statement the user ticks; sent back to the backend unchanged. */
   confirmSentence: string;
+  /** The current licence page, shown beside the pinned one (the acceptable use policy can change). */
+  liveLicenceUrl?: string;
 }
 
 export interface LicenceScreenProps {
@@ -31,13 +33,15 @@ export interface LicenceScreenProps {
   onDismiss: () => void;
   onOpenHub: () => void;
   onOpenFull: () => void;
+  /** Opens ``territory.liveLicenceUrl``. */
+  onOpenLive?: () => void;
   territory?: TerritoryTerms;
   /** Shown under the tick when saving the statement failed. */
   error?: string | null;
 }
 
 export function LicenceScreen({
-  entry, licence, accepted, onAccept, onDismiss, onOpenHub, onOpenFull, territory, error,
+  entry, licence, accepted, onAccept, onDismiss, onOpenHub, onOpenFull, onOpenLive, territory, error,
 }: LicenceScreenProps) {
   const { t } = useTranslation("studio");
   const titleId = useId();
@@ -93,6 +97,11 @@ export function LicenceScreen({
                 <button type="button" className="secondary-button" onClick={onOpenFull}>
                   {t("licence.screen.readFull", { defaultValue: "Read the full licence" })}
                 </button>
+                {territory.liveLicenceUrl && onOpenLive ? (
+                  <button type="button" className="secondary-button" onClick={onOpenLive}>
+                    {t("licence.screen.readLive", { defaultValue: "Read the current licence on Hugging Face" })}
+                  </button>
+                ) : null}
               </div>
               <label className="licence-screen__tick" htmlFor={tickId}>
                 <input id={tickId} type="checkbox" checked={ticked} onChange={(event) => setTicked(event.target.checked)} />

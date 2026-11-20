@@ -1366,6 +1366,7 @@
       "asks": "Was diese Lizenz von dir verlangt",
       "gatedNote": "Dieses Modell ist gesperrt (gated): Akzeptiere die Bedingungen auf Hugging Face und lade es dann hier mit deinem Token herunter (Einstellungen > Hugging Face).",
       "readFull": "Vollständige Lizenz lesen",
+      "readLive": null,
       "openHub": "Auf Hugging Face öffnen",
       "notNow": "Jetzt nicht",
       "accepted": "Ich habe akzeptiert",

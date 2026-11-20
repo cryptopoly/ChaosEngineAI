@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from backend_service.licence_gate import H3_KEY, H3_LICENCE_URL, TERRITORY_MODELS
+from backend_service.licence_gate import H3_KEY, H3_LICENCE_URL, H3_NOTICE, TERRITORY_MODELS
 
 H3_GGUF_REPO = "leejet/MiniMax-H3-GGUF"
 H3_VAE_REPO = "Comfy-Org/MiniMax-H3"
@@ -43,6 +43,7 @@ H3_LICENCE: dict[str, Any] = {
     "summaryLines": list(_MODEL["summaryLines"]),
     "note": _MODEL["note"],
     "url": H3_LICENCE_URL,
+    "liveUrl": _MODEL["liveLicenceUrl"],
 }
 
 MINIMAX_H3_FAMILY: dict[str, Any] = {
@@ -99,7 +100,7 @@ MINIMAX_H3_FAMILY: dict[str, Any] = {
                 "Commercial use needs written permission from MiniMax above US$20 million a year, and a commercial "
                 "product must show \"MiniMax H3\". Not tested by the maintainers: memory is the size of the "
                 "weights and there is no time estimate. Needs an sd binary with MiniMax H3 support (sd.cpp 3f8527a "
-                "or newer); release builds may not include one."
+                "or newer); release builds may not include one. " + H3_NOTICE
             ),
             "availableLocally": False,
             "releaseDate": "2026-08",

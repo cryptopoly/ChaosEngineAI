@@ -1366,6 +1366,7 @@
       "asks": "O que esta licença exige de você",
       "gatedNote": "Este modelo tem acesso restrito: aceite os termos no Hugging Face e depois baixe aqui com o seu token (Preferências > Hugging Face).",
       "readFull": "Ler a licença completa",
+      "readLive": null,
       "openHub": "Abrir no Hugging Face",
       "notNow": "Agora não",
       "accepted": "Já aceitei",

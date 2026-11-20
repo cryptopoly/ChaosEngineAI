@@ -1366,6 +1366,7 @@
       "asks": "Ce que cette licence exige de vous",
       "gatedNote": "Ce modèle est à accès restreint : acceptez les conditions sur Hugging Face, puis téléchargez-le ici avec votre jeton (Préférences > Hugging Face).",
       "readFull": "Lire la licence complète",
+      "readLive": null,
       "openHub": "Ouvrir sur Hugging Face",
       "notNow": "Pas maintenant",
       "accepted": "J'ai accepté",

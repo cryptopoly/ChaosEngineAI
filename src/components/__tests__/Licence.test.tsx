@@ -105,6 +105,18 @@ describe("LicenceScreen with a territory statement (D-76)", () => {
     expect(html).not.toContain("I have accepted");
   });
 
+  it("links the current licence beside the pinned one only when a live link is given", () => {
+    const licence = makeLicence({ gated: false, territoryRestricted: true });
+    const withLive = renderToStaticMarkup(
+      <LicenceScreen {...props} onOpenLive={noop} licence={licence} accepted={false}
+        territory={{ ...territory, liveLicenceUrl: "https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE" }} />,
+    );
+    expect(withLive).toContain("Read the full licence");
+    expect(withLive).toContain("Read the current licence on Hugging Face");
+    const without = renderToStaticMarkup(<LicenceScreen {...props} licence={licence} accepted={false} territory={territory} />);
+    expect(without).not.toContain("Read the current licence on Hugging Face");
+  });
+
   it("shows a save error and falls back to OK once confirmed", () => {
     const failed = renderToStaticMarkup(
       <LicenceScreen {...props} licence={makeLicence({ gated: false })} accepted={false} territory={territory} error="Could not save" />,

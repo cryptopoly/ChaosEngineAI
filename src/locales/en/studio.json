@@ -1366,6 +1366,7 @@
       "asks": "What this licence asks of you",
       "gatedNote": "This model is gated: accept the terms on Hugging Face, then download here with your token (Settings > Hugging Face).",
       "readFull": "Read the full licence",
+      "readLive": "Read the current licence on Hugging Face",
       "openHub": "Open on Hugging Face",
       "notNow": "Not now",
       "accepted": "I have accepted",

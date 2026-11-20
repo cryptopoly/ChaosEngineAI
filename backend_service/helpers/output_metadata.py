@@ -65,6 +65,17 @@ def generation_settings(artifact: dict[str, Any]) -> dict[str, Any]:
             value = settings[key]
             settings[key] = [_file_name(v) for v in value] if isinstance(value, (list, tuple)) else _file_name(value)
     try:
+        # Territory-limited models (MiniMax H3): the licence's AUP asks for machine-made content to be labelled,
+        # so these files carry the same machine_generated flag as music and cloned voices.
+        from backend_service import licence_gate
+
+        gate_key = licence_gate.key_for_model_id(str(artifact.get("modelId") or ""))
+        if gate_key:
+            settings["machine_generated"] = True
+            settings["model"] = licence_gate.TERRITORY_MODELS[gate_key]["name"]
+    except Exception:
+        pass
+    try:
         from backend_service.helpers.system_hardware import _resolve_app_version
 
         settings["appVersion"] = _resolve_app_version()

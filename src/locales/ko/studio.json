@@ -1366,6 +1366,7 @@
       "asks": "이 라이선스가 요구하는 사항",
       "gatedNote": "이 모델은 접근이 제한되어 있습니다. Hugging Face에서 약관에 동의한 뒤 토큰으로 여기서 다운로드하세요(환경설정 > Hugging Face).",
       "readFull": "라이선스 전문 읽기",
+      "readLive": null,
       "openHub": "Hugging Face에서 열기",
       "notNow": "나중에",
       "accepted": "동의했습니다",

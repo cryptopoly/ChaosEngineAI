@@ -84,7 +84,7 @@
     "fetchError": "診断情報を取得できませんでした: {error}",
     "gathering": "システム情報を収集中...",
     "clickRefresh": "「更新」をクリックすると診断情報を取得します。",
-    "backendOffline": "バックエンドがオフラインです — 先に sidecar を起動してください。",
+    "backendOffline": null,
     "captured": "{timestamp} に取得",
     "logTail": "バックエンドログの末尾（{count, plural, other {# 行}}）",
     "pipOutput": "pip の出力",

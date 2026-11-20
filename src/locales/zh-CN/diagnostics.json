@@ -84,7 +84,7 @@
     "fetchError": "无法获取诊断信息：{error}",
     "gathering": "正在收集系统信息...",
     "clickRefresh": "点击“刷新”以获取诊断信息。",
-    "backendOffline": "后端离线 — 请先启动 sidecar。",
+    "backendOffline": null,
     "captured": "采集于 {timestamp}",
     "logTail": "后端日志末尾（{count, plural, other {# 行}}）",
     "pipOutput": "pip 输出",

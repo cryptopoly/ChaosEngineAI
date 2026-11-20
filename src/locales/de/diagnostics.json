@@ -84,7 +84,7 @@
     "fetchError": "Diagnose konnte nicht abgerufen werden: {error}",
     "gathering": "Systeminformationen werden gesammelt...",
     "clickRefresh": "Klicke auf „Aktualisieren“, um die Diagnose abzurufen.",
-    "backendOffline": "Backend offline — starte zuerst den Sidecar.",
+    "backendOffline": null,
     "captured": "erfasst am {timestamp}",
     "logTail": "Ende des Backend-Logs ({count, plural, one {# Zeile} other {# Zeilen}})",
     "pipOutput": "pip-Ausgabe",

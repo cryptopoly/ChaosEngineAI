@@ -1406,7 +1406,7 @@
   },
   "wslBridgePanel": {
     "title": "Pont WSL2 vLLM",
-    "backendOffline": "Backend hors ligne — démarrez le sidecar pour sonder l'état de WSL.",
+    "backendOffline": null,
     "capsError": "Impossible de lire l'état de WSL : {error}",
     "probing": "Sondage de l'état de WSL...",
     "ready": "✓ Prêt{version}",
@@ -1428,7 +1428,7 @@
     "title": "Boost Pack",
     "description": "Accélérateurs optionnels pour l'inférence image, vidéo et chat. Chacun est à un seul pip install — cliquez sur Installer sur les lignes prises en charge par votre matériel.",
     "capError": "Impossible de lire les capacités des accélérateurs : {error}",
-    "backendOffline": "Backend hors ligne — démarrez le sidecar pour lire l'état des accélérateurs.",
+    "backendOffline": null,
     "columns": {
       "accelerator": "Accélérateur",
       "size": "Taille",
@@ -1453,7 +1453,7 @@
     "moveConfirm": "Déplacer {size} de modèles de {from} vers {to} ?\n\nL'arborescence source sera supprimée après une copie réussie. Sur un disque dur mécanique, cela peut prendre 15-45 min pour 100 Go.\n\nFermez toutes les générations en cours avant de commencer.",
     "reading": "Lecture des informations de stockage...",
     "loading": "Chargement des informations de stockage...",
-    "backendOffline": "Backend hors ligne — démarrez le sidecar pour configurer le stockage.",
+    "backendOffline": null,
     "currentLocation": "Emplacement actuel du cache",
     "inCache": "{size} dans le cache",
     "free": "{size} libres",

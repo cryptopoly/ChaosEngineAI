@@ -1406,7 +1406,7 @@
   },
   "wslBridgePanel": {
     "title": "WSL2 vLLM 桥接",
-    "backendOffline": "后端离线 — 请启动 sidecar 以探测 WSL 状态。",
+    "backendOffline": null,
     "capsError": "无法读取 WSL 状态：{error}",
     "probing": "正在探测 WSL 状态...",
     "ready": "✓ 就绪{version}",
@@ -1428,7 +1428,7 @@
     "title": "加速包",
     "description": "用于图像、视频和聊天推理的可选加速器。每个都只需一次 pip install — 在你的硬件支持的行上点击“安装”即可。",
     "capError": "无法读取加速器能力信息：{error}",
-    "backendOffline": "后端离线 — 请启动 sidecar 以读取加速器状态。",
+    "backendOffline": null,
     "columns": {
       "accelerator": "加速器",
       "size": "大小",
@@ -1453,7 +1453,7 @@
     "moveConfirm": "将 {size} 的模型从 {from} 移动到 {to}？\n\n复制成功后，源目录树将被删除。在机械硬盘上，100 GB 可能需要 15-45 分钟。\n\n开始之前，请先关闭所有正在进行的生成任务。",
     "reading": "正在读取存储信息...",
     "loading": "正在加载存储信息...",
-    "backendOffline": "后端离线 — 请启动 sidecar 以配置存储。",
+    "backendOffline": null,
     "currentLocation": "当前缓存位置",
     "inCache": "缓存中 {size}",
     "free": "可用 {size}",

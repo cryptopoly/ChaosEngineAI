@@ -84,7 +84,7 @@
     "fetchError": "無法取得診斷資訊：{error}",
     "gathering": "正在收集系統資訊...",
     "clickRefresh": "按一下「重新整理」以取得診斷資訊。",
-    "backendOffline": "後端離線 — 請先啟動 sidecar。",
+    "backendOffline": null,
     "captured": "擷取於 {timestamp}",
     "logTail": "後端記錄結尾（{count, plural, other {# 行}}）",
     "pipOutput": "pip 輸出",

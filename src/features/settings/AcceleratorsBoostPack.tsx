@@ -163,7 +163,7 @@ export function AcceleratorsBoostPack({ backendOnline, hostSystem }: Accelerator
 
       {!backendOnline ? (
         <p className="muted-text" style={{ margin: "8px 0 0", fontSize: "0.82rem" }}>
-          {t("acceleratorsBoostPack.backendOffline", { defaultValue: "Backend offline — start the sidecar to read accelerator state." })}
+          {t("acceleratorsBoostPack.backendOffline", { defaultValue: "The backend is not answering, so what is installed cannot be read. It fills in when the backend is back." })}
         </p>
       ) : null}
 

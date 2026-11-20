@@ -135,7 +135,7 @@ export function DiagnosticsPanel({ backendOnline, onRestartServer, busyAction }:
         <p className="muted-text">
           {backendOnline
             ? t("panel.clickRefresh", { defaultValue: "Click Refresh to fetch diagnostics." })
-            : t("panel.backendOffline", { defaultValue: "Backend offline — start the sidecar first." })}
+            : t("panel.backendOffline", { defaultValue: "The backend is not answering. The snapshot fills in when it is back." })}
         </p>
       ) : null}
 

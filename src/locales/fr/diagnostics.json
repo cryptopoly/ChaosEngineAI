@@ -84,7 +84,7 @@
     "fetchError": "Impossible de récupérer le diagnostic : {error}",
     "gathering": "Collecte des informations système...",
     "clickRefresh": "Cliquez sur « Actualiser » pour récupérer le diagnostic.",
-    "backendOffline": "Backend hors ligne — démarrez d'abord le sidecar.",
+    "backendOffline": null,
     "captured": "capturé le {timestamp}",
     "logTail": "Fin du journal du backend ({count, plural, one {# ligne} other {# lignes}})",
     "pipOutput": "Sortie de pip",

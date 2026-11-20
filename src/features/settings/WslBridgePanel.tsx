@@ -163,7 +163,7 @@ export function WslBridgePanel({ backendOnline }: WslBridgePanelProps) {
           <strong style={{ fontSize: "0.95rem" }}>{t("wslBridgePanel.title", { defaultValue: "WSL2 vLLM bridge" })}</strong>
         </header>
         <p className="muted-text" style={{ fontSize: "0.84rem", margin: "4px 0 0" }}>
-          {t("wslBridgePanel.backendOffline", { defaultValue: "Backend offline — start the sidecar to probe WSL state." })}
+          {t("wslBridgePanel.backendOffline", { defaultValue: "The backend is not answering, so the WSL state cannot be read. It fills in when the backend is back." })}
         </p>
       </section>
     );

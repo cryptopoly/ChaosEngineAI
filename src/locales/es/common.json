@@ -1406,7 +1406,7 @@
   },
   "wslBridgePanel": {
     "title": "Puente WSL2 vLLM",
-    "backendOffline": "Backend sin conexión — inicia el sidecar para comprobar el estado de WSL.",
+    "backendOffline": null,
     "capsError": "No se pudo leer el estado de WSL: {error}",
     "probing": "Comprobando el estado de WSL...",
     "ready": "✓ Listo{version}",
@@ -1428,7 +1428,7 @@
     "title": "Boost Pack",
     "description": "Aceleradores opcionales para la inferencia de imagen, video y chat. Cada uno está a un solo pip install — haz clic en Instalar en las filas que tu hardware admita.",
     "capError": "No se pudieron leer las capacidades de los aceleradores: {error}",
-    "backendOffline": "Backend sin conexión — inicia el sidecar para leer el estado de los aceleradores.",
+    "backendOffline": null,
     "columns": {
       "accelerator": "Acelerador",
       "size": "Tamaño",
@@ -1453,7 +1453,7 @@
     "moveConfirm": "¿Mover {size} de modelos de {from} a {to}?\n\nEl árbol de origen se eliminará tras una copia correcta. En un HDD mecánico puede tardar de 15 a 45 min para 100 GB.\n\nCierra cualquier generación en curso antes de empezar.",
     "reading": "Leyendo la información de almacenamiento...",
     "loading": "Cargando la información de almacenamiento...",
-    "backendOffline": "Backend sin conexión — inicia el sidecar para configurar el almacenamiento.",
+    "backendOffline": null,
     "currentLocation": "Ubicación actual de la caché",
     "inCache": "{size} en la caché",
     "free": "{size} libres",

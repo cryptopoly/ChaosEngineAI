@@ -652,6 +652,8 @@ def phase_0(cap: Capability) -> PhaseResult:
         ("text GGUF file pins (FU-087)", _gguf_pins),
         ("gemma-4 single family (dedup)", _gemma4_single_family),
         ("gemma-4 QAT GGUF rows (4090 chat pass)", _gemma_qat_rows),
+        ("chat follow-up rows: Qwen3.6 Q4_K_M, Bonsai 2 Q2_0, Lightning minimum context (FU-263 to FU-269)",
+         lambda: _rtx4090.chat_followup_rows(sys.modules[__name__])),
         ("library lists chat models only", _library_chat_only),
         ("voice I/O runtime", _voice_runtime),
     ]:
@@ -1536,6 +1538,7 @@ def phase_1(cap: Capability) -> PhaseResult:
         ("MLX LFM3, vendored architecture", _lfm3),
         ("CUDA llama-server lane (Windows and Linux)", _llama_cuda),
         ("GGUF llama.cpp", _gguf),
+        ("/v1 chat completions stream tool calls on GGUF (FU-258)", lambda: _rtx4090.stream_tool_calls(sys.modules[__name__], cap)),
         ("GGUF MTP speculative", _gguf_mtp),
         ("GGUF speculative lane (sidecar / ngram-mod)", _gguf_spec_lane),
         ("Qwen3.8-27B DFlash 2 drafter (GGUF sidecar)", _qwen38_dflash2),
@@ -1973,6 +1976,7 @@ def phase_4(cap: Capability) -> PhaseResult:
         ("generate via mflux (FU-096)", _generate_mflux),
         ("generate via sd.cpp FLUX.1 (FU-096)", _generate_flux_sdcpp),
         ("FLUX 3 Klein (diffusers, sd.cpp), Qwen-Image-2.1 Turbo and MOSS-Image rows (FU-273; live when installed)", lambda: _new_media_rows.image_rows(sys.modules[__name__])),
+        ("a Nunchaku row that is not downloaded refuses with a plain 409, no placeholder", lambda: _rtx4090.nunchaku_refusal(sys.modules[__name__])),
     ]:
         phase.checks.append(_check(name, fn))
     fails = [c for c in phase.checks if c.status == "fail"]
@@ -2318,6 +2322,7 @@ def phase_5(cap: Capability) -> PhaseResult:
                       ("mlx-runtime", _mlx_runtime), ("generate", _generate),
                       ("video rows carry estimateRef (FU-165)", lambda: _time_estimate.catalog_refs(sys.modules[__name__], "video")),
                       ("territory-gated rows absent and refused without a confirmation (D-76)", lambda: _territory_gate.check(sys.modules[__name__], "video")),
+        ("MiniMax H3 terms: live licence link, AUP in the tick, hosted-service notice (D-99)", lambda: _rtx4090.h3_notice_terms(sys.modules[__name__])),
                       ("LTX-2.5 on ltx-2-mlx (routing + live)", _ltx2_engine),
                       ("LTX-2.3 on diffusers with sound (flags; live when installed)", _ltx2_diffusers),
                       ("LTX-2.5 on diffusers, 4-bit on load (flags; live when the gated weights are present)", _ltx25_diffusers),
@@ -2412,6 +2417,8 @@ def phase_6(cap: Capability) -> PhaseResult:
 
     phase.checks.append(_check("vllm-wsl-status", _vllm_wsl_status))
     phase.checks.append(_check("fu-056-capability-flags", _accelerator_flags))
+    phase.checks.append(_check("vLLM and TriAttention refuse at once on native Windows",
+                               lambda: _rtx4090.windows_install_refusal(sys.modules[__name__])))
 
     fails = [c for c in phase.checks if c.status == "fail"]
     phase.status = "fail" if fails else "pass"
@@ -2483,7 +2490,10 @@ def phase_7(cap: Capability) -> PhaseResult:
                       ("no orphan workers", _no_orphans), ("runtime idle/loaded", _idle_state),
                       ("strongControlBorders round trip", _border_setting),
                       ("Keep going run API (start, idempotent, bounds, stop, resume refused)", _keep_going),
-                      ("Chat quality tiers (draft <= standard <= final per installed model)", _studio_tiers)]:
+                      ("Chat quality tiers (draft <= standard <= final per installed model)", _studio_tiers),
+            ("Chat Storyboard tools only for a turn about a film (FU-231, in process)",
+             lambda: _rtx4090.studio_staging(sys.modules[__name__])),
+            ("plan card price route prices a render as typed (FU-240)", lambda: _rtx4090.studio_price(sys.modules[__name__]))]:
         phase.checks.append(_check(name, fn))
     fails = [c for c in phase.checks if c.status == "fail"]
     phase.status = "fail" if fails else "pass"
@@ -3215,6 +3225,9 @@ def phase_8(cap: Capability) -> PhaseResult:
         ("synthesize smoke", _synthesize),
         ("Nemotron 3.5 ASR listed", _nemotron_asr_listed), ("transcribe smoke", _transcribe),
         ("stt on the NVIDIA GPU", _stt_gpu), ("library with speaker labels", _library),
+        ("Word timings row where the GPU dictation rows are (D-101)", lambda: _rtx4090.aligner_row(sys.modules[__name__])),
+        ("speech rows carry their lanes so a PC folds the Mac-only ones (D-102 A)",
+         lambda: _rtx4090.speech_rows_carry_lanes(sys.modules[__name__])),
         ("translate to English", _translate),
     ]:
         phase.checks.append(_check(name, fn))
@@ -3805,6 +3818,8 @@ def phase_11(cap: Capability) -> PhaseResult:
             ("estimate answers; out-of-range requests are refused", _estimate_and_validation),
             ("sound steps: range in the catalog, scaled estimate, out-of-range refused", _sound_steps),
             ("library list, rename, tag, Range audio and delete on a synthetic item", _library_crud),
+            ("Copy now: weight-copy status fields, Cancel with nothing running (D-100)",
+             lambda: _rtx4090.weight_copy_status(sys.modules[__name__])),
             ("a real 20 s instrumental on MLX or CUDA (skips without the music pack or weights)", _real_generation),
             ("a real 5 s Stable Audio 3 sound on CUDA (skips elsewhere or without the sounds pack or weights)", _real_sound),
         ]:
@@ -3874,6 +3889,7 @@ from e2e_phases.phase_14 import phase_14  # noqa: E402
 from e2e_phases import time_estimate as _time_estimate  # noqa: E402
 from e2e_phases import territory_gate as _territory_gate  # noqa: E402
 from e2e_phases import new_media_rows as _new_media_rows  # noqa: E402
+from e2e_phases import rtx4090_pass as _rtx4090  # noqa: E402
 from e2e_phases.phase_15 import phase_15  # noqa: E402
 
 PHASES[14] = phase_14

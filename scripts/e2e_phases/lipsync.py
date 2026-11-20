@@ -5,6 +5,9 @@ shot needs an NVIDIA card with the 4-bit LTX-2.3 row downloaded (``OzzyGT/LTX-2.
 voice and an installed image model, and skips with the reason when any is missing. It makes one 5 s shot (about two
 minutes on an RTX 4090) and checks the mp4 has the vocal as its sound, the planned length and a picture that moves.
 Mouth-to-audio sync itself is not scored here (that needs a face landmarker the app does not ship, FU-334).
+Two more contract checks need no model: the ``make_lipsync_shot`` agent tool is listed and refuses a missing still in
+words (Agent access is switched on for the call and put back), and a Storyboard shot takes a WAV vocal through
+``set_vocal_clip``, refuses a text file and clears it (a throwaway project, deleted afterwards).
 """
 
 from __future__ import annotations
@@ -109,9 +112,81 @@ def run(cap: Any, suite: Any):
             return "fail", f"the picture barely changes (mean frame difference {motion:.2f})", {}
         return "pass", "", {"timings": art.get("timings"), "frameMotion": motion}
 
+    def agent_tool():
+        # make_lipsync_shot on the agent bridge: listed, and a missing still is refused in words before any job starts.
+        code, access = api("GET", "/api/agent/access")
+        if code == 404:
+            return "skip", "agent bridge not present in this build", {}
+        was_on = bool(isinstance(access, dict) and access.get("enabled"))
+        api("POST", "/api/agent/access", {"enabled": True})
+        try:
+            code, listed = api("POST", "/mcp", {"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
+            names = {t["name"] for t in ((listed or {}).get("result") or {}).get("tools", [])} if code == 200 else set()
+            if "make_lipsync_shot" not in names:
+                return "fail", f"make_lipsync_shot not in tools/list (HTTP {code})", {}
+            code, called = api("POST", "/mcp", {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {
+                "name": "make_lipsync_shot",
+                "arguments": {"prompt": "x", "start_image": "e2e-no-such-still.png", "audio": "e2e-no-such-vocal.wav"}}})
+            result = (called or {}).get("result") or {}
+            text = str(((result.get("content") or [{}])[0]).get("text"))
+            if code != 200 or not result.get("isError"):
+                return "fail", f"a missing still did not refuse: HTTP {code} {text[:200]}", {}
+            return "pass", "", {"refusal": text[:120]}
+        finally:
+            api("POST", "/api/agent/access", {"enabled": was_on})
+
+    def vocal_clip_op():
+        # Storyboard Shot.vocalClip: set_vocal_clip takes a WAV, refuses a file that is not WAV or FLAC, and clears.
+        import wave
+
+        code, made = api("POST", "/api/storyboard/projects", {"name": "E2E lip-sync vocal"})
+        if code == 404:
+            return "skip", "storyboard not present in this build", {}
+        if code != 200:
+            return "fail", f"create project: HTTP {code}", {}
+        pid, rev = made["project"]["id"], made["project"]["revision"]
+        folder = Path(tempfile.mkdtemp(prefix="e2e-vocal-"))
+        try:
+            def op(name: str, args: dict[str, Any]) -> tuple[int, Any]:
+                nonlocal rev
+                code, body = api("POST", f"/api/storyboard/projects/{pid}/ops", {"revision": rev, "op": name, "args": args})
+                if code == 200:
+                    rev = body["project"]["revision"]
+                return code, body
+
+            code, body = op("add_shot", {"title": "sung line", "seconds": 4})
+            sid = body["project"]["shots"][-1]["id"]
+            vocal = folder / "vocal.wav"
+            with wave.open(str(vocal), "wb") as out:
+                out.setnchannels(1)
+                out.setsampwidth(2)
+                out.setframerate(16000)
+                out.writeframes(b"\x00\x00" * 16000)
+            code, body = op("set_vocal_clip", {"shotId": sid, "audio": str(vocal)})
+            shot = next((s for s in (body or {}).get("project", {}).get("shots", []) if s["id"] == sid), {}) if code == 200 else {}
+            if code != 200 or not str(shot.get("vocalClip") or "").startswith(f"media/{sid}/vocal-"):
+                return "fail", f"set_vocal_clip: HTTP {code} vocalClip={shot.get('vocalClip')!r}", {}
+            text_file = folder / "notes.txt"
+            text_file.write_text("not audio", encoding="utf-8")
+            code, body = op("set_vocal_clip", {"shotId": sid, "audio": str(text_file)})
+            if code != 400:
+                return "fail", f"a text file as the vocal answered HTTP {code}, wanted 400", {}
+            code, body = op("set_vocal_clip", {"shotId": sid, "audio": ""})
+            shot = next((s for s in (body or {}).get("project", {}).get("shots", []) if s["id"] == sid), {}) if code == 200 else {}
+            if code != 200 or shot.get("vocalClip") is not None:
+                return "fail", f"clearing the vocal: HTTP {code} vocalClip={shot.get('vocalClip')!r}", {}
+            return "pass", "", {"shot": sid}
+        finally:
+            api("DELETE", f"/api/storyboard/projects/{pid}?revision={rev}")
+            for item in folder.iterdir():
+                item.unlink(missing_ok=True)
+            folder.rmdir()
+
     for name, fn in [
         ("the 4-bit LTX-2.3 row carries the measured lip-sync figures", catalog_row),
         ("audioPath on a row that cannot lip-sync is refused", refuses_a_row_without_lip_sync),
+        ("make_lipsync_shot is on the agent bridge and refuses a missing still in words", agent_tool),
+        ("a Storyboard shot takes a WAV vocal, refuses a text file and clears it", vocal_clip_op),
         ("a Kokoro line and a still make a 5 s lip-sync clip with the line as its sound", real_shot),
     ]:
         phase.checks.append(suite._check(name, fn))

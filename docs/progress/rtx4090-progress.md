@@ -2124,3 +2124,17 @@ Add-on size: the voice venv with the add-on is 8.38 GB; torch 4.55 GB plus the a
 Checks: pytest `tests/test_voice*.py`, `test_request_guards`, `test_route_contracts`, `test_hub_tracker` pass (1 skip, 1 expected failure, both as before); vitest `src/features/voice` 155 passed; `tsc --noEmit` clean; `i18n:validate` OK; E2E `--phases 8` on the throwaway backend PASS (20 checks), including the new "speak and clone with Chatterbox, VoxCPM2 and Orpheus on the GPU" (spoke all four, cloned with the three cloning rows). Not run: the full pytest suite, the Playwright voice specs, Orpheus on a CUDA llama-server build (measured on the Vulkan build of b12441).
 
 Open: VoxCPM2 on Windows is about twice the real time and holds about 11 GB of RAM (FU-361); listening check (FU-362).
+
+## 2026-11-20: test coverage audit of the Windows pass (agent)
+
+The owner asked whether every new feature has tests in the suite. Audit and matrix: [docs/review/test-coverage-2026-11-20.md](../review/test-coverage-2026-11-20.md) (38 features, four layers each, checked by grepping the test trees). Before: 12 covered, 25 thin, 1 missing. After: 25 covered, 13 thin, 0 missing.
+
+Added:
+- `scripts/e2e_phases/rtx4090_pass.py`, registered in the suite's phases: chat follow-up rows and the Lightning minimum context (phase 0), `/v1` streamed tool calls on a GGUF (phase 1), a Nunchaku row that is not downloaded refuses with a plain 409 (phase 4), the H3 terms (phase 5, in process while H3 is unreleased), vLLM and TriAttention refused at once on native Windows (phase 6), Studio staging and the plan-card price route (phase 7), the Word timings row and speech-row lanes (phase 8), and the Copy now status routes (phase 11).
+- `scripts/e2e_phases/lipsync.py` (phase 22): `make_lipsync_shot` listed and refusing a missing still, and a Storyboard shot taking a WAV vocal, refusing a text file and clearing it.
+- `e2e/tests/42-rtx4090-pass.spec.ts`: Copy now (offer, progress, Done and retry; Cancel), Voice on a PC (Mac-only fold line, GPU row name, Word timings download with progress and Cancel), and the Storyboard vocal field against the real backend. Spec 24 now uses the new H3 tick sentence and checks the hosted-service notice and the current-licence link.
+- pytest: the extras folder put on `sys.path` before the re-probe (`380cbd27` had no test), and `tests/test_e2e_rtx4090_checks.py` for the new checks' own logic.
+
+Runs: pytest for both files pass; `tsc` clean; vitest (music, voice models, storyboard components, licence) 167 pass; Playwright 42 (5) and 24 (2) pass; `--smoke` on a throwaway backend exit 0; `--phases 5,11,22` pass; the phase 1 stream check alone passed live on Qwen3 0.6B Q4_K_M (GPU lock held).
+
+Found: phase 7's existing "Chat quality tiers" check fails on this PC once the Nunchaku FLUX.1-schnell row is installed (a draft under half a second rounds to 0 s): FU-430. Remaining thin rows need hardware, a real download or install, a second backend, or a Mac: FU-431 to FU-441.

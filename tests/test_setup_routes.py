@@ -228,6 +228,22 @@ class SetupRouteTests(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         mock_run.assert_called_once()
 
+    def test_a_brand_new_extras_folder_is_put_on_sys_path_before_the_reprobe(self):
+        """A first install on a fresh profile creates the extras folder after the backend started: the route puts it on
+        sys.path before re-probing, so the package is seen without a restart (RTX 4090, 2026-11-19, 380cbd27)."""
+        order: list[str] = []
+        with mock.patch("backend_service.routes.setup.subprocess.run") as mock_run, \
+             mock.patch("backend_service.routes.setup._extras_site_packages", return_value=Path("/tmp/x-extras")), \
+             mock.patch("backend_service.runtime_paths.ensure_extras_on_sys_path",
+                        side_effect=lambda: order.append("sys.path") or []) as ensure, \
+             mock.patch("backend_service.routes.setup.importlib.invalidate_caches",
+                        side_effect=lambda: order.append("invalidate")):
+            mock_run.return_value = mock.Mock(returncode=0, stdout="OK", stderr="")
+            resp = self.client.post("/api/setup/install-package", json={"package": "dflash-mlx"})
+        self.assertEqual(resp.status_code, 200)
+        ensure.assert_called_once_with()
+        self.assertEqual(order[:2], ["sys.path", "invalidate"])
+
     def test_mlx_video_install_cannot_pull_a_newer_mlx(self):
         """mlx-video's unbounded mlx-vlm dependency is held to the app's mlx
         series by the constraint file, not by a fixed version that goes stale

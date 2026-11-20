@@ -334,7 +334,7 @@ export function ImageGalleryTab({
                 {imageOutputs.length === 0
                   ? tStudio("imageGallery.empty.firstGeneration", {
                       defaultValue:
-                        "Generate a prompt in Image Studio to create the first saved image artifact for this branch.",
+                        "No images yet. Images you generate in Image Studio are saved here.",
                     })
                   : tStudio("imageGallery.empty.noMatches", {
                       defaultValue:

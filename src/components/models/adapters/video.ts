@@ -33,7 +33,7 @@ import {
   type VideoDeleteRepoKind,
 } from "../../../utils";
 import { acceleratorsForHost, type AcceleratorHost } from "../AcceleratorPills";
-import { readBestFitVariantId, readVariantFit } from "../fit";
+import { memoryAgreeingWithFit, readBestFitVariantId, readVariantFit } from "../fit";
 import type { ModelEntry, ModelSharedDownload } from "../modelEntry";
 
 export interface VideoModelEntry extends ModelEntry<VideoModelVariant> {
@@ -103,6 +103,13 @@ function optionalFlags(variant: VideoModelVariant): { trackedOnly: boolean; gate
   };
 }
 
+/** The backend's verdict; a gated row with no access yet (``accessBlockedReason``) is marked so the chip says so. */
+function videoFit(variant: VideoModelVariant) {
+  const fit = readVariantFit(variant);
+  const blocked = (variant as VideoModelVariant & { accessBlockedReason?: unknown }).accessBlockedReason;
+  return fit && fit.status === "unknown" && typeof blocked === "string" && blocked ? { ...fit, accessBlocked: true } : fit;
+}
+
 export function videoVariantToEntry(variant: VideoModelVariant, ctx: VideoEntryContext = {}): VideoModelEntry {
   const family = ctx.family ?? null;
   const longLive = isLongLiveRepo(variant.repo);
@@ -143,14 +150,17 @@ export function videoVariantToEntry(variant: VideoModelVariant, ctx: VideoEntryC
     sizeGb: videoSizeSortKey(variant),
     sizeLabel: compactModelSizeLabel(primarySize),
     sizeTitle: [primarySize, secondarySize].filter(Boolean).join(" / ") || null,
-    memory: memory ? { label: memory.label, title: memory.title, peakGb: memory.estimatedPeakGb } : null,
+    memory: memoryAgreeingWithFit(
+      memory ? { label: memory.label, title: memory.title, peakGb: memory.estimatedPeakGb } : null,
+      readVariantFit(variant),
+    ),
     releaseSortKey: variant.releaseDate ?? variant.createdAt ?? variant.lastModified ?? "",
     releaseLabel: compactReleaseLabel(formatReleaseLabel(variant.releaseLabel, variant.releaseDate ?? variant.createdAt)),
     likes: variant.likes ?? null,
     downloads: variant.downloads ?? null,
     likesLabel: variant.likesLabel ?? null,
     downloadsLabel: variant.downloadsLabel ?? null,
-    fit: readVariantFit(variant),
+    fit: videoFit(variant),
     bestFit: Boolean(family && readBestFitVariantId(family) === variant.id),
     shared:
       siblings > 0

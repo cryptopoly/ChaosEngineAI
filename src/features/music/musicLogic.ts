@@ -25,6 +25,12 @@ import type {
 
 /** The music pack download, as the install banner says it. */
 export const MUSIC_PACK_GB = 1.6;
+/** On an NVIDIA GPU the pack carries the CUDA build of PyTorch (FU-139: 6.6 GB measured on Windows). */
+export const MUSIC_PACK_GB_CUDA = 6.6;
+
+export function musicPackGb(lane: string | null | undefined): number {
+  return lane === "cuda" ? MUSIC_PACK_GB_CUDA : MUSIC_PACK_GB;
+}
 
 export const CAPTION_MAX = 512;
 export const LYRICS_MAX = 4096;

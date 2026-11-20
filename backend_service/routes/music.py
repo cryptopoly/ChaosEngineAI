@@ -146,6 +146,20 @@ def music_runtime_status(request: Request) -> dict[str, Any]:
     return {"runtime": capabilities()}
 
 
+def estimate_total_gb(hardware: Any) -> float:
+    """The memory the strip's peak is compared with: "Peak 8.6 GB of 24 GB".
+
+    On the CUDA lane the peak is VRAM (``estimates.cuda``), so the total is the card's memory, not system RAM
+    (a 24 GB card in a 64 GB PC read "Peak 8.6 GB of 63.8 GB"). A GPU that shares system memory, and every other
+    host, keeps the system total.
+    """
+    from backend_service import music_env
+
+    if music_env.lane() == "cuda" and hardware.kind == "cuda" and not hardware.unified:
+        return round(hardware.usable_gb, 1)
+    return round(hardware.total_gb, 1)
+
+
 @router.post("/api/music/estimate")
 def music_estimate(request: Request, body: MusicEstimateRequest) -> dict[str, Any]:
     """The run estimate strip: time, peak memory, disk, basis, fit, and whether the queue is busy."""
@@ -163,7 +177,7 @@ def music_estimate(request: Request, body: MusicEstimateRequest) -> dict[str, An
     return {
         "estimate": estimate_run(variant["id"], body.seconds, body.variations, warm=warm, steps=body.steps),
         "fit": music_fit(variant, hardware),
-        "totalGb": round(hardware.total_gb, 1),
+        "totalGb": estimate_total_gb(hardware),
         "queue": HEAVY_JOBS.snapshot(),
     }
 

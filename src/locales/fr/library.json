@@ -697,6 +697,7 @@
       "numbers": "Nécessite environ {need} Go sur les {usable} Go utilisables sur cette machine.",
       "tight": "Juste",
       "unknown": "Pas pour cette machine",
+      "needsAccess": null,
       "wontFit": "Ne tient pas"
     },
     "image": {

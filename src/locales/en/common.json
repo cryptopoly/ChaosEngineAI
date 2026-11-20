@@ -618,7 +618,7 @@
     "deltaVsPrev": "{delta} tok/s vs your previous {cache} run",
     "deltaVsFastest": "{delta} tok/s vs fastest ({cache})",
     "viewInHistory": "View in History",
-    "noRunsYet": "No benchmark runs yet. Configure a profile on the left and click Run benchmark.",
+    "noRunsYet": "No benchmark runs yet. Pick a model, then press Run benchmark.",
     "select": "Select",
     "modal": {
       "titleRunning": "Running benchmark",
@@ -783,7 +783,7 @@
   "fineTuning": {
     "loadingAdapters": "Loading adapters...",
     "noAdapters": "No LoRA adapters found.",
-    "noAdaptersHint": "Place adapter directories (with adapter_config.json) in your model directories, or use the fine-tuning feature below to create new adapters.",
+    "noAdaptersHint": "Adapter folders (with adapter_config.json) inside your model folders are listed here.",
     "adapterBase": "Base: {value}",
     "adapterSize": "Size: {value} MB",
     "adapterCreated": "Created: {value}",

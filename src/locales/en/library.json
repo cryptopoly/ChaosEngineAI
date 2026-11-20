@@ -697,6 +697,7 @@
       "numbers": "Needs about {need} GB of {usable} GB usable on this machine.",
       "tight": "Tight",
       "unknown": "Not for this machine",
+      "needsAccess": "Needs access",
       "wontFit": "Won't fit"
     },
     "image": {

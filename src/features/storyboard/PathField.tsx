@@ -43,7 +43,7 @@ export function PathField({ label, buttonLabel, extensions, disabled, onSubmit }
         <input
           type="text"
           value={value}
-          placeholder={t("storyboard.pathPlaceholder", { defaultValue: "/path/to/file" })}
+          placeholder={t("storyboard.pathPlaceholder", { defaultValue: "Full path to the file" })}
           aria-label={label}
           disabled={disabled}
           onChange={(event) => setValue(event.target.value)}

@@ -697,6 +697,7 @@
       "numbers": "需要约 {need} GB，本机可用 {usable} GB。",
       "tight": "紧张",
       "unknown": "不适合本机",
+      "needsAccess": null,
       "wontFit": "放不下"
     },
     "image": {

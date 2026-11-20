@@ -697,6 +697,7 @@
       "numbers": "약 {need} GB가 필요합니다(이 컴퓨터에서 사용 가능한 용량: {usable} GB).",
       "tight": "빠듯함",
       "unknown": "이 컴퓨터용이 아님",
+      "needsAccess": null,
       "wontFit": "부적합"
     },
     "image": {

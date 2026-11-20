@@ -2282,3 +2282,27 @@ whether "LM Studio" and "Ollama" may be named in the UI against the editorial ru
 menus and update prompt were not seen. macOS, Linux, a smaller GPU and a machine without a GPU were not looked at. The
 full pytest suite, the other 51 browser specs and the backend E2E suite were not run. Contrast was not measured. The
 18.1 GB figure for Nemotron is from an 8,192-context run; the app loads it at 16,384.
+## 2026-11-20: UI/UX review B, Image, Video, Projects, Music, Tools, galleries (agent, FU-470 to FU-479, D-108, D-109)
+
+Full write-up: `docs/review/ui-ux-v0100-b/README.md`. Method: Vite on the worktree against two throwaway backends (`HOME`/`USERPROFILE` under `E:\tmp\uiux-b`, ports 8981 to 8986, dummy token): world A with nothing downloaded, world B with `HF_HUB_CACHE=E:\AI Models` and `HF_HUB_OFFLINE=1`, every mutating request answered 503 in the browser. Playwright captured every page at 1280 and 375 px plus mocked states (music pack installed, Copy now, refusals, library and gallery items, the H3 gate, seeded projects); 130 screenshots, each looked at. No model ran, nothing was downloaded or deleted, the GPU was not used.
+
+**Figures that did not agree with this file or with each other.**
+
+| Screen | Shown | Measured or true | State |
+|---|---|---|---|
+| Video Studio, LTX-2.3 / LTX-2.5 on the 4090 | "runs on its own MLX engine on the Apple GPU", device MLX | diffusers on CUDA | fixed |
+| Image Models, FLUX.1 Dev GGUF Q4_K_S | "~67 GB" beside "Fits" | verdict 8.8 GB | fixed (column shows the verdict's number) |
+| Music pack banner on CUDA | 1.6 GB | 6.6 GB (2026-11-19) | fixed |
+| Music estimate strip | Peak 8.6 GB of 63.8 GB | VRAM against a 24 GB card | fixed |
+| LTX-2.5 rows without a token | "Not for this machine" | 19.5 GB measured here | fixed ("Needs access") |
+| Size column, LTX-2.5 4-bit | 162.4 GB | 66.2 GB on disk, catalogue 71.1 | open, FU-471, D-108 |
+| Size column, LTX-Video | 236.4 GB | catalogue 2.0 GB | open, FU-471 |
+| Size column, Qwen-Image-2.1 Turbo sd.cpp | 60.4 GB | 3.9 GB on disk | open, FU-471 |
+| Image Studio, Nunchaku INT4 schnell | About 2 s, Peak 10.2 GB | 5.9 s warm, about 18 GB (2026-11-19) | open, FU-472 |
+| Image Studio, FLUX 3 Klein default | 24 steps, 13 s | 8 steps recommended, 7.0 s | open, FU-472 |
+
+Agree with this file: the music fit numbers (turbo 8.6, XL 14, Stable Audio 3 Small 2.0, Medium 8.4, Open Small 3.6, Open 1.0 14 GB), the row notes of FLUX 3 Klein, MOSS-Image, Kandinsky 6, LTX-2.5 (20 GB, 62 s for a 4 s 768x512 clip) and LTX-2.3.
+
+**Also found:** the Run benchmark button sits below the end of a 465 px inner scroll box at 1280 x 900 (FU-473); Projects offers Make with no model installed (FU-474); Tools is empty on a PC with experimental tabs off (Conversion is listed on macOS only), so spec 27's Conversion half cannot run on Windows; spec 04 expected the D-80 music sentence (fixed).
+
+**Tests.** `npx tsc --noEmit` clean; `npx vitest run` 1,998 passed; `npm run i18n:validate` OK; `pytest tests/test_music_routes.py -k "EstimateTotal or estimate"` passed; Playwright 01, 02, 04, 10, 24, 28, 42 passed (24 tests, ports 8985/8986). Not run: the full pytest suite, the full Playwright suite, anything on a GPU.

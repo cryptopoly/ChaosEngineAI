@@ -697,6 +697,7 @@
       "numbers": "需要約 {need} GB，本機可用 {usable} GB。",
       "tight": "勉強",
       "unknown": "不適合本機",
+      "needsAccess": null,
       "wontFit": "放不下"
     },
     "image": {

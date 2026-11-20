@@ -69,7 +69,7 @@ test("Stable Audio Open licence screen: terms, attribution, Not now and I have a
 // Sounds Studio say the same single sentence, the Models page says it once at the top, and every row's fit chip
 // reads "Not available on this computer yet" with Download and Install disabled.
 const UNSUPPORTED_SENTENCE =
-  "Music generation runs on Apple Silicon Macs in this version. Windows and Linux support (NVIDIA GPUs) is planned; nothing is installed or downloaded on this computer.";
+  "Music generation needs an Apple Silicon Mac or an NVIDIA GPU on Windows or Linux; nothing is installed or downloaded on this computer.";
 
 async function mockUnsupportedPlatform(page: import("@playwright/test").Page) {
   await page.route("**/api/music/runtime", async (route) => {

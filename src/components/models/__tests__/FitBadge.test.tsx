@@ -109,6 +109,15 @@ describe("FitBadge", () => {
     expect(markup).not.toContain("fit-badge__basis");
   });
 
+  it("says Needs access, not Not for this machine, for a gated row nobody can download yet", () => {
+    const markup = renderToStaticMarkup(
+      <FitBadge fit={{ ...makeFit({ status: "unknown", needGb: null, headroomPct: null, reason: "The repo is gated on Hugging Face." }), accessBlocked: true }} />,
+    );
+    expect(markup).toContain("Needs access");
+    expect(markup).not.toContain("Not for this machine");
+    expect(markup).toContain("The repo is gated on Hugging Face.");
+  });
+
   it("renders the Best fit ribbon with an explanation", () => {
     const markup = renderToStaticMarkup(<BestFitRibbon />);
     expect(markup).toContain("best-fit-ribbon");

@@ -602,7 +602,9 @@ export function VideoStudioTab({
   const isDownloaded =
     !!selectedVideoVariant && (selectedVideoVariant.availableLocally || downloadState?.state === "completed");
   const hasPrompt = videoPrompt.trim().length > 0;
-  const selectedVideoRuntimeStatus: VideoRuntimeStatus = fixedSampler
+  // Only the ltx-2-mlx engine: a distilled LTX-2 on diffusers (NVIDIA) also has a fixed sampler.
+  const ltx2MlxEngine = Boolean(selectedVideoVariant?.runtime?.toLowerCase().includes("ltx-2-mlx"));
+  const selectedVideoRuntimeStatus: VideoRuntimeStatus = ltx2MlxEngine
     ? {
         ...videoRuntimeStatus,
         activeEngine: "ltx-2-mlx",

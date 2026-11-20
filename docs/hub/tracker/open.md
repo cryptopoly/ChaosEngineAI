@@ -1,7 +1,7 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 237 rows with work, decisions or watch items still open, newest first.
+summary: 247 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
@@ -132,6 +132,96 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** Next translation pass; D-12 for the Server tab label
 
 **Notes:** The "Share with ..." button, its done / already messages, the folder label and hint, and three backend error details were reworded in English ("Link to shared folder", "Shared models folder", 2026-11-20). Still naming the app: the same five keys in the 9 other shipping locales (re-translate from the new English), `serverTab.connect.ollamaApps` / `ollamaHint` in every locale (protocol label, D-12 open), the API names `lmstudioDir` and `/api/models/share-lmstudio`, code comments and identifiers.
+
+</details>
+
+<details>
+<summary>FU-479 · Translations and wording after review B — Open</summary>
+
+**Status or trigger:** Open
+
+**Notes:** English only, null elsewhere: `studio:musicStudio.packMissingCuda`, `library:models.fit.needsAccess`. English changed while the nine locales keep the older sentence: `common:benchmarkTab.noRunsYet`, `common:fineTuning.noAdaptersHint`, `studio:imageStudio.recent.emptyHint`, `studio:imageGallery.empty.firstGeneration`, `studio:storyboard.pathPlaceholder`. The failed-run sentence in `useImageState.ts` / `useVideoState.ts` is still a hard-coded English string. Wording to settle: Projects (sidebar) against Storyboard (buttons, "Send to storyboard" in lower case); "CUDA" chips on music rows; the Fine-Tuning line about Apple Silicon on a PC; dead string `musicUnsupported.soundReason`.
+
+</details>
+
+<details>
+<summary>FU-478 · Image Studio: default row whose engine is missing; refusal dialog — Open</summary>
+
+**Status or trigger:** Open
+
+**Notes:** With the Nunchaku pack on disk but the Nunchaku package not installed, Image Studio opened on FLUX.1 Schnell Nunchaku INT4 with Generate live. Do not default to a row whose engine is missing. The refusal dialog repeats its title, adds "Adjust the prompt or runtime settings" whatever the cause, has no Download or Install button, and the same text also shows in a banner; the backend sentence in `helpers/image_validation.py` says "Download it in Image Studio first" (the download is on Image Models). Also: three notices for "not installed" on a first run under a chip that says "Real local generation available". Review M2, M8.
+
+</details>
+
+<details>
+<summary>FU-477 · Phone width: H3 licence buttons under the fold, music rows clipped — Open</summary>
+
+**Status or trigger:** Open
+
+**Notes:** At 375 px the MiniMax H3 licence dialog cuts Not now / Confirm in half at its bottom edge since the D-99 text was added (pin the button row); Music and Audio Models rows clip the licence chip, the platform chips and the Accept licence button at the right edge. Review M5; shots `m-B-video-h3-licence-ticked.png`, `m-A-music-models.png`.
+
+</details>
+
+<details>
+<summary>FU-476 · Models pages: loading state, icon-only status, "Stub diffusion pipeline", licence "Other" — Open</summary>
+
+**Status or trigger:** Open
+
+**Notes:** Image and Video Models show "No image models in the catalog yet. Check that the backend is running." while the catalogue loads (over 2.5 s on a first open, backend online): add a loading state (`ModelsPage` `emptyCatalog`). Ten image rows carry the runtime name "Stub diffusion pipeline", printed in the Image Studio header; renaming needs a look at `imageOrVideoVariantPlatformGate`, which reads the string. Status and row actions are icons only; music rows use a text pill in the same column. Licence reads "Other" where the note names it (FLUX 3 Klein, LTX-2.5). "Watching upstream" rows have a greyed download and no explanation. Fit tooltip says "Measured on this machine." for catalogue measurements. Review M1, M6, M7, L1, L2.
+
+</details>
+
+<details>
+<summary>FU-475 · Video Studio defaults and the way to lip sync (D-109) — Open</summary>
+
+**Status or trigger:** Open
+
+**Notes:** Every row opens at 33 frames (1.4 s at 24 fps) under a chip that says "4.0s clip"; the SD pill is highlighted and labelled 896x512 while the size is 768x512; size pills past the model's limit are disabled but look enabled (no `.preset-pill:disabled` style); Expert offers a "4-bit (NF4)" switch on a row that is already 4-bit. Lip sync is reachable only from a shot's editor in Projects: nothing in Video Studio or on the LTX-2.3 row mentions it (D-109). Review M3, M4.
+
+</details>
+
+<details>
+<summary>FU-474 · Projects offers Make with no model installed (High) — Open</summary>
+
+**Status or trigger:** Open
+
+**Notes:** Overview and Storyboard show "Make 3 missing" as the primary button, the shot editor "Make this shot", and Plan "Make them in Storyboard" / "Rework with the model", while the same panels say no image, video or chat model is installed. Offer "Open Image Models" / "Open Video Models" instead. The shot editor shows "Estimate: unknown until the first run" beside an "Estimated" chip. The vocal field accepts a 2 s file although the clip must last 3 to 8 s: say so on attach. Review H4, M4. Not verified: what the click answers.
+
+</details>
+
+<details>
+<summary>FU-473 · Benchmarks: Run button out of sight, preview without a model, MLX-only modes on a PC (High) — Open</summary>
+
+**Status or trigger:** Open
+
+**Notes:** At 1280 x 900 `.benchmark-run-config.scrollable-panel-content` is 465 px tall with 774 px inside and the Run benchmark button at y 758, below the box's end at y 590; at 375 px 277 of 1,004 px show. Make the page one scroll or pin the Run bar. With no model picked the Performance preview still shows 113.7 tok/s, Disk 31.2 GB and "Fits easily". Perplexity and Task accuracy are offered where no MLX model can exist. Review H3; measurement in `capture-extra.spec.ts`.
+
+</details>
+
+<details>
+<summary>FU-472 · Studio estimates against this month's measurements (High) — Open</summary>
+
+**Status or trigger:** Open
+
+**Notes:** Nunchaku INT4 FLUX.1 Schnell shows "About 2 s, Peak 10.2 GB" in Image Studio and "~10 GB, Fits est." on Models; measured in the app on the 4090: 5.9 s warm, about 18 GB (offload). FLUX 3 Klein opens at 24 steps although its recommended value is 8 (13 s shown, 7.0 s measured at 8); apply the row's recommended steps when it is picked, and hide CFG decay for rows without guidance. The "may struggle on this device" warning shows on rows measured working and marked Tight (FLUX 3 Klein, LTX-2.3): one verdict per row. Review H2. The Klein 2048 px and LTX-2.5 large-size errors of 2026-11-19 are still open under FU-165.
+
+</details>
+
+<details>
+<summary>FU-471 · Models pages overstate the download size before download (High, D-108) — Open, waits on D-108</summary>
+
+**Status or trigger:** Open, waits on D-108
+
+**Notes:** The Size column and Video Studio prefer the sum of every weights file in the Hugging Face repo (`coreWeightsGb`) over the catalogue `sizeGb`: LTX-Video 236.4 GB shown for a 2.0 GB download, LTX-2.5 162.4 for 66.2 on disk, Qwen-Image-2.1 Turbo sd.cpp 60.4 for 3.9 on disk (table in the review, H1). `videoPrimarySizeLabel` / `imagePrimarySizeLabel` in `src/utils/format.ts` and the two `*SizeSortKey` helpers. Right fix: the backend sums the files its own download patterns match and sends that as the download size; until then prefer `sizeGb` for rows not on disk.
+
+</details>
+
+<details>
+<summary>FU-470 · UI/UX review B for v0.10.0 (Image, Video, Projects, Music, Tools, galleries): small fixes — Done 2026-11-20 (agent branch, not pushed)</summary>
+
+**Status or trigger:** **Done 2026-11-20 (agent branch, not pushed); unit-tested and seen in screenshots, no model run**
+
+**Notes:** Review at [docs/review/ui-ux-v0100-b/README.md](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/docs/review/ui-ux-v0100-b/README.md): 130 screenshots at 1280 and 375 px against two throwaway backends on the 4090 PC, 4 High, 8 Medium, 9 Low left open. Fixed: Video Studio no longer shows the MLX engine banner for LTX-2 on diffusers (`VideoStudioTab.tsx`, keyed on the ltx-2-mlx runtime, not on `fixedSampler`); the RAM/VRAM column shows the fit verdict's own number (`memoryAgreeingWithFit` in `components/models/fit.ts`; it read "~67 GB" beside "Fits"); the music pack reads 6.6 GB on the CUDA lane (`musicPackGb`, new string `musicStudio.packMissingCuda`); the music estimate strip compares the VRAM peak with the card (`estimate_total_gb` in `routes/music.py`; it read "8.6 GB of 63.8 GB"); a gated video row with no access says "Needs access" (`models.fit.needsAccess`, `Fit.accessBlocked`); accelerator cards lost the tracker-id chip; failed runs point to Server > Activity; five English sentences; "MIT"; e2e spec 04's stale sentence. Checks: tsc, vitest 1,998, i18n:validate, `tests/test_music_routes.py`, Playwright 01, 02, 04, 10, 24, 28, 42.
 
 </details>
 

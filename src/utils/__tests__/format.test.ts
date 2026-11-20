@@ -89,6 +89,7 @@ describe("formatImageLicenseLabel()", () => {
   it("capitalizes words and replaces hyphens/underscores with spaces", () => {
     expect(formatImageLicenseLabel("apache-2.0")).toBe("Apache 2.0");
     expect(formatImageLicenseLabel("mit_license")).toBe("Mit License");
+    expect(formatImageLicenseLabel("mit")).toBe("MIT");
   });
 });
 

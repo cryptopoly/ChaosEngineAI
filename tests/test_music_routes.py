@@ -389,3 +389,24 @@ class BridgeModelsTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class EstimateTotalTests(unittest.TestCase):
+    """The strip's "of N GB": the card on the CUDA lane (the peak is VRAM), system memory everywhere else."""
+
+    def _total(self, lane: str, **hardware) -> float:
+        from backend_service.helpers.hardware_class import HardwareClass
+        from backend_service.routes.music import estimate_total_gb
+
+        with mock.patch.object(music_env, "lane", return_value=lane):
+            return estimate_total_gb(HardwareClass(**hardware))
+
+    def test_a_24_gb_card_in_a_64_gb_pc_reads_24(self) -> None:
+        pc = dict(kind="cuda", bucket="cuda-24", label="NVIDIA GPU, 24 GB VRAM", total_gb=63.8, usable_gb=24.0)
+        self.assertEqual(self._total("cuda", **pc), 24.0)
+
+    def test_shared_memory_gpus_and_macs_keep_the_system_total(self) -> None:
+        spark = dict(kind="cuda", bucket="cuda-128", label="NVIDIA GPU", total_gb=128.0, usable_gb=115.2, unified=True)
+        self.assertEqual(self._total("cuda", **spark), 128.0)
+        mac = dict(kind="apple", bucket="apple-64", label="Apple Silicon, 64 GB", total_gb=64.0, usable_gb=51.8)
+        self.assertEqual(self._total("mlx", **mac), 64.0)

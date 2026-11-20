@@ -100,6 +100,7 @@ export function compactReleaseLabel(value?: string | null) {
 
 export function formatImageLicenseLabel(value?: string | null) {
   if (!value) return null;
+  if (value.toLowerCase() === "mit") return "MIT"; // an acronym, not the word "Mit"
   return value
     .replace(/[-_]/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());

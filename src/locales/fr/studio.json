@@ -1522,6 +1522,7 @@
     "openLibrary": "Ouvrir la bibliothèque",
     "openModels": "Ouvrir les modèles de musique",
     "packMissing": "Le pack musique n'est pas encore installé. Installez-le depuis « Modèles musique » (environ 1,6 Go).",
+    "packMissingCuda": null,
     "progress": {
       "compose": "Composer",
       "decode": "Décoder l'audio",

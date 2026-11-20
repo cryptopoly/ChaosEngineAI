@@ -32,6 +32,8 @@ export interface Fit {
   reason: string;
   /** ``measured`` only when the number comes from a run on this machine. */
   basis: FitBasis;
+  /** Set by an area's adapter when ``unknown`` means "gated, no access yet", not "cannot run here". */
+  accessBlocked?: boolean;
 }
 
 const FIT_STATUSES: readonly FitStatus[] = ["fits", "tight", "wont-fit", "unknown"];
@@ -62,6 +64,26 @@ export function readFit(value: unknown): Fit | null {
 export function readVariantFit(variant: unknown): Fit | null {
   if (!variant || typeof variant !== "object") return null;
   return readFit((variant as { fit?: unknown }).fit);
+}
+
+/**
+ * The memory estimate shown beside the fit chip. When the backend gave a verdict with a number, that number
+ * replaces the page's own heuristic, so "~67 GB" can never sit beside "Fits" on a 24 GB card: the chip is
+ * judged on ``needGb`` (measured where a measurement exists), and the column must say the same figure.
+ */
+export function memoryAgreeingWithFit<T extends { label: string | null; title?: string | null; peakGb?: number | null }>(
+  memory: T | null,
+  fit: Fit | null,
+): T | null {
+  if (!memory || !memory.label || !fit || fit.status === "unknown" || fit.needGb === null || !(fit.needGb > 0)) return memory;
+  const figure = fit.needGb >= 10 ? fit.needGb.toFixed(0) : fit.needGb.toFixed(1);
+  const [, resolution] = memory.label.split(" @ ");
+  return {
+    ...memory,
+    label: resolution ? `~${figure} GB @ ${resolution}` : `~${figure} GB`,
+    title: fit.reason || memory.title,
+    peakGb: fit.needGb,
+  };
 }
 
 /** The family's ``bestFitVariantId``, or ``null``. */

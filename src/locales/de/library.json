@@ -697,6 +697,7 @@
       "numbers": "Benötigt etwa {need} GB der {usable} GB, die auf diesem Rechner nutzbar sind.",
       "tight": "Knapp",
       "unknown": "Nicht für diesen Rechner",
+      "needsAccess": null,
       "wontFit": "Passt nicht"
     },
     "image": {

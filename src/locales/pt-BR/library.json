@@ -697,6 +697,7 @@
       "numbers": "Precisa de cerca de {need} GB dos {usable} GB utilizáveis nesta máquina.",
       "tight": "Apertado",
       "unknown": "Não para esta máquina",
+      "needsAccess": null,
       "wontFit": "Não cabe"
     },
     "image": {

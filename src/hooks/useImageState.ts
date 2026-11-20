@@ -539,7 +539,8 @@ export function useImageState(
         setImageGenerationCancelled(true);
         setImageGenerationError(null);
       } else {
-        const detail = `${message}. Check the Logs tab (filter: images) for backend details.`;
+        // The Logs tab became Server > Activity (D-88); a backend sentence already ends in a full stop.
+        const detail = `${message.replace(/[.\s]+$/, "")}. Server > Activity has the backend details.`;
         setError(detail);
         setImageGenerationError(detail);
       }

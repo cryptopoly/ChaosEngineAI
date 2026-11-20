@@ -103,3 +103,27 @@ explicit singing wording; medium framing only when the shot needs it, with the e
 Strips: all 18 looked at. The fixed ballad take sings the line with visible open-close on the syllables, then smiles
 with the mouth open in the 0.7 s tail. Soul seed 7 (explicit) has the highest r (0.66) but looks down and away and its
 last frame smears the face; `turned_away` (yaw only) caught 22 %, the downward look is not measured (no pitch check).
+
+## Experiment 1: shot length and where the shot starts
+
+Explicit prompt (experiment 4's winner), stem, close-up, seeds 42 and 7. Each shot starts 0.4 s before a phrase
+(`lead`), except `5s_mid`, which starts 1.5 s *into* the same phrase (no lead-in). The windows hold different audio,
+so compare the pattern, not single numbers.
+
+| Shot | Frames | mean score | mean r | beats chance | mean open while silent | Turned away > 30 % | s per shot |
+|---|---|---|---|---|---|---|---|
+| **3 s, lead-in** | 73 | **0.52** | **0.41** | **5 / 6** | 0.58 | 0 | 37 |
+| 5 s, lead-in | 121 | 0.49 | 0.44 | 5 / 6 | 0.63 | 1 | 56 |
+| 8 s, lead-in | 193 | 0.45 | 0.34 | 2 / 6 | 0.76 | 0 | 88 |
+| 5 s, starts mid-phrase | 121 | 0.37 | 0.30 | 2 / 6 | 0.87 | 1 | 56 |
+
+**Start the shot just before a phrase.** Starting mid-phrase is the worst case: the start still has a shut mouth and
+the face needs about a second to start singing, so the opening words are sung with a closed mouth (strip: frames 0-21
+shut while the vocal is loud), and the takes that recover then mouth on through the gaps. A 0.4 s lead-in avoids it.
+**Shorter is better, 8 s is worse**: in an 8 s shot with a 1-2 s gap between phrases the face keeps singing (or
+grimaces with an open mouth) through the gap (open while silent 0.92 on both soul takes), so r falls. 3-5 s shots cut
+to one phrase plus its lead-in are the sweet spot; this matches the phase-1 rule of 3 to 8 s but argues for cutting
+at phrase boundaries and keeping sung shots at 3-5 s.
+
+Strips: all 18 looked at (the 8 s ones show the open-mouth grimace through the gap; the mid-phrase ones the late
+start; hands come up to the face in one mid-phrase take).

@@ -1,7 +1,7 @@
 {
   "liveStats": {
     "title": "Живая статистика системы",
-    "subtitle": "Обновляется из Python-сайдкара, чтобы оболочка рабочего стола могла давать рекомендации по соответствию.",
+    "subtitle": null,
     "runtimeEngine": "Движок среды выполнения",
     "noModelLoaded": "Модель не загружена",
     "inferenceActivity": "Активность вывода",
@@ -76,7 +76,8 @@
     },
     "backendReadiness": {
       "title": "Готовность бэкенда",
-      "detail": "MLX установлен: {mlx} / mlx-lm установлен: {mlxLm} / MLX работает: {mlxUsable} / GGUF среда: {gguf}"
+      "detail": "MLX установлен: {mlx} / mlx-lm установлен: {mlxLm} / MLX работает: {mlxUsable} / GGUF среда: {gguf}",
+      "detailGguf": null
     }
   },
   "recommendation": {

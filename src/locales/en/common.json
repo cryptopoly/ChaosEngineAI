@@ -1058,7 +1058,7 @@
     },
     "providers": {
       "title": "Remote Providers",
-      "subtitle": "Configure cloud OpenAI-compatible APIs as a fallback. Keys are stored locally with 0600 permissions.",
+      "subtitle": "Use a cloud API that speaks the OpenAI format when no local model is loaded. Keys are stored on this computer, in the ChaosEngineAI data folder.",
       "addButton": "+ Add Provider",
       "emptyState": "No remote providers configured. Add one to use cloud models as a fallback.",
       "labelField": "Label",
@@ -1076,7 +1076,7 @@
       "tokenLabel": "Hugging Face token",
       "tokenStoredPlaceholder": "•••• stored ••••",
       "tokenPlaceholder": "hf_...",
-      "helpText": "Stored locally. Used by MLX conversion when fetching gated models from Hugging Face."
+      "helpText": "Stored on this computer. Used whenever a download needs your Hugging Face account, for example a gated model."
     },
     "agentAccess": {
       "title": "Agent access",

@@ -401,6 +401,17 @@ class ChaosEngineState:
                 _best_fit_recommendation(snapshot)["title"],
                 title_key="activity.hardwareProfile.title",
             )
+            gguf = "yes" if snapshot.get("ggufAvailable") else "no"
+            if snapshot.get("platform") != "Darwin":
+                # MLX only exists on Apple Silicon: three "MLX ...: no" answers on a PC read as faults (FU-454).
+                self.add_activity(
+                    "Backend readiness",
+                    f"GGUF runtime: {gguf}",
+                    title_key="activity.backendReadiness.title",
+                    detail_key="activity.backendReadiness.detailGguf",
+                    payload={"gguf": gguf},
+                )
+                return
             self.add_activity(
                 "Backend readiness",
                 " / ".join(
@@ -408,7 +419,7 @@ class ChaosEngineState:
                         f"MLX installed: {'yes' if snapshot['mlxAvailable'] else 'no'}",
                         f"mlx-lm installed: {'yes' if snapshot['mlxLmAvailable'] else 'no'}",
                         f"MLX usable: {'yes' if snapshot.get('mlxUsable') else 'no'}",
-                        f"GGUF runtime: {'yes' if snapshot.get('ggufAvailable') else 'no'}",
+                        f"GGUF runtime: {gguf}",
                     ]
                 ),
                 title_key="activity.backendReadiness.title",
@@ -417,7 +428,7 @@ class ChaosEngineState:
                     "mlx": "yes" if snapshot["mlxAvailable"] else "no",
                     "mlxLm": "yes" if snapshot["mlxLmAvailable"] else "no",
                     "mlxUsable": "yes" if snapshot.get("mlxUsable") else "no",
-                    "gguf": "yes" if snapshot.get("ggufAvailable") else "no",
+                    "gguf": gguf,
                 },
             )
 

@@ -1058,7 +1058,7 @@
     },
     "providers": {
       "title": "远程提供商",
-      "subtitle": "配置云端 OpenAI 兼容 API 作为回退。密钥以 0600 权限存储在本地。",
+      "subtitle": null,
       "addButton": "+ 添加提供商",
       "emptyState": "尚未配置远程提供商。添加一个以使用云端模型作为回退。",
       "labelField": "标签",
@@ -1076,7 +1076,7 @@
       "tokenLabel": "Hugging Face token",
       "tokenStoredPlaceholder": "•••• 已存储 ••••",
       "tokenPlaceholder": "hf_...",
-      "helpText": "存储在本地。MLX 转换在从 Hugging Face 拉取受限模型时使用。"
+      "helpText": null
     },
     "agentAccess": {
       "title": "智能体访问",

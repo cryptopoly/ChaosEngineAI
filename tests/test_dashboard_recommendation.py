@@ -80,6 +80,20 @@ class HardwareProfileActivityTests(unittest.TestCase):
         self.assertNotIn("GGUF", details["Hardware profile refreshed"])
         self.assertIn("MLX usable: yes", details["Backend readiness"])
 
+    def test_a_pc_is_not_told_three_times_that_mlx_is_missing(self):
+        from tests.test_backend_service import FakeRuntime
+
+        pc = _system(platform="Windows", arch="AMD64", mlxUsable=False, ggufAvailable=True, totalMemoryGb=64.0)
+        state = self._state([pc])
+        state.runtime = FakeRuntime()
+        state.runtime.capabilities = SimpleNamespace(probing=False)
+        state.activity.clear()
+        state._announce_backend_readiness_when_known(pc)
+        row = next(row for row in state.activity if row["title"] == "Backend readiness")
+        self.assertEqual(row["detail"], "GGUF runtime: yes")
+        self.assertEqual(row["detailKey"], "activity.backendReadiness.detailGguf")
+        self.assertNotIn("MLX", row["detail"])
+
 
 if __name__ == "__main__":
     unittest.main()

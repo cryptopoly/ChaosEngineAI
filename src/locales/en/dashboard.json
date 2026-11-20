@@ -1,7 +1,7 @@
 {
   "liveStats": {
     "title": "Live System Stats",
-    "subtitle": "Refreshed from the Python sidecar so the desktop shell can make fit recommendations.",
+    "subtitle": "Live figures from this computer: memory, disk, and the models that are running.",
     "runtimeEngine": "Runtime engine",
     "noModelLoaded": "No model loaded",
     "inferenceActivity": "Inference activity",
@@ -76,7 +76,8 @@
     },
     "backendReadiness": {
       "title": "Backend readiness",
-      "detail": "MLX installed: {mlx} / mlx-lm installed: {mlxLm} / MLX usable: {mlxUsable} / GGUF runtime: {gguf}"
+      "detail": "MLX installed: {mlx} / mlx-lm installed: {mlxLm} / MLX usable: {mlxUsable} / GGUF runtime: {gguf}",
+      "detailGguf": "GGUF runtime: {gguf}"
     }
   },
   "recommendation": {

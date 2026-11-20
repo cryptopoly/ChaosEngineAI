@@ -1058,7 +1058,7 @@
     },
     "providers": {
       "title": "Hop nobwI'",
-      "subtitle": "OpenAI rurbogh cloud API mIw cha'DIch yIwIv. key naDev pollu' (0600 chaw').",
+      "subtitle": null,
       "addButton": "+ nobwI' yIchel",
       "emptyState": "Hop nobwI' tu'lu'be'. cloud yab mIw cha'DIch lo'meH wa' yIchel.",
       "labelField": "pong",
@@ -1076,7 +1076,7 @@
       "tokenLabel": "Hugging Face token",
       "tokenStoredPlaceholder": "•••• pollu'ta' ••••",
       "tokenPlaceholder": "hf_...",
-      "helpText": "naDev pollu'. Hugging Facevo' yab ngaQ qemtaHvIS MLX choH lo'."
+      "helpText": null
     },
     "agentAccess": {
       "title": "Duy 'el",

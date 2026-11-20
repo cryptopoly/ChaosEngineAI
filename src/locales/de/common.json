@@ -1058,7 +1058,7 @@
     },
     "providers": {
       "title": "Remote-Anbieter",
-      "subtitle": "Konfiguriere OpenAI-kompatible Cloud-APIs als Fallback. Schlüssel werden lokal mit Berechtigungen 0600 gespeichert.",
+      "subtitle": null,
       "addButton": "+ Anbieter hinzufügen",
       "emptyState": "Keine Remote-Anbieter konfiguriert. Füge einen hinzu, um Cloud-Modelle als Fallback zu nutzen.",
       "labelField": "Bezeichnung",
@@ -1076,7 +1076,7 @@
       "tokenLabel": "Hugging-Face-Token",
       "tokenStoredPlaceholder": "•••• gespeichert ••••",
       "tokenPlaceholder": "hf_...",
-      "helpText": "Lokal gespeichert. Wird von der MLX-Konvertierung beim Abrufen gated-Modelle von Hugging Face verwendet."
+      "helpText": null
     },
     "agentAccess": {
       "title": "Agent-Zugriff",

@@ -1058,7 +1058,7 @@
     },
     "providers": {
       "title": "Provedores remotos",
-      "subtitle": "Configure APIs em nuvem compatíveis com OpenAI como fallback. As chaves são armazenadas localmente com permissões 0600.",
+      "subtitle": null,
       "addButton": "+ Adicionar provedor",
       "emptyState": "Nenhum provedor remoto configurado. Adicione um para usar modelos em nuvem como fallback.",
       "labelField": "Rótulo",
@@ -1076,7 +1076,7 @@
       "tokenLabel": "Token do Hugging Face",
       "tokenStoredPlaceholder": "•••• armazenado ••••",
       "tokenPlaceholder": "hf_...",
-      "helpText": "Armazenado localmente. Usado pela conversão MLX ao buscar modelos com acesso restrito no Hugging Face."
+      "helpText": null
     },
     "agentAccess": {
       "title": "Acesso de agentes",

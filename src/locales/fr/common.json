@@ -1058,7 +1058,7 @@
     },
     "providers": {
       "title": "Fournisseurs distants",
-      "subtitle": "Configurez des API cloud compatibles OpenAI comme repli. Les clés sont stockées localement avec les permissions 0600.",
+      "subtitle": null,
       "addButton": "+ Ajouter un fournisseur",
       "emptyState": "Aucun fournisseur distant configuré. Ajoutez-en un pour utiliser des modèles cloud en repli.",
       "labelField": "Libellé",
@@ -1076,7 +1076,7 @@
       "tokenLabel": "Jeton Hugging Face",
       "tokenStoredPlaceholder": "•••• stocké ••••",
       "tokenPlaceholder": "hf_...",
-      "helpText": "Stocké localement. Utilisé par la conversion MLX lors de la récupération de modèles à accès restreint depuis Hugging Face."
+      "helpText": null
     },
     "agentAccess": {
       "title": "Accès des agents",

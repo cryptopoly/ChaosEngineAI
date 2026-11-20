@@ -1058,7 +1058,7 @@
     },
     "providers": {
       "title": "リモートプロバイダー",
-      "subtitle": "OpenAI 互換のクラウド API をフォールバックとして設定します。キーはローカルに 0600 権限で保存されます。",
+      "subtitle": null,
       "addButton": "+ プロバイダーを追加",
       "emptyState": "リモートプロバイダーが設定されていません。クラウドモデルをフォールバックとして使うには追加してください。",
       "labelField": "ラベル",
@@ -1076,7 +1076,7 @@
       "tokenLabel": "Hugging Face トークン",
       "tokenStoredPlaceholder": "•••• 保存済み ••••",
       "tokenPlaceholder": "hf_...",
-      "helpText": "ローカルに保存されます。Hugging Face からゲート付きモデルを取得する際の MLX 変換で使用されます。"
+      "helpText": null
     },
     "agentAccess": {
       "title": "エージェントアクセス",

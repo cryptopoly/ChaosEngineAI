@@ -1,7 +1,7 @@
 {
   "liveStats": {
     "title": "Estadísticas en vivo del sistema",
-    "subtitle": "Actualizado desde el sidecar de Python para que el shell de escritorio pueda dar recomendaciones de adecuación.",
+    "subtitle": null,
     "runtimeEngine": "Motor de tiempo de ejecución",
     "noModelLoaded": "Ningún modelo cargado",
     "inferenceActivity": "Actividad de inferencia",
@@ -76,7 +76,8 @@
     },
     "backendReadiness": {
       "title": "Disponibilidad del backend",
-      "detail": "MLX instalado: {mlx} / mlx-lm instalado: {mlxLm} / MLX utilizable: {mlxUsable} / Runtime GGUF: {gguf}"
+      "detail": "MLX instalado: {mlx} / mlx-lm instalado: {mlxLm} / MLX utilizable: {mlxUsable} / Runtime GGUF: {gguf}",
+      "detailGguf": null
     }
   },
   "recommendation": {

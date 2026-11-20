@@ -1058,7 +1058,7 @@
     },
     "providers": {
       "title": "Proveedores remotos",
-      "subtitle": "Configura APIs en la nube compatibles con OpenAI como plan de respaldo. Las claves se almacenan localmente con permisos 0600.",
+      "subtitle": null,
       "addButton": "+ Añadir proveedor",
       "emptyState": "Ningún proveedor remoto configurado. Añade uno para usar modelos en la nube como plan de respaldo.",
       "labelField": "Etiqueta",
@@ -1076,7 +1076,7 @@
       "tokenLabel": "Token de Hugging Face",
       "tokenStoredPlaceholder": "•••• almacenado ••••",
       "tokenPlaceholder": "hf_...",
-      "helpText": "Se almacena localmente. Usado por la conversión MLX al obtener modelos restringidos de Hugging Face."
+      "helpText": null
     },
     "agentAccess": {
       "title": "Acceso de agentes",

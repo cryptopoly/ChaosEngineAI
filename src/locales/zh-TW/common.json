@@ -1058,7 +1058,7 @@
     },
     "providers": {
       "title": "遠端提供者",
-      "subtitle": "將相容於 OpenAI 的雲端 API 設定為備援。金鑰會以 0600 權限儲存在本地。",
+      "subtitle": null,
       "addButton": "+ 新增提供者",
       "emptyState": "尚未設定任何遠端提供者。新增一個即可將雲端模型作為備援使用。",
       "labelField": "標籤",
@@ -1076,7 +1076,7 @@
       "tokenLabel": "Hugging Face token",
       "tokenStoredPlaceholder": "•••• 已儲存 ••••",
       "tokenPlaceholder": "hf_...",
-      "helpText": "儲存於本地。MLX 轉換從 Hugging Face 取得受管制模型時會使用。"
+      "helpText": null
     },
     "agentAccess": {
       "title": "代理程式存取",

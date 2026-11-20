@@ -497,7 +497,7 @@ export function SettingsTab({
         title={t("settingsTab.providers.title", { defaultValue: "Remote Providers" })}
         subtitle={t("settingsTab.providers.subtitle", {
           defaultValue:
-            "Configure cloud OpenAI-compatible APIs as a fallback. Keys are stored locally with 0600 permissions.",
+            "Use a cloud API that speaks the OpenAI format when no local model is loaded. Keys are stored on this computer, in the ChaosEngineAI data folder.",
         })}
         actions={
           <button className="secondary-button" type="button" onClick={() => {
@@ -630,7 +630,7 @@ export function SettingsTab({
           <p className="muted-text">
             {t("settingsTab.huggingFace.helpText", {
               defaultValue:
-                "Stored locally. Used by MLX conversion when fetching gated models from Hugging Face.",
+                "Stored on this computer. Used whenever a download needs your Hugging Face account, for example a gated model.",
             })}
           </p>
         </div>

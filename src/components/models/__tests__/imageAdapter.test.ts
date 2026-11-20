@@ -70,6 +70,28 @@ describe("imageVariantToEntry", () => {
     expect(imageVariantToEntry(variant, { family: otherPick }).bestFit).toBe(false);
   });
 
+  it("shows the fit verdict's own number in the memory column, so the figure and the chip agree", () => {
+    // Seen on a 24 GB card: "~67 GB" (the page's size heuristic) beside "Fits" (the backend's 8.8 GB verdict).
+    const gguf = makeImageVariant({
+      coreWeightsGb: 53.9,
+      fit: { status: "fits", needGb: 8.8, usableGb: 24, headroomPct: 63, reason: "Peak memory about 8.8 GB (catalog estimate)", basis: "estimated" },
+    } as Partial<ImageModelVariant>);
+    const entry = imageVariantToEntry(gguf, { host: CUDA_PC });
+    expect(entry.memory?.label).toMatch(/^~8\.8 GB @ /);
+    expect(entry.memory?.peakGb).toBe(8.8);
+    expect(entry.memory?.title).toBe("Peak memory about 8.8 GB (catalog estimate)");
+    // No verdict, or a row the backend could not judge: the page's own estimate stays.
+    const plain = imageVariantToEntry(makeImageVariant({ coreWeightsGb: 53.9 }), { host: CUDA_PC });
+    const unknown = imageVariantToEntry(
+      makeImageVariant({
+        coreWeightsGb: 53.9,
+        fit: { status: "unknown", needGb: null, usableGb: 24, headroomPct: null, reason: "gated", basis: "estimated" },
+      } as Partial<ImageModelVariant>),
+      { host: CUDA_PC },
+    );
+    expect(unknown.memory?.label).toBe(plain.memory?.label);
+  });
+
   it("keeps a Mac-only row compatible on a Mac and not on a CUDA PC", () => {
     const mflux = makeImageVariant({ id: "mflux", runtime: "mflux (MLX native)" });
     expect(imageVariantToEntry(mflux, { host: MAC }).hostCompatible).toBe(true);

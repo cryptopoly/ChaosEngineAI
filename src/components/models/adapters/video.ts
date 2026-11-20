@@ -33,7 +33,7 @@ import {
   type VideoDeleteRepoKind,
 } from "../../../utils";
 import { acceleratorsForHost, type AcceleratorHost } from "../AcceleratorPills";
-import { readBestFitVariantId, readVariantFit } from "../fit";
+import { memoryAgreeingWithFit, readBestFitVariantId, readVariantFit } from "../fit";
 import type { ModelEntry, ModelSharedDownload } from "../modelEntry";
 
 export interface VideoModelEntry extends ModelEntry<VideoModelVariant> {
@@ -143,7 +143,10 @@ export function videoVariantToEntry(variant: VideoModelVariant, ctx: VideoEntryC
     sizeGb: videoSizeSortKey(variant),
     sizeLabel: compactModelSizeLabel(primarySize),
     sizeTitle: [primarySize, secondarySize].filter(Boolean).join(" / ") || null,
-    memory: memory ? { label: memory.label, title: memory.title, peakGb: memory.estimatedPeakGb } : null,
+    memory: memoryAgreeingWithFit(
+      memory ? { label: memory.label, title: memory.title, peakGb: memory.estimatedPeakGb } : null,
+      readVariantFit(variant),
+    ),
     releaseSortKey: variant.releaseDate ?? variant.createdAt ?? variant.lastModified ?? "",
     releaseLabel: compactReleaseLabel(formatReleaseLabel(variant.releaseLabel, variant.releaseDate ?? variant.createdAt)),
     likes: variant.likes ?? null,

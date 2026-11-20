@@ -23,7 +23,7 @@ import {
   isVariantCompatibleWithHost,
 } from "../../../utils";
 import { acceleratorsForHost } from "../AcceleratorPills";
-import { readBestFitVariantId, readVariantFit } from "../fit";
+import { memoryAgreeingWithFit, readBestFitVariantId, readVariantFit } from "../fit";
 import type { ModelEntry } from "../modelEntry";
 
 export type ImageModelEntry = ModelEntry<ImageModelVariant>;
@@ -104,7 +104,10 @@ export function imageVariantToEntry(variant: ImageModelVariant, ctx: ImageEntryC
     sizeGb: imageSizeSortKey(variant),
     sizeLabel: compactModelSizeLabel(primarySize),
     sizeTitle: [primarySize, secondarySize].filter(Boolean).join(" / ") || null,
-    memory: memory ? { label: memory.label, title: memory.title, peakGb: memory.estimatedPeakGb } : null,
+    memory: memoryAgreeingWithFit(
+      memory ? { label: memory.label, title: memory.title, peakGb: memory.estimatedPeakGb } : null,
+      readVariantFit(variant),
+    ),
     releaseSortKey: variant.releaseDate ?? variant.createdAt ?? variant.lastModified ?? "",
     releaseLabel: compactReleaseLabel(formatReleaseLabel(variant.releaseLabel, variant.releaseDate ?? variant.createdAt)),
     likes: variant.likes ?? null,

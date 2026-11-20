@@ -9,6 +9,14 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-20 (Voice review for v0.10.0, agent branch off `test/rtx4090`, not pushed)
+
+**Done:** second D-73 review of every Voice screen at 1280 px and 375 px against throwaway backends on the 4090 PC ([docs/review/voice-v0100/](https://github.com/cryptopoly/ChaosEngineAI/blob/test/rtx4090/docs/review/voice-v0100/README.md): 18 findings, 48 screenshots, plan). The Mac view holds; the Windows GPU view did not. Six small fixes with tests (FU-320): the speech table no longer opens on an Apple-only row, GPU rows name the missing add-on, no dead Download buttons on Voices and Speak, an unusable 67.5 GB dictation model is not offered, the dictation default switch is announced, the add-on label names what it gives. tsc, vitest 1,970, i18n, voice pytest files, 66 of 67 voice browser tests.
+
+**Open for Claude:** FU-321 to FU-327 once D-99 is answered. Not verified: a real install, download, audio, microphone, macOS, a GPU under 24 GB.
+
+**Open for Dan:** D-99 (hide Mac-only speech models on a PC; Chatterbox, VoxCPM2 and Orpheus on the GPU or out of the add-on; the Qwen3-ASR default rule; build the Models and dictation work before the tag).
+
 ## Update 2026-11-18 (Windows 4090, `test/rtx4090`): section 2 gate run on the merged tip `3be6e496`; three Windows bugs fixed.
 
 **Done:** vitest 1936, tsc, i18n, cargo, upstreams (llama.cpp b12441 behind b12503) and the audit pass. E2E smoke 7 of 7 and full E2E (22 phases pass, 216 skips) after two suite fixes; real FLUX.2 Klein and LTX-2.5 renders on CUDA. llama.cpp b12441 CUDA 13.5 installed through the app (row 44, part). Fixed: the model event log held its file open (Windows could not move the data folder), GGUF stayed off after the CUDA install until a restart, and the Vite watcher locked the browser tests' app folder (10 Playwright failures). Details: `docs/progress/rtx4090-progress.md`, last section.

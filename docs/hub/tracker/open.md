@@ -1,13 +1,85 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 168 rows with work, decisions or watch items still open, newest first.
+summary: 176 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-327 · Voice i18n, accessibility and a Windows browser-test failure — Polish pass</summary>
+
+**Status or trigger:** Polish pass
+
+**Notes:** Backend text stays English in every locale (model summaries, language lists, notes, voice descriptions, "measured on"). Delete confirms use the system `confirm()`; the voice-sample picker is the browser's own file input; dictation download progress is not announced. `e2e/tests/14-voice-speak.spec.ts` "Voices groups every voice" fails on Windows because it expects the Mandarin add-on button, which only the Mac lane lists: mock the add-on or skip off the Mac. The app has no light theme (app-wide, not Voice).
+
+</details>
+
+<details>
+<summary>FU-326 · Voices list length — After FU-321</summary>
+
+**Status or trigger:** After FU-321
+
+**Notes:** 3,500 px at desktop and 7,760 px at 375 px with nine quick languages open. Collapse the quick languages except the UI language's; check the row layout at 375 px with the new "cannot run here" text.
+
+</details>
+
+<details>
+<summary>FU-325 · Voice runtime install: sizes and progress — After D-99 D</summary>
+
+**Status or trigger:** After D-99 D
+
+**Notes:** "About 2 GB" on Models, "about 2.3 GB" on the Studio gate, 8.0 GB measured with the speech GPU add-on. Show one figure per lane and add the ticked add-ons' sizes; say what each add-on is for; percent and current step on the bar (it has neither) with `role="progressbar"`; keep the chosen add-ons ticked through a reload while the install runs; Speak's first-run copy when no voice exists at all (Kokoro left out). About 1 day.
+
+</details>
+
+<details>
+<summary>FU-324 · Voice numbers measured on a Mac shown on a PC — Next 4090 session</summary>
+
+**Status or trigger:** Next 4090 session
+
+**Notes:** Kokoro's Fit cell and every quick voice's first-audio time and memory come from the M4 Max run although a PC runs Kokoro through kokoro-onnx; measure it on the portable lane or label the figures. Natural voices on the 4090 take about 17 s per 10 s of speech and show a green chip: label a voice that is slower than real time and say so on the install card.
+
+</details>
+
+<details>
+<summary>FU-323 · Dictation models panel on a GPU PC — After D-99 D</summary>
+
+**Status or trigger:** After D-99 D
+
+**Notes:** Nine cards with one badge. To do: the default-to-be first with a "Recommended for this GPU" badge that survives the download; one line per card on what it is for; licence as a linked chip (raw ids such as OpenMDW-1.1 today, none on Whisper); downloads through the shared control (bar, size, Cancel, live text; today a bare percentage); check which models use the Language setting and correct the footer line; say in Chat's Voice popover when the dictation model changed. About 1 to 1.5 days.
+
+</details>
+
+<details>
+<summary>FU-322 · Speech GPU add-on: what it installs and what is offered — Owner picks (D-99 B)</summary>
+
+**Status or trigger:** Owner picks (D-99 B)
+
+**Notes:** The add-on installs the Chatterbox and VoxCPM packages (most of its 5 GB) but only the five Qwen3-TTS CUDA rows are listed; the wave-2 CUDA rows stay hidden until measured (`CHAOSENGINE_VOICE_UNMEASURED`). The English UI label now names Qwen3-TTS only; the backend label in `voice_env.EXTRAS`, the usage docs and the translated labels (now `null`) still name all four. Either measure and list the three families on the 4090, or stop installing their packages; then make every label say the same.
+
+</details>
+
+<details>
+<summary>FU-321 · A PC lists speech models and voices that only run on a Mac — Owner picks (D-99 A)</summary>
+
+**Status or trigger:** Owner picks (D-99 A)
+
+**Notes:** On the portable lane `catalog.voice_models.listed_models` returns every MLX row, so a PC shows 15 speech rows of which 9 can never run, and Voices lists Turbo, Chatterbox and eight Orpheus voices under Natural. Proposed: hide them on a PC or fold them under one closed "Mac only" line, drop "(GPU)" from the names once the twins are gone, collapse a family to its recommended natural row, and make "Show N sizes" count the hidden rows. About 1 day.
+
+</details>
+
+<details>
+<summary>FU-320 · Voice review for v0.10.0: Windows GPU fixes — Done (2026-11-20, agent branch), unit-tested</summary>
+
+**Status or trigger:** **Done (2026-11-20, agent branch), unit-tested; not tried on a real install**
+
+**Notes:** Second D-73 review ([docs/review/voice-v0100/](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/docs/review/voice-v0100/README.md), 18 findings, 48 screenshots against throwaway backends). Fixed: a collapsed speech family shows the first row that runs here (a PC showed an Apple-only row); GPU rows, the voice picker and the greyed New cloned voice button say to tick the speech GPU add-on instead of "Apple Silicon Macs only" (rows carry `lanes`); no Download on Voices or Speak for a model that cannot run here; no second "Download ... for style" button for the same model; a GPU dictation model this GPU cannot run has no Download and cannot be picked; a line says Qwen3-ASR 1.7B becomes the dictation model once downloaded; the speech GPU add-on label names Qwen3-TTS and "about 5 GB". New English strings are `null` in the other locales. tsc, vitest 1,970, i18n validate, voice pytest files, 66 of 67 voice browser tests. Not run: full pytest, full browser suite, backend E2E, a real install or download.
+
+</details>
 
 <details>
 <summary>FU-280 · CUDA sounds lane: what is not tested — Linux NVIDIA box, a card under 12 GB, or a listening pass</summary>

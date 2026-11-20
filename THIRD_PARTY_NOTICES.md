@@ -640,7 +640,7 @@ Verified on an RTX 4090 (docs/progress/rtx4090-progress.md). Each package and it
   imports; the sox program is not used).
 - PyTorch 2.9.1 and torchaudio 2.9.1 (CUDA 12.8 wheels) - BSD-3-Clause; torchcodec 0.8.1 - BSD-3-Clause.
 - transformers 5.2.0, diffusers 0.29.0, safetensors 0.5.3 - Apache-2.0; s3tokenizer 0.3.0 - Apache-2.0;
-  wetext 0.2.1 - Apache-2.0.
+  wetext 0.2.1 - Apache-2.0, with its `kaldifst` 1.9.0 - Apache-2.0 (pinned: 1.9.1 has no Windows wheel).
 - librosa 0.11.0 - ISC; conformer 0.3.2, pyloudnorm 0.2.0, spacy-pkuseg 1.0.2, einops 0.8, inflect 7.6,
   addict 2.4.0, pydantic 2 - MIT; omegaconf 2.3 - BSD-3-Clause; soundfile 0.13 - BSD-3-Clause.
 - Left out on purpose: pykakasi (GPL-3.0), gradio, funasr, modelscope, datasets, matplotlib.

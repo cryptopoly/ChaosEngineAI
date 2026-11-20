@@ -61,6 +61,43 @@ class InstallTests(unittest.TestCase):
             self.assertNotIn(unwanted, names)
         self.assertTrue(all(isinstance(part, str) for command in commands for part in command))  # list form only
 
+    def test_kaldifst_is_pinned_to_a_release_with_a_windows_wheel(self) -> None:
+        # wetext asks for any kaldifst; 1.9.1 shipped without a Windows wheel and its source build failed, so the
+        # add-on's install stopped on a fresh Windows PC (RTX 4090 run, 2026-11-20).
+        self.assertIn("kaldifst==1.9.0", voice_env.SPEECH_GPU_PACKAGES)
+        self.assertIn("kaldifst==1.9.0", voice_env.speech_gpu_commands("/venv/bin/python")[1])
+
+    def test_the_import_check_covers_every_listed_family(self) -> None:
+        # Chatterbox-Turbo, Chatterbox V3 (its Japanese stand-in), VoxCPM2 (the class the worker loads), the PerTh
+        # watermark, and onnxruntime for Orpheus's SNAC decoder.
+        check = voice_env.speech_gpu_commands("/venv/bin/python")[4][3]
+        for module in ("chatterbox.tts_turbo", "chatterbox.mtl_tts", "from voxcpm import VoxCPM", "perth", "fugashi",
+                       "unidic_lite", "onnxruntime"):
+            self.assertIn(module, check)
+
+    def test_two_cloning_downloads_install_the_watermark_one_at_a_time(self) -> None:
+        # Three cloning rows downloaded together each ran pip for AudioSeal; on Windows one failed with WinError 32.
+        import threading
+
+        inside, most = [0], [0]
+        guard = threading.Lock()
+
+        def slow_install(cancel: object) -> None:
+            with guard:
+                inside[0] += 1
+                most[0] = max(most[0], inside[0])
+            threading.Event().wait(0.2)
+            with guard:
+                inside[0] -= 1
+
+        with mock.patch.object(voice_env, "_install_watermark", side_effect=slow_install):
+            threads = [threading.Thread(target=voice_env.install_watermark) for _ in range(3)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+        self.assertEqual(most[0], 1)
+
     def test_windows_path_uses_the_venv_python(self) -> None:
         commands = voice_env.speech_gpu_commands(r"C:\Users\x\.chaosengine\voice-venv\Scripts\python.exe")
         self.assertTrue(all(c[0].endswith("python.exe") for c in commands))
@@ -123,7 +160,12 @@ class CatalogTests(unittest.TestCase):
             self.assertRegex(row["revision"], r"^[0-9a-f]{40}$")
             self.assertTrue(row["files"])
             self.assertIn(row["licence"]["id"], ("mit", "apache-2.0"))
-            self.assertIsNone(row["estimates"])  # measured on the 4090 first
+            # Measured on the RTX 4090 through the app (FU-360), with the GPU needs voice_gpu checks.
+            self.assertEqual(row["estimates"]["basis"], "measured")
+            self.assertIn("RTX 4090", row["estimates"]["measuredOn"])
+            self.assertGreater(row["minVramGb"], row["estimates"]["peakGb"])
+            # PyTorch's CUDA 12.8 wheels start at Volta; Orpheus runs in llama-server, which has no such floor.
+            self.assertEqual(row.get("minComputeCap"), 7.0 if row["engine"] == "torch" else None)
         self.assertEqual(voice_models.voice_model("chatterbox-turbo-cuda")["builtinWatermark"], "perth")
         self.assertEqual(voice_models.voice_model("chatterbox-mtl-cuda")["builtinWatermark"], "perth")
         self.assertIsNone(voice_models.voice_model("voxcpm2-cuda")["builtinWatermark"])
@@ -131,15 +173,29 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(voice_models.voice_model("orpheus-3b-gguf")["engine"], "llama-gguf")
         self.assertFalse(voice_models.voice_model("orpheus-3b-gguf")["capabilities"]["clone"])
 
-    def test_unmeasured_cuda_rows_are_not_offered_and_never_on_a_mac(self) -> None:
+    def test_measured_cuda_rows_are_offered_on_a_pc_and_never_on_a_mac(self) -> None:
         for key in CUDA_KEYS:
-            self.assertFalse(voice_models.voice_model(key)["listed"])
-        rows = [dict(r, listed=True) for r in voice_models.VOICE_MODELS]
-        with mock.patch.object(voice_models, "VOICE_MODELS", rows):
-            with mock.patch.object(voice_env, "lane", return_value="mlx"):
-                self.assertFalse(any("cuda" in r["lanes"] for r in voice_models.listed_models()))
-            with mock.patch.object(voice_env, "lane", return_value="portable"):
-                self.assertTrue(set(CUDA_KEYS) <= {r["key"] for r in voice_models.listed_models()})
+            self.assertTrue(voice_models.voice_model(key)["listed"])
+        with mock.patch.object(voice_env, "lane", return_value="mlx"):
+            self.assertFalse(any("cuda" in r["lanes"] for r in voice_models.listed_models()))
+        with mock.patch.object(voice_env, "lane", return_value="portable"):
+            self.assertTrue(set(CUDA_KEYS) <= {r["key"] for r in voice_models.listed_models()})
+        # The cloning rows join the clone picker; the default stays Qwen3-TTS 1.7B Base.
+        clone_keys = {r["key"] for r in voice_models.CLONE_MODELS}
+        self.assertTrue({"chatterbox-turbo-cuda", "chatterbox-mtl-cuda", "voxcpm2-cuda"} <= clone_keys)
+        self.assertNotIn("orpheus-3b-gguf", clone_keys)
+        self.assertEqual(voice_models.clone_model("")["key"], voice_models.DEFAULT_CLONE_MODEL)
+
+    def test_a_small_gpu_gets_the_reason_instead_of_the_row(self) -> None:
+        from backend_service import voice_gpu
+
+        row = voice_models.voice_model("voxcpm2-cuda")
+        with mock.patch.object(voice_gpu, "compute_capability", return_value=8.9), \
+                mock.patch.object(voice_gpu, "vram_total_gb", return_value=4.0):
+            self.assertEqual(voice_gpu.facts(row)["kind"], "memory")
+        with mock.patch.object(voice_gpu, "compute_capability", return_value=6.1), \
+                mock.patch.object(voice_gpu, "vram_total_gb", return_value=24.0):
+            self.assertEqual(voice_gpu.facts(row)["kind"], "compute")
 
     def test_the_4090_session_switch_lists_them(self) -> None:
         with mock.patch.dict(os.environ, {"CHAOSENGINE_VOICE_UNMEASURED": "1"}):

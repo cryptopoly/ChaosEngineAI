@@ -3073,6 +3073,89 @@ def phase_8(cap: Capability) -> PhaseResult:
             spoken[key] = round(seconds, 2)
         return "pass", "", {"spoken": spoken}
 
+    def _speak_and_clone_wave2_on_the_gpu():
+        """Chatterbox-Turbo, Chatterbox Multilingual V3, VoxCPM2 and Orpheus on an NVIDIA GPU (the rows listed since
+        FU-360): each downloaded and supported row speaks a line that is long enough and not silent, at its sample
+        rate; each one that clones makes a voice from a Kokoro clip (synthetic, no person's voice) and speaks with it,
+        then the voice is deleted. Skipped with the reason when no such row is ready here."""
+        rows = [r for r in models_payload.get("models", []) if "cuda" in (r.get("lanes") or [])
+                and r.get("family") in ("chatterbox-turbo", "chatterbox", "voxcpm2", "orpheus")]
+        if not rows:
+            return "skip", "no Chatterbox, VoxCPM2 or Orpheus GPU rows listed here (Mac, or no speech GPU add-on)", {}
+        ready = [r for r in rows if r.get("installed") and r.get("supported")]
+        if not ready:
+            return "skip", "no Chatterbox, VoxCPM2 or Orpheus GPU model downloaded and supported here (Voice Models)", {}
+        import array
+        import io
+        import wave as wave_module
+
+        def wav_check(key: str, wav: bytes, rate_wanted: int) -> str | None:
+            with wave_module.open(io.BytesIO(wav)) as handle:
+                rate, frames = handle.getframerate(), handle.getnframes()
+                samples = array.array("h", handle.readframes(frames))
+            seconds = frames / float(rate or 1)
+            if rate != rate_wanted or seconds < 0.8:
+                return f"{key}: {rate} Hz, {seconds:.2f} s"
+            if max((abs(v) for v in samples), default=0) < 300:
+                return f"{key}: the audio is silent"
+            return None
+
+        def speak(request: dict) -> tuple[int, bytes]:
+            return _voice_http("POST", "/api/voice/speak", body=json.dumps(request).encode("utf-8"),
+                               content_type="application/json", timeout=900.0)
+
+        voice_for = {"chatterbox-turbo": "chatterbox-turbo", "chatterbox": "chatterbox", "orpheus": "orpheus:tara",
+                     "voxcpm2": "design"}
+        spoken: dict[str, float] = {}
+        cloned: list[str] = []
+        sample: bytes | None = None
+        sample_text = "This is a short synthetic sample for an end to end check of voice cloning on the GPU."
+        for row in ready:
+            request = {"text": "A short end to end check of this voice on the GPU.", "voice": voice_for[row["family"]],
+                       "model": row["key"], "seed": 7}
+            if row["family"] == "voxcpm2":
+                request["style"] = "A calm, clear adult voice."
+            code, body = speak(request)
+            if code != 200:
+                return "fail", f"{row['key']} speak HTTP {code}: {body[:200]!r}", {}
+            problem = wav_check(row["key"], base64.b64decode(json.loads(body.decode("utf-8"))["audio"]), row.get("sampleRate"))
+            if problem:
+                return "fail", problem, {}
+            spoken[row["key"]] = row.get("sampleRate")
+            if not (row.get("capabilities") or {}).get("clone"):
+                continue
+            if sample is None:
+                code, body = speak({"text": sample_text, "voice": "af_heart"})
+                if code != 200:
+                    continue  # no Kokoro here: the clone half is not checked, speaking was
+                sample = base64.b64decode(json.loads(body.decode("utf-8"))["audio"])
+            boundary = "----chaosengine-e2e-wave2-clone"
+            fields = {"speakerName": "Kokoro Heart (synthetic)", "basis": "own", "permissionConfirmed": "true",
+                      "name": f"e2e {row['key']}", "referenceText": sample_text, "model": row["key"]}
+            parts = [(f"--{boundary}\r\nContent-Disposition: form-data; name=\"sample\"; filename=\"sample.wav\"\r\n"
+                      "Content-Type: audio/wav\r\n\r\n").encode("utf-8") + sample + b"\r\n"]
+            parts += [f'--{boundary}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'.encode("utf-8")
+                      for k, v in fields.items()]
+            parts.append(f"--{boundary}--\r\n".encode("utf-8"))
+            code, body = _voice_http("POST", "/api/voice/clone/voices", body=b"".join(parts),
+                                     content_type=f"multipart/form-data; boundary={boundary}", timeout=900.0)
+            if code != 200:
+                return "fail", f"{row['key']} clone HTTP {code}: {body[:200]!r}", {}
+            voice_id = json.loads(body.decode("utf-8"))["id"]
+            try:
+                code, body = speak({"text": "The cloned voice reads this line.", "voice": f"clone:{voice_id}",
+                                    "model": row["key"], "seed": 7})
+                if code != 200:
+                    return "fail", f"{row['key']} cloned speech HTTP {code}: {body[:200]!r}", {}
+                problem = wav_check(f"{row['key']} (clone)", base64.b64decode(json.loads(body.decode("utf-8"))["audio"]),
+                                    row.get("sampleRate"))
+                if problem:
+                    return "fail", problem, {}
+                cloned.append(row["key"])
+            finally:
+                _voice_http("DELETE", f"/api/voice/clone/voices/{voice_id}", timeout=30.0)
+        return "pass", "", {"spoken": spoken, "cloned": cloned}
+
     def _clone_needs_a_permission_record():
         """Every wave-2 cloning model goes through the one clone path: a voice without its permission record is
         refused (404) before any model runs. Agent refusal and the watermark are covered per model in pytest."""
@@ -3122,6 +3205,7 @@ def phase_8(cap: Capability) -> PhaseResult:
     for name, fn in [
         ("voice-runtime", _runtime), ("voice delete routes (no delete)", _delete_route_contract), ("stt platform sources", _stt_sources),
         ("speech model catalog", _speech_model_catalog), ("speak with each wave-2 model", _speak_each_wave2_model), ("speak with Qwen3-TTS on the GPU", _speak_qwen_on_the_gpu),
+        ("speak and clone with Chatterbox, VoxCPM2 and Orpheus on the GPU", _speak_and_clone_wave2_on_the_gpu),
         ("wave-2 clone needs a permission record", _clone_needs_a_permission_record),
         ("voice settings", _settings_roundtrip), ("read-aloud stream", _speak_stream),
         ("chat voice: any voice, fallback voice", _chat_voice_any),

@@ -45,7 +45,7 @@ install folder are unchanged.)
 | | Dictation | Speech |
 |---|---|---|
 | **Apple Silicon** | Parakeet (25 European languages, the fastest), Nemotron 3.5 (40 languages, detects the language by itself) or Whisper (99 languages) | Kokoro (optional add-on), and the speech models below |
-| **Windows and Linux** | Whisper through faster-whisper | Kokoro (optional add-on) |
+| **Windows and Linux** | Whisper through faster-whisper | Kokoro (optional add-on); with an NVIDIA GPU, the speech GPU add-on gives Qwen3-TTS, Chatterbox, VoxCPM2 and Orpheus |
 
 Voice on Windows and Linux is new and has had less testing than on the Mac.
 Please report anything that does not work. The first time you use the
@@ -124,6 +124,29 @@ second of speech, more than twice the real time, because each token launches
 many small GPU steps and the card sits at about 40 % use. The 0.6B models use
 about 1.9 GB less memory and are no quicker than the 1.7B ones, so on a GPU
 they are for small cards, not for speed.
+
+### Chatterbox, VoxCPM2 and Orpheus on an NVIDIA GPU
+
+The same add-on also gives Chatterbox-Turbo, Chatterbox Multilingual V3,
+VoxCPM2 and Orpheus 3B on the GPU, with the upstream weights. Chatterbox and
+VoxCPM2 run on PyTorch (compute capability 7.0 or newer); Orpheus runs as a
+GGUF in the app's own llama-server, with the SNAC decoder on the CPU. Measured
+on the RTX 4090 (Windows 11, 2026-11-20) through the app, the GPU memory being
+the higher of speaking and cloning:
+
+| Model | Download | GPU memory | Seconds per 10 s of speech | First use (load) |
+|---|---|---|---|---|
+| Chatterbox-Turbo (GPU) | 3.0 GB | 4.3 GB | 5.7 | 24 s |
+| Orpheus 3B (GGUF) | 3.6 GB | 3.9 GB | 7.8 | 17 s |
+| Chatterbox Multilingual V3 (GPU) | 3.2 GB | 4.6 GB | 12.0 | 24 s |
+| VoxCPM2 (GPU) | 5.0 GB | 6.6 GB | 19.9 | 28 s |
+
+Chatterbox-Turbo and Orpheus are faster than real time; Chatterbox
+Multilingual V3 is about real time and VoxCPM2 about twice the real time.
+VoxCPM2 also holds about 11 GB of the computer's memory while it speaks. A
+cloned voice costs about the same as the model's own voice: the watermark
+every cloned clip gets runs on the GPU, about half a second for half a minute
+of speech.
 
 ## Voice Studio
 

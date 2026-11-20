@@ -72,10 +72,14 @@ class CatalogTests(unittest.TestCase):
     def test_rows_are_pinned_and_apache(self) -> None:
         self.assertEqual({r["key"] for r in voice_models.CLONE_MODELS},
                          {"qwen3-tts-0.6b", "qwen3-tts-1.7b", "qwen3-tts-0.6b-cuda", "qwen3-tts-1.7b-cuda",
-                          "chatterbox-turbo", "voxcpm2", "chatterbox-mtl"})
+                          "chatterbox-turbo", "voxcpm2", "chatterbox-mtl",
+                          # measured on the RTX 4090 and listed since FU-360
+                          "chatterbox-turbo-cuda", "voxcpm2-cuda", "chatterbox-mtl-cuda"})
+        upstream = ("Qwen/", "ResembleAI/", "openbmb/")
         for row in voice_models.CLONE_MODELS:
             self.assertRegex(row["revision"], r"^[0-9a-f]{40}$")
-            self.assertTrue(row["repo"].startswith("mlx-community/" if row["lanes"] == ["mlx"] else "Qwen/"))
+            self.assertTrue(row["repo"].startswith("mlx-community/") if row["lanes"] == ["mlx"]
+                            else row["repo"].startswith(upstream))
             self.assertIn(row["licence"]["id"], ("apache-2.0", "mit"))
         self.assertEqual(voice_models.CLONE_LICENCE["id"], "apache-2.0")
         self.assertEqual(sum(r["default"] for r in voice_models.CLONE_MODELS), 2)  # the default and its GPU twin

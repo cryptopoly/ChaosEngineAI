@@ -144,6 +144,9 @@ SPEECH_GPU_PACKAGES = [
     "inflect>=7.6,<8",
     "addict==2.4.0",
     "wetext==0.2.1",
+    # wetext needs kaldifst (any version); 1.9.1 (2026-11-19) has no Windows wheel and fails to build from source
+    # there, so a new install of the add-on stopped on Windows. 1.9.0 has wheels for Windows and Linux x86_64.
+    "kaldifst==1.9.0",
     "soundfile>=0.13,<0.15",
     "torchcodec==0.8.1",
     "fugashi==1.5.2",  # Japanese readings for Chatterbox (backend_service/voice_ja.py), instead of GPL pykakasi
@@ -172,7 +175,10 @@ _QWEN_SITE_CHECK = (
 )
 SPEECH_GPU_NO_DEPS = [CHATTERBOX_PACKAGE, "voxcpm==2.0.3"]
 _SPEECH_GPU_CHECK = (
-    "import torch, chatterbox.tts_turbo, chatterbox.mtl_tts, voxcpm; "
+    # One import per listed family: Chatterbox-Turbo, Chatterbox V3 with its Japanese stand-in, VoxCPM2 (the class
+    # the worker loads), the PerTh watermark both Chatterbox models add, and onnxruntime for Orpheus's SNAC decoder.
+    "import torch, chatterbox.tts_turbo, chatterbox.mtl_tts, perth, fugashi, unidic_lite, onnxruntime; "
+    "from voxcpm import VoxCPM; "
     "assert torch.cuda.is_available(), 'PyTorch cannot see the NVIDIA GPU'; print('speech gpu ok')"
 )
 
@@ -414,6 +420,16 @@ def install_watermark(cancel: Any = None) -> None:
     Blocking (a few minutes on a slow line); called from the cloning model download thread. ``cancel`` is an
     optional ``threading.Event``: when set, the pip step is stopped and ``InterruptedError`` is raised.
     """
+    # Two cloning models downloaded at once both install AudioSeal; on Windows the second pip then fails on a file the
+    # first holds open (WinError 32, RTX 4090 run 2026-11-20). One install at a time; the second finds it present.
+    with _WATERMARK_LOCK:
+        _install_watermark(cancel)
+
+
+_WATERMARK_LOCK = threading.Lock()
+
+
+def _install_watermark(cancel: Any) -> None:
     if not is_installed():
         raise RuntimeError("The voice runtime is not installed. Install it from Voice > Models.")
     if not _watermark_package_present():

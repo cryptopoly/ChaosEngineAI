@@ -5,11 +5,14 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import subprocess
+import sys
 import tempfile
 import textwrap
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from backend_service import voice_env, voice_worker_watermark as wm
 
@@ -107,7 +110,18 @@ class PlumbingTests(unittest.TestCase):
 
         self.assertEqual(os.environ.get("NO_TORCH_COMPILE"), "1")
         self.assertEqual(os.environ.get("TORCHDYNAMO_DISABLE"), "1")
-        self.assertEqual(wm._device(), os.environ.get("CHAOSENGINE_WATERMARK_DEVICE") or "cpu")
+
+    def test_the_watermark_runs_on_the_nvidia_gpu_when_torch_sees_one(self) -> None:
+        # On the RTX 4090 PC the CPU read-back took 73 s for 33 s of cloned speech; the GPU 0.5 s.
+        import types
+
+        for cuda, expected in ((True, "cuda"), (False, "cpu")):
+            fake = types.SimpleNamespace(cuda=types.SimpleNamespace(is_available=lambda c=cuda: c))
+            with mock.patch.dict(sys.modules, {"torch": fake}), \
+                    mock.patch.dict(os.environ, {"CHAOSENGINE_WATERMARK_DEVICE": ""}):
+                self.assertEqual(wm._device(), expected)
+        with mock.patch.dict(os.environ, {"CHAOSENGINE_WATERMARK_DEVICE": "cpu"}):
+            self.assertEqual(wm._device(), "cpu")
 
 
 _ROUND_TRIP = textwrap.dedent(

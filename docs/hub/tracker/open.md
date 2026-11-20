@@ -1,13 +1,40 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 189 rows with work, decisions or watch items still open, newest first.
+summary: 191 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-363 · kaldifst pin for the speech GPU add-on — When kaldifst ships a Windows wheel again</summary>
+
+**Status or trigger:** When kaldifst ships a Windows wheel again
+
+**Notes:** `kaldifst==1.9.0` is pinned in `voice_env.SPEECH_GPU_PACKAGES` because 1.9.1 has only a source archive for Windows and its build fails there. Move with wetext when a newer kaldifst has `win_amd64` wheels.
+
+</details>
+
+<details>
+<summary>FU-362 · Listen to the GPU Chatterbox, VoxCPM2 and Orpheus clips and clones — Owner, before the tag</summary>
+
+**Status or trigger:** Owner, before the tag
+
+**Notes:** Nobody has listened to the 2026-11-20 clips (`E:\tmp\vg-out`, `E:\tmp\vg-out3`): the checks were length, level, silence and a Whisper transcript. Likeness of the clones to the Kokoro sample is not measured. Chatterbox Multilingual V3's long plain clip peaks at full scale (1.0): listen for clipping. Orpheus's short line is 45 % quiet frames (trailing pause).
+
+</details>
+
+<details>
+<summary>FU-361 · VoxCPM2 on Windows: twice slower than real time, 11 GB of host memory — Next 4090 pass</summary>
+
+**Status or trigger:** Next 4090 pass
+
+**Notes:** Through the routes VoxCPM2 took 19.9 s per 10 s of speech (design) and 19.0 (clone) at about 3.3 steps per second, against 9.5 s per 10 s on a short text in the 2026-11-12 run and 5.2 on the M4 Max; the worker held about 11 GB of RAM (Chatterbox about 4.8 GB). Check whether `voxcpm` compiles or falls back on Windows (no Triton), bf16 vs fp32, and whether the weights stay on the CPU after the move to the GPU.
+
+</details>
 
 <details>
 <summary>FU-335 · ACE-Step 1.5 turbo ignored the lyrics in 3 of 3 tries — Next music pass</summary>
@@ -105,15 +132,6 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** After D-102 D
 
 **Notes:** Nine cards with one badge. To do: the default-to-be first with a "Recommended for this GPU" badge that survives the download; one line per card on what it is for; licence as a linked chip (raw ids such as OpenMDW-1.1 today, none on Whisper); downloads through the shared control (bar, size, Cancel, live text; today a bare percentage); check which models use the Language setting and correct the footer line; say in Chat's Voice popover when the dictation model changed. About 1 to 1.5 days.
-
-</details>
-
-<details>
-<summary>FU-322 · Speech GPU add-on: what it installs and what is offered — Owner picks (D-102 B)</summary>
-
-**Status or trigger:** Owner picks (D-102 B)
-
-**Notes:** The add-on installs the Chatterbox and VoxCPM packages (most of its 5 GB) but only the five Qwen3-TTS CUDA rows are listed; the wave-2 CUDA rows stay hidden until measured (`CHAOSENGINE_VOICE_UNMEASURED`). The English UI label now names Qwen3-TTS only; the backend label in `voice_env.EXTRAS`, the usage docs and the translated labels (now `null`) still name all four. Either measure and list the three families on the 4090, or stop installing their packages; then make every label say the same.
 
 </details>
 

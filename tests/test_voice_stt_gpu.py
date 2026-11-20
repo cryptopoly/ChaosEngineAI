@@ -145,11 +145,46 @@ class CatalogueTests(unittest.TestCase):
         self.assertIsNone(voice_runtime.stt_repo_allow_patterns("someone/else"))
         self.assertEqual(voice_stt_cuda.BACKEND, GPU)
 
+    def test_every_gpu_repo_is_pinned_to_a_full_commit(self) -> None:
+        repos = {r["sources"][GPU][0]: r["gpu"] for r in voice_stt_cuda.GPU_STT_MODELS}
+        repos.update({v["source"][0]: v["gpu"] for v in voice_stt_cuda.GPU_STT_SOURCES.values()})
+        self.assertEqual(len(repos), 6)
+        for repo, gpu in repos.items():
+            self.assertRegex(gpu["revision"], r"^[0-9a-f]{40}$", repo)
+            self.assertEqual(voice_runtime.stt_repo_revision(repo), gpu["revision"])
+        self.assertEqual(len({g["revision"] for g in repos.values()}), 6)
+        self.assertIsNone(voice_runtime.stt_repo_revision("mobiuslabsgmbh/faster-whisper-large-v3-turbo"))
+        self.assertIsNone(voice_runtime.stt_repo_revision("someone/else"))
+
+    def test_the_forced_aligner_has_its_own_files_and_pin_but_no_row(self) -> None:
+        aligner = voice_stt_cuda.ALIGNER
+        self.assertEqual(aligner["licence"], "Apache-2.0")
+        self.assertRegex(aligner["revision"], r"^[0-9a-f]{40}$")
+        self.assertEqual(voice_runtime.stt_repo_revision(aligner["repo"]), aligner["revision"])
+        patterns = voice_runtime.stt_repo_allow_patterns(aligner["repo"])
+        self.assertIn("model.safetensors", patterns)
+        self.assertNotIn("generation_config.json", patterns)  # the repo has none
+        self.assertFalse(any(r["key"].startswith("qwen3-forced") for r in voice_runtime.list_stt_models()))
+        self.assertEqual(set(aligner["families"]),
+                         {"qwen3-asr", "granite-speech", "nemotron-transcribe", "nemotron-asr"})
+        self.assertEqual(aligner["optionalFor"], ("nemotron-asr",))  # it has timings of its own
+
+    def test_the_pinned_snapshot_is_used_when_it_is_there(self) -> None:
+        pinned = voice_stt_cuda.GPU_STT_MODELS[0]["gpu"]["revision"]
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_dir = Path(tmp) / "models--Qwen--Qwen3-ASR-1.7B-hf"
+            (repo_dir / "snapshots" / "other").mkdir(parents=True)
+            with mock.patch("backend_service.helpers.hf_cache_paths._hf_repo_cache_dir", return_value=repo_dir):
+                self.assertEqual(voice_runtime._hf_snapshot_path("Qwen/Qwen3-ASR-1.7B-hf"), repo_dir / "snapshots" / "other")
+                (repo_dir / "snapshots" / pinned).mkdir()
+                self.assertEqual(voice_runtime._hf_snapshot_path("Qwen/Qwen3-ASR-1.7B-hf"), repo_dir / "snapshots" / pinned)
+
 
 class GuardTests(unittest.TestCase):
-    def _transcribe(self, model: str, *, snapshot: Path | None, problem: str | None = None, **kwargs):
+    def _transcribe(self, model: str, *, snapshot: Path | None, problem: str | None = None, reply: dict | None = None,
+                    **kwargs):
         worker = mock.Mock()
-        worker.request.return_value = {"text": "hello there", "segments": [], "language": "en", "seconds": 0.5}
+        worker.request.return_value = reply or {"text": "hello there", "segments": [], "language": "en", "seconds": 0.5}
         with mock.patch.object(voice_env, "lane", return_value="portable"), \
                 mock.patch.object(voice_env, "is_installed", return_value=True), \
                 mock.patch.object(voice_env_asr, "stt_gpu_ready", return_value=True), \
@@ -187,11 +222,46 @@ class GuardTests(unittest.TestCase):
         turns = {"turns": [{"start": 0.0, "end": 2.0, "speaker": 0}, {"start": 2.1, "end": 3.0, "speaker": 0},
                            {"start": 3.2, "end": 6.0, "speaker": 1}], "seconds": 0.4}
         with mock.patch.object(voice_env, "diarize_installed", return_value=True), \
+                mock.patch.object(voice_runtime, "aligner_snapshot", return_value=None), \
                 mock.patch.object(voice_runtime, "diarize_file", return_value=turns) as diarize:
             result, worker, _chooser = self._transcribe("qwen3-asr-1.7b", snapshot=Path("snap"), speakers=True, words=True)
         diarize.assert_called_once()  # once, before the worker; not again afterwards
         self.assertEqual(worker.request.call_args.kwargs["spans"], [[0.0, 3.0], [3.2, 6.0]])
-        self.assertIn("segment times only", result["note"])
+        self.assertIn("Qwen/Qwen3-ForcedAligner-0.6B-hf", result["note"])
+
+    def test_word_timings_ask_the_worker_with_the_downloaded_aligner(self) -> None:
+        aligner = Path("aligner-snap")
+        with mock.patch.object(voice_runtime, "aligner_snapshot", return_value=aligner):
+            result, worker, _chooser = self._transcribe("qwen3-asr-1.7b", snapshot=Path("snap"), words=True)
+            payload = worker.request.call_args.kwargs
+            self.assertTrue(payload["words"])
+            self.assertEqual(payload["alignerSource"], str(aligner))
+            result, _worker, _chooser = self._transcribe(
+                "qwen3-asr-1.7b", snapshot=Path("snap"), words=True,
+                reply={"text": "hi", "segments": [], "wordTimings": "aligner", "seconds": 0.1})
+        self.assertIsNone(result["note"])  # word timings arrived: nothing to explain
+
+    def test_a_transducer_needs_no_aligner_and_nothing_is_asked_without_the_flag(self) -> None:
+        with mock.patch.object(voice_runtime, "aligner_snapshot", side_effect=AssertionError("not needed")):
+            _result, worker, _chooser = self._transcribe("parakeet-tdt-v3", snapshot=Path("snap"), words=True)
+            self.assertIsNone(worker.request.call_args.kwargs["alignerSource"])
+            _result, worker, _chooser = self._transcribe("qwen3-asr-1.7b", snapshot=Path("snap"))
+            self.assertFalse(worker.request.call_args.kwargs["words"])
+
+    def test_nemotron_asr_offers_the_aligner_but_does_not_need_it(self) -> None:
+        reply = {"text": "hi", "segments": [], "wordTimings": "native", "seconds": 0.1}
+        with mock.patch.object(voice_runtime, "aligner_snapshot", return_value=None):
+            result, worker, _chooser = self._transcribe("nemotron-3.5-asr", snapshot=Path("snap"), words=True, reply=reply)
+        self.assertIsNone(worker.request.call_args.kwargs["alignerSource"])
+        self.assertIsNone(result["note"])  # its own timings, no nag about the aligner
+        with mock.patch.object(voice_runtime, "aligner_snapshot", return_value=Path("al")):
+            _result, worker, _chooser = self._transcribe("nemotron-3.5-asr", snapshot=Path("snap"), words=True, reply=reply)
+        self.assertEqual(worker.request.call_args.kwargs["alignerSource"], "al")
+
+    def test_why_there_are_no_word_timings(self) -> None:
+        self.assertIn("forced aligner", voice_runtime._no_word_timings_note("aligner-missing"))
+        self.assertIn("does not speak this language", voice_runtime._no_word_timings_note("language"))
+        self.assertIn("could not be worked out", voice_runtime._no_word_timings_note("failed"))
 
     def test_whisper_requests_carry_no_family(self) -> None:
         _result, worker, chooser = self._transcribe("whisper-base", snapshot=None)
@@ -342,6 +412,90 @@ class WorkerHelperTests(unittest.TestCase):
             )
         self.assertIsNone(run.call_args.args[5])
 
+    def test_token_words_join_subwords_and_punctuation_keeps_the_end(self) -> None:
+        tokens = [
+            {"token": "The", "start": 0.0, "end": 0.24}, {"token": " region", "start": 0.24, "end": 0.48},
+            {"token": "al", "start": 0.48, "end": 0.72}, {"token": ",", "start": 0.72, "end": 0.8},
+            {"token": " ", "start": 0.96, "end": 1.04}, {"token": "ra", "start": 0.96, "end": 1.04},
+            {"token": "il", "start": 1.12, "end": 1.2}, {"token": " ", "start": 1.3, "end": 1.4},
+        ]
+        words = voice_worker_asr._token_words(tokens, 10.0)
+        self.assertEqual([w["text"] for w in words], ["The", "regional,", "rail"])
+        self.assertEqual((words[1]["start"], words[1]["end"]), (10.24, 10.72))  # the comma did not stretch the word
+        self.assertEqual((words[2]["start"], words[2]["end"]), (10.96, 11.2))  # a bare space token starts a word
+
+    def _words_transcribe(self, request: dict, audio: np.ndarray):
+        with mock.patch.object(voice_worker_asr, "load", return_value=("m", "p", "cpu")):
+            return voice_worker_asr.transcribe(request, lambda _p, _r: audio)
+
+    def test_transducer_words_are_native_and_offset_by_their_window(self) -> None:
+        rate = voice_worker_asr.SAMPLE_RATE
+        audio = np.ones(10 * rate, dtype=np.float32)
+        words = [{"start": 0.5, "end": 0.9, "text": "hi"}]
+        with mock.patch.object(voice_worker_asr, "_transducer_window_words", return_value=("hi", words)) as run, \
+                mock.patch.object(voice_worker_asr, "_run_window", side_effect=AssertionError("plain path")):
+            reply = self._words_transcribe({"family": "parakeet-tdt", "source": "s", "path": "a.wav", "words": True,
+                                            "language": "de", "spans": [[2.0, 4.0]]}, audio)
+        self.assertEqual(reply["wordTimings"], "native")
+        self.assertEqual(reply["segments"][0]["words"], words)
+        self.assertEqual(run.call_args.args[6], 2.0)  # the window's offset into the file
+        # Without the flag the plain path runs and the reply says nothing about words.
+        with mock.patch.object(voice_worker_asr, "_run_window", return_value=("hi", None)):
+            plain = self._words_transcribe({"family": "parakeet-tdt", "source": "s", "path": "a.wav"}, audio)
+        self.assertNotIn("wordTimings", plain)
+        self.assertNotIn("words", plain["segments"][0])
+
+    def test_audio_llm_words_come_from_the_aligner_with_the_window_offset(self) -> None:
+        rate = voice_worker_asr.SAMPLE_RATE
+        audio = np.ones(50 * rate, dtype=np.float32)  # two windows
+        aligned = [{"start": 0.1, "end": 0.4, "text": "x"}]
+        with mock.patch.object(voice_worker_asr, "_run_window", side_effect=[("one", "en"), ("two", "en")]), \
+                mock.patch.object(voice_worker_asr, "_align_window", return_value=aligned) as align:
+            reply = self._words_transcribe({"family": "qwen3-asr", "source": "s", "path": "a.wav", "words": True,
+                                            "alignerSource": "al"}, audio)
+        self.assertEqual(reply["wordTimings"], "aligner")
+        self.assertEqual(align.call_count, 2)
+        second = reply["segments"][1]
+        self.assertEqual(second["words"][0]["start"], round(second["start"] + 0.1, 2))
+        self.assertEqual(align.call_args.args[4], "en")
+
+    def test_nemotron_asr_prefers_the_aligner_and_keeps_its_own_timings_otherwise(self) -> None:
+        audio = np.ones(16_000, dtype=np.float32)
+        base = {"family": "nemotron-asr", "source": "s", "path": "a.wav", "words": True}
+        own = [{"start": 0.3, "end": 0.5, "text": "hi"}]
+        aligned = [{"start": 0.0, "end": 0.2, "text": "hi"}]
+        with mock.patch.object(voice_worker_asr, "_transducer_window_words", return_value=("hi", own)), \
+                mock.patch.object(voice_worker_asr, "_run_window", return_value=("hi", None)), \
+                mock.patch.object(voice_worker_asr, "_align_window", return_value=aligned):
+            without = self._words_transcribe(base, audio)
+            with_aligner = self._words_transcribe({**base, "alignerSource": "al"}, audio)
+            german = self._words_transcribe({**base, "alignerSource": "al", "language": "nl"}, audio)
+        with mock.patch.object(voice_worker_asr, "_transducer_window_words", return_value=("hi", own)), \
+                mock.patch.object(voice_worker_asr, "_run_window", return_value=("hi", None)), \
+                mock.patch.object(voice_worker_asr, "_align_window", side_effect=RuntimeError("boom")):
+            failed = self._words_transcribe({**base, "alignerSource": "al"}, audio)
+        self.assertEqual((without["wordTimings"], without["segments"][0]["words"]), ("native", own))
+        self.assertEqual((with_aligner["wordTimings"], with_aligner["segments"][0]["words"]), ("aligner", aligned))
+        self.assertEqual((german["wordTimings"], german["segments"][0]["words"]), ("native", own))  # not an aligner language
+        self.assertEqual((failed["wordTimings"], failed["segments"][0]["words"]), ("native", own))
+
+    def test_audio_llm_words_say_why_they_are_missing_and_keep_the_text(self) -> None:
+        audio = np.ones(16_000, dtype=np.float32)
+        base = {"family": "qwen3-asr", "source": "s", "path": "a.wav", "words": True}
+        with mock.patch.object(voice_worker_asr, "_run_window", return_value=("hello", "en")):
+            missing = self._words_transcribe(base, audio)  # no aligner downloaded
+            with mock.patch.object(voice_worker_asr, "_align_window", side_effect=RuntimeError("boom")):
+                failed = self._words_transcribe({**base, "alignerSource": "al"}, audio)
+        with mock.patch.object(voice_worker_asr, "_run_window", return_value=("salaam", "nl")):
+            language = self._words_transcribe({**base, "alignerSource": "al"}, audio)
+        self.assertEqual(missing["wordsUnavailable"], "aligner-missing")
+        self.assertEqual(failed["wordsUnavailable"], "failed")
+        self.assertEqual(language["wordsUnavailable"], "language")
+        for reply in (missing, failed, language):
+            self.assertIsNone(reply["wordTimings"])
+            self.assertTrue(reply["text"])
+            self.assertNotIn("words", reply["segments"][0])
+
     def test_unknown_family_is_refused(self) -> None:
         fake = mock.Mock(__version__="5.23.0")
         with mock.patch.dict(sys.modules, {"transformers": fake}):
@@ -354,6 +508,60 @@ class WorkerHelperTests(unittest.TestCase):
         with mock.patch.object(voice_worker, "_asr_module", return_value=fake):
             self.assertEqual(voice_worker.transcribe({"backend": GPU, "family": "qwen3-asr"}), {"text": "x"})
         fake.transcribe.assert_called_once()
+
+
+class DownloadPinTests(unittest.TestCase):
+    """The download of a GPU dictation repo (and of the forced aligner) is handed its pinned commit (FU-271)."""
+
+    def setUp(self) -> None:
+        from backend_service.state import ChaosEngineState
+
+        self._tmp = tempfile.TemporaryDirectory()
+        tmp = Path(self._tmp.name)
+        self.state = ChaosEngineState(settings_path=tmp / "settings.json", benchmarks_path=tmp / "benchmarks.json",
+                                      chat_sessions_path=tmp / "chats.json")
+        self.addCleanup(self._tmp.cleanup)
+
+    def _start(self, repo: str):
+        process = mock.Mock()
+        process.poll.return_value = 0
+        process.returncode = 0
+        process.wait.return_value = 0
+
+        created: list[object] = []
+
+        class ImmediateThread:  # the first thread (the download) runs at once; the progress monitor never starts
+            def __init__(self, *, target=None, daemon=None):
+                self.target = target
+                self.run_target = not created
+                created.append(self)
+
+            def start(self):
+                if self.run_target and self.target is not None:
+                    self.target()
+
+            def join(self, timeout=None):
+                return None
+
+        with mock.patch("backend_service.state.downloads._spawn_snapshot_download", return_value=process) as spawn, \
+                mock.patch("backend_service.helpers.huggingface._hf_repo_downloaded_bytes", return_value=0), \
+                mock.patch("backend_service.helpers.huggingface._hf_repo_preflight_size_gb", return_value=1.0), \
+                mock.patch("backend_service.helpers.huggingface._hub_repo_files", return_value={"files": []}), \
+                mock.patch("backend_service.state.downloads.threading.Thread", side_effect=ImmediateThread):
+            self.state.start_download(repo, allow_patterns=voice_runtime.stt_repo_allow_patterns(repo))
+        return spawn
+
+    def test_a_gpu_row_downloads_its_pinned_commit(self) -> None:
+        spawn = self._start("Qwen/Qwen3-ASR-0.6B-hf")
+        self.assertEqual(spawn.call_args.kwargs["revision"], "7f1569a48a89f3e3f4dc3a5c9d28bddd903bc76c")
+        self.assertIn("model.safetensors", spawn.call_args.kwargs["allow_patterns"])
+
+    def test_the_aligner_downloads_its_pinned_commit(self) -> None:
+        spawn = self._start(voice_stt_cuda.ALIGNER["repo"])
+        self.assertEqual(spawn.call_args.kwargs["revision"], voice_stt_cuda.ALIGNER["revision"])
+
+    def test_other_repos_stay_unpinned(self) -> None:
+        self.assertIsNone(self._start("someone/else").call_args.kwargs["revision"])
 
 
 class RouteTests(unittest.TestCase):

@@ -124,6 +124,15 @@ def check_mflux() -> Row:
     return row("mflux", pinned, (data or {}).get("info", {}).get("version"))
 
 
+def check_transformers_asr() -> Row:
+    """Transformers in the speech-to-text GPU add-on's own folder (``asr-site``, FU-271); the speech GPU add-on keeps
+    its own older pin for Chatterbox."""
+    pinned = read_pin("backend_service/voice_env_asr.py", r'"transformers==([\d.]+)"')
+    data = http_json("https://pypi.org/pypi/transformers/json")
+    return row("Transformers (stt-gpu asr-site)", pinned, (data or {}).get("info", {}).get("version"),
+               note="a bump needs the GPU dictation rows re-run: voice_worker_asr calls its auto classes")
+
+
 def check_commit_pin(name: str, repo: str, pinned: str | None, branch: str = "HEAD") -> Row:
     return row(name, pinned[:8] if pinned else None, (head_sha(repo, branch) or "")[:8] or None, same=sha_same)
 
@@ -198,6 +207,7 @@ def collect() -> list[Row]:
         check_tensorfold(),
         check_ltx2(),
         check_mflux(),
+        check_transformers_asr(),
         check_dflash(),
         check_commit_pin(
             "ACE-Step 1.5", "https://github.com/ace-step/ACE-Step-1.5.git",

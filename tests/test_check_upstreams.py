@@ -22,6 +22,7 @@ class PinTests(unittest.TestCase):
         self.assertTrue(cu.read_pin("pyproject.toml", r"triattention\.git@([0-9a-f]{40})"))
         self.assertTrue(cu.read_pin("pyproject.toml", r"dflash-mlx\.git@([0-9a-f]{40})"))
         self.assertTrue(cu.read_pin("e2e/package.json", r'"@playwright/test": "([\d.]+)"'))
+        self.assertRegex(cu.read_pin("backend_service/voice_env_asr.py", r'"transformers==([\d.]+)"') or "", r"^\d+\.\d+\.\d+$")
 
     def test_sdcpp_is_pinned_by_one_commit_in_both_scripts(self):
         build = cu.read_pin("scripts/build-sdcpp.sh", cu.SDCPP_PIN_PATTERN)

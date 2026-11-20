@@ -12,7 +12,13 @@ serves five families:
 * ``nemotron-transcribe``: Nemotron 3.5 Transcribe 30B-A4B, an audio LLM (needs a large GPU).
 
 Every model loads from the local snapshot the backend downloaded (``local_files_only``). Long recordings are cut
-into windows at the quietest moment near each window's end; each window becomes one segment. No word timings yet.
+into windows at the quietest moment near each window's end; each window becomes one segment.
+
+Word timings (the request's ``words`` flag): Parakeet TDT and Nemotron ASR give them natively (the frame at which each
+token was emitted, ``processor.decode(..., durations=...)``); the audio LLMs (Qwen3-ASR, Granite, Nemotron Transcribe)
+have none, so their transcript is aligned to the audio by Qwen3-ForcedAligner-0.6B (Apache-2.0,
+``Qwen3ASRForTokenClassification``), which the backend names in ``alignerSource`` once it is downloaded. Nemotron ASR's
+own timings run late by its streaming latency, so it prefers the aligner too and keeps its own when that is absent.
 Imports nothing from ``backend_service``.
 """
 
@@ -39,11 +45,21 @@ _LANGUAGE_CODES = {
     "macedonian": "mk",
 }
 
+# Qwen3-ForcedAligner-0.6B speaks eleven languages; Japanese and Korean need the nagisa / soynlp packages to split
+# words, which the add-on does not install, so those two are left out (no word timings, with a note).
+_ALIGNER_LANGUAGES = {
+    "en": "English", "zh": "Chinese", "yue": "Cantonese", "fr": "French", "de": "German", "it": "Italian",
+    "pt": "Portuguese", "ru": "Russian", "es": "Spanish",
+}
+_CJK_ALIGNER = ("zh", "yue")  # no spaces between words: the aligner's own units are characters
+
 _model: dict[str, Any] = {"key": None, "model": None, "processor": None, "device": None}
+_aligner: dict[str, Any] = {"source": None, "model": None, "processor": None}
 
 
 def unload() -> None:
     _model.update(key=None, model=None, processor=None, device=None)
+    _aligner.update(source=None, model=None, processor=None)
     try:
         import gc
 
@@ -97,6 +113,106 @@ def load(family: str, source: str) -> tuple[Any, Any, str]:
     model.eval()
     _model.update(key=key, model=model, processor=processor, device=device)
     return model, processor, device
+
+
+def _word(start: float, end: float, text: str) -> dict[str, Any]:
+    return {"start": round(float(start), 2), "end": round(float(end), 2), "text": text.strip()}
+
+
+def _load_aligner(source: str, device: str) -> tuple[Any, Any]:
+    """The forced aligner from its local snapshot, cached beside the transcription model."""
+    if _aligner["source"] == source:
+        return _aligner["model"], _aligner["processor"]
+    import torch  # type: ignore[import-not-found]
+    from transformers import AutoModelForTokenClassification, AutoProcessor  # type: ignore[import-not-found]
+
+    cuda = device != "cpu"
+    dtype = torch.bfloat16 if cuda and torch.cuda.is_bf16_supported() else (torch.float16 if cuda else torch.float32)
+    processor = AutoProcessor.from_pretrained(source, local_files_only=True)
+    model = AutoModelForTokenClassification.from_pretrained(source, dtype=dtype, device_map=device, local_files_only=True)
+    model.eval()
+    _aligner.update(source=source, model=model, processor=processor)
+    return model, processor
+
+
+def _align_window(source: str, device: str, audio: Any, text: str, language: str | None) -> list[dict[str, Any]]:
+    """Word timings (seconds from the start of ``audio``) of one window's transcript. Each word is a whitespace-separated
+    piece of ``text`` as written (punctuation kept); the aligner works on the same pieces without punctuation."""
+    import torch  # type: ignore[import-not-found]
+
+    model, processor = _load_aligner(source, device)
+    name = _ALIGNER_LANGUAGES.get(language or "")
+    inputs, word_lists = processor.prepare_forced_aligner_inputs(audio=audio, transcript=text, language=name)
+    inputs = inputs.to(device, model.dtype)
+    with torch.inference_mode():
+        logits = model(**inputs).logits
+    aligned = processor.decode_forced_alignment(
+        logits=logits, input_ids=inputs["input_ids"], word_lists=word_lists,
+        timestamp_token_id=model.config.timestamp_token_id,
+    )[0]
+    pieces = text.split()
+    if language not in _CJK_ALIGNER and pieces:
+        counts = [len(processor.split_words_for_alignment(piece, name)) for piece in pieces]
+        if sum(counts) == len(aligned):
+            words: list[dict[str, Any]] = []
+            at = 0
+            for piece, count in zip(pieces, counts):
+                if count == 0 and words:  # a lone dash or other mark: part of the word before it
+                    words[-1]["text"] += " " + piece
+                elif count:
+                    words.append(_word(aligned[at]["start_time"], aligned[at + count - 1]["end_time"], piece))
+                at += count
+            return words
+    return [_word(item["start_time"], item["end_time"], item["text"]) for item in aligned]
+
+
+def _aligned_words(source: str, device: str, audio: Any, text: str, language: str | None,
+                   offset: float) -> tuple[list[dict[str, Any]] | None, str | None]:
+    """``(words, None)`` for one window (seconds in the file), or ``(None, reason)``: the language is not one the aligner
+    speaks, or the alignment failed (the transcript is still returned without word timings)."""
+    if language and language.split("-")[0].lower() not in _ALIGNER_LANGUAGES:
+        return None, "language"
+    try:
+        words = _align_window(source, device, audio, text, language.split("-")[0].lower() if language else None)
+    except Exception as exc:  # noqa: BLE001 - a missing word time must not lose the transcript
+        import sys
+
+        print(f"asr: forced alignment failed: {exc}", file=sys.stderr, flush=True)
+        return None, "failed"
+    return [{**w, "start": round(w["start"] + offset, 2), "end": round(w["end"] + offset, 2)} for w in words], None
+
+
+def _token_words(tokens: list[dict[str, Any]], offset: float) -> list[dict[str, Any]]:
+    """Words from a transducer's tokens (``{"token", "start", "end"}`` in seconds): a token that starts with a space
+    starts a word, the others continue it. Punctuation does not move a word's end."""
+    words: list[list[Any]] = []
+    for token in tokens:
+        piece = str(token["token"])
+        if not piece:
+            continue
+        if not words or piece[:1].isspace():
+            words.append([token["start"], token["end"], piece])
+        else:
+            words[-1][2] += piece
+            if any(ch.isalnum() for ch in piece):
+                words[-1][1] = token["end"]
+    return [_word(start + offset, end + offset, text) for start, end, text in words if text.strip()]
+
+
+def _transducer_window_words(family: str, model: Any, processor: Any, device: str, audio: Any, language: str | None,
+                             offset: float) -> tuple[str, list[dict[str, Any]]]:
+    """Text and native word timings (seconds in the file, from ``offset``) of one window for a transducer."""
+    import torch  # type: ignore[import-not-found]
+
+    kwargs: dict[str, Any] = {"sampling_rate": SAMPLE_RATE}
+    if family == "nemotron-asr":
+        kwargs["language"] = _nemotron_language(processor, language)
+    with torch.inference_mode():
+        inputs = processor(audio, **kwargs).to(device, dtype=model.dtype)
+        output = model.generate(**inputs, return_dict_in_generate=True)
+        text, stamps = processor.decode(output.sequences, durations=output.durations, skip_special_tokens=True)
+    text = text[0] if isinstance(text, list) else str(text)
+    return text.strip(), _token_words(stamps[0], offset)
 
 
 def windows(samples: Any, seconds: float) -> list[tuple[int, int]]:
@@ -230,15 +346,51 @@ def transcribe(request: dict[str, Any], decode_audio: Callable[..., Any]) -> dic
     seconds = _WINDOW_S.get(family, _LLM_WINDOW_S)
     segments: list[dict[str, Any]] = []
     detected: str | None = None
+    want_words = bool(request.get("words"))
+    aligner = request.get("alignerSource")
+    timings: set[str] = set()
+    unavailable: str | None = None
+    # Parakeet's own timings are close to the audio (about 90 ms on the RTX 4090 run); Nemotron ASR's are late by its
+    # streaming latency (320 ms), so it takes the aligner's when that is downloaded and keeps its own otherwise.
+    own_timings = family == "parakeet-tdt" or (family == "nemotron-asr" and not aligner)
     for start, end in _request_windows(audio, seconds, request.get("spans")):
-        text, found = _run_window(family, model, processor, device, audio[start:end], language)
+        chunk = audio[start:end]
+        offset = start / SAMPLE_RATE
+        words: list[dict[str, Any]] | None = None
+        if want_words and own_timings:
+            text, words = _transducer_window_words(family, model, processor, device, chunk, language, offset)
+            found = language
+            if words:
+                timings.add("native")
+        else:
+            text, found = _run_window(family, model, processor, device, chunk, language)
+            if text and want_words:
+                if aligner:
+                    words, unavailable = _aligned_words(aligner, device, chunk, text, found or language, offset)
+                    if words:
+                        timings.add("aligner")
+                elif family in _LLM_FAMILIES:
+                    unavailable = "aligner-missing"
+                if not words and family == "nemotron-asr":  # the aligner could not place them: the model's own times
+                    words = _transducer_window_words(family, model, processor, device, chunk, language, offset)[1]
+                    if words:
+                        timings.add("native")
         detected = detected or found
         if text:
-            segments.append({"start": round(start / SAMPLE_RATE, 2), "end": round(end / SAMPLE_RATE, 2), "text": text})
+            segment: dict[str, Any] = {"start": round(offset, 2), "end": round(end / SAMPLE_RATE, 2), "text": text}
+            if words:
+                segment["words"] = words
+            segments.append(segment)
     _log_peak(family, duration)
     cjk = (detected or language or "") in ("zh", "ja", "yue")
     if not cjk:  # Nemotron ASR joins its sentences with two spaces
         for segment in segments:
             segment["text"] = " ".join(segment["text"].split())
     text = ("" if cjk else " ").join(s["text"] for s in segments)
-    return {"text": text.strip(), "language": detected or language, "segments": segments, "durationS": round(duration, 2)}
+    reply = {"text": text.strip(), "language": detected or language, "segments": segments, "durationS": round(duration, 2)}
+    if want_words:
+        # ``wordTimings``: where the words came from ("native" or "aligner"), None when there are none;
+        # ``wordsUnavailable``: why not ("aligner-missing", "language", "failed").
+        reply["wordTimings"] = ("aligner" if "aligner" in timings else "native") if timings else None
+        reply["wordsUnavailable"] = None if timings else unavailable
+    return reply

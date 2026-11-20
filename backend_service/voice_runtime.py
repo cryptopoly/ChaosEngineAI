@@ -139,12 +139,41 @@ def stt_repo_allow_patterns(repo: str) -> list[str] | None:
         source = entry["sources"].get(GPU_BACKEND)
         if source is not None and source[0] == repo and entry.get("gpu", {}).get("files"):
             return [*entry["gpu"]["files"], "README.md", "LICENSE*"]
+    from backend_service.catalog import voice_stt_cuda as gpu  # noqa: PLC0415
+
+    if repo == gpu.ALIGNER["repo"]:
+        return [*gpu.ALIGNER["files"], "README.md", "LICENSE*"]
     return None
 
 
-def _hf_snapshot_path(repo_id: str) -> Path | None:
-    from backend_service.helpers.hf_cache_paths import _hf_repo_snapshot_dir  # noqa: PLC0415
+def stt_repo_revision(repo: str) -> str | None:
+    """The pinned Hub revision of a GPU dictation repo (a row's or the forced aligner's), else None (FU-271)."""
+    from backend_service.catalog import voice_stt_cuda as gpu  # noqa: PLC0415
 
+    if repo == gpu.ALIGNER["repo"]:
+        return str(gpu.ALIGNER["revision"])
+    for entry in _STT_MODELS:
+        source = entry["sources"].get(GPU_BACKEND)
+        if source is not None and source[0] == repo and entry.get("gpu", {}).get("revision"):
+            return str(entry["gpu"]["revision"])
+    return None
+
+
+def aligner_snapshot() -> Path | None:
+    """The downloaded forced aligner (word timings for the audio-LLM rows), or None."""
+    from backend_service.catalog import voice_stt_cuda as gpu  # noqa: PLC0415
+
+    return _hf_snapshot_path(gpu.ALIGNER["repo"])
+
+
+def _hf_snapshot_path(repo_id: str) -> Path | None:
+    from backend_service.helpers.hf_cache_paths import _hf_repo_cache_dir, _hf_repo_snapshot_dir  # noqa: PLC0415
+
+    pinned = stt_repo_revision(repo_id)  # a GPU row runs its pinned files when they are there, else what was downloaded
+    if pinned:
+        candidate = _hf_repo_cache_dir(repo_id) / "snapshots" / pinned
+        if candidate.is_dir():
+            return candidate
     return _hf_repo_snapshot_dir(repo_id)
 
 
@@ -436,13 +465,20 @@ def transcribe_file(
     snapshot = _hf_snapshot_path(repo)
     family = _check_gpu_source(backend, repo, snapshot)
     notes: list[str] = []
-    # The GPU rows give no word timings: with speaker labels the speaker turns are found first and each turn is
-    # transcribed on its own, so every segment belongs to one speaker.
+    # A GPU row's word timings come from the model (Parakeet, Nemotron ASR) or from the forced aligner once it is
+    # downloaded (the audio LLMs). With speaker labels the speaker turns are found first and each turn is transcribed
+    # on its own, so every segment belongs to one speaker.
     turns: dict[str, Any] | None = None
     spans: list[list[float]] | None = None
+    aligner: Path | None = None
+    needs_aligner = False
     if family is not None:
         if words:
-            notes.append("This model gives segment times only; word timings need Whisper.")
+            from backend_service.catalog import voice_stt_cuda as gpu_catalog  # noqa: PLC0415
+
+            uses_aligner = family in gpu_catalog.ALIGNER["families"]
+            needs_aligner = uses_aligner and family not in gpu_catalog.ALIGNER["optionalFor"]
+            aligner = aligner_snapshot() if uses_aligner else None
         if speakers:
             turns = diarize_file(path, speaker_count)
             spans = speaker_spans(turns["turns"])
@@ -457,9 +493,10 @@ def transcribe_file(
             path=str(path),
             language=language_code,
             task=task,
-            # Speaker labels split segments at word boundaries.
-            words=words or speakers,
+            # Speaker labels split segments at word boundaries (a GPU row transcribes each speaker turn instead).
+            words=words if family is not None else (words or speakers),
             spans=spans,
+            alignerSource=str(aligner) if aligner is not None else None,
         )
 
     language = language or None
@@ -479,6 +516,9 @@ def transcribe_file(
             reply = retry
     if not str(reply.get("text", "")).strip():
         notes.append("No speech was recognised in this audio.")
+    elif family is not None and words and not reply.get("wordTimings"):
+        notes.append(_no_word_timings_note("aligner-missing" if needs_aligner and aligner is None
+                                           else reply.get("wordsUnavailable")))
     segments = reply.get("segments", [])
     seconds = float(reply.get("seconds") or 0.0)
     if speakers:
@@ -497,6 +537,19 @@ def transcribe_file(
         "seconds": round(seconds, 3),
         "note": " ".join(notes) or None,
     }
+
+
+def _no_word_timings_note(reason: Any) -> str:
+    """Why a GPU row gave segment times only when word timings were asked for (the Whisper models always give words)."""
+    if reason == "aligner-missing":
+        from backend_service.catalog import voice_stt_cuda as gpu  # noqa: PLC0415
+
+        aligner = gpu.ALIGNER
+        return (f"Word timings for this model need the forced aligner {aligner['repo']} ({aligner['sizeGb']} GB, "
+                f"{aligner['licence']}): download it, or use a Whisper model. Segment times are given.")
+    if reason == "language":
+        return "The forced aligner does not speak this language, so only segment times are given; Whisper gives word timings."
+    return "Word timings could not be worked out for this audio, so only segment times are given; Whisper gives word timings."
 
 
 def speaker_spans(turns: list[dict[str, Any]]) -> list[list[float]]:

@@ -311,13 +311,15 @@ def start_download(
                         "library", "info",
                         f"Skipping {_bytes_to_gb(skipped_bytes):.1f} GB of weight shards no index uses in {repo}.",
                     )
-                # Music repos (third branch after image and video) are pinned to a revision.
+                # Music repos (third branch after image and video) and the GPU dictation repos are pinned to a revision.
+                from backend_service.voice_runtime import stt_repo_revision
+
                 process = _spawn_snapshot_download(
                     repo,
                     env,
                     process_log,
                     allow_patterns=effective_allow_patterns,
-                    revision=music_repo_revision(repo),
+                    revision=music_repo_revision(repo) or stt_repo_revision(repo),
                 )
                 with state._lock:
                     if state._download_tokens.get(repo) == download_token:

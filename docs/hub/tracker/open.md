@@ -1,13 +1,67 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 166 rows with work, decisions or watch items still open, newest first.
+summary: 172 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-285 · ACE-Step 1.5 turbo ignored the lyrics in 3 of 3 tries — Next music pass</summary>
+
+**Status or trigger:** Next music pass
+
+**Notes:** Through `/api/music/generate`, 30 s, lyrics given, `vocalLanguage=en`: turbo sang other words ("Ooh, ooh", "I'm not alone", "I'm not afraid of the dark", by Whisper and Qwen3-ASR on the Demucs stem); XL turbo sang the lyrics word for word (1 of 2 variations exact). Check whether turbo needs the LM / thinking on, and default lyric songs for music videos to XL.
+
+</details>
+
+<details>
+<summary>FU-284 · Automatic lip-sync score for takes — When sung shots get two takes (FU-281)</summary>
+
+**Status or trigger:** When sung shots get two takes (FU-281)
+
+**Notes:** The spike's mouth-opening vs envelope correlation (MediaPipe Face Landmarker, Apache-2.0) separates synced from unsynced speech but is weak for sustained singing and does not check mouth shapes. A SyncNet-style confidence (LatentSync's SyncNet is Apache-2.0) could rank takes.
+
+</details>
+
+<details>
+<summary>FU-283 · Lightricks A2V pipeline as the low-VRAM / reference option (route a) — A 12-16 GB card target, or a quality comparison</summary>
+
+**Status or trigger:** A 12-16 GB card target, or a quality comparison
+
+**Notes:** Measured: dev 22B fp8 + Gemma 3 12B with `--quantization fp8-cast --offload cpu` peaks at 9.0 GB GPU, 29.8 GB host RAM, 270-284 s per 5.04 s 768x512 shot; speech sync r 0.45; on the sung vocal stem the mouth stayed mostly closed (closed while voiced 0.86). Needs 62 GB of new weights (fp8 dev 29.15, distilled LoRA 7.61, upscaler 1.0, `Lightricks/gemma-3-12b-it-qat-q4_0-unquantized` 24.4; the `google/` Gemma repo is gated and the saved token has no access), its own venv (transformers < 5.15) and the FU-282 fixes.
+
+</details>
+
+<details>
+<summary>FU-282 · Report two Windows bugs to Lightricks' LTX-2 (ltx-core 1.6.2, commit daa6b16) — Before shipping route (a), or when upstream fixes them</summary>
+
+**Status or trigger:** Before shipping route (a), or when upstream fixes them
+
+**Notes:** (1) `ltx_core/loader/buffers.py` `host_bytes()` uses `mmap.MAP_PRIVATE | mmap.MAP_ANONYMOUS`, which Windows lacks, so `--offload cpu` crashes at the first weight load; `mmap.mmap(-1, n)` works there (patched in the spike venv, then ran fine). (2) A mono WAV crashes the A2V audio VAE (2 input channels); the pipeline should up-mix. Not filed (no messaging without the owner's go-ahead).
+
+</details>
+
+<details>
+<summary>FU-281 · Singing lip sync is partial: takes, pre-roll, stem vs mix — With FU-280</summary>
+
+**Status or trigger:** With FU-280
+
+**Notes:** Both routes open and close the mouth with sung phrases but a held or hummed passage can stay closed while the singer is audible (same passage across seeds 42/7 and both routes). Modality guidance 5 instead of 3 changed nothing. Full mix scored as well as the Demucs vocal stem on route (b) (r 0.41 vs 0.23 against their own envelopes), so the stem default is unproven. Test 10+ sung shots: stem vs mix, 0.3-0.5 s pre-roll, 2 takes, a tighter face framing; decide the default from that.
+
+</details>
+
+<details>
+<summary>FU-280 · Build LTX-2.3 audio to video on Windows with our own loop (route b of the lip-sync spike) — When D-99 is decided for route (b)</summary>
+
+**Status or trigger:** When D-99 is decided for route (b)
+
+**Notes:** Spike 2026-11-20 (`docs/research/lip-sync-spike-windows-2026-11.md`): the app's `OzzyGT/LTX-2.3-Distilled-bnb-nf4` row in diffusers 0.42.1 lip-syncs a spoken line (mouth/audio r 0.50, chance 0.16) when the clip's audio-VAE latent is passed as `audio_latents` and a transformer pre-hook keeps the audio tokens clean with audio timestep and sigma 0 on every call. 110-126 s per 5.04 s 768x512 shot cold (35 s load), 21.8 GB GPU peak, 37 GB host RAM. Without the hook the face lurches and the mouth stays open (control). Work: `audioPath` on LTX-2.3 diffusers img2video, frames from the slice (8k+1), stereo up-mix, mux the full mix, warm-worker reuse, E2E check (speech clip, correlation above its shuffled baseline). Sketch in the research page.
+
+</details>
 
 <details>
 <summary>FU-278 · ACE-Step XL on a shared GPU — Done (2026-11-20, agent branch), unit-tested</summary>

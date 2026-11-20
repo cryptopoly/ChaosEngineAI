@@ -1930,3 +1930,13 @@ Model load (`/api/music/preload`): turbo 8.5 to 14.5 s, XL 14 to 45 s (worker st
 **Tested.** Through the app routes on backend port 8977 and a throwaway HOME on E: (SmolLM2-135M, 269 MB file): cancel at 100 MB, restart, partial renamed and cut to 71 MB then grew, status completed in 12 s, no `.incomplete` left. Unit: `tests/test_download_resume.py` (6 tests). Not tested: a multi-GB music repo, a proxy that ignores Range, Linux/macOS.
 
 **FU-278.** `vram_shortfall_message` in `music_worker_acestep.py` runs before each CUDA generate and raises a sentence with free GB, needed GB, "another program may be using the GPU" and the turbo-model suggestion; the offload decision is untouched. Tests in `tests/test_music_worker.py::VramShortfallTests`. The live shared-card case was not re-run (no GPU use this session).
+## 2026-11-20: Lip-sync spike, LTX-2.3 audio to video on Windows (D-98, agent)
+
+Full write-up: `docs/research/lip-sync-spike-windows-2026-11.md`. Inputs made through the app's own routes on a throwaway backend (port 8952, HOME on E:): Kokoro spoken line, ACE-Step 1.5 XL turbo song (lyrics sung word for word; turbo ignored the lyrics 3 of 3 times, FU-285), Demucs vocal stem, FLUX.2 Klein 4B start still. Shot: 768x512, 121 frames, 24 fps. Sync measured with MediaPipe mouth opening vs the audio envelope against a shuffled baseline, and by reading frame strips; I cannot listen.
+
+| Route | Speech r (chance) | Singing | Wall per shot | GPU peak | Host RAM | New download |
+|---|---|---|---|---|---|---|
+| (b) own loop on `OzzyGT/LTX-2.3-Distilled-bnb-nf4`, audio latent held clean every step | 0.50 (0.16) | partial | 110-126 s | 21.8 GB | 37 GB | none |
+| (a) Lightricks `ltx_pipelines` A2Vid two-stage, dev fp8 + Gemma 3, `--offload cpu` | 0.45 (0.17) | weak on the stem, partial on the mix | 270-284 s | 9.0 GB | 29.8 GB | 62 GB |
+
+Both run on Windows; (a) needed two patches (POSIX-only `mmap` flags in `ltx_core` offload, mono audio not up-mixed; FU-282). Recommendation (D-99): build (b) (FU-280); singing needs takes and more tests (FU-281). Control: without holding the audio fixed, route (b)'s face lurches and the mouth stays open. Not verified: listening, mouth shapes, more than one face and 1-2 seeds per clip, warm-worker timing, LTX-2.5, Mac. InfiniteTalk not needed, not tried. Spike files in `E:\tmp\lipsync\`; weights added to `E:\AI Models` (LTX-2.3 fp8 dev, LoRA, upscaler, Lightricks Gemma 3 copy, OzzyGT NF4 pack).

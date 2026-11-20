@@ -208,3 +208,32 @@ shapes, head moves, a camera push-in, hands up on one take) but the mouth is ope
 the gaps (open while silent 0.76-0.94), so it follows the vocal far less (r 0.20; one take of six beats chance).
 Keep lip sync on 2.3. (Not tried: 2.5's own non-distilled path, its prompt enhancer, and a lower STG for its
 livelier motion.)
+
+## Extra data (this branch): the appended singing cue, and best-of-N with the score
+
+**Appended cue** (`lipSyncSinging` as built on this branch: the neutral prompt + ", singing, mouth opening and closing
+with each syllable."), same 6 pairs, scored with the final formula:
+
+| Prompt | mean score | beats chance | Never sang (cwv > 0.9) | Turned > 30 % |
+|---|---|---|---|---|
+| neutral (today) | 0.37 | 4 / 6 | 1 | 2 |
+| neutral + appended cue | 0.41 | 4 / 6 | 0 (ballad seed 42: cwv 0.48, half the line shut) | 1 |
+| explicit, written as one sentence | 0.44 | 5 / 6 | 0 | 1 |
+
+The appended cue gets about half the gain of rewriting the prompt: it stopped the full shut-mouth take but not
+completely. A prompt that leads with "Close-up of a ... singing, mouth opening and closing with each syllable" is the
+better form; the appended cue is the safe automatic fallback.
+
+**Best-of-N** (explicit recipe, 6 seeds per line: 42, 7, 11, 23, 99, 123; a "good" take beats chance, faces the
+camera at least 70 % of the shot and has cwv < 0.5; the score's pick over all N-subsets):
+
+| Line | Good takes | N=1 | N=2 | N=3 | N=4 |
+|---|---|---|---|---|---|
+| ballad_f | 2 / 6 | 0.33 | 0.60 | 0.80 | 0.93 |
+| soul_m | 5 / 6 | 0.83 | 1.00 | 1.00 | 1.00 |
+| pop_f | 6 / 6 | 1.00 | 1.00 | 1.00 | 1.00 |
+| all three | 13 / 18 | 0.72 | 0.87 | 0.93 | 0.98 |
+
+With the full head-turn penalty the score's pick was a good take in every subset that held one (pick-is-good equals
+any-is-good at every N). Cost: N x 56 s warm per shot plus about 10 s of CPU scoring per take; N=3 takes a 5 s shot
+from about 1 minute to about 3.

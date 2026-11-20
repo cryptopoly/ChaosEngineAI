@@ -95,7 +95,8 @@
       "compressed": "圧縮後",
       "context": "コンテキスト",
       "status": "ステータス",
-      "released": "リリース日"
+      "released": "リリース日",
+      "gpuMemory": null
     },
     "status": {
       "downloading": "ダウンロード中",
@@ -786,6 +787,13 @@
         "action": "LM Studio と共有",
         "done": "{where} として LM Studio と共有しました。追加のディスク容量は使用していません。",
         "already": "すでに LM Studio と共有済みです ({where})。"
+      },
+      "recommended": {
+        "subtitle": null,
+        "subtitleBare": null,
+        "intro": null,
+        "best": null,
+        "showAll": null
       }
     }
   }

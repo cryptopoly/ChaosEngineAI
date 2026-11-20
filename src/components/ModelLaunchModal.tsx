@@ -325,8 +325,17 @@ export function ModelLaunchModal({
               installingTensorfold={tensorfold?.installing}
               tensorfoldJob={tensorfold?.job}
               isAppleSilicon={isAppleSilicon}
+              // Numbers for no model (speed, disk, quality, fit) are not shown (D-105 C).
+              showPreview={selectedOption !== null}
               compact
             />
+            {selectedOption === null ? (
+              <p className="muted-text model-select-preview-hint">
+                {t("modelLaunchModal.previewNeedsModel", {
+                  defaultValue: "Pick a model to see its expected speed, memory and fit.",
+                })}
+              </p>
+            ) : null}
           </div>
         </div>
         {busyAdvice ? (

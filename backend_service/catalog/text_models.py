@@ -190,6 +190,9 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "sizeGb": 7.0,
                 "format": "GGUF",
                 "quantization": "Q4_0 (QAT)",
+                # FU-456: RTX 4090, b12441, 8,192 context, f16 KV, no drafter (rtx4090-progress "Live numbers").
+                "measuredGpuGb": 8.1,
+                "measuredGpuTokS": 92.8,
                 "capabilities": ["vision", "reasoning", "coding", "agents", "tool-use"],
                 "note": "Google's QAT Q4_0 (7 GB, mmproj for vision beside it): fits a 12 GB card with room for context. On an RTX 4090: 93 tok/s, 117 tok/s with the Unsloth mtp drafter (speculative decoding on).",
                 "contextWindow": "256K",
@@ -207,6 +210,8 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "format": "GGUF",
                 "quantization": "Q4_0 (QAT)",
                 "ggufFile": "gemma-4-26B_q4_0-it.gguf",
+                "measuredGpuGb": 16.1,  # FU-456: RTX 4090, 8,192 context, f16 KV, no drafter
+                "measuredGpuTokS": 160.3,
                 "capabilities": ["vision", "reasoning", "coding", "agents", "tool-use"],
                 "note": "Google's QAT Q4_0 of the 26B-A4B mixture-of-experts model: 14.4 GB, so it sits on a 24 GB card with room for long context; only 4B parameters are active per token. On an RTX 4090: 160 tok/s, about 175 with the Unsloth mtp drafter (speculative decoding on).",
                 "contextWindow": "256K",
@@ -588,6 +593,8 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "format": "GGUF",
                 "quantization": "Q2_0 (ternary)",
                 "ggufFile": "Ternary-Bonsai-2-27B-Q2_0.gguf",
+                "measuredGpuGb": 8.2,  # FU-456: RTX 4090, 8,192 context, text only (the note's figures)
+                "measuredGpuTokS": 77.0,
                 "capabilities": ["reasoning", "coding", "tool-use", "vision"],
                 "note": (
                     "Qwen3.8-based ternary 27B at 7.6 GB (+0.9 GB mmproj for vision), on stock llama.cpp: no fork "
@@ -910,6 +917,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "quantization": "Q4_K_M",
                 "ggufFile": "Qwen3.6-35B-A3B-Q4_K_M.gguf",
                 "measuredGpuGb": 20.1,  # FU-263: VRAM above idle on the RTX 4090, 8,192 context, f16 KV, no drafter
+                "measuredGpuTokS": 177.0,
                 "capabilities": ["reasoning", "coding", "vision", "agents", "tool-use"],
                 # FU-263: re-pinned from Q8_0 (36.9 GB); the Q8_0 stays reachable as the -MTP-GGUF row above.
                 "note": (
@@ -932,6 +940,8 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "format": "GGUF",
                 "quantization": "UD-IQ4_XS",
                 "ggufFile": "Qwen3.6-35B-A3B-UD-IQ4_XS.gguf",
+                "measuredGpuGb": 17.2,  # FU-456: RTX 4090, 8,192 context, f16 KV, MTP off
+                "measuredGpuTokS": 169.7,
                 "capabilities": ["reasoning", "coding", "vision", "agents", "tool-use"],
                 "note": "Unsloth Dynamic 4-bit of the 35B-A3B mixture-of-experts model with the baked-in MTP heads, 18.2 GB so it fits a 24 GB card. The ggml-org Q8_0 MTP row needs 40 GB or more.",
                 "contextWindow": "262K",
@@ -1278,6 +1288,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "quantization": "Q4_0",
                 "ggufFile": "NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Q4_0.gguf",
                 "measuredGpuGb": 18.1,  # 2026-11-19 run: VRAM peak on the RTX 4090, 8,192 context, f16 KV, no drafter
+                "measuredGpuTokS": 233.4,
                 "minContextTokens": 16384,
                 "capabilities": ["reasoning", "agents", "tool-use"],
                 "note": "Q4_0 (19.1 GB) fits a 24 GB card; the repo's mtp- drafter sidecar (1.2 GB) downloads beside it. On an RTX 4090: 233 tok/s, about 245 with the drafter. The Studio tool list is about 9,200 tokens here, so the app loads it with at least a 16,384 context (the Context setting stays as you set it) and says so in the load note. NVIDIA open model licence.",

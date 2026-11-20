@@ -653,7 +653,8 @@
       "note": "A resposta é a letra da alternativa que o modelo pontua mais alto como próximo token. Execuções salvas antes desta mudança geravam a resposta como texto; a acurácia delas não é comparável com as execuções novas."
     },
     "statTokens": "Tokens gerados",
-    "ofMaxTokens": "de {max} permitidos"
+    "ofMaxTokens": "de {max} permitidos",
+    "previewNeedsModel": null
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, one {# execução} other {# execuções}}{filterSuffix}",
@@ -1208,7 +1209,8 @@
     "emptyLibrary": null,
     "launchSettings": "Configurações de inicialização",
     "cancelButton": "Cancelar",
-    "busyConfirm": "Carregar mesmo assim"
+    "busyConfirm": "Carregar mesmo assim",
+    "previewNeedsModel": null
   },
   "modelPicker": {
     "weightFileTitle": "Selecionar arquivo de pesos: {name}",

@@ -653,7 +653,8 @@
       "note": "The answer is the choice letter the model scores highest as its next token. Runs saved before this change generated the answer as text; their accuracy is not comparable with new runs."
     },
     "statTokens": "Tokens generated",
-    "ofMaxTokens": "of {max} allowed"
+    "ofMaxTokens": "of {max} allowed",
+    "previewNeedsModel": "Pick a model to see its expected speed, memory and fit."
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, one {# run} other {# runs}}{filterSuffix}",
@@ -1208,7 +1209,8 @@
     "emptyLibrary": "No chat models downloaded yet. Download one under Chat > Models, then come back here.",
     "launchSettings": "Launch settings",
     "cancelButton": "Cancel",
-    "busyConfirm": "Load anyway"
+    "busyConfirm": "Load anyway",
+    "previewNeedsModel": "Pick a model to see its expected speed, memory and fit."
   },
   "modelPicker": {
     "weightFileTitle": "Select weight file: {name}",

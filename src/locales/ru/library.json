@@ -95,7 +95,8 @@
       "compressed": "Сжато",
       "context": "Контекст",
       "status": "Статус",
-      "released": "Выпущено"
+      "released": "Выпущено",
+      "gpuMemory": null
     },
     "status": {
       "downloading": "Скачивается",
@@ -786,6 +787,13 @@
         "action": "Поделиться с LM Studio",
         "done": "Доступно в LM Studio как {where}. Дополнительное место на диске не занято.",
         "already": "Уже доступно в LM Studio ({where})."
+      },
+      "recommended": {
+        "subtitle": null,
+        "subtitleBare": null,
+        "intro": null,
+        "best": null,
+        "showAll": null
       }
     }
   }

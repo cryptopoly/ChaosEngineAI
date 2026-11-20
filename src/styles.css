@@ -5085,6 +5085,82 @@ select.text-input {
   min-height: 100%;
 }
 
+/* First run (D-105): "Start here" on the Dashboard and the short recommended list on Chat Models. */
+.content-grid.dashboard-page > .start-here-card {
+  grid-column: 1 / -1;
+}
+
+.start-here-steps {
+  margin: 0;
+  padding-left: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.start-here-steps > li > .button-row,
+.start-here-pick {
+  margin-top: 8px;
+}
+
+.start-here-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.start-here-pick__text p,
+.chat-recommended__main p {
+  margin: 4px 0 0;
+}
+
+.chat-recommended__list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chat-recommended__row {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 13px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.chat-recommended__main {
+  min-width: 0;
+  flex: 1;
+}
+
+.chat-recommended__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-recommended__note {
+  font-size: 0.85rem;
+  color: var(--muted, inherit);
+}
+
+.chat-recommended__footer {
+  margin-top: 12px;
+}
+
+@media (max-width: 640px) {
+  .chat-recommended__row {
+    flex-direction: column;
+  }
+}
+
 /* The left Storage column (the small folder panels) keeps its content's height; the Model Directories
    panel beside it still fills the row and scrolls its own list. */
 .settings-storage-col:first-child {

@@ -14,7 +14,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { shareWithLmStudio, type DownloadStatus } from "../../api";
-import type { HubFileListResponse, HubModel, LibraryItem, ModelFamily, ModelVariant } from "../../types";
+import type { ChatPick, HubFileListResponse, HubModel, LibraryItem, ModelFamily, ModelVariant } from "../../types";
 import { CAPABILITY_META } from "../../constants";
 import { IconActionButton } from "../../components/ModelActionIcons";
 import { RunFromHuggingFace } from "../../components/RunFromHuggingFace";
@@ -53,7 +53,12 @@ import {
 } from "../../components/models/adapters/chat";
 import { downloadSizeTooltip, number, sizeLabel } from "../../utils";
 import { ChatHubResults, sortHubResults } from "./ChatHubResults";
+import { ChatRecommendedList } from "./ChatRecommendedList";
 import { memoryFitBucket } from "./memoryFit";
+import { hasDedicatedGpu } from "../dashboard/chatPick";
+
+// "Show all models" on the first-run list holds for the rest of the app session.
+let firstRunListDismissed = false;
 
 export type ChatLaunchAction = "chat" | "server" | "thread";
 
@@ -114,6 +119,8 @@ export interface ChatModelsPageProps {
   onOpenFamilyDetails: (familyId: string) => void;
   onOpenExternalUrl: (url: string) => void;
   onRevealPath: (path: string) => void;
+  /** ``Recommendation.chatPicks``: with no chat model on disk the page opens on these (D-105 D). */
+  recommendedPicks?: ChatPick[];
 }
 
 const CHAT_GRID =
@@ -340,10 +347,12 @@ export function ChatModelsPage({
   onOpenFamilyDetails,
   onOpenExternalUrl,
   onRevealPath,
+  recommendedPicks,
 }: ChatModelsPageProps) {
   const { t } = useTranslation("library");
   const { t: tCommon } = useTranslation("common");
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const [showAllModels, setShowAllModels] = useState(firstRunListDismissed);
   const [shareNotice, setShareNotice] = useState<{ ok: boolean; text: string } | null>(null);
 
   const handleShareWithLmStudio = useCallback(
@@ -491,12 +500,16 @@ export function ChatModelsPage({
     },
   ];
 
+  const gpu = hasDedicatedGpu(hostSystem ?? {});
   const columns: ModelsPageColumn[] = [
     { id: "model", label: t("myModels.column.model", { defaultValue: "Model" }), sortId: "name" },
     { id: "format", label: t("myModels.column.format", { defaultValue: "Format" }), sortId: "format" },
     { id: "backend", label: t("myModels.column.backend", { defaultValue: "Backend" }), sortId: "backend" },
     { id: "size", label: t("myModels.column.size", { defaultValue: "Size" }), sortId: "size" },
-    { id: "ram", label: t("myModels.column.ram", { defaultValue: "RAM" }), sortId: "ram" },
+    // The figure is the memory the fit verdict was judged on: GPU memory on a card with its own (FU-456).
+    gpu
+      ? { id: "ram", label: t("myModels.column.gpuMemory", { defaultValue: "GPU memory" }), sortId: "ram" }
+      : { id: "ram", label: t("myModels.column.ram", { defaultValue: "RAM" }), sortId: "ram" },
     { id: "compressed", label: t("myModels.column.compressed", { defaultValue: "Compressed" }), sortId: "compressed" },
     { id: "context", label: t("myModels.column.context", { defaultValue: "Context" }), sortId: "context" },
     { id: "released", label: t("myModels.column.released", { defaultValue: "Released" }), sortId: "release" },
@@ -802,6 +815,36 @@ export function ChatModelsPage({
       onOpenExternalUrl={onOpenExternalUrl}
     />
   );
+
+  // First run (D-105 D): nothing on disk, no search or filter set, the full list not asked for yet.
+  const hasChatModel = library.some((item) => !item.broken && !item.path.startsWith("download://"));
+  const filtersSet =
+    hasQuery || capFilter !== null || formatFilter !== null || accelFilter !== null || backendFilter !== null ||
+    // Chat's "Browse models" opens on "available", which with nothing on disk is every row.
+    (availability !== "all" && availability !== "available");
+  const recommendedRows = (recommendedPicks ?? []).flatMap((pick) => {
+    const entry = entries.find((candidate) => candidate.id === `catalog:${pick.variantId}`);
+    return entry && entry.hostCompatible ? [{ entry, pick }] : [];
+  });
+  if (!hasChatModel && !showAllModels && !filtersSet && recommendedRows.length > 0) {
+    return (
+      <ChatRecommendedList
+        rows={recommendedRows}
+        resolveStatus={resolveStatus}
+        totalCount={entries.filter((entry) => isVisibleOnHost(entry, resolveStatus(entry))).length}
+        hardwareLabel={recommendedRows[0].pick.hardwareLabel ?? null}
+        gpu={gpu}
+        onShowAll={() => {
+          firstRunListDismissed = true;
+          setShowAllModels(true);
+        }}
+        onDownloadModel={onDownloadModel}
+        onCancelModelDownload={onCancelModelDownload}
+        onDeleteModelDownload={onDeleteModelDownload}
+        onOpenModelSelector={onOpenModelSelector}
+      />
+    );
+  }
 
   return (
     <ModelsPage<ChatModelEntry>

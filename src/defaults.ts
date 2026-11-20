@@ -92,7 +92,7 @@ export const emptyWorkspace: WorkspaceData = {
     detail: "",
     targetModel: "",
     cacheLabel: "",
-    headroomPercent: 0,
+    headroomPercent: null,
   },
   featuredModels: [],
   library: [],

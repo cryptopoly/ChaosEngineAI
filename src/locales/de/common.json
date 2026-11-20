@@ -653,7 +653,8 @@
       "note": "Als Antwort gilt der Antwortbuchstabe, den das Modell als nächstes Token am höchsten bewertet. Vor dieser Änderung gespeicherte Läufe haben die Antwort als Text generiert; ihre Genauigkeit ist mit neuen Läufen nicht vergleichbar."
     },
     "statTokens": "Generierte Tokens",
-    "ofMaxTokens": "von {max} erlaubten"
+    "ofMaxTokens": "von {max} erlaubten",
+    "previewNeedsModel": null
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, one {# Lauf} other {# Läufe}}{filterSuffix}",
@@ -1208,7 +1209,8 @@
     "emptyLibrary": null,
     "launchSettings": "Starteinstellungen",
     "cancelButton": "Abbrechen",
-    "busyConfirm": "Trotzdem laden"
+    "busyConfirm": "Trotzdem laden",
+    "previewNeedsModel": null
   },
   "modelPicker": {
     "weightFileTitle": "Gewichtsdatei auswählen: {name}",

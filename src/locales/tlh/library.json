@@ -95,7 +95,8 @@
       "compressed": "machmoH",
       "context": "ghu'",
       "status": "Dotlh",
-      "released": "nargh"
+      "released": "nargh",
+      "gpuMemory": null
     },
     "status": {
       "downloading": "lI'lI'",
@@ -786,6 +787,13 @@
         "action": null,
         "done": null,
         "already": null
+      },
+      "recommended": {
+        "subtitle": null,
+        "subtitleBare": null,
+        "intro": null,
+        "best": null,
+        "showAll": null
       }
     }
   }

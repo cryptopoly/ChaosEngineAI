@@ -95,7 +95,8 @@
       "compressed": "Compressed",
       "context": "Context",
       "status": "Status",
-      "released": "Released"
+      "released": "Released",
+      "gpuMemory": "GPU memory"
     },
     "status": {
       "downloading": "Downloading",
@@ -786,6 +787,13 @@
         "action": "Link to shared folder",
         "done": "Linked into the shared models folder as {where}. No extra disk space used.",
         "already": "Already in the shared models folder ({where})."
+      },
+      "recommended": {
+        "subtitle": "Recommended for this computer ({hardware})",
+        "subtitleBare": "Recommended for this computer",
+        "intro": "No chat model is downloaded yet. These fit this computer best: download one, then open Chat. The first is the Dashboard's pick.",
+        "best": "Best fit",
+        "showAll": "Show all {count} models and filters"
       }
     }
   }

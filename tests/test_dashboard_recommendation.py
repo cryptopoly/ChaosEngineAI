@@ -76,8 +76,13 @@ class HardwareProfileActivityTests(unittest.TestCase):
         state.activity.clear()
         state._announce_backend_readiness_when_known(ready)
         details = {row["title"]: row["detail"] for row in state.activity}
-        self.assertEqual(details["Hardware profile refreshed"], "Recommended target: 70B class at 4-bit")
+        # FU-456: the line names the hardware the fit verdicts are judged on, not a size-class target that
+        # could disagree with the Dashboard's best-fit row.
+        from backend_service.helpers.hardware_class import hardware_class
+
+        self.assertEqual(details["Hardware profile refreshed"], hardware_class(ready).label)
         self.assertNotIn("GGUF", details["Hardware profile refreshed"])
+        self.assertNotIn("Recommended target", details["Hardware profile refreshed"])
         self.assertIn("MLX usable: yes", details["Backend readiness"])
 
     def test_a_pc_is_not_told_three_times_that_mlx_is_missing(self):

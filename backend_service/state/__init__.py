@@ -393,12 +393,17 @@ class ChaosEngineState:
         """
 
         def announce(snapshot: dict[str, Any]) -> None:
-            # Hardware profile uses `recommendation["title"]` raw because the title
-            # is dynamically composed backend-side. Frontend renders it verbatim;
-            # localizing requires a follow-up structured payload for the recommender.
+            # The hardware class the fit verdicts are judged on ("NVIDIA GPU, 24 GB VRAM"). It used to name a
+            # size-class target ("Recommended target: 14B GGUF") beside the Dashboard's best-fit row (FU-456).
+            try:
+                from backend_service.helpers.hardware_class import hardware_class
+
+                profile = hardware_class(snapshot).label
+            except Exception:
+                profile = _best_fit_recommendation(snapshot)["title"]
             self.add_activity(
                 "Hardware profile refreshed",
-                _best_fit_recommendation(snapshot)["title"],
+                profile,
                 title_key="activity.hardwareProfile.title",
             )
             gguf = "yes" if snapshot.get("ggufAvailable") else "no"

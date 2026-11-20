@@ -85,5 +85,32 @@
     "mlxDetail": "{hardware}Daq {modelSize} Seg ngoQ chuplu'bogh bop noHvam; ja'chuq yab wIvlu'ta'bogh bopbe'.",
     "ggufTitle": "ngoQ chuplu'bogh: {modelSize} GGUF",
     "ggufDetail": "mIqta' law' QapmeH llama.cpp GGUF maS pat law' mIw."
+  },
+  "bestFit": {
+    "subtitle": null,
+    "badge": null,
+    "openModels": null,
+    "seeInModels": null,
+    "download": null,
+    "needsGpu": null,
+    "needsMemory": null,
+    "speedMeasured": null,
+    "speedEstimated": null,
+    "speedRtx4090": null
+  },
+  "startHere": {
+    "title": null,
+    "subtitle": null,
+    "step1": null,
+    "step2": null,
+    "recommended": null,
+    "download": null,
+    "downloadSize": null,
+    "downloading": null,
+    "downloaded": null,
+    "otherModels": null,
+    "noPick": null,
+    "openModels": null,
+    "openChat": null
   }
 }

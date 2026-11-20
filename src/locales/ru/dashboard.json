@@ -85,5 +85,32 @@
     "mlxDetail": "Этот прогноз относится к рекомендуемой локальной цели класса {modelSize} на {hardware}, а не к текущей выбранной модели чата.",
     "ggufTitle": "Рекомендуемая цель: {modelSize} GGUF",
     "ggufDetail": "Кросс-платформенный режим предпочитает llama.cpp GGUF для широкой аппаратной поддержки."
+  },
+  "bestFit": {
+    "subtitle": null,
+    "badge": null,
+    "openModels": null,
+    "seeInModels": null,
+    "download": null,
+    "needsGpu": null,
+    "needsMemory": null,
+    "speedMeasured": null,
+    "speedEstimated": null,
+    "speedRtx4090": null
+  },
+  "startHere": {
+    "title": null,
+    "subtitle": null,
+    "step1": null,
+    "step2": null,
+    "recommended": null,
+    "download": null,
+    "downloadSize": null,
+    "downloading": null,
+    "downloaded": null,
+    "otherModels": null,
+    "noPick": null,
+    "openModels": null,
+    "openChat": null
   }
 }

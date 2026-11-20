@@ -9,6 +9,14 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-20 (D-105 B to E built, Mac sounds pack without Stable Audio 3; agent branch, not pushed)
+
+**Done:** the Dashboard names the catalogue's best-fit chat row (size, memory, speed, its own headroom) and opens on "Start here" for a new user; Chat Models opens on five recommended rows with nothing on disk; no performance preview without a model; "GPU memory" column title on a PC; measured 4090 figures on six rows (FU-456, FU-463 done, FU-457 part). The Mac (`mps`) sounds pack no longer installs or imports Stable Audio 3 (FU-493 item 1, simulated). Screenshots `docs/review/ui-ux-v0100-a/d105-build/`; tsc, vitest 2,005, i18n, touched pytest files.
+
+**Open for Claude:** FU-457's status words and download line; FU-458 to FU-462. Not verified: a real download from Start here, a smaller GPU, a Mac.
+
+**Open for Dan:** D-105 A only (may "LM Studio" and "Ollama" be named in the UI).
+
 ## Update 2026-11-20 (UI/UX review A for v0.10.0: Dashboard, Chat, Chat Models, Server, Settings; agent branch off `test/rtx4090`, not pushed)
 
 **Done:** every page in those areas at 1280 px and 375 px against a throwaway backend on the 4090 PC ([docs/review/ui-ux-v0100-a/](https://github.com/cryptopoly/ChaosEngineAI/blob/test/rtx4090/docs/review/ui-ux-v0100-a/README.md): 22 findings, 125 screenshots, plan). The numbers a new PC owner reads first were not honest: the Dashboard said "70B", two rows named "24 GB card" said "Won't fit" on a 24 GB card, and the memory cell disagreed with the fit badge. Fixed with tests (FU-450 to FU-455), with Keep going's panel pushing the thread sideways, a "Ready" badge with nothing loaded, and Windows-untrue copy. tsc, vitest 1,998, i18n, the touched pytest files, browser spec 43.

@@ -653,7 +653,8 @@
       "note": "Ответом считается буква варианта, которой модель даёт наивысшую оценку как следующему токену. В запусках, сохранённых до этого изменения, ответ генерировался как текст; их точность несопоставима с новыми запусками."
     },
     "statTokens": "Сгенерировано токенов",
-    "ofMaxTokens": "из {max} допустимых"
+    "ofMaxTokens": "из {max} допустимых",
+    "previewNeedsModel": null
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, one {# запуск} few {# запуска} many {# запусков} other {# запуска}}{filterSuffix}",
@@ -1208,7 +1209,8 @@
     "emptyLibrary": null,
     "launchSettings": "Настройки запуска",
     "cancelButton": "Отмена",
-    "busyConfirm": "Всё равно загрузить"
+    "busyConfirm": "Всё равно загрузить",
+    "previewNeedsModel": null
   },
   "modelPicker": {
     "weightFileTitle": "Выбрать файл весов: {name}",

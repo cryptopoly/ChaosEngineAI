@@ -85,5 +85,32 @@
     "mlxDetail": "This forecast is relative to a recommended {modelSize} class local target on {hardware}, not a currently selected chat model.",
     "ggufTitle": "Recommended target: {modelSize} GGUF",
     "ggufDetail": "Cross-platform mode will prefer llama.cpp GGUF for broad hardware support."
+  },
+  "bestFit": {
+    "subtitle": "The catalogue's best fit for this computer, judged as on the Models page.",
+    "badge": "Best fit for this computer",
+    "openModels": "Open Chat Models",
+    "seeInModels": "See it in Chat Models",
+    "download": "{size} download",
+    "needsGpu": "needs about {need} GB of {usable} GB GPU memory",
+    "needsMemory": "needs about {need} GB of {usable} GB usable memory",
+    "speedMeasured": "{value} tok/s, measured on this computer",
+    "speedEstimated": "about {value} tok/s (estimate)",
+    "speedRtx4090": "{value} tok/s measured on an RTX 4090"
+  },
+  "startHere": {
+    "title": "Start here",
+    "subtitle": "No chat model is downloaded yet. Two steps to a first chat on this computer ({hardware}).",
+    "step1": "Download a model that fits this computer.",
+    "step2": "Open Chat and pick the model at the top of the thread.",
+    "recommended": "Recommended",
+    "download": "Download",
+    "downloadSize": "Download ({size})",
+    "downloading": "Downloading, {percent}%",
+    "downloaded": "Downloaded",
+    "otherModels": "Other recommended models",
+    "noPick": "No catalogue model fits this computer comfortably. Chat Models lists every model with a fit verdict.",
+    "openModels": "Open Chat Models",
+    "openChat": "Open Chat"
   }
 }

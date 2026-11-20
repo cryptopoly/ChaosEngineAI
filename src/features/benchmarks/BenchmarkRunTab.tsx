@@ -442,12 +442,23 @@ export function BenchmarkRunTab({
           </div>
 
           <div className="benchmark-run-preview scrollable-panel-content">
-            <PerformancePreview
-              preview={preview}
-              availableMemoryGb={workspace.system.availableMemoryGb}
-              totalMemoryGb={workspace.system.totalMemoryGb}
-              gpuVramTotalGb={workspace.system.gpuVramTotalGb}
-            />
+            {benchmarkOption ? (
+              <PerformancePreview
+                preview={preview}
+                availableMemoryGb={workspace.system.availableMemoryGb}
+                totalMemoryGb={workspace.system.totalMemoryGb}
+                gpuVramTotalGb={workspace.system.gpuVramTotalGb}
+              />
+            ) : (
+              // Numbers for no model (speed, disk, quality, fit) are not shown (D-105 C).
+              <div className="callout quiet benchmark-preview-empty">
+                <p className="muted-text">
+                  {t("benchmarkTab.previewNeedsModel", {
+                    defaultValue: "Pick a model to see its expected speed, memory and fit.",
+                  })}
+                </p>
+              </div>
+            )}
 
             {latestRun ? (
               <div className="benchmark-last-run-card">

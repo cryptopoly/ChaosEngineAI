@@ -1,5 +1,6 @@
 import { stopIdleModelProcesses, stopModelProcess } from "../api";
 import { serverOriginFromBase } from "../utils";
+import { modelsPageRequest } from "../constants";
 import { DashboardTab } from "../features/dashboard/DashboardTab";
 import { ServerTab } from "../features/server/ServerTab";
 import { SettingsTab } from "../features/settings/SettingsTab";
@@ -7,13 +8,24 @@ import { FineTuningTab } from "../features/finetuning/FineTuningTab";
 import type { AppTabContext } from "./context";
 
 export function DashboardView({ ctx }: { ctx: AppTabContext }) {
-  const { workspace, backendOnline, setError, refreshWorkspace } = ctx;
+  const { workspace, backendOnline, setError, refreshWorkspace, chatLibrary, models, setActiveTab } = ctx;
+  // "Start here" until a usable chat model is on disk (or one is loaded); the library scan must have finished.
+  const hasChatModel =
+    workspace.libraryStatus === "scanning"
+      ? undefined
+      : Boolean(workspace.runtime.loadedModel) ||
+        chatLibrary.some((item) => !item.broken && !item.path.startsWith("download://"));
   return <DashboardTab
     system={workspace.system}
     recommendation={workspace.recommendation}
     runtime={workspace.runtime}
     activity={workspace.activity}
     backendOnline={backendOnline}
+    hasChatModel={hasChatModel}
+    activeDownloads={models.activeDownloads}
+    onDownloadModel={(repo) => void models.handleDownloadModel(repo)}
+    onOpenChatModels={() => setActiveTab(modelsPageRequest("chat"))}
+    onOpenChat={() => setActiveTab("chat")}
     onStopProcess={async (pid) => {
       try {
         await stopModelProcess(pid);

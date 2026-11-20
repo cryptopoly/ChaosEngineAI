@@ -85,5 +85,32 @@
     "mlxDetail": "Diese Prognose bezieht sich auf ein empfohlenes lokales {modelSize}-Klasse-Ziel auf {hardware}, nicht auf ein aktuell ausgewähltes Chat-Modell.",
     "ggufTitle": "Empfohlenes Ziel: {modelSize} GGUF",
     "ggufDetail": "Plattformübergreifender Modus bevorzugt llama.cpp GGUF für breite Hardware-Unterstützung."
+  },
+  "bestFit": {
+    "subtitle": null,
+    "badge": null,
+    "openModels": null,
+    "seeInModels": null,
+    "download": null,
+    "needsGpu": null,
+    "needsMemory": null,
+    "speedMeasured": null,
+    "speedEstimated": null,
+    "speedRtx4090": null
+  },
+  "startHere": {
+    "title": null,
+    "subtitle": null,
+    "step1": null,
+    "step2": null,
+    "recommended": null,
+    "download": null,
+    "downloadSize": null,
+    "downloading": null,
+    "downloaded": null,
+    "otherModels": null,
+    "noPick": null,
+    "openModels": null,
+    "openChat": null
   }
 }

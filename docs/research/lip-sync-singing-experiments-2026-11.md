@@ -165,6 +165,28 @@ Strips: 7 of the 72 looked at, chosen at the extremes of the score (st12 soul se
 mod8 ballad seed 42 grimaces; hands come up to the head in the tail of several ballad seed 42 takes, which the score
 does not see).
 
+## Experiment 5: best-of-N takes chosen by the score
+
+The recommended recipe so far (close-up still, explicit singing prompt, stem, 5 s with a 0.4 s lead-in, default
+denoise) on 6 seeds per line (42, 7, 11, 23, 99, 123): 18 takes. A take counts as a **hit** (usable) when r beats
+chance, closed while voiced <= 0.3 and turned away <= 0.3 (`SyncScore.usable`). For N takes, every N-subset of a
+line's 6 takes is considered and the picked take checked; numbers are averaged over the three lines.
+
+| N | P(picked take is usable), pick by `score` | **P(usable), pick usable-first (`pick_best`)** | mean score of the pick | time per shot (warm) |
+|---|---|---|---|---|
+| 1 | 0.72 | **0.72** | 0.47 | 56 s + 8 s scoring |
+| 2 | 0.82 | **0.87** | 0.51 | 2 min 8 s |
+| 3 | 0.82 | **0.93** | 0.53 | 3 min 12 s |
+| 4 | 0.78 | **0.98** | 0.54 | 4 min 16 s |
+
+Per line (usable-first): ballad 0.33 / 0.60 / 0.80 / 0.93, soul 0.83 / 1.00 / 1.00 / 1.00, pop 1.00 at every N.
+**Best-of-N is the biggest lever measured**: the hardest line (the slow ballad, where single takes mostly over-act
+in the silent tail or turn away) goes from one usable take in three to 93 % with four takes. Picking by the raw score
+alone gets worse past N=2, because a take that turns to profile can still have the highest r; ranking usable takes
+first fixes that, so `pick_best` was added to `lip_sync_score.py` (with tests). Scoring one 5 s take costs 7.5 s on
+the CPU (MediaPipe, process start included). Recommendation: 3 takes per sung shot by default (93 %), 4 for a
+"best quality" setting, 1 for speech; show the picked take with the others one click away.
+
 ## Experiment 6: LipDub re-sync second pass (not run: gated)
 
 `Lightricks/LTX-2.3-22b-IC-LoRA-LipDub` (model card title "LTX-2.3 22B IC-LoRA Dub-It", last change 2026-10-22):

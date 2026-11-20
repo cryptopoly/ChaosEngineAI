@@ -122,6 +122,32 @@ class EnvelopeTests(unittest.TestCase):
         self.assertLess(env[10:-10].max(), 0.02)
 
 
+def _take(score, *, beats=True, closed=0.1, turned=0.0):
+    return S.SyncScore(frames=N, face_frames=N, voiced_frames=60, r=0.5, r_lag0=0.5, lag=0, chance_p95=0.3,
+                       chance_mean=0.0, beats_chance=beats, closed_while_voiced=closed, open_while_silent=0.5,
+                       balanced=0.7, motion=1.0, turned_away=turned, score=score, mouth_mean=0.03)
+
+
+class PickBestTests(unittest.TestCase):
+    def test_usable_needs_chance_singing_and_facing_the_camera(self):
+        self.assertTrue(_take(0.5).usable)
+        self.assertFalse(_take(0.5, beats=False).usable)
+        self.assertFalse(_take(0.5, closed=0.6).usable)
+        self.assertFalse(_take(0.5, turned=0.5).usable)
+        self.assertIn("usable", _take(0.5).as_dict())
+
+    def test_a_usable_take_beats_a_higher_scoring_profile_take(self):
+        takes = [_take(0.6, turned=0.5), _take(0.45), _take(0.4)]
+        self.assertEqual(S.pick_best(takes), 1)
+
+    def test_highest_score_wins_when_none_is_usable(self):
+        self.assertEqual(S.pick_best([_take(0.3, beats=False), _take(0.35, beats=False)]), 1)
+
+    def test_empty_list_raises(self):
+        with self.assertRaises(ValueError):
+            S.pick_best([])
+
+
 class SmoothTests(unittest.TestCase):
     def test_a_single_frame_spike_is_removed_and_gaps_stay(self):
         out = S.smooth([0.01, 0.01, 0.2, 0.01, float("nan"), 0.01])

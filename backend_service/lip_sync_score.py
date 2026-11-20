@@ -16,6 +16,9 @@ a 100-4000 Hz band-pass. Numbers reported (FU-334, measured in ``docs/research/l
 - ``score``: ``(0.5 * balanced + 0.5 * max(0, r) * motion) * (1 - 0.5 * turned_away)``, the one number used to rank takes of the same shot, where
   ``motion`` (0 to 1) scales r down for a mouth that hardly opens (its jitter can still correlate with the audio).
   It is a ranking aid, not a quality grade: compare it between takes of one shot, not across different songs.
+- ``usable``: r beats chance, ``closed_while_voiced`` <= 0.3 and ``turned_away`` <= 0.3. ``pick_best`` ranks takes
+  usable first, then by ``score``: on the sung test set the score alone picked an unusable take more often as N grew
+  (a profile take with a high r), the gate fixed it (best-of-4 usable 0.98 vs 0.78).
 
 The maths (``score_series``) is plain numpy and scipy. Reading a video needs ``cv2`` and ``mediapipe``, which the app's
 venv does not carry; they are imported only in ``mouth_series`` (the experiments ran them from a tools venv).
@@ -37,6 +40,8 @@ OPEN_THRESHOLD = 0.02  # inner-lip gap / face height above which the mouth count
 MAX_LAG = 3
 CHANCE_SHIFTS = 200
 MIN_SHIFT = 12
+USABLE_MAX_CLOSED = 0.3  # a take that sings less than 70 % of its voiced frames with an open mouth is not usable
+USABLE_MAX_TURNED = 0.3
 
 
 @dataclass
@@ -58,8 +63,20 @@ class SyncScore:
     score: float
     mouth_mean: float
 
+    @property
+    def usable(self) -> bool:
+        return (self.beats_chance and self.closed_while_voiced <= USABLE_MAX_CLOSED
+                and self.turned_away <= USABLE_MAX_TURNED)
+
     def as_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        return {**asdict(self), "usable": self.usable}
+
+
+def pick_best(scores: list[SyncScore]) -> int:
+    """Index of the take to keep: usable takes first, then the highest ``score``. Raises on an empty list."""
+    if not scores:
+        raise ValueError("no takes to pick from")
+    return max(range(len(scores)), key=lambda i: (scores[i].usable, scores[i].score))
 
 
 def envelope(samples: Any, sample_rate: int, n_frames: int, fps: float) -> Any:

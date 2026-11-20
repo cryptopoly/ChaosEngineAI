@@ -126,10 +126,10 @@ def _annotate(variant: dict[str, Any], installed: dict[str, bool]) -> dict[str, 
         row["availableLocally"] = bool(row["availableLocally"] and row["textEncoderReady"])
     else:
         row["packInstalled"] = music_env.is_installed()
-        cuda = (variant.get("estimates") or {}).get("cuda") or {}
-        if music_env.lane() == "cuda" and cuda.get("wallSecondsAt"):
-            # Speed, peak and cold start the page shows are the NVIDIA measurement on this lane, not the Mac one.
-            row["estimates"] = {**row["estimates"], **copy.deepcopy(cuda)}
+    cuda = (variant.get("estimates") or {}).get("cuda") or {}
+    if music_env.lane() == "cuda" and cuda.get("wallSecondsAt"):
+        # Speed, peak and cold start the page shows are the NVIDIA measurement on this lane, not the Mac one.
+        row["estimates"] = {**row["estimates"], **copy.deepcopy(cuda)}
     row["ready"] = bool(row["availableLocally"] and not row["missingRequires"] and row["packInstalled"])
     return row
 

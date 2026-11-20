@@ -6,7 +6,7 @@
  */
 import { useTranslation } from "react-i18next";
 import type { UseMusicState } from "../../hooks/useMusicState";
-import { SOUNDS_PACK_GB } from "./soundsLogic";
+import { soundsPackGb } from "./soundsLogic";
 
 export function SoundPackNotice({ music }: { music: Pick<UseMusicState, "runtime" | "soundInstallJob" | "startSoundPackInstall" | "cancelSoundPackInstall"> }) {
   const { t } = useTranslation("studio");
@@ -29,7 +29,7 @@ export function SoundPackNotice({ music }: { music: Pick<UseMusicState, "runtime
           <p className="muted-text">
             {t("musicModels.sounds.pack.body", {
               defaultValue: "Sound effects run in a small pack of their own. About {size} GB, installed once.",
-              size: SOUNDS_PACK_GB,
+              size: soundsPackGb(runtime.sound.lane),
             })}
           </p>
         </div>

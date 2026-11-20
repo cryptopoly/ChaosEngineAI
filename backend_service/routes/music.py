@@ -337,7 +337,7 @@ def generate_music_locked(request: Request, body: MusicGenerateRequest, source: 
 
 
 # ---------------------------------------------------------------------------
-# Sounds (Stable Audio Open)
+# Sounds (Stable Audio Open, Stable Audio 3)
 # ---------------------------------------------------------------------------
 
 def _sound_variant_or_400(model_id: str | None) -> dict[str, Any]:
@@ -388,13 +388,20 @@ def generate_sound_locked(request: Request, body: SoundGenerateRequest, source: 
     if not_ready:
         raise HTTPException(status_code=409, detail=not_ready)
     estimates = variant.get("estimates") or {}
+    peak_gb, idle_gb = float(estimates.get("peakGb") or 6.0), float(estimates.get("idleGb") or 4.0)
+    if music_runtime.music_sound_env.lane() == "cuda":
+        # FU-274: as for music on CUDA, the weights sit in VRAM; the gate checks system RAM with the worker's
+        # measured host figures, not the Mac's unified-memory peak.
+        cuda = estimates.get("cuda") or {}
+        peak_gb = float(cuda.get("hostPeakGb") or CUDA_HOST_PEAK_GB)
+        idle_gb = float(cuda.get("hostIdleGb") or min(idle_gb, peak_gb))
     try:
         available_gb, pressure = snapshot_memory_signals()
         refusal = gate_music_generation(
             available_gb,
             pressure,
-            peak_gb=float(estimates.get("peakGb") or 6.0),
-            idle_gb=float(estimates.get("idleGb") or 4.0),
+            peak_gb=peak_gb,
+            idle_gb=idle_gb,
             resident=music_runtime.loaded_model(variant) == variant["engineModel"],
             model_name=variant["name"],
             noun="a sound",

@@ -1515,6 +1515,8 @@
       "needDownload": "Baixe o {name} em \"Modelos de música\" (cerca de {size} GB). Aceite primeiro a licença no Hugging Face.",
       "needTextEncoder": "O modelo de som está sem o codificador de texto. Baixe-o novamente em \"Modelos de música\".",
       "needPack": "Os sons também precisam de um pacote pequeno (cerca de 1 GB). Instale-o em \"Modelos de música\".",
+      "needPackCuda": null,
+      "needLicenceStableAudio3": null,
       "prompt": "Descreva o som",
       "placeholder": "pesada porta de madeira rangendo ao abrir, microfone próximo",
       "english": "O inglês funciona melhor. Efeitos e loops, não músicas nem fala.",

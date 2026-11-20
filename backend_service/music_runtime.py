@@ -183,7 +183,7 @@ def estimate_run(model: str | None, seconds: float, variations: int = 1, warm: b
 # ---------------------------------------------------------------------------
 
 def is_sound(variant: dict[str, Any]) -> bool:
-    """A sound-effects row (Stable Audio Open): its own pack, worker and library kind."""
+    """A sound-effects row (Stable Audio Open or Stable Audio 3): its own pack, worker and library kind."""
     return variant.get("kind") == "sound"
 
 
@@ -342,7 +342,7 @@ def _encoder_label(variant: dict[str, Any]) -> str:
     from backend_service.helpers.system_hardware import _resolve_app_version
 
     if is_sound(variant):
-        return f"ChaosEngineAI {_resolve_app_version()} / {variant['name']} ({music_sound_env.ENGINE_VERSION})"
+        return f"ChaosEngineAI {_resolve_app_version()} / {variant['name']} ({music_sound_env.engine_version(variant)})"
     return f"ChaosEngineAI {_resolve_app_version()} / ACE-Step 1.5 ({music_env.ENGINE_VERSION}, {variant['engineModel']})"
 
 
@@ -512,7 +512,7 @@ def _save_sound(track: dict[str, Any], index: int, variant: dict[str, Any], requ
             "kind": "sound",
             "model": variant["id"],
             "modelName": variant["name"],
-            "engine": music_sound_env.ENGINE_VERSION,
+            "engine": music_sound_env.engine_version(variant),
             "seed": track.get("seed"),
             "steps": reply_steps,
             "durationSeconds": track.get("duration_s"),

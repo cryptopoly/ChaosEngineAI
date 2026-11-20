@@ -1,15 +1,18 @@
-"""The sounds pack: the isolated venv Stable Audio Open runs in, the job that builds it, the weights layout.
+"""The sounds pack: the isolated venv Stable Audio Open and Stable Audio 3 run in, the job that builds it, the weights layout.
 
 Sound effects (D-27) run in a venv of their own (``~/.chaosengine/sound-venv``, ``CHAOSENGINE_SOUND_VENV``),
 never in the music venv or the backend: ``stable-audio-tools`` and the music engine pin different libraries,
 and keeping the Stability code and weights apart keeps the licence notice honest. Same recipe as the music
 pack in ``music_env``: plain pip from the backend's own Python (3.11 or 3.12) from ``sound_requirements.txt``,
 then the pinned ``stable-audio-tools`` release with ``--no-deps`` (its own metadata asks for Python 3.10 and
-exact old pins, so its dependencies are listed in the requirements file instead). The same ``music_worker``
-runs in that venv with the Stable Audio engine file selected by environment. There is no MLX build of Stable
-Audio Open Small we can pin (the community port has no licence and no package), so it runs on PyTorch: the
-Apple GPU (MPS) when present, else the CPU. The model and its T5 text encoder are mirrored from the Hub cache
-into ``<music data>/checkpoints`` (the worker may only read inside the music data folder).
+exact old pins, so its dependencies are listed in the requirements file instead), then the MIT
+``stable-audio-3`` library at a pinned commit, also ``--no-deps`` (every library it imports is already in the
+requirements file: torch 2.7.1, transformers >= 5.8). The same ``music_worker`` runs in that venv with the
+Stable Audio engine file selected by environment. On Apple Silicon it runs on PyTorch on the Apple GPU (MPS);
+on an NVIDIA GPU (FU-274) the requirements install with the PyTorch CUDA index, so ``torch==2.7.1`` resolves to
+``2.7.1+cu128``, and attention falls back to PyTorch SDPA (no flash-attn wheel is assumed). The model and its
+text encoder are mirrored from the Hub cache into ``<music data>/checkpoints`` (the worker may only read inside
+the music data folder).
 """
 
 from __future__ import annotations
@@ -30,45 +33,57 @@ from backend_service import music_env
 SOUND_VENV_DIR = Path(os.environ.get("CHAOSENGINE_SOUND_VENV") or Path.home() / ".chaosengine" / "sound-venv")
 SAT_VERSION = "0.0.20"
 ENGINE_VERSION = f"stable-audio-tools {SAT_VERSION}"
+# Stable Audio 3 (MIT library, not on PyPI): installed from the pinned commit's archive, no git needed.
+SA3_REPO = "https://github.com/Stability-AI/stable-audio-3"
+SA3_REF = "790793b89ddceea612be9ce42ff6830d18f6fa57"
+SA3_ARCHIVE = f"{SA3_REPO}/archive/{SA3_REF}.zip"
+SA3_ENGINE_VERSION = f"stable-audio-3 {SA3_REF[:7]}"
 REQUIREMENTS = Path(__file__).with_name("sound_requirements.txt")
 ENGINE_FILE = Path(__file__).with_name("music_worker_stableaudio.py")
-_SCHEMA = 1
+_SCHEMA = 2  # 2: the pack also holds stable-audio-3, and records its lane
 _MIN_FREE_GB = 6.0
+_MIN_FREE_GB_CUDA = 10.0  # the CUDA torch wheels alone are about 3.5 GB
 
 _VERIFY_CODE = (
     "import json, sys, torch, soundfile, transformers, stable_audio_tools\n"
     "from stable_audio_tools.inference.generation import generate_diffusion_cond\n"
     "from stable_audio_tools.models.factory import create_model_from_config\n"
     "import stable_audio_tools.models.diffusion  # the model-building imports (pytorch_lightning) only load here\n"
+    "from stable_audio_3.loading_utils import load_diffusion_cond\n"
+    "from transformers import T5GemmaEncoderModel\n"
     "print(json.dumps({'torch': torch.__version__, 'transformers': transformers.__version__, "
     "'mps': bool(getattr(torch.backends, 'mps', None) and torch.backends.mps.is_available()), "
+    "'cuda': torch.version.cuda if torch.cuda.is_available() else None, "
     "'python': '.'.join(map(str, sys.version_info[:3]))}))\n"
 )
-
-
-SOUND_UNSUPPORTED_CODE = "music.soundUnsupportedPlatform"
-SOUND_UNSUPPORTED_REASON = (
-    "Sound effects run on Apple Silicon Macs in this version. NVIDIA GPU support is planned; "
-    "nothing is installed or downloaded for sounds on this computer."
+# The CUDA lane needs a CUDA torch that sees the GPU (a CPU wheel would be a silent, very slow fallback).
+_VERIFY_CODE_CUDA = _VERIFY_CODE.replace(
+    "from transformers import T5GemmaEncoderModel\n",
+    "from transformers import T5GemmaEncoderModel\n"
+    "assert torch.cuda.is_available(), 'torch ' + torch.__version__ + ' sees no CUDA GPU'\n",
 )
 
 
 def lane() -> str:
-    """``mps`` on Apple Silicon; ``unsupported`` elsewhere (the CPU and CUDA sound lanes are later work, FU-139)."""
-    return "mps" if music_env.lane() == "mlx" else "unsupported"
+    """``mps`` on Apple Silicon, ``cuda`` where music runs on an NVIDIA GPU (FU-274), else ``unsupported``."""
+    here = music_env.lane()
+    return {"mlx": "mps", "cuda": "cuda"}.get(here, "unsupported")
 
 
 def lane_unavailable_reason() -> str | None:
-    """``None`` on a Mac; the sounds-only sentence where music runs on CUDA; else the music sentence."""
-    if lane() == "mps":
-        return None
-    return SOUND_UNSUPPORTED_REASON if music_env.lane() == "cuda" else music_env.lane_unavailable_reason()
+    """``None`` where sounds run; on any other host the same sentence as music."""
+    return None if lane() != "unsupported" else music_env.lane_unavailable_reason()
 
 
 def lane_unavailable_code() -> str | None:
-    if lane() == "mps":
-        return None
-    return SOUND_UNSUPPORTED_CODE if music_env.lane() == "cuda" else music_env.lane_unavailable_code()
+    return None if lane() != "unsupported" else music_env.lane_unavailable_code()
+
+
+def engine_version(variant: dict[str, Any] | None = None) -> str:
+    """The library a sound row runs on, as written into its tags and library item."""
+    if variant is not None and variant.get("engineLibrary") == "stable-audio-3":
+        return SA3_ENGINE_VERSION
+    return ENGINE_VERSION
 
 
 def _marker_path() -> Path:
@@ -96,7 +111,9 @@ def is_installed() -> bool:
         marker
         and marker.get("schema") == _SCHEMA
         and marker.get("version") == SAT_VERSION
+        and marker.get("sa3") == SA3_REF
         and marker.get("venv") == str(SOUND_VENV_DIR)
+        and marker.get("lane") == lane()
         and venv_python().exists()
     )
 
@@ -128,6 +145,9 @@ def text_encoder_dir(variant: dict[str, Any]) -> Path:
     return music_env.checkpoints_dir() / str(variant["textEncoder"]["checkpointSubdir"])
 
 
+# A Stable Audio 3 row carries its T5Gemma encoder inside its own repo (a weight folder), so it has no
+# ``textEncoder`` companion: the functions below then answer True.
+
 def _encoder_snapshot(variant: dict[str, Any]) -> Path | None:
     """A cache snapshot of the text encoder holding every file it needs (the pinned revision first)."""
     from backend_service.helpers.hf_cache_paths import _hf_repo_cache_dir
@@ -145,6 +165,8 @@ def _encoder_snapshot(variant: dict[str, Any]) -> Path | None:
 
 def text_encoder_ready(variant: dict[str, Any]) -> bool:
     """The T5 text encoder is in the layout already, or in the Hub cache (mirrored on first use)."""
+    if not variant.get("textEncoder"):
+        return True
     folder = text_encoder_dir(variant)
     if all((folder / f).exists() for f in variant["textEncoder"]["files"]):
         return True
@@ -153,6 +175,8 @@ def text_encoder_ready(variant: dict[str, Any]) -> bool:
 
 def prepare_text_encoder(variant: dict[str, Any]) -> bool:
     """Mirror the text encoder into the layout; returns True when it is complete there afterwards."""
+    if not variant.get("textEncoder"):
+        return True
     snapshot = _encoder_snapshot(variant)
     if snapshot is not None:
         music_env.mirror_tree(snapshot, text_encoder_dir(variant))
@@ -168,7 +192,7 @@ _PHASES: dict[str, str] = {
     "preflight": "Checking this machine",
     "creating-venv": "Creating the sounds environment",
     "installing": "Installing sound packages",
-    "installing-engine": "Installing Stable Audio tools",
+    "installing-engine": "Installing Stable Audio tools and Stable Audio 3",
     "verifying": "Checking the install",
 }
 
@@ -261,8 +285,16 @@ def _run(command: list[str]) -> str:
     return "\n".join(lines)
 
 
+def requirements_command() -> list[str]:
+    """The pip command for the pinned requirements; the CUDA lane adds the PyTorch CUDA index (``+cu128`` torch)."""
+    command = [str(venv_python()), "-m", "pip", "install", "-r", str(REQUIREMENTS)]
+    if lane() == "cuda":
+        command += ["--extra-index-url", music_env.CUDA_TORCH_INDEX]
+    return command
+
+
 def _verify() -> dict[str, Any]:
-    output = _run([str(venv_python()), "-I", "-c", _VERIFY_CODE])
+    output = _run([str(venv_python()), "-I", "-c", _VERIFY_CODE_CUDA if lane() == "cuda" else _VERIFY_CODE])
     for line in reversed(output.splitlines()):
         try:
             found = json.loads(line)
@@ -278,7 +310,9 @@ def _write_marker(versions: dict[str, Any]) -> None:
     _marker_path().write_text(json.dumps({
         "schema": _SCHEMA,
         "version": SAT_VERSION,
+        "sa3": SA3_REF,
         "venv": str(SOUND_VENV_DIR),
+        "lane": lane(),
         "python": ".".join(map(str, sys.version_info[:3])),
         "installedAt": time.strftime("%Y-%m-%dT%H:%M:%S"),
         **{k: str(v) for k, v in versions.items()},
@@ -304,8 +338,9 @@ def _run_install() -> None:
             except RuntimeError:
                 _JOB.log.append("The existing sounds environment is incomplete; installing.")
         free_gb = shutil.disk_usage(music_env.MUSIC_DATA_DIR).free / 1e9
-        if free_gb < _MIN_FREE_GB:
-            raise RuntimeError(f"Only {free_gb:.1f} GB free; the sounds pack needs about {_MIN_FREE_GB:.0f} GB.")
+        need_gb = _MIN_FREE_GB_CUDA if lane() == "cuda" else _MIN_FREE_GB
+        if free_gb < need_gb:
+            raise RuntimeError(f"Only {free_gb:.1f} GB free; the sounds pack needs about {need_gb:.0f} GB.")
 
         _set_phase("creating-venv")
         if SOUND_VENV_DIR.exists() and not venv_python().exists() and any(SOUND_VENV_DIR.iterdir()):
@@ -320,11 +355,12 @@ def _run_install() -> None:
         _run([str(venv_python()), "-m", "pip", "install", "--upgrade", "--quiet", "pip"])
 
         _set_phase("installing")
-        _run([str(venv_python()), "-m", "pip", "install", "-r", str(REQUIREMENTS)])
+        _run(requirements_command())
 
         _set_phase("installing-engine")
         _run([str(venv_python()), "-m", "pip", "install", "--no-deps", "--ignore-requires-python",
               f"stable-audio-tools=={SAT_VERSION}"])
+        _run([str(venv_python()), "-m", "pip", "install", "--no-deps", f"stable-audio-3 @ {SA3_ARCHIVE}"])
 
         _set_phase("verifying")
         _write_marker(_verify())

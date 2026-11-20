@@ -132,12 +132,12 @@ class SoundEnvTests(_SoundEnvBox):
             self.assertEqual((music_sound_env.lane(), music_sound_env.lane_unavailable_reason()), ("mps", None))
         with mock.patch.object(music_env, "lane", lambda: "unsupported"):
             self.assertEqual(music_sound_env.lane(), "unsupported")
-        # FU-139: music runs on CUDA, sounds do not yet; they say so in their own sentence and code.
+            self.assertEqual(music_sound_env.lane_unavailable_code(), music_env.UNSUPPORTED_PLATFORM_CODE)
+        # FU-274: where music runs on an NVIDIA GPU, sounds run there too.
         with mock.patch.object(music_env, "lane", lambda: "cuda"):
-            self.assertEqual(music_sound_env.lane(), "unsupported")
-            self.assertEqual(music_sound_env.lane_unavailable_reason(), music_sound_env.SOUND_UNSUPPORTED_REASON)
-            self.assertEqual(music_sound_env.lane_unavailable_code(), "music.soundUnsupportedPlatform")
-            self.assertIn("Apple Silicon", music_sound_env.lane_unavailable_reason())
+            self.assertEqual(music_sound_env.lane(), "cuda")
+            self.assertIsNone(music_sound_env.lane_unavailable_reason())
+            self.assertIsNone(music_sound_env.lane_unavailable_code())
 
     def test_marker_needs_the_release_the_venv_and_its_python(self) -> None:
         self.assertFalse(music_sound_env.is_installed())
@@ -147,9 +147,11 @@ class SoundEnvTests(_SoundEnvBox):
         music_sound_env._write_marker({"torch": "2.7.1"})
         self.assertTrue(music_sound_env.is_installed())
         marker = music_sound_env.read_marker()
-        marker["version"] = "0.0.1"
+        for key, stale in (("version", "0.0.1"), ("sa3", "0" * 40), ("lane", "elsewhere"), ("schema", 1)):
+            music_sound_env._marker_path().write_text(json.dumps({**marker, key: stale}))
+            self.assertFalse(music_sound_env.is_installed(), key)  # a pack without Stable Audio 3, or for another lane
         music_sound_env._marker_path().write_text(json.dumps(marker))
-        self.assertFalse(music_sound_env.is_installed())
+        self.assertTrue(music_sound_env.is_installed())
 
     def test_worker_environment_selects_the_sound_engine_and_goes_offline(self) -> None:
         env = music_sound_env.worker_env()
@@ -201,6 +203,7 @@ class SoundEnvTests(_SoundEnvBox):
                 mock.patch("backend_service.voice_env._base_python", lambda: "python3"):
             music_sound_env._JOB.__init__()
             music_sound_env._run_install()
+            self.assertTrue(music_sound_env.is_installed())  # the marker records the lane it was built for
         status = music_sound_env.job_status()
         self.assertEqual((status["phase"], status["error"]), ("done", None))
         flat = [" ".join(c) for c in commands]
@@ -209,7 +212,40 @@ class SoundEnvTests(_SoundEnvBox):
         engine = [c for c in flat if "stable-audio-tools==" in c][0]
         self.assertIn("--no-deps", engine)
         self.assertIn("--ignore-requires-python", engine)
-        self.assertTrue(music_sound_env.is_installed())
+        sa3 = [c for c in flat if "stable-audio-3 @ " in c][0]
+        self.assertIn("--no-deps", sa3)
+        self.assertIn(f"/archive/{music_sound_env.SA3_REF}.zip", sa3)
+        self.assertEqual(len(music_sound_env.SA3_REF), 40)
+        self.assertFalse(any("download.pytorch.org" in c for c in flat))  # the Mac lane takes torch from PyPI
+
+    def test_the_cuda_lane_installs_cuda_torch_and_checks_the_gpu(self) -> None:
+        """FU-274: on an NVIDIA GPU the requirements add the PyTorch CUDA index and the check needs a CUDA torch."""
+        commands: list[list[str]] = []
+        python = music_sound_env.venv_python()
+
+        def fake_run(command: list[str]) -> str:
+            commands.append(command)
+            if "venv" in command:
+                python.parent.mkdir(parents=True, exist_ok=True)
+                python.write_text("")
+            return '{"torch": "2.7.1+cu128"}'
+
+        with mock.patch.object(music_env, "lane", lambda: "cuda"), \
+                mock.patch.object(music_env, "_python_supported", lambda *a: True), \
+                mock.patch.object(music_sound_env, "_run", fake_run), \
+                mock.patch("backend_service.voice_env._base_python", lambda: "python3"):
+            music_sound_env._JOB.__init__()
+            music_sound_env._run_install()
+            self.assertEqual(music_sound_env.job_status()["error"], None)
+            self.assertTrue(music_sound_env.is_installed())
+            self.assertEqual(music_sound_env.read_marker()["lane"], "cuda")
+        requirements = [c for c in commands if "-r" in c][0]
+        self.assertEqual(requirements[-2:], ["--extra-index-url", music_env.CUDA_TORCH_INDEX])
+        check = [c for c in commands if "-c" in c][-1][-1]
+        self.assertIn("torch.cuda.is_available()", check)
+        self.assertIn("stable_audio_3", check)
+        with mock.patch.object(music_env, "lane", lambda: "mlx"):
+            self.assertFalse(music_sound_env.is_installed())  # a CUDA pack is not a Mac pack
 
     def test_install_refuses_off_apple_silicon(self) -> None:
         with mock.patch.object(music_env, "lane", lambda: "unsupported"):
@@ -258,9 +294,97 @@ class AudioHelperTests(unittest.TestCase):
         self.assertIs(self.engine.normalise_peak(quiet, None), quiet)
 
     def test_the_engine_declares_what_the_worker_checks(self) -> None:
-        self.assertEqual((self.engine.SECONDS_RANGE, self.engine.TASKS), ((1, 47), ("text2sound",)))
+        self.assertEqual((self.engine.SECONDS_RANGE, self.engine.TASKS), ((1, 380), ("text2sound",)))
         self.assertEqual({k: v["max_seconds"] for k, v in self.engine.MODEL_PROFILES.items()},
-                         {"stable-audio-open-small": 11, "stable-audio-open-1.0": 47})
+                         {"stable-audio-open-small": 11, "stable-audio-open-1.0": 47, "stable-audio-3-small-sfx": 120,
+                          "stable-audio-3-small-music": 120, "stable-audio-3-medium": 380})
+        # Every catalog sound row has an engine profile with the same longest clip.
+        for row in music_variants():
+            if row.get("kind") == "sound":
+                self.assertEqual(self.engine.MODEL_PROFILES[row["engineModel"]]["max_seconds"], row["maxSeconds"], row["id"])
+
+    def test_a_full_gpu_gets_a_plain_sentence(self) -> None:
+        """FU-274: a Stable Audio 3 run checks free VRAM first (counting what the worker already holds)."""
+        need = self.engine.MODEL_PROFILES["stable-audio-3-medium"]["vram_gb"]
+        message = self.engine.vram_shortfall_message("stable-audio-3-medium", 1.0, 0.5)
+        self.assertIn("1.0 GB free", message)
+        self.assertIn(f"{need:.0f} GB", message)
+        self.assertIn("Another program may be using the GPU", message)
+        self.assertIsNone(self.engine.vram_shortfall_message("stable-audio-3-medium", need, 0.0))
+        self.assertIsNone(self.engine.vram_shortfall_message("stable-audio-3-medium", 1.0, need))  # already loaded here
+        self.assertIsNone(self.engine.vram_shortfall_message("stable-audio-open-small", 0.1, 0.0))  # no figure, no check
+
+    def test_stable_audio_3_reads_its_own_encoder_folder_offline(self) -> None:
+        """The T5Gemma conditioner's Hub repo and subfolder are replaced by the local folder inside the model's layout."""
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "checkpoints" / "stable-audio-3-small-sfx"
+            (folder / "t5gemma-b-b-ul2").mkdir(parents=True)
+            (folder / "model.safetensors").write_bytes(b"x")
+            (folder / "t5gemma-b-b-ul2" / "model.safetensors").write_bytes(b"x")
+            (folder / "model_config.json").write_text(json.dumps({
+                "sample_rate": 44100, "sample_size": 5292032,
+                "model": {"conditioning": {"configs": [
+                    {"id": "prompt", "type": "t5gemma", "config": {"max_length": 256, "repo_id": "stabilityai/stable-audio-3-small-sfx",
+                                                                  "subfolder": "t5gemma-b-b-ul2"}},
+                    {"id": "seconds_total", "type": "number", "config": {"min_val": 0, "max_val": 384}},
+                ]}},
+            }))
+            engine = self.engine.create_engine(Path(tmp))
+            seen: dict = {}
+            with mock.patch.object(engine, "_pick_device", lambda: "cuda"), \
+                    mock.patch.object(engine, "_build_sa3", lambda config, weights: seen.update(config=config, weights=weights) or "model"):
+                info = engine.load("stable-audio-3-small-sfx")
+        prompt = seen["config"]["model"]["conditioning"]["configs"][0]["config"]
+        self.assertEqual(prompt["model_path"], str(folder / "t5gemma-b-b-ul2"))
+        self.assertNotIn("repo_id", prompt)
+        self.assertNotIn("subfolder", prompt)
+        self.assertEqual(seen["weights"], folder / "model.safetensors")
+        self.assertEqual((info["device"], info["sample_rate"], engine.sample_size), ("cuda", 44100, 5292032))
+
+
+class StableAudio3CatalogTests(unittest.TestCase):
+    """FU-274: the three Stable Audio 3 rows, gated like Stable Audio Open, measured on an RTX 4090."""
+
+    IDS = ("stabilityai/stable-audio-3-small-sfx", "stabilityai/stable-audio-3-small-music", "stabilityai/stable-audio-3-medium")
+
+    def test_the_rows(self) -> None:
+        rows = {v["id"]: v for v in music_variants()}
+        for model_id in self.IDS:
+            row = rows[model_id]
+            self.assertEqual((row["kind"], row["pack"], row["engine"], row["engineLibrary"]), ("sound", "sound", "stableaudio", "stable-audio-3"))
+            self.assertEqual(len(row["revision"]), 40)
+            self.assertIn("cuda", row["platforms"])
+            self.assertNotIn("textEncoder", row)  # the T5Gemma encoder is a folder of the same repo
+            self.assertEqual(row["weightFolders"], [row["checkpointSubdir"], row["checkpointSubdir"] + "/t5gemma-b-b-ul2"])
+            self.assertIn("t5gemma-b-b-ul2/*", row["downloadPatterns"])
+            self.assertNotIn("Stable_Audio_3.0_Thumbnail_1x1.png", row["downloadPatterns"])
+            licence = row["licence"]
+            self.assertTrue(licence["gated"])
+            self.assertEqual(licence["attribution"], "Powered by Stability AI")
+            text = " ".join(licence["summaryLines"])
+            for needle in ("US$1 million", "Gemma Terms of Use", "Prohibited Use Policy", "foundation model"):
+                self.assertIn(needle, text)
+            self.assertIn(f"/blob/{row['revision']}/LICENSE.md", licence["url"])
+            self.assertIn(f"/blob/{row['revision']}/LICENSE_GEMMA.md", licence["gemmaUrl"])
+            cuda = row["estimates"]["cuda"]
+            self.assertEqual(cuda["basis"], "measured")
+            self.assertTrue(cuda["wallSecondsAt"] and cuda["peakGb"] and cuda["hostPeakGb"])
+            self.assertFalse(row["estimates"].get("fixedWindow"))  # variable length: a short clip is cheaper
+        self.assertEqual(rows[self.IDS[0]]["makes"], ["sfx", "loops"])
+        self.assertNotIn("sfx", rows[self.IDS[1]]["makes"])
+        self.assertEqual((rows[self.IDS[2]]["maxSeconds"], rows[self.IDS[0]]["maxSeconds"]), (380, 120))
+
+    def test_text_encoder_needs_nothing_extra_and_the_engine_label(self) -> None:
+        row = next(v for v in music_variants() if v["id"] == self.IDS[0])
+        self.assertTrue(music_sound_env.text_encoder_ready(row))
+        self.assertTrue(music_sound_env.prepare_text_encoder(row))
+        self.assertTrue(music_sound_env.engine_version(row).startswith("stable-audio-3 "))
+        self.assertEqual(music_sound_env.engine_version(_row()), music_sound_env.ENGINE_VERSION)
+
+    def test_a_refused_download_says_to_accept_the_licence(self) -> None:
+        message = music_helpers.gated_music_message(self.IDS[2], "403 Client Error: Forbidden")
+        self.assertIn("huggingface.co/stabilityai/stable-audio-3-medium", message)
+        self.assertIn("accept the licence", message)
 
 
 class _SoundBox(unittest.TestCase):
@@ -330,7 +454,7 @@ class SoundRouteTests(_SoundBox):
         self.assertEqual(kinds, ["sound", "track"])
 
     def test_validation(self) -> None:
-        for body in ({"caption": "x", "seconds": 48}, {"caption": "x", "seconds": 0.5}, {"caption": "  "}, {"caption": "x", "bpm": 90},
+        for body in ({"caption": "x", "seconds": 381}, {"caption": "x", "seconds": 0.5}, {"caption": "  "}, {"caption": "x", "bpm": 90},
                      {"caption": "x", "variations": 3}, {"caption": "x" * 301}):
             self.assertEqual(self.client.post("/api/music/sound/generate", json=body).status_code, 422, body)
 

@@ -1515,6 +1515,8 @@
       "needDownload": "「ミュージックモデル」から {name} をダウンロードしてください（約 {size} GB）。先に Hugging Face でライセンスに同意してください。",
       "needTextEncoder": "サウンドモデルにテキストエンコーダーがありません。「ミュージックモデル」からもう一度ダウンロードしてください。",
       "needPack": "サウンドには小さなパック（約 1 GB）も必要です。「ミュージックモデル」からインストールしてください。",
+      "needPackCuda": null,
+      "needLicenceStableAudio3": null,
       "prompt": "サウンドを説明",
       "placeholder": "重い木のドアがきしみながら開く、近接マイク",
       "english": "英語が最も適しています。効果音とループ向けで、歌や音声には向きません。",

@@ -94,7 +94,11 @@ class MusicFitTests(unittest.TestCase):
                 self.assertNotIn("not built", fit["reason"])
         for row in music_variants():
             if row.get("kind") == "sound":
-                self.assertNotIn("cuda", row["platforms"])  # the CUDA sound lane is not built
+                # FU-274: every sound row runs on CUDA, judged on its measured VRAM peak.
+                self.assertIn("cuda", row["platforms"])
+                cuda = row["estimates"]["cuda"]
+                self.assertEqual(cuda["basis"], "measured", row["id"])
+                self.assertEqual(variant_fit(row, "music", CUDA_24)["needGb"], round(cuda["peakGb"], 1))
 
     def test_platform_gate(self) -> None:
         self.assertEqual(variant_fit(_variant(TURBO), "music", CPU)["status"], "unknown")

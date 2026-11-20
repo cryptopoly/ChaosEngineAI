@@ -1,13 +1,16 @@
-"""The Stable Audio Open Small engine for the music worker (sound effects and loops), PyTorch.
+"""The Stable Audio engine for the music worker (sound effects, loops, short instrumentals), PyTorch.
 
 Loaded by path from ``music_worker.py`` inside the sounds venv (``music_sound_env``); imports nothing from
-``backend_service`` and nothing heavy until ``load``. The model and its T5 text encoder are read from the
-checkpoints layout inside the music data folder (the worker may only touch that folder), with the Hub
-offline: ``model_config.json`` is rewritten in memory so the T5 conditioner reads its local folder. The
-device is the Apple GPU (MPS) when present, else the CPU (``CHAOSENGINE_SOUND_DEVICE`` forces one); an MPS
-failure retries once on the CPU. Progress comes from the sampler's own per-step callback, which is also where
-a cancel is raised. Clips are trimmed to the requested length, peak-normalised, and optionally made into a
-seamless loop (the tail is cross-faded into the head, so the last sample runs straight into the first).
+``backend_service`` and nothing heavy until ``load``. Two libraries: Stable Audio Open (Small, 1.0) runs on
+``stable-audio-tools``, Stable Audio 3 (small-sfx, small-music, medium) on the ``stable-audio-3`` library. The
+model and its text encoder are read from the checkpoints layout inside the music data folder (the worker may
+only touch that folder), with the Hub offline: ``model_config.json`` is rewritten in memory so the text
+conditioner (T5 or T5Gemma) reads its local folder. The device is the NVIDIA GPU (CUDA) or the Apple GPU (MPS)
+when present, else the CPU (``CHAOSENGINE_SOUND_DEVICE`` forces one); a GPU failure retries once on the CPU.
+Stable Audio 3 runs in float16 on CUDA, as its authors' loader does. Progress comes from the sampler's own
+per-step callback, which is also where a cancel is raised. Clips are trimmed to the requested length,
+peak-normalised, and optionally made into a seamless loop (the tail is cross-faded into the head, so the last
+sample runs straight into the first).
 """
 
 from __future__ import annotations
@@ -28,7 +31,15 @@ MODEL_PROFILES: dict[str, dict[str, Any]] = {
         "dir": "stable-audio-open-1.0", "max_seconds": 47, "seconds_start": True,
         "sampler_kwargs": {"sigma_min": 0.3, "sigma_max": 500},
     },
+    # Stable Audio 3: variable length (the work scales with the clip), the window from each config's sample_size
+    # (5,292,032 samples = 120 s for the small models, 16,777,216 = 380 s for medium). ``vram_gb`` is the measured
+    # CUDA peak at the longest clip the catalog offers plus headroom; a run is refused with a plain sentence when
+    # less VRAM than that is free (another program on the GPU).
+    "stable-audio-3-small-sfx": {"dir": "stable-audio-3-small-sfx", "max_seconds": 120, "library": "sa3", "vram_gb": 3.0},
+    "stable-audio-3-small-music": {"dir": "stable-audio-3-small-music", "max_seconds": 120, "library": "sa3", "vram_gb": 3.0},
+    "stable-audio-3-medium": {"dir": "stable-audio-3-medium", "max_seconds": 380, "library": "sa3", "vram_gb": 9.0},
 }
+SA3_ENCODER_DIR = "t5gemma-b-b-ul2"  # inside each Stable Audio 3 repo
 
 # What ``music_worker.check_generate`` validates a request against for this engine: the widest model's range;
 # ``generate`` then holds the clip to the loaded model's own maximum.
@@ -85,6 +96,16 @@ def normalise_peak(samples: Any, peak_db: float | None) -> Any:
     return (samples * (10 ** (peak_db / 20.0) / peak)).astype(np.float32)
 
 
+def vram_shortfall_message(model: str, free_gb: float, held_gb: float) -> str | None:
+    """A plain sentence when the GPU has too little free memory for ``model`` (counting what this worker already
+    holds), else ``None``. Only rows with a ``vram_gb`` figure are checked."""
+    need = MODEL_PROFILES.get(model, {}).get("vram_gb")
+    if not need or free_gb + held_gb >= float(need):
+        return None
+    return (f"The GPU has {free_gb:.1f} GB free and this model needs about {float(need):.0f} GB while it works. "
+            "Another program may be using the GPU: close it, or pick a smaller sound model.")
+
+
 class StableAudioEngine:
     def __init__(self, data_dir: Path) -> None:
         self.data_dir = Path(data_dir)
@@ -100,7 +121,7 @@ class StableAudioEngine:
     def unavailable_reason(self) -> str | None:
         import importlib.util
 
-        for name in ("torch", "soundfile", "stable_audio_tools", "transformers"):
+        for name in ("torch", "soundfile", "stable_audio_tools", "stable_audio_3", "transformers"):
             if importlib.util.find_spec(name) is None:
                 return f"The package '{name}' is missing from the sounds environment. Reinstall the sounds pack."
         return None
@@ -121,7 +142,8 @@ class StableAudioEngine:
     def _model_files(self, model: str) -> tuple[Path, Path, Path]:
         root = self.data_dir / "checkpoints"
         folder = root / MODEL_PROFILES[model]["dir"]
-        return folder / "model_config.json", folder / "model.safetensors", root / ENCODER_DIR
+        encoder = folder / SA3_ENCODER_DIR if MODEL_PROFILES[model].get("library") == "sa3" else root / ENCODER_DIR
+        return folder / "model_config.json", folder / "model.safetensors", encoder
 
     def _build(self, config: dict[str, Any], weights: Path) -> Any:
         """The model with its weights, on the CPU in float32 (moved to the device by the caller)."""
@@ -144,15 +166,34 @@ class StableAudioEngine:
                 raise FileNotFoundError(f"{needed.name} is missing from {needed.parent}. Download the model from Music > Models.")
         config = json.loads(config_path.read_text(encoding="utf-8"))
         for entry in (config.get("model", {}).get("conditioning", {}) or {}).get("configs", []):
-            if entry.get("type") == "t5":
-                entry.setdefault("config", {})["model_path"] = str(encoder)
+            if entry.get("type") in ("t5", "t5gemma"):
+                settings = entry.setdefault("config", {})
+                settings["model_path"] = str(encoder)
+                # Stable Audio 3 names its own Hub repo and subfolder; the local folder replaces both (offline).
+                settings.pop("repo_id", None)
+                settings.pop("subfolder", None)
         self.sample_rate = int(config.get("sample_rate") or self.sample_rate)
         self.sample_size = int(config.get("sample_size") or self.sample_size)
-        loaded = self._build(config, weights)
         self.device = self._pick_device()
-        self.model = loaded.to(self.device).eval().requires_grad_(False)
+        if MODEL_PROFILES[model].get("library") == "sa3":
+            self.model = self._build_sa3(config, weights)
+        else:
+            loaded = self._build(config, weights)
+            self.model = loaded.to(self.device).eval().requires_grad_(False)
         self.name = model
         return {"model": model, "lm": None, "device": self.device, "sample_rate": self.sample_rate}
+
+    def _build_sa3(self, config: dict[str, Any], weights: Path) -> Any:
+        """A ``stable_audio_3.StableAudioModel`` on the device; float16 on CUDA (the authors' loader default)."""
+        import torch
+        from stable_audio_3 import StableAudioModel
+        from stable_audio_3.loading_utils import load_diffusion_cond
+
+        half = self.device == "cuda"
+        model = load_diffusion_cond(config, str(weights), device=self.device, model_half=half)
+        if self.device == "cuda":
+            torch.cuda.empty_cache()
+        return StableAudioModel(model, config, self.device, half)
 
     def unload(self) -> None:
         self.model, self.name = None, None
@@ -162,6 +203,8 @@ class StableAudioEngine:
 
             if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
                 torch.mps.empty_cache()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
         except Exception:  # noqa: BLE001 - nothing to release
             pass
 
@@ -174,7 +217,7 @@ class StableAudioEngine:
         profile = MODEL_PROFILES[self.name or ENGINE_MODEL]
         steps = int(request.get("steps") or 8)
         conditioning: dict[str, Any] = {"prompt": str(request.get("caption") or ""), "seconds_total": seconds}
-        if profile["seconds_start"]:
+        if profile.get("seconds_start"):
             conditioning["seconds_start"] = 0
 
         def callback(info: Any) -> None:
@@ -187,6 +230,19 @@ class StableAudioEngine:
         hooks.check_cancel()
         if self.device == "cpu":
             hooks.device("cpu", fallback=self._fell_back)
+        if profile.get("library") == "sa3":
+            # Variable length: the library pads the clip by a few seconds and trims back to ``duration``.
+            return self.model.generate(
+                prompt=str(request.get("caption") or ""),
+                duration=seconds,
+                steps=steps,
+                cfg_scale=float(request.get("cfg_scale") or 1.0),
+                sample_size=self.sample_size,
+                seed=seed,
+                sampler_type=str(request.get("sampler") or "pingpong"),
+                callback=callback,
+                disable_tqdm=True,
+            )
         with torch.inference_mode():
             audio = generate_diffusion_cond(
                 self.model,
@@ -208,7 +264,9 @@ class StableAudioEngine:
         try:
             return self._run_one(request, seed, seconds, hooks)
         except Exception as exc:  # noqa: BLE001
-            if type(exc).__name__ == "Cancelled" or self.device == "cpu":
+            if type(exc).__name__ == "Cancelled" or self.device in ("cpu", "cuda"):
+                raise  # a CUDA failure (out of memory, a driver error) is reported, not retried for minutes on the CPU
+            if MODEL_PROFILES[self.name or ENGINE_MODEL].get("library") == "sa3":
                 raise
             # One retry on the CPU when the Apple GPU could not run an operation.
             self.model = self.model.to("cpu")
@@ -237,6 +295,14 @@ class StableAudioEngine:
         peak_db = request.get("normalize_peak_db")
         out_dir = Path(str(request["out_dir"]))
         tracks: list[dict[str, Any]] = []
+        if self.device == "cuda":
+            import torch
+
+            free_bytes, _total = torch.cuda.mem_get_info()
+            problem = vram_shortfall_message(model, free_bytes / 1e9, torch.cuda.memory_reserved() / 1e9)
+            if problem:
+                raise RuntimeError(problem)
+            torch.cuda.reset_peak_memory_stats()
         for index in range(variations):
             seed = base_seed + index
             audio = self._generate_audio(request, seed, seconds, hooks)
@@ -256,7 +322,13 @@ class StableAudioEngine:
                 "duration_s": round(samples.shape[0] / self.sample_rate, 3),
                 "loop": loop,
             })
-        return {"tracks": tracks, "timings": {"device": self.device}}
+        timings: dict[str, Any] = {"device": self.device}
+        if self.device == "cuda":
+            import torch
+
+            timings["vram_peak_gb"] = round(torch.cuda.max_memory_reserved() / 1e9, 2)
+            timings["vram_peak_allocated_gb"] = round(torch.cuda.max_memory_allocated() / 1e9, 2)
+        return {"tracks": tracks, "timings": timings}
 
 
 def create_engine(data_dir: Path) -> StableAudioEngine:

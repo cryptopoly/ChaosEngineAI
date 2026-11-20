@@ -1,12 +1,13 @@
-"""Phase 11 check (FU-139): the music runtime's lane matches the host, and hosts without a lane refuse install.
+"""Phase 11 checks (FU-139, FU-274): the music runtime's lane matches the host, and hosts without a lane refuse install;
+``real_sound`` makes one real Stable Audio 3 clip on CUDA when the sounds pack and its weights are there.
 
 Called from ``phase_11`` in ``scripts/e2e_test_suite.py`` as ``check(call, runtime)`` where ``call(method, path,
 payload)`` returns ``(status, json)`` against ``/api/music``. Three paths:
 
 * Apple Silicon: lane ``mlx``, no reason, no code.
-* An NVIDIA host (lane ``cuda``, Windows or Linux x86_64): music has no reason or code, both ACE-Step rows list
-  ``cuda``, the sound rows do not, the sounds lane reports its own sentence and ``music.soundUnsupportedPlatform``,
-  and ``POST /download`` of a sound repo is refused (409) without starting anything.
+* An NVIDIA host (lane ``cuda``, Windows or Linux x86_64): music and sounds have no reason or code (FU-274: the
+  sounds lane is ``cuda`` too), the ACE-Step rows and every sound row list ``cuda``, and the three Stable Audio 3
+  rows are in the catalog, gated, with a measured CUDA estimate.
 * Anything else: the single music sentence and ``music.unsupportedPlatform``, the sounds lane says the same, and
   ``POST /install`` starts nothing (the job answers ``error`` with that reason).
 
@@ -20,8 +21,7 @@ from typing import Any, Callable
 
 REASON_START = "Music generation needs an Apple Silicon Mac or an NVIDIA GPU"
 CODE = "music.unsupportedPlatform"
-SOUND_CODE = "music.soundUnsupportedPlatform"
-SOUND_REPO = "stabilityai/stable-audio-open-small"
+SA3_IDS = ("stabilityai/stable-audio-3-small-sfx", "stabilityai/stable-audio-3-small-music", "stabilityai/stable-audio-3-medium")
 
 
 def _rows(call: Callable[..., tuple[int, Any]]) -> tuple[int, list[dict[str, Any]]]:
@@ -33,19 +33,61 @@ def _cuda(call: Callable[..., tuple[int, Any]], runtime: dict[str, Any]) -> tupl
     if runtime.get("unavailableReason") or runtime.get("unavailableCode"):
         return "fail", f"music is refused on an NVIDIA host: {runtime.get('unavailableReason')!r}", {}
     sound = runtime.get("sound") or {}
-    if sound.get("unavailableCode") != SOUND_CODE or not sound.get("unavailableReason"):
-        return "fail", f"the sounds lane does not say why: {sound.get('unavailableReason')!r} / {sound.get('unavailableCode')!r}", {}
+    if sound.get("lane") != "cuda" or sound.get("unavailableReason") or sound.get("unavailableCode"):
+        return "fail", f"the sounds lane is not open on CUDA: {sound.get('lane')!r} {sound.get('unavailableReason')!r}", {}
     code, rows = _rows(call)
-    music = [v for v in rows if v.get("kind") != "sound"]
+    if code != 200 or any("cuda" not in (v.get("platforms") or []) for v in rows):
+        return "fail", f"catalog HTTP {code}; a row does not list cuda", {}
+    by_id = {v.get("id"): v for v in rows}
+    for model_id in SA3_IDS:
+        row = by_id.get(model_id) or {}
+        cuda = (row.get("estimates") or {}).get("cuda") or {}
+        if not (row.get("licence") or {}).get("gated") or cuda.get("basis") != "measured" or not cuda.get("peakGb"):
+            return "fail", f"{model_id}: missing, not gated, or no measured CUDA estimate", {}
     sounds = [v for v in rows if v.get("kind") == "sound"]
-    if code != 200 or not music or any("cuda" not in (v.get("platforms") or []) for v in music):
-        return "fail", f"catalog HTTP {code}; an ACE-Step row does not list cuda", {}
-    if any("cuda" in (v.get("platforms") or []) for v in sounds):
-        return "fail", "a sound row lists cuda, but the CUDA sound lane is not built", {}
-    code, body = call("POST", "/download", {"repo": SOUND_REPO})
-    if code != 409 or (body or {}).get("detail") != sound.get("unavailableReason"):
-        return "fail", f"a sound download was not refused: HTTP {code} {str(body)[:200]}", {}
-    return "pass", "", {"path": "cuda", "musicRows": len(music), "installed": runtime.get("installed")}
+    return "pass", "", {"path": "cuda", "rows": len(rows), "soundRows": len(sounds), "installed": runtime.get("installed"),
+                        "soundsInstalled": sound.get("installed")}
+
+
+def real_sound(call: Callable[..., tuple[int, Any]], fetch: Callable[[str], tuple[int, bytes]],
+               runtime: dict[str, Any], cleanup: list[str]) -> tuple[str, str, dict[str, Any]]:
+    """FU-274: a real 5 s Stable Audio 3 Small SFX clip on CUDA: a 44.1 kHz stereo FLAC of the asked length, a VRAM
+    peak under 24 GB, and (when ``soundfile`` is importable here) not silent."""
+    sound = runtime.get("sound") or {}
+    if sound.get("lane") != "cuda":
+        return "skip", "not the CUDA sounds lane", {}
+    code, rows = _rows(call)
+    row = next((v for v in rows if v.get("id") == SA3_IDS[0]), None)
+    if not sound.get("installed") or not row or not row.get("availableLocally"):
+        return "skip", "sounds pack or Stable Audio 3 Small SFX weights not installed", {}
+    code, body = call("POST", "/sound/generate", {"caption": "e2e check, glass shattering on a stone floor", "seconds": 5,
+                                                  "seed": 11, "modelId": SA3_IDS[0], "title": "E2E sound"})
+    if code != 200 or not (body or {}).get("items"):
+        return "fail", f"sound generate: HTTP {code} {str(body)[:200]}", {}
+    item = body["items"][0]
+    cleanup.append(item["id"])
+    if (item.get("sampleRate"), item.get("channels")) != (44100, 2) or abs(float(item.get("durationS") or 0) - 5) > 0.05:
+        return "fail", f"sound facts wrong: {item}", {}
+    vram = (body.get("timings") or {}).get("vram_peak_gb")
+    if not (isinstance(vram, (int, float)) and 0 < vram <= 24):
+        return "fail", f"CUDA VRAM peak missing or above 24 GB: {vram!r}", {}
+    code, data = fetch(f"/api/music/library/{item['id']}/audio")
+    if code != 200 or not data.startswith(b"fLaC"):
+        return "fail", f"audio: HTTP {code}", {}
+    rms_db = None
+    try:
+        import io
+
+        import numpy as np
+        import soundfile
+
+        samples, _rate = soundfile.read(io.BytesIO(data), dtype="float32")
+        rms_db = round(float(20 * np.log10(np.sqrt(np.mean(samples ** 2)) + 1e-12)), 1)
+        if rms_db < -60:
+            return "fail", f"the clip is silent (RMS {rms_db} dBFS)", {}
+    except ImportError:
+        pass
+    return "pass", "", {"jobSeconds": body.get("seconds"), "vramPeakGb": vram, "rmsDb": rms_db, "bytes": len(data)}
 
 
 def check(call: Callable[..., tuple[int, Any]], runtime: dict[str, Any]) -> tuple[str, str, dict[str, Any]]:

@@ -94,12 +94,44 @@ def _incomplete_sizes(cache_dir: Path) -> tuple[int, int]:
                 size = blob.stat().st_size
             except OSError:
                 continue
-            every += size
             key = blob.name.split(".", 1)[0]
+            if os.path.lexists(cache_dir / "blobs" / key):
+                # The blob finished (or links to the shared store): this partial is a dead leftover.
+                continue
+            every += size
             largest[key] = max(largest.get(key, 0), size)
     except OSError:
         pass
     return every, sum(largest.values())
+
+
+def prune_stale_partials(cache_dir: Path) -> int:
+    """Delete ``.incomplete`` files nothing can resume; return the bytes freed.
+
+    Call it only while no download of this repo runs. A partial whose blob already finished is dead; of
+    several partials for one blob only the largest is kept, because the resuming download takes the largest
+    (FU-275).
+    """
+    groups: dict[str, list[tuple[int, Path]]] = {}
+    try:
+        for blob in (cache_dir / "blobs").glob("*.incomplete"):
+            try:
+                groups.setdefault(blob.name.split(".", 1)[0], []).append((blob.stat().st_size, blob))
+            except OSError:
+                continue
+    except OSError:
+        return 0
+    freed = 0
+    for key, parts in groups.items():
+        parts.sort(key=lambda item: item[0], reverse=True)
+        doomed = parts if os.path.lexists(cache_dir / "blobs" / key) else parts[1:]
+        for size, path in doomed:
+            try:
+                path.unlink()
+                freed += size
+            except OSError:
+                continue
+    return freed
 
 
 def _matching_cache_bytes(cache_dir: Path, allow_patterns: list[str]) -> int:

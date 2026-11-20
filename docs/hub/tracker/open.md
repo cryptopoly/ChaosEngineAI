@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 165 rows with work, decisions or watch items still open, newest first.
+summary: 166 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-278 · ACE-Step XL on a shared GPU — Done (2026-11-20, agent branch), unit-tested</summary>
+
+**Status or trigger:** **Done (2026-11-20, agent branch), unit-tested; the live shared-card run was not repeated**
+
+**Notes:** With another program holding about 12 GB, XL loaded but ACE-Step refused every run with a message about batch size and duration. `music_worker_acestep.vram_shortfall_message` now checks free VRAM before each CUDA run (peak table: turbo 8.7 GB, XL 12.5 GB, +2 GB over 300 s, minus what the worker already holds) and says how much is free, how much the model needs, that another program may be using the GPU, and to close it or use the turbo model. The offload decision is unchanged. Peaks are from the 4090 runs in FU-139; other cards and the offload-on peak are estimates.
+
+</details>
 
 <details>
 <summary>FU-277 · CUDA music lane: what is not tested — Linux NVIDIA box, a 12 to 16 GB card, or the planner turned on</summary>
@@ -28,11 +37,11 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-275 · Music download pause restarts from zero — Next touch of state/downloads.py</summary>
+<summary>FU-275 · Music download pause restarts from zero — Done (2026-11-20, agent branch), tested through the app routes</summary>
 
-**Status or trigger:** Next touch of `state/downloads.py`
+**Status or trigger:** **Done (2026-11-20, agent branch), tested through the app routes**
 
-**Notes:** Pausing a music download (`POST /api/music/download/cancel`) and starting it again begins every file anew under a new `.incomplete` name; the old partials stay in the cache (3.3 GB left behind for ACE-Step 1.5 on 2026-11-19), and the progress meter counts them (`12.44 / 12.44 GB` for a 10.1 GB repo). Resume the existing partial or delete it.
+**Notes:** Cause: huggingface_hub 1.33 writes each file to `<etag>.<random>.incomplete`, never reuses it, and only deletes it on a clean exit, so a paused (killed) download restarted at zero and left the partial behind; the same helper serves `/api/models/download`, so both paths had it. Fix: [hf_resume_script.py](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/backend_service/hf_resume_script.py) wraps the library's private `_download_to_tmp_and_move` in the snapshot subprocess (`HF_SNAPSHOT_DOWNLOAD_HELPER`): a partial from an earlier run is kept (largest only), cut back 32 MB and finished with an HTTP range request, then checked against the SHA-256 blob name; no partial uses the original xet fast path. `start_download` calls `hf_cache_paths.prune_stale_partials` first (dead partials of finished blobs, extra copies), and the progress meter skips partials of finished blobs. Real test on SmolLM2-135M through the routes (throwaway HOME): paused at 100 MB, resumed from 71 MB, completed, no partial left. Not tested: a multi-GB music repo, a range-ignoring proxy (the library then restarts that file), a library that renames the private function (the wrapper is then not installed and downloads behave as before).
 
 </details>
 

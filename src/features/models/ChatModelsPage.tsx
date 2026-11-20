@@ -812,7 +812,8 @@ export function ChatModelsPage({
           defaultValue:
             "{shown} of {total, plural, one {# model} other {# models}} · {installed} installed · {size} on disk · {dirs, plural, one {# directory} other {# directories}}",
           ...counts,
-          size: sizeLabel(libraryTotalSizeGb),
+          // Nothing on disk is 0 GB, not "Unknown" (a word that also stayed English in every language).
+          size: libraryTotalSizeGb > 0 ? sizeLabel(libraryTotalSizeGb) : "0 GB",
           dirs: enabledDirectoryCount,
         })
       }

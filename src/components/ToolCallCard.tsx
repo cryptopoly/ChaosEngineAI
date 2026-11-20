@@ -107,7 +107,7 @@ function renderStructuredOutput(toolCall: ToolCallInfo): React.ReactNode {
 }
 
 const TOOL_ICONS: Record<string, string> = {
-  web_search: "search",
+  web_search: "web", // the badge shows four letters at most: "search" read "SEAR"
   calculator: "calc",
   code_executor: "code",
   file_reader: "file",

@@ -2042,3 +2042,13 @@ All numbers: RTX 4090 24 GB, Windows 11, llama.cpp b12441 CUDA, 8,192 context, f
 **FU-266 (app download on a slow link).** Checked, no change. Shared with 16 ranged requests and another agent's job the app moved 1.45 GB at 1.3 MB/s (0.35 at the slowest) while the ranged downloader got 7 to 14; alone, 1.08 GB took 51 s (23 MB/s). Resume verified (94 MB partial cut to 71 MB, grew to the end). Whether to add parallel ranges: FU-290.
 
 **Tests.** `test_catalog_text_families`, `test_text_gguf`, `test_llama_fu178`, `test_audit_catalog_repos`, `test_model_fit`, `test_inference` and the new `test_backend_service` load test: see the final run in the commit message; `scripts/audit-catalog-repos.py` re-run. Not run: the full E2E suite, the macOS paths, any MLX Lightning row.
+
+## 2026-11-20: H3 licence changes 1, 2 and 5 (D-99, FU-340, agent)
+
+Built what the owner approved from `docs/research/minimax-h3-licence-check-2026-11-20.md`; `H3_RELEASED` is still False and its test is unchanged. No H3 weights were downloaded or run.
+
+- `licence_gate.py`: new tick sentence (accepts the licence and AUP), `H3_NOTICE` (hosted-service text) in the model note and the row note, `liveLicenceUrl` beside the pinned `licenceUrl`, `key_for_model_id`.
+- Licence screen: second button "Read the current licence on Hugging Face" (`licence.screen.readLive`, English only, null in the other locales).
+- `output_metadata.generation_settings` adds `machine_generated: true` and `model` for any gated row, so H3 mp4s carry the tag the way music FLAC and cloned-voice WAV do.
+- Tests: three new in `tests/test_licence_gate.py` (sentence, old tick lapses, audit kept, notice and links, tag) and one in `Licence.test.tsx`.
+- Checked: `test_licence_gate.py` and `test_output_metadata.py` pass except `test_h3_arguments_follow_the_pinned_doc` and `test_offload_only_off_macos` (WinError 193 on this PC, known host failures); `tsc` clean; vitest for the two licence files 14 passed; `i18n:validate` OK.

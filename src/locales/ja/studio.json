@@ -1366,6 +1366,7 @@
       "asks": "このライセンスがあなたに求めること",
       "gatedNote": "このモデルはゲート付きです。先に Hugging Face で規約に同意し、その後トークンを使ってここからダウンロードしてください（設定 > Hugging Face）。",
       "readFull": "ライセンス全文を読む",
+      "readLive": null,
       "openHub": "Hugging Face で開く",
       "notNow": "今はしない",
       "accepted": "同意しました",

@@ -1366,6 +1366,7 @@
       "asks": "此授權條款對你的要求",
       "gatedNote": "此模型為受限模型：請先在 Hugging Face 上接受條款，然後使用你的權杖在此下載（偏好設定 > Hugging Face）。",
       "readFull": "閱讀完整授權條款",
+      "readLive": null,
       "openHub": "在 Hugging Face 開啟",
       "notNow": "稍後再說",
       "accepted": "我已接受",

@@ -8,7 +8,7 @@ summary: Every FU row from FOLLOW_UPS.md, split into open and closed.
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here.
 
-- [Open and live follow-ups](open.md): **190** rows.
+- [Open and live follow-ups](open.md): **191** rows.
 - [Closed follow-ups](closed.md): **112** rows.
 
 ## Newest ten
@@ -16,6 +16,7 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 | Row | Item | Status |
 |---|---|---|
 | [FU-399](open.md) | Windows pre-release verification: full bundle build with the CUDA sd.exe, the extra 790 MB | When the Windows code is ready (owner asked 2026-11-20), before the release/v0.10.0 merge |
+| [FU-340](open.md) | MiniMax H3 licence changes built; release still waits for a lawyer (D-99) | Built 2026-11-20, H3_RELEASED still False. |
 | [FU-335](open.md) | ACE-Step 1.5 turbo ignored the lyrics in 3 of 3 tries | Next music pass |
 | [FU-334](open.md) | Automatic lip-sync score for takes | When sung shots get two takes (FU-331) |
 | [FU-333](open.md) | Lightricks A2V pipeline as the low-VRAM / reference option (route a) | A 12-16 GB card target, or a quality comparison |
@@ -24,4 +25,3 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 | [FU-330](open.md) | Build LTX-2.3 audio to video on Windows with our own loop (route b of the lip-sync spike) | When D-103 is decided for route (b) |
 | [FU-327](open.md) | Voice i18n, accessibility and a Windows browser-test failure | Polish pass |
 | [FU-326](open.md) | Voices list length | After FU-321 |
-| [FU-325](open.md) | Voice runtime install: sizes and progress | After D-102 D |

@@ -12,6 +12,7 @@ export interface TerritoryModel {
   excludedTerritories: string[];
   licenceName: string;
   licenceUrl: string;
+  liveLicenceUrl?: string;
   summaryLines: string[];
   confirmSentence: string;
   note: string;

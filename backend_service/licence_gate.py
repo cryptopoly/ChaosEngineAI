@@ -31,6 +31,16 @@ H3_LICENCE_URL = (
     "https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/0919fb684102ef115126612f3fbb84d1027e7317/LICENSE"
 )
 
+# The live licence page: the Acceptable Use Policy can change after the pinned revision, so the screen links both.
+H3_LIVE_LICENCE_URL = "https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE"
+
+H3_NOTICE = (
+    "ChaosEngineAI does not include or distribute MiniMax H3. You download it from Hugging Face yourself, and "
+    "you are the licensee. If you let other people generate with it (for example through remote connections or "
+    "the agent bridge), you are offering a hosted service and the licence's duties for services (sections V.2 "
+    "and V.5) apply to you. MiniMax may update its Acceptable Use Policy; read the current licence on Hugging Face."
+)
+
 TERRITORY_MODELS: dict[str, dict[str, Any]] = {
     H3_KEY: {
         "key": H3_KEY,
@@ -39,6 +49,7 @@ TERRITORY_MODELS: dict[str, dict[str, Any]] = {
         "excludedTerritories": ["European Union", "United Kingdom", "Republic of Korea", "United States"],
         "licenceName": "MiniMax H3 Community License",
         "licenceUrl": H3_LICENCE_URL,
+        "liveLicenceUrl": H3_LIVE_LICENCE_URL,
         "summaryLines": [
             "Licensed only outside the European Union, the United Kingdom, the Republic of Korea and the United "
             "States. Using the model or what it makes in those places is not allowed.",
@@ -50,13 +61,13 @@ TERRITORY_MODELS: dict[str, dict[str, Any]] = {
             "machine-made content you publish, no military use).",
         ],
         "confirmSentence": (
-            "I confirm that I am not in the European Union, the United Kingdom, the Republic of Korea or the United "
-            "States, and that I will not use this model or what it makes there."
+            "I am not in the European Union, the United Kingdom, the Republic of Korea or the United States, and I "
+            "will not use this model or what it makes there. I accept the MiniMax H3 Community License, including "
+            "its Acceptable Use Policy, and I am responsible for following it."
         ),
         "note": (
-            "The weights are never bundled with ChaosEngineAI: you download them from Hugging Face yourself. It "
-            "runs on the stable-diffusion.cpp runtime (sd), which release builds may not include. Not tested by "
-            "the maintainers."
+            H3_NOTICE + " It runs on the stable-diffusion.cpp runtime (sd), which release builds may not include. "
+            "Not tested by the maintainers."
         ),
     },
 }
@@ -266,6 +277,16 @@ def key_for_repo(repo: str | None) -> str | None:
         repos.update(str(c.get("repo") or "") for c in variant.get("downloadCompanions") or [])
         if repo in repos:
             return key
+    return None
+
+
+def key_for_model_id(model_id: str | None) -> str | None:
+    """The gate key of the catalog row whose id is ``model_id`` (None for an ungated or unknown row)."""
+    if not model_id:
+        return None
+    for variant in _catalog_rows():
+        if variant.get("id") == model_id:
+            return row_key(variant)
     return None
 
 

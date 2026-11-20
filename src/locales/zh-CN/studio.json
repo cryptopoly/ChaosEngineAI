@@ -1366,6 +1366,7 @@
       "asks": "此许可证对你的要求",
       "gatedNote": "此模型为受限模型：请先在 Hugging Face 上接受条款，然后使用你的令牌在此下载（设置 > Hugging Face）。",
       "readFull": "阅读完整许可证",
+      "readLive": null,
       "openHub": "在 Hugging Face 上打开",
       "notNow": "以后再说",
       "accepted": "我已接受",

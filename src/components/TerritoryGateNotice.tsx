@@ -146,12 +146,17 @@ export function TerritoryGateNotice({
           entry={{ name: reviewing.name }}
           licence={territoryLicence(reviewing)}
           accepted={false}
-          territory={{ excludedTerritories: reviewing.excludedTerritories, confirmSentence: reviewing.confirmSentence }}
+          territory={{
+            excludedTerritories: reviewing.excludedTerritories,
+            confirmSentence: reviewing.confirmSentence,
+            liveLicenceUrl: reviewing.liveLicenceUrl,
+          }}
           error={error}
           onAccept={() => void confirm(reviewing)}
           onDismiss={() => setReviewing(null)}
           onOpenHub={() => onOpenExternalUrl(reviewing.licenceUrl)}
           onOpenFull={() => onOpenExternalUrl(reviewing.licenceUrl)}
+          onOpenLive={() => reviewing.liveLicenceUrl && onOpenExternalUrl(reviewing.liveLicenceUrl)}
         />
       ) : null}
     </details>

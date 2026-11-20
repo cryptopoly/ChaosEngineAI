@@ -139,6 +139,48 @@ class ConfirmTests(GateCase):
         with mock.patch.dict(licence_gate.TERRITORY_MODELS, {KEY: changed}):
             self.assertFalse(licence_gate.is_confirmed(KEY))
 
+    def test_the_sentence_accepts_the_licence_and_the_old_territory_only_tick_lapses(self):
+        self.assertTrue(SENTENCE.startswith("I am not in the European Union, the United Kingdom, the Republic of Korea"))
+        self.assertIn("I accept the MiniMax H3 Community License, including its Acceptable Use Policy", SENTENCE)
+        old = (
+            "I confirm that I am not in the European Union, the United Kingdom, the Republic of Korea or the "
+            "United States, and that I will not use this model or what it makes there."
+        )
+        self.confirm()
+        # A record made under the old sentence no longer counts, and the row hides until a new tick.
+        data = json.loads((self.data / "licence-gate.json").read_text(encoding="utf-8"))
+        data[KEY]["sentence"] = old
+        (self.data / "licence-gate.json").write_text(json.dumps(data), encoding="utf-8")
+        self.assertFalse(licence_gate.is_confirmed(KEY))
+        self.assertNotIn(H3_ID, self.video_payload_ids())
+        self.confirm(sentence=old, code=400)
+        # The audit trail keeps every earlier entry; the new tick is appended, nothing is rewritten.
+        self.confirm()
+        audit = [json.loads(line) for line in (self.data / "licence-gate-audit.jsonl").read_text().splitlines()]
+        self.assertEqual([e["event"] for e in audit], ["confirm", "confirm"])
+        self.assertTrue(licence_gate.is_confirmed(KEY))
+
+    def test_the_hosted_service_notice_and_live_licence_link(self):
+        model = licence_gate.TERRITORY_MODELS[KEY]
+        for text in (model["note"], licence_gate.H3_NOTICE):
+            self.assertIn("does not include or distribute MiniMax H3", text)
+            self.assertIn("sections V.2 and V.5", text)
+        from backend_service.catalog.video_minimax_h3 import MINIMAX_H3_FAMILY
+
+        self.assertIn(licence_gate.H3_NOTICE, MINIMAX_H3_FAMILY["variants"][0]["note"])
+        self.assertIn("MiniMaxAI/MiniMax-H3/blob/main/LICENSE", model["liveLicenceUrl"])
+        self.assertNotEqual(model["liveLicenceUrl"], model["licenceUrl"])
+        self.assertEqual(self.confirm()["models"][0]["liveLicenceUrl"], model["liveLicenceUrl"])
+
+    def test_h3_videos_are_tagged_machine_generated(self):
+        from backend_service.helpers.output_metadata import generation_settings
+
+        tagged = generation_settings({"modelId": H3_ID, "prompt": "a fox"})
+        self.assertIs(tagged["machine_generated"], True)
+        self.assertEqual(tagged["model"], "MiniMax H3")
+        other = generation_settings({"modelId": "Lightricks/LTX-Video", "prompt": "a fox"})
+        self.assertNotIn("machine_generated", other)
+
     def test_only_the_app_window_can_confirm(self):
         from backend_service.mcp_bridge import access
 

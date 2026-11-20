@@ -280,6 +280,15 @@ test("cast: pictures from a chosen file, a paste and a drop on the tab", async (
 
 test("takes: pick another take, then lock the shot and the strip follows", async ({ page, request }) => {
   const project = await seedProject(request, { name: "Takes Film", shots: 1, takes: 2 });
+  // The run home has no video model, which holds Make (FU-474, its own test below): answer as with one installed.
+  await page.route("**/api/storyboard/projects/*/estimate", (route) =>
+    route.fulfill({
+      json: {
+        what: "both", shots: 1, stills: 0, clips: 1, seconds: 60, peakGb: 12, totalGb: 64, diskMb: 20,
+        basis: "estimated", missing: [], imageModel: "Img", videoModel: "Vid",
+      },
+    }),
+  );
   await openProject(page, project.name, "Storyboard");
 
   await expect(page.getByText("1 shot · 4 s · 0 stale")).toBeVisible();
@@ -316,6 +325,23 @@ test("takes: pick another take, then lock the shot and the strip follows", async
   await expect(page.getByText("New take next run")).toBeVisible();
   // These takes are stills without a clip: they say so instead of "Done".
   await expect(page.locator(".shot-card__status")).toHaveText("Still only");
+});
+
+test("no video model installed: Make is held and says why (FU-474)", async ({ page, request }) => {
+  // The run home has no image or video model; the backend's own estimate names what is missing.
+  const project = await seedProject(request, { name: "No Model Film", shots: 1, takes: 1 });
+  await openProject(page, project.name, "Storyboard");
+  const runBar = page.getByRole("region", { name: "Make shots" });
+  await expect(runBar).toContainText("No video model is installed.");
+  const make = runBar.getByRole("button", { name: /^Make 1 missing/ });
+  await expect(make).toBeDisabled();
+  await expect(make).toHaveAttribute("title", /No video model is installed\./);
+  await expect(runBar.getByRole("button", { name: "Make all unlocked" })).toBeDisabled();
+
+  await openProjectTab(page, "Overview");
+  const next = page.locator(".overview-tab__next");
+  await expect(next.getByRole("button", { name: /^Make 1 missing/ })).toBeDisabled();
+  await expect(next).toContainText("No video model is installed.");
 });
 
 test("tabs: arrow keys move between the seven tabs and the project reopens on its last tab", async ({ page, request }) => {

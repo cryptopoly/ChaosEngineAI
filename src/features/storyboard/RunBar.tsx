@@ -13,7 +13,7 @@ import { RunEstimateStrip, formatDuration, memoryRisk } from "../../components/R
 import type { JobProgress, StoryboardBatchRecord, StoryboardPausedProgress } from "../../types";
 import { BatchBar } from "./BatchBar";
 import { PausedBatchBar } from "./PausedBatchBar";
-import type { PrimaryPass } from "./storyboardLogic";
+import { modelsMissingReason, type PrimaryPass } from "./storyboardLogic";
 
 export interface RunBarProps {
   missing: number;
@@ -87,6 +87,7 @@ function PassesRow({ missing, kept = 0, finalShots = 0, estimate, busy, onMakeDr
           n: finalShots,
         });
   const draftTitle = draftPassTitle(tf, draft);
+  const noModelReason = modelsMissingReason(estimate);
   const finalTitle = final?.imageModel
     ? t("board.passes.finalTitle", {
         defaultValue: "Makes each kept shot again with {model} at {width} x {height}, then its clip from the new still.",
@@ -104,7 +105,8 @@ function PassesRow({ missing, kept = 0, finalShots = 0, estimate, busy, onMakeDr
             <input type="checkbox" checked={withClips} disabled={busy} onChange={(event) => setWithClips(event.target.checked)} />
             {t("board.passes.withClips", { defaultValue: "Drafts with clips" })}
           </label>
-          <button type="button" className={primary === "drafts" ? "primary-button" : "secondary-button"} disabled={busy} title={draftTitle}
+          <button type="button" className={primary === "drafts" ? "primary-button" : "secondary-button"}
+            disabled={busy || noModelReason !== null} title={noModelReason ?? draftTitle}
             onClick={() => onMakeDrafts?.(withClips)}>
             {draftLabel}
           </button>
@@ -141,6 +143,8 @@ export function RunBar(props: RunBarProps) {
   }
   const risk = memoryRisk(estimate?.peakGb ?? null, estimate?.totalGb ?? null, "safe");
   const blockedByRisk = risk === "danger" && !ack;
+  // FU-474: the sentences listed above say which model is not installed; Make stays off until it is.
+  const noModelReason = modelsMissingReason(estimate);
   const seconds = estimate?.seconds ?? null;
   const makeLabel =
     missing === 0
@@ -170,8 +174,8 @@ export function RunBar(props: RunBarProps) {
     <button
       type="button"
       className="secondary-button"
-      disabled={busy || unlocked === 0}
-      title={t("board.makeAllTitle", { defaultValue: "Adds a new take to every unlocked shot. Nothing is overwritten." })}
+      disabled={busy || unlocked === 0 || noModelReason !== null}
+      title={noModelReason ?? t("board.makeAllTitle", { defaultValue: "Adds a new take to every unlocked shot. Nothing is overwritten." })}
       onClick={onMakeAll}
     >
       {t("board.makeAll", { defaultValue: "Make all unlocked" })}
@@ -217,7 +221,8 @@ export function RunBar(props: RunBarProps) {
             <button
               type="button"
               className={props.primary === "drafts" ? "secondary-button" : "primary-button"}
-              disabled={busy || missing === 0 || blockedByRisk}
+              disabled={busy || missing === 0 || blockedByRisk || noModelReason !== null}
+              title={noModelReason ?? undefined}
               onClick={onMakeMissing}
             >
               {makeLabel}

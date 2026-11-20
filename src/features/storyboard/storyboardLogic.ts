@@ -228,6 +228,16 @@ export function secondsPerStill(estimate: { stills: number; stillSeconds?: numbe
   return estimate.stillSeconds / estimate.stills;
 }
 
+/**
+ * FU-474: why Make cannot run, or null. The estimate's ``missing`` holds one plain sentence per model kind the
+ * work needs and that is not installed ("No image model is installed. Install one under Images > Models ...");
+ * while it has any, Make, Make all and Make drafts stay off with that sentence as the reason.
+ */
+export function modelsMissingReason(estimate: { missing?: readonly string[] | null } | null | undefined): string | null {
+  const lines = (estimate?.missing ?? []).filter((line) => line.trim().length > 0);
+  return lines.length > 0 ? lines.join(" ") : null;
+}
+
 /** The one primary pass button (see the rule in the file header). */
 export function primaryPass(
   shots: readonly StoryboardShot[],

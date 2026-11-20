@@ -12,8 +12,9 @@ a 100-4000 Hz band-pass. Numbers reported (FU-334, measured in ``docs/research/l
   closed mouth). ``open_while_silent``: share of silent frames with the mouth open (gaps between words count as
   silent, so even good speech scores 0.3-0.5 here).
 - ``balanced``: mean of the two complements, 0.5 for a mouth that ignores the audio, 1.0 for perfect agreement.
-- ``score``: ``0.5 * balanced + 0.5 * max(0, r)``, the one number used to rank takes of the same shot. It is a
-  ranking aid, not a quality grade: compare it between takes of one shot, not across different songs.
+- ``score``: ``0.5 * balanced + 0.5 * max(0, r) * motion``, the one number used to rank takes of the same shot, where
+  ``motion`` (0 to 1) scales r down for a mouth that hardly opens (its jitter can still correlate with the audio).
+  It is a ranking aid, not a quality grade: compare it between takes of one shot, not across different songs.
 
 The maths (``score_series``) is plain numpy and scipy. Reading a video needs ``cv2`` and ``mediapipe``, which the app's
 venv does not carry; they are imported only in ``mouth_series`` (the experiments ran them from a tools venv).
@@ -49,6 +50,7 @@ class SyncScore:
     closed_while_voiced: float
     open_while_silent: float
     balanced: float
+    motion: float
     score: float
     mouth_mean: float
 
@@ -127,6 +129,10 @@ def score_series(mouth: Any, env: Any, *, max_lag: int = MAX_LAG, open_threshold
     open_s = float((s & opened).sum() / s.sum()) if s.sum() else 0.0
     balanced = 0.5 * ((1.0 - closed_v) + (1.0 - open_s))
     r_safe = 0.0 if np.isnan(r) else r
+    # A mouth that never opens still correlates with the audio through landmark jitter; r only counts as far as the
+    # mouth really moves (full weight once its 95th percentile reaches twice the open threshold).
+    moving = float(np.nanpercentile(mouth, 95)) if face.any() else 0.0
+    motion = min(1.0, max(0.0, moving / (2 * open_threshold)))
     return SyncScore(
         frames=int(n),
         face_frames=int(face.sum()),
@@ -140,7 +146,8 @@ def score_series(mouth: Any, env: Any, *, max_lag: int = MAX_LAG, open_threshold
         closed_while_voiced=round(closed_v, 4),
         open_while_silent=round(open_s, 4),
         balanced=round(balanced, 4),
-        score=round(0.5 * balanced + 0.5 * max(0.0, r_safe), 4),
+        motion=round(motion, 4),
+        score=round(0.5 * balanced + 0.5 * max(0.0, r_safe) * motion, 4),
         mouth_mean=round(float(np.nanmean(mouth)), 4) if face.any() else 0.0,
     )
 

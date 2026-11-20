@@ -73,6 +73,15 @@ class ScoreSeriesTests(unittest.TestCase):
         self.assertEqual(result.face_frames, N - 10)
         self.assertTrue(result.beats_chance)
 
+    def test_a_shut_mouth_whose_jitter_follows_the_audio_gets_no_credit_for_r(self):
+        env = _voice()
+        mouth = 0.001 + 0.002 * (env > 0.05)  # tiny landmark movement in time with the voice, never open
+        result = S.score_series(mouth, env)
+        self.assertGreater(result.r, 0.9)
+        self.assertEqual(result.closed_while_voiced, 1.0)
+        self.assertLess(result.motion, 0.1)
+        self.assertLess(result.score, 0.3)
+
     def test_lengths_must_match(self):
         with self.assertRaises(ValueError):
             S.score_series(np.zeros(10), np.zeros(11))

@@ -165,6 +165,25 @@ Strips: 7 of the 72 looked at, chosen at the extremes of the score (st12 soul se
 mod8 ballad seed 42 grimaces; hands come up to the head in the tail of several ballad seed 42 takes, which the score
 does not see).
 
+### Experiment 3b: the non-distilled two-stage path (route a)
+
+Lightricks' `ltx_pipelines.a2vid_two_stage` from the spike venv (dev 22B fp8 + Gemma 3 12B, stage 1 at 384x256 with
+30 steps, CFG 3, STG 1, modality 3; stage 2 x2 upsample and 3 distilled steps; `--offload cpu`), same explicit
+prompt, close-up stills, stem windows and seeds.
+
+| Line | seed 42: r / cwv / ows / score | seed 7: r / cwv / ows / score |
+|---|---|---|
+| ballad | -0.26 / 0.35 / 0.81 / 0.21 | -0.40 / **1.00** / 0.00 / 0.25 (never sings) |
+| soul | **0.80** / 0.11 / 0.29 / **0.80** | 0.09 / 0.13 / 0.84 / 0.30 |
+| pop | 0.40 / 0.16 / 0.81 / 0.46 | 0.49 / 0.15 / 0.61 / 0.55 |
+| **mean** | score 0.43 (route b default 0.49), r 0.19, beats chance 3 / 6, usable 3 / 6 | |
+
+268-300 s per shot (4.8x route b warm), 9.0 GB GPU peak, 29.8 GB host RAM. **More steps on the full model do not fix
+singing**: route (a) made the single best take of the study (soul seed 42: mouth tracks every phrase, calm, frontal,
+r 0.80) and also a take that never sings (ballad seed 7, mouth shut for the whole line, then opens in the silent
+tail), so it is as seed-dependent as route (b), not better on average, and five times slower. Its faces are calmer
+(no turning away in 6 of 6, no hands or grins), which is its one advantage. Strips: all 6 looked at.
+
 ## Experiment 5: best-of-N takes chosen by the score
 
 The recommended recipe so far (close-up still, explicit singing prompt, stem, 5 s with a 0.4 s lead-in, default

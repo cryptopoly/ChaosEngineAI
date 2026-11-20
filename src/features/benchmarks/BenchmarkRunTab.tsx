@@ -469,7 +469,7 @@ export function BenchmarkRunTab({
               </div>
             ) : (
               <div className="empty-state">
-                <p>{t("benchmarkTab.noRunsYet", { defaultValue: "No benchmark runs yet. Configure a profile on the left and click Run benchmark." })}</p>
+                <p>{t("benchmarkTab.noRunsYet", { defaultValue: "No benchmark runs yet. Pick a model, then press Run benchmark." })}</p>
               </div>
             )}
           </div>

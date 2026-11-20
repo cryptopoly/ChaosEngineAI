@@ -267,7 +267,7 @@
       "subtitle": "{recent} newest of {total} saved generations",
       "emptySubtitle": "Generated images will appear here",
       "openGallery": "Open Gallery",
-      "emptyHint": "Generate a prompt to create the first saved image artifact for this branch.",
+      "emptyHint": "Nothing here yet. Write a prompt and press Generate image; every image is saved to the Gallery.",
       "footnote": "Showing the newest {recent} saved images here. Open Image Gallery to browse everything, filter by model, and manage older runs."
     },
     "aspectRatios": {
@@ -609,7 +609,7 @@
       "startGenerating": "Generate in Image Studio to start building the gallery"
     },
     "empty": {
-      "firstGeneration": "Generate a prompt in Image Studio to create the first saved image artifact for this branch.",
+      "firstGeneration": "No images yet. Images you generate in Image Studio are saved here.",
       "noMatches": "No saved images match the current filters yet. Try broadening the search or clearing one of the filters.",
       "openStudio": "Open Studio"
     }
@@ -2300,7 +2300,7 @@
     "close": "Close",
     "dismiss": "Dismiss",
     "offline": "Waiting for the backend…",
-    "pathPlaceholder": "/path/to/file",
+    "pathPlaceholder": "Full path to the file",
     "pickUnavailable": "The file picker is not available here. Type the path instead.",
     "films": {
       "title": "Film",

@@ -1439,7 +1439,7 @@ export function ImageStudioTab({
         {imageOutputs.length === 0 ? (
           <div className="empty-state image-empty-state">
             <p>{t("imageStudio.recent.emptyHint", {
-              defaultValue: "Generate a prompt to create the first saved image artifact for this branch.",
+              defaultValue: "Nothing here yet. Write a prompt and press Generate image; every image is saved to the Gallery.",
             })}</p>
           </div>
         ) : (

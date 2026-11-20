@@ -682,7 +682,8 @@ export function useVideoState(
         setVideoGenerationCancelled(true);
         setVideoGenerationError(null);
       } else {
-        const detail = `${message}. Check the Logs tab (filter: video) for backend details.`;
+        // The Logs tab became Server > Activity (D-88); a backend sentence already ends in a full stop.
+        const detail = `${message.replace(/[.\s]+$/, "")}. Server > Activity has the backend details.`;
         setError(detail);
         setVideoGenerationError(detail);
         // Resync catalog + runtime in the background. A sidecar crash (e.g. the

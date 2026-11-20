@@ -91,7 +91,7 @@ export function AddAudioPanel({ lane, laneLabel, disabled, onAdd, onClose }: Add
           <input
             type="text"
             value={typed}
-            placeholder={t("storyboard.pathPlaceholder", { defaultValue: "/path/to/file" })}
+            placeholder={t("storyboard.pathPlaceholder", { defaultValue: "Full path to the file" })}
             aria-label={t("mixer.importAudioPath", { defaultValue: "Path of the audio file" })}
             disabled={disabled}
             onChange={(event) => setTyped(event.target.value)}

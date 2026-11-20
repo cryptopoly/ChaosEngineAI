@@ -86,7 +86,7 @@ export function FineTuningTab({ backendOnline }: FineTuningTabProps) {
           <div style={{ padding: 24, textAlign: "center" }}>
             <p className="muted-text" style={{ marginBottom: 8 }}>{t("fineTuning.noAdapters", { defaultValue: "No LoRA adapters found." })}</p>
             <p style={{ color: "#5a6574", fontSize: 12 }}>
-              {t("fineTuning.noAdaptersHint", { defaultValue: "Place adapter directories (with adapter_config.json) in your model directories, or use the fine-tuning feature below to create new adapters." })}
+              {t("fineTuning.noAdaptersHint", { defaultValue: "Adapter folders (with adapter_config.json) inside your model folders are listed here." })}
             </p>
           </div>
         ) : (

@@ -15,6 +15,10 @@
  * The Logs page became the Server page's Activity view (D-88): ``logs``
  * opens Server on Activity.
  *
+ * The Prompts page moved into Chat (a Prompts panel by the composer) and
+ * the Plugins page was removed (D-87): ``prompt-library`` opens Chat and
+ * ``plugins`` the Dashboard.
+ *
  * App applies ``resolveTabRequest`` in the single wrapper around its tab
  * setter, and ``useSidebarPrefs`` applies ``normalizeStoredTabId`` when it
  * reads ``lastChildByGroup`` from localStorage.
@@ -34,7 +38,9 @@ export type LegacyTabId =
   | "story-projects"
   | "story-board"
   | "story-mixer"
-  | "logs";
+  | "logs"
+  | "prompt-library"
+  | "plugins";
 
 /** Availability filter a navigation can preset on a Models page. */
 export type ModelsPreset = "installed" | "available";
@@ -77,6 +83,8 @@ export const LEGACY_TAB_REDIRECTS: Record<LegacyTabId, TabNavigation> = {
   "story-board": { tab: "storyboard", storyboard: { tab: "storyboard" } },
   "story-mixer": { tab: "storyboard", storyboard: { tab: "mixer" } },
   logs: { tab: "server", serverView: "activity" },
+  "prompt-library": { tab: "chat" },
+  plugins: { tab: "dashboard" },
 };
 
 export function isLegacyTabId(value: unknown): value is LegacyTabId {

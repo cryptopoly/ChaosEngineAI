@@ -1,7 +1,11 @@
 # Proposal: Prompts moves into Chat; Plugins is hidden, then removed
 
-Status: **proposal only, nothing here is built.** From the overnight review, stream C (2026-11-18). Evidence:
-`docs/progress/review-c.md`. Needs the owner's decision.
+Status: **built 2026-11-20 (D-87), in a smaller form than proposed below.** Plugins is removed (code, routes, CLI
+commands, tests, locale keys). Prompts is a panel beside the Chat composer (`src/features/prompts/ChatPromptsPanel.tsx`):
+browse, search, fill variables, insert into the message, use as the system prompt (still app-wide, shown in the panel
+with "Stop using it"), save the message as a template, edit, delete. Not built from this plan: the per-thread system
+prompt, the `/prompt` slash command, the variables-as-rows editor (FU-410, FU-411). The rest of this file is the
+original proposal from the overnight review, stream C (2026-11-18); evidence: `docs/progress/review-c.md`.
 
 ## 1. Prompts: merge into Chat
 

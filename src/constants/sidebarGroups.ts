@@ -18,5 +18,5 @@ export const sidebarGroups: SidebarGroup[] = [
   { id: "voice", label: "Voice", caption: "Dictation, speech and voice chat", defaultChild: "voice-models", readyChild: "voice-studio", section: "make" },
   { id: "music", label: "Music and Audio", caption: "Music and sound effects", defaultChild: "music-models", readyChild: "music-studio", section: "make" },
   { id: "benchmarks", label: "Benchmarks", caption: "Performance tests", defaultChild: "benchmarks", section: "run" },
-  { id: "tools", label: "Tools", caption: "Conversion, fine-tuning, prompts, plugins", defaultChild: "conversion", section: "run" },
+  { id: "tools", label: "Tools", caption: "Conversion and fine-tuning", defaultChild: "conversion", section: "run" },
 ];

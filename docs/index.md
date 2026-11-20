@@ -52,7 +52,7 @@ ChaosEngineAI is three cooperating layers:
 │  Python backend  (backend_service/)                     │
 │  ├─ Workspace + library + warm pool state               │
 │  ├─ OpenAI-compatible HTTP server                       │
-│  ├─ Engine adapters + plugin system                     │
+│  ├─ Engine adapters + cache strategy registry           │
 │  └─ DFlash / DDTree / MTPLX speculative decoding        │
 └─────────────────────────────────────────────────────────┘
                           │

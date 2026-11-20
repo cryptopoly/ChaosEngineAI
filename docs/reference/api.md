@@ -46,7 +46,7 @@ Quick links to the key surfaces:
 | Setup | `POST /api/setup/install-mtplx`, `POST /api/setup/install-tensorfold`, `POST /api/setup/install-mlx-video-wan`, `POST /api/setup/install-longlive`, `POST /api/setup/refresh-capabilities` |
 | Diagnostics | `GET /api/diagnostics/snapshot`, `GET /api/diagnostics/log-tail`, `POST /api/diagnostics/reextract-runtime` |
 | Settings | `GET/PATCH /api/settings`, `GET/POST /api/settings/storage` |
-| Plugins / tools | `GET /api/plugins`, `POST /api/plugins/{id}/enable`, `GET /api/tools`, `GET /api/adapters` |
+| Tools | `GET /api/tools`, `GET /api/adapters` |
 | Server | `GET /api/server/status`, `POST /api/server/shutdown`, `GET /api/server/logs/stream` |
 
 ## Authentication

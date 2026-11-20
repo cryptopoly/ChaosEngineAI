@@ -4,13 +4,20 @@ import { tabs } from "../../src/constants/tabs";
 import { openApp, primaryNav } from "./helpers";
 
 // Settings > General > Appearance > "Show experimental tabs" (off by default, remembered with the sidebar
-// preferences). Tabs flagged `experimental` in src/constants/tabs.ts (Fine-Tuning and Plugins since the overnight
-// review, D-87) stay out of the sidebar until the switch is on. The spec reads the flags, so it holds whichever
-// tabs are flagged; with none flagged it only checks the switch is remembered.
+// preferences). Tabs flagged `experimental` in src/constants/tabs.ts (Fine-Tuning since the overnight review, D-87;
+// Plugins was removed and Prompts moved into Chat) stay out of the sidebar until the switch is on. The spec reads
+// the flags, so it holds whichever tabs are flagged; with none flagged it only checks the switch is remembered.
+// Off Apple Silicon no Tools page is listed with the switch off (Conversion is Mac-only), so the group is not shown.
 
 const TOOLS = tabs.filter((tab) => tab.group === "tools");
 const hiddenTools = TOOLS.filter((tab) => tab.experimental).map((tab) => tab.shortLabel ?? tab.label);
 const listedTools = TOOLS.filter((tab) => !tab.experimental).map((tab) => tab.shortLabel ?? tab.label);
+const onAppleSilicon = process.platform === "darwin" && process.arch === "arm64";
+const listedHere = listedTools.filter((label) => label !== "Conversion" || onAppleSilicon);
+
+async function toolsHeaderCount(page: Page): Promise<number> {
+  return (await primaryNav(page)).locator(".nav-group-header", { hasText: "Tools" }).count();
+}
 
 async function toolsChildren(page: Page): Promise<string[]> {
   const nav = await primaryNav(page);
@@ -31,10 +38,14 @@ async function setSwitch(page: Page, on: boolean) {
 
 test("experimental tabs show only with the switch on, and the choice is remembered", async ({ page }) => {
   await openApp(page);
-  let tools = await toolsChildren(page);
-  // Conversion is Mac-only; every other listed Tools page is always there.
-  expect(tools).toEqual(expect.arrayContaining(listedTools.filter((label) => label !== "Conversion")));
-  for (const label of hiddenTools) expect(tools).not.toContain(label);
+  let tools: string[];
+  if (listedHere.length === 0) {
+    expect(await toolsHeaderCount(page)).toBe(0);
+  } else {
+    tools = await toolsChildren(page);
+    expect(tools).toEqual(expect.arrayContaining(listedHere));
+    for (const label of hiddenTools) expect(tools).not.toContain(label);
+  }
   await expect((await primaryNav(page)).locator(".nav-group-header", { hasText: "Benchmarks" })).toHaveCount(1);
 
   await setSwitch(page, true);
@@ -49,13 +60,18 @@ test("experimental tabs show only with the switch on, and the choice is remember
   expect(tools).toEqual(expect.arrayContaining(hiddenTools));
 
   await setSwitch(page, false);
-  tools = await toolsChildren(page);
-  for (const label of hiddenTools) expect(tools).not.toContain(label);
+  if (listedHere.length === 0) {
+    expect(await toolsHeaderCount(page)).toBe(0);
+  } else {
+    tools = await toolsChildren(page);
+    for (const label of hiddenTools) expect(tools).not.toContain(label);
+  }
 });
 
 test("a remembered hidden tab is not reopened: the Tools group opens on a listed page", async ({ page }) => {
   const hidden = TOOLS.find((tab) => tab.experimental);
   test.skip(!hidden, "no Tools tab is flagged experimental");
+  test.skip(listedHere.length === 0, "no Tools page is listed on this platform with the switch off, so there is no group to open");
   await page.addInitScript((id) => {
     window.localStorage.setItem(
       "chaosengine.sidebar.prefs.v1",
@@ -66,9 +82,6 @@ test("a remembered hidden tab is not reopened: the Tools group opens on a listed
   await (await primaryNav(page)).locator(".nav-button", { hasText: "Tools" }).click();
   const bar = page.locator(".subtab-bar");
   // Conversion is listed on Apple Silicon only; one listed page left shows no tab bar, just that page.
-  const listedHere = listedTools.filter(
-    (label) => label !== "Conversion" || (process.platform === "darwin" && process.arch === "arm64"),
-  );
   if (listedHere.length > 1) await expect(bar.getByRole("tab", { selected: true })).toHaveCount(1);
   else await expect(page.getByRole("heading", { name: listedHere[0], level: 2 })).toBeVisible();
   for (const label of hiddenTools) await expect(bar.getByRole("tab", { name: label })).toHaveCount(0);

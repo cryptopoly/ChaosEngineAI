@@ -31,7 +31,7 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 
 **Open for Claude:** the Windows pass on the merged tree (`docs/plans/windows-handover.md`: setup, gate, Windows-only risks, rows 45 to 51 added to the 4090 plan), then Linux on Ubuntu 26; FU-221 to FU-251 as ranked in the report; Keep going v2 starting with the scorecard (FU-230).
 
-**Open for Dan:** say yes to merging `review/integrate` into `release/v0.10.0` (then `test/rtx4090` is recut); decide Plugins removal and Prompts into Chat (D-87); turn LAN access off for any demo on foreign Wi-Fi; yes or no to the 505 junk prompt rows clean-up (command in `docs/progress/review-c.md`); the H3 licence read, the microphone voice call, listening to voices and music.
+**Open for Dan:** say yes to merging `review/integrate` into `release/v0.10.0` (then `test/rtx4090` is recut); merge the D-87 build (Plugins removed, Prompts folded into Chat; branch `worktree-agent-a6e78dc7522e75d81`); turn LAN access off for any demo on foreign Wi-Fi; yes or no to the 505 junk prompt rows clean-up (command in `docs/progress/review-c.md`); the H3 licence read, the microphone voice call, listening to voices and music.
 
 ## Update 2026-11-16 (v0.10.0 closing): the eight improvements, S-N/S-O/S-P/S-Q fixes and the Mac DMG are on `release/v0.10.0` and pushed; Windows and Linux passes are next.
 

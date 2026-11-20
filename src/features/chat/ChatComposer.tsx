@@ -1,4 +1,4 @@
-import { useRef, type Dispatch, type SetStateAction } from "react";
+import { useRef, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
 import { ComposerMicButton } from "../voice/ComposerMicButton";
 import { KvStrategyChip } from "../../components/KvStrategyChip";
@@ -111,6 +111,8 @@ export interface ChatComposerProps {
   loadedModelName?: string | null;
   onInstallPackage?: (pipPackage: string) => void;
   installingPackage?: string | null;
+  /** D-87: the Prompts panel (the prompt library), first in the right-hand group. */
+  promptsControl?: ReactNode;
 }
 
 export function ChatComposer({
@@ -161,6 +163,7 @@ export function ChatComposer({
   loadedModelName,
   onInstallPackage,
   installingPackage,
+  promptsControl,
 }: ChatComposerProps) {
   // FU-042: chat surface uses the ``chat`` namespace for prompt /
   // affordance copy, falling back to literal English when a key isn't
@@ -472,6 +475,7 @@ export function ChatComposer({
           ) : null}
         </div>
         <div className="composer-button-group composer-button-group--right">
+          {promptsControl}
           <ComposerMicButton
             disabled={chatBusySessionId === activeChat?.id}
             onTranscript={(text) => {

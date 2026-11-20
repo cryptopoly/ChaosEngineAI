@@ -127,6 +127,24 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
+<summary>FU-411 · Prompt templates: variables as rows, presets applied or dropped — With FU-410</summary>
+
+**Status or trigger:** With FU-410
+
+**Notes:** The panel's editor keeps the JSON box for variables. `presetModelRef`, `presetSamplers` and `fewShotExamples` are no longer shown but are sent back unchanged on save; nothing applies them. Apply the samplers through `writeSamplerOverrides` on use, or drop the three fields from the store.
+
+</details>
+
+<details>
+<summary>FU-410 · Per-thread system prompt and a /prompt slash command in Chat — When Chat is next touched (D-87 follow-up)</summary>
+
+**Status or trigger:** When Chat is next touched (D-87 follow-up)
+
+**Notes:** The Chat Prompts panel (D-87) still sets the one app-wide `systemPrompt` from `useSettings.ts`: every thread gets it and a reload drops it. Plan in `docs/plans/review-c-prompts-into-chat.md` section 1 step 1 and 3: `chat.systemPrompt.<sessionId>` like `samplerOverrides.ts`, a chip in the composer, `/prompt`, `/prompt <name>`, `/prompt off`.
+
+</details>
+
+<details>
 <summary>FU-399 · Windows pre-release verification: full bundle build with the CUDA sd.exe, the extra 790 MB against the 1.9 GB installer archive limit, a real Nunchaku image after the 409 fix — When the Windows code is ready (owner asked 2026-11-20), before the release/v0.10.0 merge</summary>
 
 **Status or trigger:** When the Windows code is ready (owner asked 2026-11-20), before the `release/v0.10.0` merge
@@ -829,29 +847,11 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-226 · Hard-coded colours in the Fine-Tuning, Prompts and Plugins tabs — With FU-223 / FU-224 / FU-225</summary>
+<summary>FU-226 · Hard-coded colours in the Fine-Tuning tab — With FU-223</summary>
 
-**Status or trigger:** With FU-223 / FU-224 / FU-225
+**Status or trigger:** With FU-223
 
-**Notes:** About 30 inline hex colours instead of theme tokens, so the stronger-borders switch and any later theme do not reach them.
-
-</details>
-
-<details>
-<summary>FU-225 · Plugins: remove, or build a real loader — Owner's call (D-87)</summary>
-
-**Status or trigger:** Owner's call (D-87); hidden behind "Show experimental tabs" now
-
-**Notes:** The page lists the 9 cache strategies and 3 chat tools the app already has; ON/OFF changes nothing and is forgotten on restart (`tests/test_route_contracts.py` has the expected-failure test); no code loads an outside plugin. Remove after v0.10.0 (files in `docs/progress/review-c.md`) unless a loader with a trust model is planned. README reworded in `41f5a92a`.
-
-</details>
-
-<details>
-<summary>FU-224 · Prompts: the applied prompt is app-wide and invisible — Owner's call on docs/plans/review-c-prompts-into-chat.md (D-87)</summary>
-
-**Status or trigger:** Owner's call on `docs/plans/review-c-prompts-into-chat.md` (D-87)
-
-**Notes:** "Use in Chat" sets one app-wide system prompt: Chat never shows it, every thread gets it, nothing clears it but the Prompts page's new "Stop using it", a reload drops it. Proposal: per-thread prompt with a chip in Chat, then fold the page into Chat. Preset model, samplers and few-shot examples are stored and never applied (apply or drop); no import or export.
+**Notes:** About a dozen inline hex colours instead of theme tokens, so the stronger-borders switch and any later theme do not reach them. The Prompts and Plugins tabs that had the rest were removed (D-87); the Chat Prompts panel uses theme tokens.
 
 </details>
 

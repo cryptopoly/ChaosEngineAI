@@ -61,7 +61,7 @@ ChaosEngineAI is a desktop control plane for running large language models local
 - 🧰 **Sampler controls** in the composer — `top_p`, `top_k`, `min_p`, `repeat_penalty`, `seed`, `mirostat`, `reasoning_effort`, JSON-schema constrained output
 - 🧷 **MCP client** — stdio JSON-RPC tool adapter so any local MCP server is callable from chat
 - 📚 **Workspace knowledge stacks** — shared RAG corpus across sessions via `llama-embedding` + cosine retrieval
-- 🗂️ **Prompt Library** with built-in starter templates plus searchable tags, categories, CRUD, fill-form variables, and one-click apply-to-chat
+- 🗂️ **Prompts in Chat**: a Prompts panel beside the composer with built-in starter templates, search, tags, categories, fill-form variables, insert into the message or use as the system prompt, and save the message you typed as a template
 - 🖼️ **Image Models** page: every image model, installed or not, with its size, memory need on your machine, and one-click download
 - 🖌️ **Image Studio** for prompt-based image generation with aspect ratio, quality presets, and negative prompts, plus a "Recommended for this machine" panel (steps, size, each tagged Measured or Estimated) you can apply in one click
 - 📐 **Bigger images** — each model has its own size limit instead of a fixed 2048 px (FLUX.2 and Qwen-Image-2.1 up to 4096), and the memory check accounts for pixels
@@ -125,7 +125,7 @@ ChaosEngineAI is a desktop control plane for running large language models local
 - Side-by-side compare mode that streams the same prompt through two models with independent runtime settings and metrics
 - HTML Challenge — 2-4 model slots, each with own thinking mode + reasoning effort + seed, all answering the same prompt with sandboxed live HTML previews, automated `valid` / `partial` / `script-error` / `blank-render` / `no-html` validation, persistent history, plus retry + repair flows
 - OpenAI-compatible local server with full sampler-chain + embeddings parity (`top_p`, `top_k`, `min_p`, `repeat_penalty`, `seed`, `mirostat`, `reasoning_effort`, `json_schema`)
-- Prompt Library with built-in starter templates, search, tagging, categories, CRUD, fill-form variables, and one-click apply-to-chat
+- Prompts panel in Chat with built-in starter templates, search, tagging, categories, create / edit / delete, fill-form variables, insert into the message or use as the system prompt
 
 ### Models, discovery & media
 
@@ -276,13 +276,13 @@ Apple Silicon only. Point at a Hugging Face checkpoint or local directory and co
 
 Layer-by-layer live progress while the conversion runs — bit budget per block, memory footprint, and a running log tail.
 
-### Prompt Library — *Reusable system prompts*
+### Prompts — *In Chat, beside the composer*
 
-Search, create, edit, tag, and delete reusable prompt templates, including five built-in starter personas. Any template can be applied to Chat with one click so you can switch between coding, summarization, translation, and other system-prompt presets without copy-paste.
+The **Prompts** button next to Send opens your prompt templates, including five built-in starter personas. Search them, fill in a template's variables, then insert it into the message or use it as the system prompt (the panel shows the system prompt in use, with **Stop using it**). **Save message as prompt** turns what you typed into a template; templates can be edited and deleted from the same panel.
 
-### Plugins — *Experimental*
+### Fine-Tuning — *Experimental*
 
-Lists the built-in cache strategies and chat tools. External plugins are not loaded in this version, and the page is hidden unless **Settings > Appearance > Show experimental tabs** is on. Fine-Tuning is hidden the same way: it lists LoRA adapters on disk, and training is not built yet.
+Hidden unless **Settings > Appearance > Show experimental tabs** is on: it lists LoRA adapters on disk, and training is not built yet.
 
 ### Server > Activity — *What the models did*
 
@@ -347,7 +347,7 @@ ChaosEngineAI is three cooperating layers:
 │  Python backend  (backend_service/)                     │
 │  ├─ Workspace + library + warm pool state               │
 │  ├─ OpenAI-compatible HTTP server                       │
-│  ├─ Engine adapters + plugin system                     │
+│  ├─ Engine adapters + cache strategy registry           │
 │  └─ DFlash / DDTree speculative decoding                │
 └─────────────────────────────────────────────────────────┘
                           │
@@ -362,7 +362,7 @@ ChaosEngineAI is three cooperating layers:
 - **`src/`** — React 18 + TypeScript UI. Single-window workspace with a sidebar nav covering LLM, image, video and voice screens.
 - **`src-tauri/`** — Tauri 2 Rust shell + bundled runtime.
 - **`backend_service/`** — Python service that owns model lifecycle, the warm pool, the OpenAI-compatible API, the benchmark runner, and speculative decoding (DFlash + DDTree).
-- **`backend_service/routes/`** — FastAPI routes for chat, prompts, compare mode, benchmarks, plugins, images, server controls, and settings.
+- **`backend_service/routes/`** — FastAPI routes for chat, prompts, compare mode, benchmarks, images, server controls, and settings.
 - **`cache_compression/`** — Pluggable cache/compression strategy system. Ships with native f16 and optional adapters for [TriAttention](https://github.com/WeianMao/triattention) and [TurboQuant](https://pypi.org/project/turboquant-mlx-full/).
 - **`dflash/`** — DFlash speculative decoding integration: draft model registry, fuzzy matching for quantized variants, MLX and vLLM backend detection.
 

@@ -15,8 +15,6 @@ import {
   ServerView,
   SettingsView,
   FineTuningView,
-  PromptLibraryView,
-  PluginsView,
 } from "./SystemTabs";
 
 type TabView = ComponentType<{ ctx: AppTabContext }>;
@@ -45,8 +43,6 @@ const TAB_VIEWS: Partial<Record<TabId, TabView>> = {
   benchmarks: BenchmarkRunView,
   "benchmark-history": BenchmarkHistoryView,
   finetuning: FineTuningView,
-  "prompt-library": PromptLibraryView,
-  plugins: PluginsView,
   settings: SettingsView,
 };
 

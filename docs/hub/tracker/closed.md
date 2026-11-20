@@ -1,7 +1,7 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 119 shipped, obsoleted or dropped rows, newest first.
+summary: 121 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
@@ -123,6 +123,24 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** **Shipped 2026-11-18 (branch `review/routing`, merged into `review/integrate` at `599802fe`).**
 
 **Notes:** Review D, L-16. D-13 (a small Qwen loaded as "Qwen3.8 Flash Next runs only on TensorFold") is fixed in the app's catalogue match, but `controller.py` `_tensorfold_match` still believes a `canonicalRepo` from the agent bridge, the CLI or an older window. When `path` is a Hugging Face cache folder, derive the repo from it and ignore a `canonicalRepo` that disagrees. **Done:** an HF cache path is its own repo; a hint is kept only when the folder is named exactly the repo; a `modelRef` naming another row is replaced by the path's library entry (`state/lifecycle.py` `align_model_ref_with_path`); E2E phase 216, `tests/test_routing_hints.py`. A local copy matched to another uploader's row now loads under its own repo, so a drafter pinned to the other repo id is not used for it.
+
+</details>
+
+<details>
+<summary>FU-225 · Plugins: remove, or build a real loader — Removed 2026-11-20 (D-87, branch worktree-agent-a6e78dc7522e75d81, off test/rtx4090).</summary>
+
+**Status or trigger:** **Removed 2026-11-20 (D-87, branch `worktree-agent-a6e78dc7522e75d81`, off `test/rtx4090`).**
+
+**Notes:** Deleted: `backend_service/plugins/`, `routes/plugins.py` (`/api/plugins` now 404), the CLI `plugins-*` commands, the Plugins tab, its locale keys in every locale, `tests/test_plugins.py` and the phase 213 plugin checks. A remembered or requested `plugins` tab id opens the Dashboard. Nothing on disk is read or deleted: an old `~/.chaosengine/plugins/` folder stays as it is and is ignored (no build ever loaded it; the switches were in memory only). A real plugin system needs the trust model in `docs/plans/review-c-prompts-into-chat.md` section 2.
+
+</details>
+
+<details>
+<summary>FU-224 · Prompts: the applied prompt is app-wide and invisible — Shipped 2026-11-20 (D-87, branch worktree-agent-a6e78dc7522e75d81, off test/rtx4090)</summary>
+
+**Status or trigger:** **Shipped 2026-11-20 (D-87, branch `worktree-agent-a6e78dc7522e75d81`, off `test/rtx4090`).** The Prompts page is gone; a Prompts panel beside the Chat composer browses, searches, fills, inserts, sets the system prompt, saves the message as a template, edits and deletes. The system prompt in use is shown in the panel (and as a dot on the Prompts button) with "Stop using it".
+
+**Notes:** Still app-wide and lost on reload: the per-thread prompt is FU-410. Preset model, samplers and few-shot examples are kept on save but still never applied (FU-411).
 
 </details>
 

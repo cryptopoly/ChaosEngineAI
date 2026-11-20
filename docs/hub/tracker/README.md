@@ -9,7 +9,7 @@ summary: Every FU row from FOLLOW_UPS.md, split into open and closed.
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here.
 
 - [Open and live follow-ups](open.md): **209** rows.
-- [Closed follow-ups](closed.md): **119** rows.
+- [Closed follow-ups](closed.md): **121** rows.
 
 ## Newest ten
 

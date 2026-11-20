@@ -2,7 +2,9 @@
 // "image-discover", "video-discover") are no longer tabs: one Models page
 // per area replaced them, and the Storyboard's Projects, Board and Mixer ids
 // ("story-projects", "story-board", "story-mixer") became one "storyboard"
-// entry (D-65). ``constants/tabRedirects.ts`` maps them.
+// entry (D-65). The Prompts page moved into Chat and Plugins was removed
+// (D-87): "prompt-library" opens Chat and "plugins" the Dashboard.
+// ``constants/tabRedirects.ts`` maps them.
 export type TabId =
   | "dashboard"
   | "chat-models"
@@ -27,8 +29,6 @@ export type TabId =
   | "benchmarks"
   | "benchmark-history"
   | "finetuning"
-  | "prompt-library"
-  | "plugins"
   | "settings";
 
 export type SidebarGroupId =

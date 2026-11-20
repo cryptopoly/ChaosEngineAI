@@ -5,6 +5,7 @@ import { OPEN_TAB_EVENT } from "../features/chat/studioChat";
 import type { TabId } from "../types";
 import { CompareView } from "../features/chat/CompareView";
 import { HtmlChallengeTab } from "../features/chat/HtmlChallengeTab";
+import { ChatPromptsPanel } from "../features/prompts/ChatPromptsPanel";
 import { modelsPageRequest } from "../constants";
 import type { AppTabContext } from "./context";
 
@@ -13,6 +14,7 @@ export function ChatView({ ctx }: { ctx: AppTabContext }) {
     workspace,
     chat,
     settings,
+    backendOnline,
     busy,
     busyAction,
     activeThreadOption,
@@ -125,6 +127,15 @@ export function ChatView({ ctx }: { ctx: AppTabContext }) {
       noChatModelsInstalled={libraryChatOptions.length === 0}
       onBrowseDiscover={() => setActiveTab(modelsPageRequest("chat", "available"))}
       onOpenModels={() => setActiveTab(modelsPageRequest("chat", "installed"))}
+      composerPromptsControl={
+        <ChatPromptsPanel
+          backendOnline={backendOnline}
+          draftMessage={draftMessage}
+          onDraftMessageChange={setDraftMessage}
+          systemPrompt={settings.systemPrompt}
+          onSystemPromptChange={settings.setSystemPrompt}
+        />
+      }
     />
   );
 }

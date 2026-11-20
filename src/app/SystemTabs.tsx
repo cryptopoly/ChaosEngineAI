@@ -4,8 +4,6 @@ import { DashboardTab } from "../features/dashboard/DashboardTab";
 import { ServerTab } from "../features/server/ServerTab";
 import { SettingsTab } from "../features/settings/SettingsTab";
 import { FineTuningTab } from "../features/finetuning/FineTuningTab";
-import { PromptLibraryTab } from "../features/prompts/PromptLibraryTab";
-import { PluginsTab } from "../features/plugins/PluginsTab";
 import type { AppTabContext } from "./context";
 
 export function DashboardView({ ctx }: { ctx: AppTabContext }) {
@@ -156,19 +154,4 @@ export function SettingsView({ ctx }: { ctx: AppTabContext }) {
 
 export function FineTuningView({ ctx }: { ctx: AppTabContext }) {
   return <FineTuningTab backendOnline={ctx.backendOnline} />;
-}
-
-export function PromptLibraryView({ ctx }: { ctx: AppTabContext }) {
-  const { backendOnline, setActiveTab } = ctx;
-  const { systemPrompt, setSystemPrompt } = ctx.settings;
-  return <PromptLibraryTab
-    backendOnline={backendOnline}
-    onApplyTemplate={(prompt) => { setSystemPrompt(prompt); setActiveTab("chat"); }}
-    activeSystemPrompt={systemPrompt}
-    onClearSystemPrompt={() => setSystemPrompt("")}
-  />;
-}
-
-export function PluginsView({ ctx }: { ctx: AppTabContext }) {
-  return <PluginsTab backendOnline={ctx.backendOnline} />;
 }

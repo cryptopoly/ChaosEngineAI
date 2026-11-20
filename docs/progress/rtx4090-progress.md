@@ -2145,3 +2145,48 @@ Added:
 Runs: pytest for both files pass; `tsc` clean; vitest (music, voice models, storyboard components, licence) 167 pass; Playwright 42 (5) and 24 (2) pass; `--smoke` on a throwaway backend exit 0; `--phases 5,11,22` pass; the phase 1 stream check alone passed live on Qwen3 0.6B Q4_K_M (GPU lock held).
 
 Found: phase 7's existing "Chat quality tiers" check fails on this PC once the Nunchaku FLUX.1-schnell row is installed (a draft under half a second rounds to 0 s): FU-430. Remaining thin rows need hardware, a real download or install, a second backend, or a Mac: FU-431 to FU-441.
+## 2026-11-20: Plugins removed, Prompts folded into Chat (D-87 built, FU-224, FU-225, FU-410, FU-411, agent)
+
+Owner decision 2026-11-20. Branch `worktree-agent-a6e78dc7522e75d81` (off `test/rtx4090`), not pushed, not merged.
+
+**Plugins removed.** `backend_service/plugins/`, `backend_service/routes/plugins.py` and its router line, the CLI's
+`plugins-list` / `plugins-enable` / `plugins-disable`, `src/features/plugins/` (tab, logic, test), the `plugins` tab row,
+view and style, `tests/test_plugins.py`, the Plugins tests in the old spec 29 and the plugin checks in phase 213, the docs
+rows (README, API reference, CLI reference and overview, architecture overview, runtime paths). Locale keys gone from all
+eleven `common.json`: `tabs` / `tabCaptions` / `tabShortLabels.plugins`, `pluginsTab.*`, `panels.pluginSystem`,
+`panels.pluginsRegistered`, `panels.externalPlugins`, `panels.installFromDirectory`. No `src-tauri` menu or tray string
+and no third-party notice named it. `/api/plugins` answers 404. User data: the switches were in memory only and no build
+wrote plugin state to `settings.json` (an unknown key there is ignored by `_load_settings`); an old
+`~/.chaosengine/plugins/` folder was never read and is left on disk untouched. A remembered or requested `plugins` tab id
+opens the Dashboard.
+
+**Prompts folded into Chat.** `src/features/prompts/ChatPromptsPanel.tsx`: a Prompts button first in the composer's
+right-hand group opens a panel (above the composer; a bottom sheet under 640 px) on the same `/api/prompts` store:
+browse and search (name, category, tags, prompt text), fill a template's variables with a live preview, **Insert into
+message** (after what is typed, on a new paragraph; focus back in the composer), **Use as system prompt** (still the one
+app-wide `systemPrompt`; the panel shows it with "Stop using it" and the button carries a dot), **Save message as
+prompt** (name from the first line), New, Edit, Delete with a confirm. Keyboard: search focused on open, Up and Down
+between the search box and the rows, Enter opens a row, Escape steps back then closes with focus on the button. An edit
+sends the fields the panel does not show (preset model, samplers, few-shot examples) back unchanged. The Prompts tab, its
+view and `PromptLibraryTab.tsx` are gone; `prompt-library` is a legacy id that opens Chat (`tabRedirects.ts`, also for a
+remembered sidebar child). Unused `promptLibrary.*` keys removed in every locale; 11 new English keys with `null`
+elsewhere (`chatButton`, `chatButtonTooltip`, `chatButtonActiveTooltip`, `chatPanelTitle`, `back`, `close`, `insert`,
+`useAsSystem`, `saveDraft`, `saveDraftEmpty`, `editor.promptText`). Tools sidebar caption is "Conversion and fine-tuning";
+off Apple Silicon the Tools group now only shows with "Show experimental tabs" on (Fine-Tuning), since Conversion is
+Mac-only.
+
+**Tests.** pytest `test_prompts.py`, `test_prompts_e2e_phase.py` (renamed from `test_prompts_plugins_e2e_phase.py`; phase
+file renamed `phase_21_prompts.py`, still key 213, 8 checks, the plugin checks replaced by "the removed Plugins routes
+answer 404"), `test_route_contracts.py` (Plugins contract replaced by "routes are gone" and "old plugin data on disk is
+ignored, not deleted"), `test_cli_smoke.py`, `test_backend_service.py`, `test_mcp_bridge.py`, `test_hub_tracker.py`: pass.
+vitest full run 170 files, 1995 tests pass (new `src/features/prompts/__tests__/chatPromptsPanel.test.tsx`; updated
+`experimentalTabs.test.ts`, `tabRedirects.test.ts`). `tsc --noEmit` clean. `npm run i18n:validate` OK. Playwright against
+a throwaway backend (spec `29-prompts-in-chat` replaces `29-prompts-plugins`, 5 tests; `01`, `09`, `31`, `33`, `35`, `40`
+rerun): all pass; `40`'s second test skips on Windows (no Tools page is listed with the switch off), `33`'s drawer test
+now opens Benchmarks instead of Tools, one `35` test failed once on page load and passed on rerun. Screenshots looked
+at: `e2e/screenshots/29-prompts-chat-1280-detail.png`, `-1280-list.png`, `-375-list.png`, `-375-detail.png`.
+
+**Not done or not verified.** The E2E suite's phase 213 against a real backend and model was not run (the in-process
+test covers it without a model). The packaged desktop app was not run. `src/locales/.extract-report.json` was not
+regenerated (it was already far out of date; regenerating made a 13,000-line diff). Per-thread system prompt and
+`/prompt` (FU-410) and template presets (FU-411) are open.

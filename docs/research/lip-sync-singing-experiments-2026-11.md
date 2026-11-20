@@ -301,3 +301,54 @@ both ran out of memory. Host RAM peak not captured. **No sung clip was made, so 
 pipeline was proven on the repo's own example at 1-2 steps only. Running it fairly needs either a Linux box with
 flash-attn and the Marlin kernel, or the bf16/LoRA path (66 GB more download, then a 14B bf16 model offloaded from
 64 GB of RAM). Verdict: not a practical tier on a 24 GB Windows card today (FU-386).
+
+## Extra data (this branch): the appended singing cue, and best-of-N with the score
+
+**Appended cue** (`lipSyncSinging` as built on this branch: the neutral prompt + ", singing, mouth opening and closing
+with each syllable."), same 6 pairs, scored with the final formula:
+
+| Prompt | mean score | beats chance | Never sang (cwv > 0.9) | Turned > 30 % |
+|---|---|---|---|---|
+| neutral (today) | 0.37 | 4 / 6 | 1 | 2 |
+| neutral + appended cue | 0.41 | 4 / 6 | 0 (ballad seed 42: cwv 0.48, half the line shut) | 1 |
+| explicit, written as one sentence | 0.44 | 5 / 6 | 0 | 1 |
+
+The appended cue gets about half the gain of rewriting the prompt: it stopped the full shut-mouth take but not
+completely. A prompt that leads with "Close-up of a ... singing, mouth opening and closing with each syllable" is the
+better form; the appended cue is the safe automatic fallback.
+
+**Best-of-N** (explicit recipe, 6 seeds per line: 42, 7, 11, 23, 99, 123; a "good" take beats chance, faces the
+camera at least 70 % of the shot and has cwv < 0.5; the score's pick over all N-subsets):
+
+| Line | Good takes | N=1 | N=2 | N=3 | N=4 |
+|---|---|---|---|---|---|
+| ballad_f | 2 / 6 | 0.33 | 0.60 | 0.80 | 0.93 |
+| soul_m | 5 / 6 | 0.83 | 1.00 | 1.00 | 1.00 |
+| pop_f | 6 / 6 | 1.00 | 1.00 | 1.00 | 1.00 |
+| all three | 13 / 18 | 0.72 | 0.87 | 0.93 | 0.98 |
+
+With the full head-turn penalty the score's pick was a good take in every subset that held one (pick-is-good equals
+any-is-good at every N). Cost: N x 56 s warm per shot plus about 10 s of CPU scoring per take; N=3 takes a 5 s shot
+from about 1 minute to about 3.
+
+**InfiniteTalk, one shot (this branch).** Windows install from the earlier attempt (`C:\tmp\lipsync-it`: repo, own
+venv, fp8 single model + Wan2.1 I2V 14B 480P parts + chinese-wav2vec2-base; earlier smoke runs at 1-2 steps worked in
+clip mode, streaming mode ran out of memory). Upstream applies a LoRA only without `--quant`, so the lightx2v
+step/CFG-distill LoRA (rank 64, 0.74 GB, ungated) was applied as forward hooks on the fp8 linears
+(`C:\tmp\lipsync-it\tools\run_it.py`: 487 linears, 244 norm diffs, none missing). pop_f, seed 42, clip mode, 81 frames
+at 25 fps (3.24 s, 896x448), 4 steps, text guide 1, audio guide 2, `--num_persistent_param_in_dit 0`:
+
+| Engine | r | chance | cwv | ows | turned | score | wall | per second of video | GPU peak |
+|---|---|---|---|---|---|---|---|---|---|
+| InfiniteTalk + distill LoRA (hooks), 4 steps | 0.49 | 0.42 | 0.13 | 0.48 | 0 | 0.59 | 653 s | ~200 s/s | 18.8 GiB |
+| LTX-2.3 route (b), same line, explicit, 6 seeds | 0.37-0.48 | ~0.30 | 0.11-0.16 | 0.75-0.81 | 0-0.13 | 0.41-0.51 | 56 s | ~11 s/s | 17.2 GiB |
+
+On this one take InfiniteTalk followed the vocal at least as well and shut the mouth more in the gaps (ows 0.48 vs
+about 0.8), but the strip shows a soft, smeared picture (face blur in motion; the hooked LoRA at 4 steps on the fp8
+model may not match the merged-LoRA quality) and it costs about 18x the time per second of video (155 s per step,
+weights streamed from RAM each pass). One take, one seed, 3.24 s: not enough to rank it; worth a proper test only as
+a slow quality tier (more steps, a merged-weight LoRA, 2-3 lines), not as the default.
+
+Score formula note: the experiment 1-4 tables above were first written with a half-weight head-turn penalty; the
+extra-data tables use the final formula (full penalty), which lowers takes that turn away (for example the close
+neutral recipe 0.44 -> 0.37, the explicit one 0.49 -> 0.44); the rankings did not change.

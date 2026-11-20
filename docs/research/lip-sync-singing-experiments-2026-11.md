@@ -140,3 +140,35 @@ account holder to consent to marketing offers. The saved Hugging Face token gets
 the owner's call (I do not accept terms on the account's behalf). Once accepted, the test is one command per clip
 (the take from the main recipe as the reference video, the stem window as the audio) on the existing venv, about
 4-5 minutes per 5 s shot by analogy with route (a) (same 22B fp8 checkpoint and streamed offload). FU row added.
+
+## Experiment 3: denoise settings
+
+Explicit prompt, stem, 5 s lead-in windows, seeds 42 and 7; each knob changed alone from the default (8 distilled
+steps, STG 1, modality guidance 3, guidance rescale 0.7, audio at sigma 0). Paired against the same song and seed
+with the default; "better in" counts the pairs whose score rose.
+
+| Knob | mean score (default 0.485) | paired change | better in | mean r | s per shot |
+|---|---|---|---|---|---|
+| audio sigma 0.1 x the video's (instead of 0) | **0.516** | **+0.03** | 4 / 6 | 0.46 | 56 |
+| audio sigma 0.3 x | 0.488 | +0.00 | 4 / 6 | 0.43 | 56 |
+| modality 3, guidance rescale 0 | 0.465 | -0.02 | 3 / 6 | 0.41 | 56 |
+| STG 0 (two passes a step) | 0.462 | -0.02 | 4 / 6 | 0.39 | **40** |
+| modality 5, rescale 0 | 0.454 | -0.03 | 2 / 6 | 0.38 | 56 |
+| modality 5 | 0.435 | -0.05 | 3 / 6 | 0.42 | 56 |
+| audio-to-video attention x 1.5 | 0.423 | -0.06 | 1 / 6 | 0.34 | 56 |
+| modality 1 (off) | 0.423 | -0.06 | 3 / 6 | 0.31 | 42 |
+| 12 steps (distilled schedule stretched) | 0.398 | -0.09 | 2 / 6 | 0.31 | 78 |
+| modality 8 | 0.387 | -0.10 | 1 / 6 | 0.36 | 56 |
+| 16 steps | 0.387 | -0.10 | 1 / 6 | 0.29 | 101 |
+| STG 2 | 0.383 | -0.10 | 1 / 6 | 0.29 | 56 |
+
+**No denoise knob fixes singing.** Every change is inside the take-to-take noise except three that clearly hurt:
+more steps (the distilled model is trained on its 8 sigmas; stretching the schedule to 12 or 16 steps costs 40-80 %
+more time and lowers r), STG 2, and modality 8. Stronger audio guidance (modality 5 or 8, with or without the 0.7
+rescale that diffusers applies by default, or a 1.5x gain on the audio-to-video attention) does not make the mouth
+follow the vocal more closely; it mostly makes the face mouth through the gaps (open while silent up to 0.80). The
+one small positive, telling the model the audio is at 10 % of the video's noise level instead of clean, is +0.03 on
+6 pairs: too small and too uncertain to change the shipped default without more takes. The cheap end is worth
+knowing: STG 0 or modality 1 drop a transformer pass (40-42 s instead of 56 s) at a small cost.
+
+The two-stage, non-distilled path (Lightricks' route (a): dev 22B fp8, CFG, 30 + 3 steps) is below.

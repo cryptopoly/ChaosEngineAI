@@ -188,3 +188,23 @@ Same hit rate, five times the time. Route (a) made the single best take of the w
 the mouth shuts in the gap between phrases and reopens with the next, a frontal face throughout), but also two
 misses on the ballad (seed 7 never opens; seed 42 opens late and sings on through the silent tail) and one on soul
 seed 7. The full non-distilled model does not fix singing either; its value stays the low-VRAM route (FU-333).
+
+## Experiment 7: LTX-2.5 audio to video
+
+`Lightricks/LTX-2.5` is gated (`auto`), and the saved token can read it; the diffusers repo the app's LTX-2.5 row
+uses (`Lightricks/LTX-2.5-Diffusers`, 67 GB) was already on disk. Loaded the way the app's video runtime loads it
+(`ltx25_loader.load_ltx25_components`: NF4 transformer and NF4 Gemma 4 text encoder, quantised while read; 84 s) into
+`LTX2ImageToVideoPipeline`, with the same audio hold, 8 distilled steps, the LTX-2.5 still CRF (18), the explicit
+prompt, stem, windows and seeds as route (b). The audio VAE config is identical to 2.3's, so the same log-mel input
+works.
+
+| Model | mean score | mean r | beats chance | open while silent | s per shot |
+|---|---|---|---|---|---|
+| **LTX-2.3** 4-bit (route b) | **0.44** | **0.44** | **5 / 6** | 0.59 | 56 |
+| LTX-2.5 4-bit, same loop | 0.36 | 0.20 | 1 / 6 | 0.82 | 55-66 |
+
+**LTX-2.5 is worse at singing**, as the landscape study's user reports said: the faces are livelier (big mouth
+shapes, head moves, a camera push-in, hands up on one take) but the mouth is open almost the whole shot, including
+the gaps (open while silent 0.76-0.94), so it follows the vocal far less (r 0.20; one take of six beats chance).
+Keep lip sync on 2.3. (Not tried: 2.5's own non-distilled path, its prompt enhancer, and a lower STG for its
+livelier motion.)

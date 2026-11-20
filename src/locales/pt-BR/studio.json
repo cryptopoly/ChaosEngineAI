@@ -559,7 +559,8 @@
     "ltx2": {
       "engineMessage": "Este modelo roda em seu próprio mecanismo MLX (ltx-2-mlx) na GPU da Apple, com som."
     },
-    "willLoadHint": "O modelo selecionado será carregado na memória na próxima geração. O primeiro carregamento pode levar um minuto nas variantes maiores."
+    "willLoadHint": "O modelo selecionado será carregado na memória na próxima geração. O primeiro carregamento pode levar um minuto nas variantes maiores.",
+    "lipSyncPointer": null
   },
   "imageGallery": {
     "subtitle": {

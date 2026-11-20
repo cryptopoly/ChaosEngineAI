@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useState } from "react";
+import { useDeferredValue, useEffect, useRef, useState } from "react";
 import {
   cancelImageGeneration,
   generateImage,
@@ -23,6 +23,7 @@ import {
   openGallery,
   openStudio,
   resetGalleryFilters,
+  stepsForPickedVariant,
 } from "../features/image/studioPresets";
 import {
   deleteArtifact,
@@ -34,8 +35,9 @@ import {
 import { IMAGE_RATIO_PRESETS, IMAGE_QUALITY_PRESETS } from "../constants";
 import {
   flattenImageVariants,
-  defaultImageVariantForFamily,
+  defaultImageVariantFor,
   findImageVariantById,
+  imageVariantEngineMissing,
   findImageVariantByRepo,
   imageVariantMatchesDiscoverFilters,
   imageDiscoverVariantMatchesQuery,
@@ -76,8 +78,13 @@ export function useImageState(
   backendOnline: boolean,
   setError: (msg: string | null) => void,
   setActiveTab: (tab: TabId) => void,
+  /** Whether the Nunchaku package is installed: ``null`` until the backend has said (FU-478). */
+  nunchakuAvailable: boolean | null = null,
 ) {
   const [imageCatalog, setImageCatalog] = useState<ImageModelFamily[]>([]);
+  // FU-476: false until the first catalogue request has answered (or failed), so Image Models says "Loading"
+  // instead of "Check that the backend is running" while the first answer is on its way.
+  const [imageCatalogSettled, setImageCatalogSettled] = useState(false);
   const [latestImageDiscoverResults, setLatestImageDiscoverResults] = useState<ImageModelVariant[]>([]);
   const [imageDiscoverTaskFilter, setImageDiscoverTaskFilter] = useState<ImageDiscoverTaskFilter>("all");
   const [imageDiscoverAccessFilter, setImageDiscoverAccessFilter] = useState<ImageDiscoverAccessFilter>("all");
@@ -308,21 +315,49 @@ export function useImageState(
   const imageGalleryWarningCount = imageOutputs.filter((artifact) => Boolean(artifact.runtimeNote)).length;
   const imageGalleryModelCount = imageGalleryModelOptions.length;
 
-  // Image catalog selection sync
+  // Image catalog selection sync. FU-478: the Studio never opens on a row whose engine is missing (a Nunchaku
+  // row with its files on disk but no Nunchaku package): it was "Installed" with Generate live, and refused.
+  // A row picked automatically before the backend said is picked again once it has; a row the user picks stays.
+  const autoPickedImageIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (!imageCatalog.length) {
       setSelectedImageModelId("");
       return;
     }
     const variants = flattenImageVariants(imageCatalog);
+    const current = variants.find((variant) => variant.id === selectedImageModelId);
+    const autoPickedCannotRun =
+      current !== undefined
+      && autoPickedImageIdRef.current === current.id
+      && imageVariantEngineMissing(current, nunchakuAvailable);
     // Check both curated and latest variants so tracked models don't get deselected
-    if (variants.some((variant) => variant.id === selectedImageModelId)) return;
+    if (current && !autoPickedCannotRun) return;
     if (latestImageDiscoverResults.some((variant) => variant.id === selectedImageModelId)) return;
-    const preferred =
-      variants.find((variant) => variant.availableLocally) ??
-      defaultImageVariantForFamily(imageCatalog[0]);
+    const preferred = defaultImageVariantFor(imageCatalog, nunchakuAvailable);
+    autoPickedImageIdRef.current = preferred?.id ?? null;
     setSelectedImageModelId(preferred?.id ?? "");
-  }, [imageCatalog, selectedImageModelId, latestImageDiscoverResults]);
+  }, [imageCatalog, selectedImageModelId, latestImageDiscoverResults, nunchakuAvailable]);
+
+  // FU-472: a distilled row starts at its own steps and guidance when it is picked. Reopening a saved
+  // image keeps that image's settings (hydrateImageFormFromArtifact sets the skip flag).
+  const skipVariantStepsRef = useRef(false);
+  const previousHadOwnStepsRef = useRef(false);
+  useEffect(() => {
+    if (!selectedImageVariant) return;
+    const hasOwn = typeof selectedImageVariant.defaultSteps === "number" && selectedImageVariant.defaultSteps > 0;
+    const previousHadOwn = previousHadOwnStepsRef.current;
+    previousHadOwnStepsRef.current = hasOwn;
+    if (skipVariantStepsRef.current) {
+      skipVariantStepsRef.current = false;
+      return;
+    }
+    const next = stepsForPickedVariant(selectedImageVariant, imageQualityPreset, previousHadOwn);
+    if (!next) return;
+    setImageSteps(next.steps);
+    if (next.guidance !== null) setImageGuidance(next.guidance);
+    // Only the picked row matters: a catalog refresh or a preset change must not reset the user's steps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedImageVariant?.id]);
 
   // Image download polling
   const hasActiveImageDownloads = Object.values(activeImageDownloads).some((download) => download.state === "downloading");
@@ -359,6 +394,7 @@ export function useImageState(
       setImageCatalog(catalog.value.families);
       setLatestImageDiscoverResults(catalog.value.latest ?? []);
     }
+    setImageCatalogSettled(true);
     if (outputs.status === "fulfilled") setImageOutputs(outputs.value);
     if (statuses.status === "fulfilled") setActiveImageDownloads(buildDownloadStatusMap(statuses.value));
     if (runtime.status === "fulfilled") {
@@ -420,6 +456,7 @@ export function useImageState(
   }
 
   function hydrateImageFormFromArtifact(artifact: ImageOutputArtifact, randomizeSeed = false) {
+    if (artifact.modelId !== selectedImageVariant?.id) skipVariantStepsRef.current = true;
     hydrateFormFromArtifact(artifact, randomizeSeed, {
       setSelectedImageModelId,
       setImagePrompt,
@@ -541,7 +578,7 @@ export function useImageState(
       } else {
         // The Logs tab became Server > Activity (D-88); a backend sentence already ends in a full stop.
         const detail = `${message.replace(/[.\s]+$/, "")}. Server > Activity has the backend details.`;
-        setError(detail);
+        // FU-478: the result dialog shows it; the same text in the page banner as well said it twice.
         setImageGenerationError(detail);
       }
     } finally {
@@ -704,6 +741,7 @@ export function useImageState(
 
   return {
     imageCatalog,
+    imageCatalogSettled,
     imageCatalogWithLatest,
     setImageCatalog,
     latestImageDiscoverResults,

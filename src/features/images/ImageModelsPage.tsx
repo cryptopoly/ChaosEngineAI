@@ -47,6 +47,8 @@ import { formatImageAccessError, formatImageLicenseLabel, isGatedImageAccessErro
 export interface ImageModelsPageProps {
   /** Curated families (``imgState.imageCatalog``). */
   catalog: ImageModelFamily[];
+  /** True until the first catalogue request has answered: the empty list then says "Loading" (FU-476). */
+  catalogLoading?: boolean;
   /** Tracked "latest" rows (``imgState.latestImageDiscoverResults``). */
   latest: ImageModelVariant[];
   searchInput: string;
@@ -190,6 +192,7 @@ function defaultDirFor(sort: DiscoverSort): SortDir {
 
 export function ImageModelsPage({
   catalog,
+  catalogLoading = false,
   latest,
   searchInput,
   onSearchInputChange,
@@ -408,7 +411,7 @@ export function ImageModelsPage({
         <ModelDetailList
           items={[
             { label: t("models.detail.repo", { defaultValue: "Repository" }), value: <code>{entry.repo}</code> },
-            variant.runtime ? { label: t("models.detail.engine", { defaultValue: "Engine" }), value: variant.runtime } : null,
+            variant.runtime ? { label: t("models.detail.engine", { defaultValue: "Engine" }), value: variant.runtimeLabel || variant.runtime } : null,
             variant.recommendedResolution
               ? { label: t("models.detail.resolution", { defaultValue: "Recommended size" }), value: variant.recommendedResolution }
               : null,
@@ -535,9 +538,11 @@ export function ImageModelsPage({
       narrowGridTemplate={IMAGE_GRID_NARROW}
       narrowHide={[2, 3]}
       renderRow={renderRow}
-      emptyCatalog={t("models.image.emptyCatalog", {
-        defaultValue: "No image models in the catalog yet. Check that the backend is running.",
-      })}
+      emptyCatalog={catalogLoading
+        ? t("models.image.loadingCatalog", { defaultValue: "Loading the image models…" })
+        : t("models.image.emptyCatalog", {
+            defaultValue: "No image models in the catalog yet. Check that the backend is running.",
+          })}
       emptyByAvailability={{
         installed: t("models.image.emptyInstalled", {
           defaultValue: "No image models installed yet. Pick one from the available models to download it.",

@@ -17,7 +17,8 @@ import { NO_ACK, ackKey, dangerBlocked, isAcked, type DangerAck } from "../../co
 import { videoMenuItems } from "./videoMenu";
 import { capacityLine as buildCapacityLine, formatCapacityGb } from "./videoCapacity";
 import { useBusyAdvice } from "../../hooks/useBusyAdvice";
-import { DEFAULT_VIDEO_NEGATIVE_PROMPT, DEFAULT_VIDEO_STEPS, recommendedGuidanceForRepo } from "../../hooks/videoStateDefaults";
+import { DEFAULT_VIDEO_NEGATIVE_PROMPT, DEFAULT_VIDEO_STEPS, defaultNumFramesFor, recommendedGuidanceForRepo } from "../../hooks/videoStateDefaults";
+import { cautionCoveredByFit, readVariantFit } from "../../components/models/fit";
 import {
   DEFAULT_MAX_SIDE,
   clampStudioSide,
@@ -718,6 +719,19 @@ export function VideoStudioTab({
         "This configuration is likely to crash the backend. Tick \"Run anyway\" in the run estimate after reviewing the warning, or lower resolution/frames/model.",
     });
   }
+  // One verdict per row (FU-472): a caution the Models page's fit verdict already covers is not repeated here.
+  const videoRiskShown =
+    generationSafety.riskLevel === "caution"
+    && cautionCoveredByFit(
+      readVariantFit(selectedVideoVariant),
+      { width: videoWidth, height: videoHeight, frames: videoNumFrames },
+      {
+        recommendedResolution: selectedVideoVariant?.recommendedResolution,
+        defaultFrames: selectedVideoVariant ? defaultNumFramesFor(selectedVideoVariant.defaultDurationSeconds) : null,
+      },
+    )
+      ? "safe"
+      : generationSafety.riskLevel;
   const generateTitle = generateDisabledReason ?? t("videoStudio.generateTitle", { defaultValue: "Start generating this clip." });
   const generationDisabled = generateDisabledReason !== null;
 
@@ -966,6 +980,15 @@ export function VideoStudioTab({
             </div>
           ) : null}
 
+          {/* D-109: lip sync stays in Projects for v0.10.0; on a row that can do it, say where it is. */}
+          {selectedVideoVariant?.lipSync ? (
+            <p className="muted-text" role="note">
+              {t("videoStudio.lipSyncPointer", {
+                defaultValue: "Lip sync: this model can make a face in a still speak or sing a vocal. It runs from a shot in Projects: open the shot and add a file under \"Vocal for lip sync\".",
+              })}
+            </p>
+          ) : null}
+
           {selectedVideoVariant?.localStatusReason && !isDownloaded && !isDownloading ? (
             <p className="muted-text" style={{ color: "var(--warning, #f2c66d)" }}>
               {selectedVideoVariant.localStatusReason}
@@ -1176,7 +1199,7 @@ export function VideoStudioTab({
             </p>
           ) : null}
 
-          {generationSafety.riskLevel !== "safe" ? (
+          {videoRiskShown !== "safe" ? (
             <div
               className={`callout image-callout ${
                 generationSafety.riskLevel === "danger" ? "error" : "warning"
@@ -1240,7 +1263,7 @@ export function VideoStudioTab({
               totalGb={selectedVideoVariant ? generationSafety.deviceMemoryGb : null}
               diskMb={null}
               basis={estimateBasis}
-              risk={selectedVideoVariant ? generationSafety.riskLevel : "safe"}
+              risk={selectedVideoVariant ? videoRiskShown : "safe"}
               busy={busyAdvice}
               ack={{ checked: dangerOverrideAck, onChange: (checked) => setDangerAck({ key: dangerKey, checked }) }}
               memoryTitle={selectedVideoVariant ? capacityLine : undefined}

@@ -703,6 +703,7 @@
     "image": {
       "emptyAttention": "No image model needs attention.",
       "emptyCatalog": "No image models in the catalog yet. Check that the backend is running.",
+      "loadingCatalog": "Loading the image models…",
       "emptyDownloading": "No image model is downloading.",
       "emptyInstalled": "No image models installed yet. Pick one from the available models to download it.",
       "intro": "Every image model in one list. Download one to use it in Image Studio; filter by what is installed, available or downloading."
@@ -731,6 +732,7 @@
     "video": {
       "intro": "Every video model in one list. Download one to use it in Video Studio; filter by what is installed, available or downloading.",
       "emptyCatalog": "No video models in the catalog yet. Check that the backend is running.",
+      "loadingCatalog": "Loading the video models…",
       "emptyInstalled": "No video models installed yet. Pick one from the available models to download it.",
       "emptyDownloading": "No video model is downloading.",
       "emptyAttention": "No video model needs attention."

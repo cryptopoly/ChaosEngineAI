@@ -66,6 +66,27 @@ export function applyQualityPreset(
   deps.setImageGuidance(preset.guidance);
 }
 
+/**
+ * FU-472: the steps and guidance to set when a row is picked. A distilled or few-step row (``defaultSteps`` in
+ * the catalog: FLUX 3 Klein 8, schnell 4) starts at its own values; FLUX 3 Klein opened at the Balanced
+ * preset's 24 steps (13 s) where 8 is recommended (7.0 s measured). A row without its own values goes back to
+ * the quality preset when the previous row had set its own, and is otherwise left alone (``null``).
+ */
+export function stepsForPickedVariant(
+  variant: { defaultSteps?: number | null; cfgOverride?: number | null } | null | undefined,
+  presetId: ImageQualityPreset,
+  previousHadOwnSteps: boolean,
+): { steps: number; guidance: number | null } | null {
+  const own = variant?.defaultSteps;
+  if (typeof own === "number" && Number.isFinite(own) && own > 0) {
+    const cfg = variant?.cfgOverride;
+    return { steps: own, guidance: typeof cfg === "number" && Number.isFinite(cfg) ? cfg : null };
+  }
+  if (!previousHadOwnSteps) return null;
+  const preset = IMAGE_QUALITY_PRESETS.find((item) => item.id === presetId) ?? IMAGE_QUALITY_PRESETS[1];
+  return { steps: preset.steps, guidance: preset.guidance };
+}
+
 interface OpenStudioDeps {
   setSelectedImageModelId: (id: string) => void;
   setActiveTab: (tab: TabId) => void;

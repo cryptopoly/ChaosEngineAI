@@ -559,7 +559,8 @@
     "ltx2": {
       "engineMessage": "This model runs on its own MLX engine (ltx-2-mlx) on the Apple GPU, with sound."
     },
-    "willLoadHint": "The selected model will be loaded into memory on the next generate. First load can take a minute for the larger variants."
+    "willLoadHint": "The selected model will be loaded into memory on the next generate. First load can take a minute for the larger variants.",
+    "lipSyncPointer": "Lip sync: this model can make a face in a still speak or sing a vocal. It runs from a shot in Projects: open the shot and add a file under \"Vocal for lip sync\"."
   },
   "imageGallery": {
     "subtitle": {

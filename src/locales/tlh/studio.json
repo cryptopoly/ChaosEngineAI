@@ -559,7 +559,8 @@
     "ltx2": {
       "engineMessage": "MLX jonta' le'Daj (ltx-2-mlx) lo' yabvam Apple GPUDaq, wab je."
     },
-    "willLoadHint": "veb bIchenmoHDI' qawHaqDaq wIvlu'ta'bogh yab chu'lu'. yab tInvaD wa' tup nI'laH chu'ghach wa'DIch."
+    "willLoadHint": "veb bIchenmoHDI' qawHaqDaq wIvlu'ta'bogh yab chu'lu'. yab tInvaD wa' tup nI'laH chu'ghach wa'DIch.",
+    "lipSyncPointer": null
   },
   "imageGallery": {
     "subtitle": {

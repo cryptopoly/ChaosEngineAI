@@ -161,6 +161,20 @@ def _image_variant_inputs(variant: dict[str, Any]) -> dict[str, Any]:
     return {"acceptsGuidance": True, "acceptsNegativePrompt": True, "maxReferenceImages": 0}
 
 
+# FU-476: the catalogue's runtime string for the plain diffusers rows reads "Stub diffusion pipeline", which the
+# Studio printed in its header ("this is fake"). The string stays as it is (the platform gate and tests read
+# ``runtime``); the pages show ``runtimeLabel``.
+_RUNTIME_DISPLAY_LABELS = {"Stub diffusion pipeline": "diffusers"}
+
+
+def image_runtime_label(variant: dict[str, Any]) -> str | None:
+    """The runtime name to show for a catalog row; ``runtime`` itself is left unchanged."""
+    runtime = variant.get("runtime")
+    if not isinstance(runtime, str) or not runtime:
+        return None
+    return _RUNTIME_DISPLAY_LABELS.get(runtime, runtime)
+
+
 def _image_model_payloads(
     library: list[dict[str, Any]],
     hardware: HardwareClass | None = None,
@@ -210,6 +224,7 @@ def _image_model_payloads(
                     **variant,
                     **live_metadata,
                     "source": "curated",
+                    "runtimeLabel": image_runtime_label(variant),
                     "familyName": family.get("name"),
                     "availableLocally": _image_variant_available_locally(variant, library),
                     **_image_variant_inputs(variant),

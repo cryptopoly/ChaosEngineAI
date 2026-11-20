@@ -59,6 +59,16 @@ export function clampNumFrames(value: number): number {
 }
 
 
+/** FU-475: the frame count the Studio opens at, so the first clip lasts what the row's "{n}s clip" chip says
+ * (4.0 s at 24 fps is 97 frames, not the old fixed 33 = 1.4 s). Rows without a duration keep the short default. */
+export function defaultNumFramesFor(durationSeconds: number | null | undefined, fps: number = DEFAULT_VIDEO_FPS): number {
+  if (typeof durationSeconds !== "number" || !Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+    return DEFAULT_VIDEO_NUM_FRAMES;
+  }
+  return clampNumFrames(durationSeconds * fps + 1);
+}
+
+
 /** Parse "832x480" (or similar) into [width, height], falling back to defaults. */
 export function parseRecommendedResolution(
   value: string | null | undefined,

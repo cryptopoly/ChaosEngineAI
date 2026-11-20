@@ -12,6 +12,27 @@ export function defaultImageVariantForFamily(family?: ImageModelFamily | null): 
   return family.variants.find((variant) => variant.id === family.defaultVariantId) ?? family.variants[0] ?? null;
 }
 
+/** FU-478: true when the row's engine is known to be missing here: a Nunchaku row while the Nunchaku package
+ * is not installed. ``nunchakuAvailable`` is ``null`` until the backend has said, which counts as not missing. */
+export function imageVariantEngineMissing(
+  variant: Pick<ImageModelVariant, "nunchakuRepo">,
+  nunchakuAvailable: boolean | null,
+): boolean {
+  return Boolean(variant.nunchakuRepo) && nunchakuAvailable === false;
+}
+
+/** The row Image Studio opens on: the first installed row that can run here, else the first family's default. */
+export function defaultImageVariantFor(
+  families: ImageModelFamily[],
+  nunchakuAvailable: boolean | null,
+): ImageModelVariant | null {
+  return (
+    flattenImageVariants(families).find(
+      (variant) => variant.availableLocally && !imageVariantEngineMissing(variant, nunchakuAvailable),
+    ) ?? defaultImageVariantForFamily(families[0])
+  );
+}
+
 export function findImageVariantById(families: ImageModelFamily[], variantId: string): ImageModelVariant | null {
   for (const family of families) {
     const match = family.variants.find((variant) => variant.id === variantId);

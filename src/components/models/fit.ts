@@ -93,6 +93,27 @@ export function readBestFitVariantId(family: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
+/**
+ * FU-472, one verdict per row: a Studio "may struggle" (caution) warning is dropped when the backend's verdict
+ * for this row on this machine is ``fits`` or ``tight`` and the run is no bigger than the row's recommended
+ * size (and, for video, its default clip), which is what the verdict judged. FLUX 3 Klein and LTX-2.3 were
+ * measured working on a 24 GB card and marked Tight on Models while the Studio said they "may fail". A larger
+ * run, or a danger-level estimate, keeps its warning.
+ */
+export function cautionCoveredByFit(
+  fit: Fit | null | undefined,
+  run: { width: number; height: number; frames?: number | null },
+  row: { recommendedResolution?: string | null; defaultFrames?: number | null },
+): boolean {
+  if (!fit || (fit.status !== "fits" && fit.status !== "tight")) return false;
+  const match = /(\d{3,5})\s*[x×]\s*(\d{3,5})/i.exec(row.recommendedResolution ?? "");
+  if (!match) return false;
+  const recommendedPixels = Number(match[1]) * Number(match[2]);
+  if (!(run.width > 0 && run.height > 0) || run.width * run.height > recommendedPixels) return false;
+  if (row.defaultFrames != null && run.frames != null && run.frames > row.defaultFrames) return false;
+  return true;
+}
+
 /** Sort rank for a fit verdict: fits first, then tight, then unknown,
  * then won't fit; rows without a verdict last. */
 export function fitSortRank(fit: Fit | null | undefined): number {

@@ -19,6 +19,7 @@ export function VideoModelsView({ ctx }: { ctx: AppTabContext }) {
   return (
     <VideoModelsPage
       catalog={videoState.videoCatalog}
+      catalogLoading={!videoState.videoCatalogSettled}
       latest={videoState.latestVideoDiscoverResults}
       searchInput={videoState.videoDiscoverSearchInput}
       onSearchInputChange={videoState.setVideoDiscoverSearchInput}

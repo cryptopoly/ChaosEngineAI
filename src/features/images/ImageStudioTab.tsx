@@ -10,6 +10,7 @@ import { RecommendedSettingsPanel } from "../../components/RecommendedSettingsPa
 import { ActionMenu, type ActionMenuItem } from "../../components/ActionMenu";
 import { Disclosure } from "../../components/Disclosure";
 import { RunEstimateStrip } from "../../components/RunEstimateStrip";
+import { cautionCoveredByFit, readVariantFit } from "../../components/models/fit";
 import { variantSeconds } from "../../utils/timeEstimate";
 import { DisclosureMemoryContext, useDisclosureMemory } from "../../components/studioDisclosureMemory";
 import { runEstimateBasis, summaryLine } from "../../components/studioSummary";
@@ -432,10 +433,11 @@ export function ImageStudioTab({
   const externalImageEngine = variantEngine === "mflux" || variantEngine === "sdcpp";
   const showSampler = Boolean(selectedImageVariant) && !externalImageEngine && !isFlowMatchingRepo(selectedImageRepo);
   const showDiffusionCache = Boolean(selectedImageVariant) && !externalImageEngine && !isUnetVariant;
-  const showCfgDecay = Boolean(selectedImageVariant) && !externalImageEngine && isFlowMatchingRepo(selectedImageRepo);
+  const acceptsGuidance = selectedImageVariant?.acceptsGuidance !== false;
+  // CFG decay changes the guidance over the run: nothing to decay on a row without guidance (FLUX 3 Klein, FU-472).
+  const showCfgDecay = Boolean(selectedImageVariant) && !externalImageEngine && acceptsGuidance && isFlowMatchingRepo(selectedImageRepo);
   const showPreviewVae = !externalImageEngine;
   const showFp8 = showCudaControls && !externalImageEngine;
-  const acceptsGuidance = selectedImageVariant?.acceptsGuidance !== false;
 
   // Per-model size limits (``maxSide`` from the catalog; 4096 when the backend sends none).
   const imageMaxSide = selectedImageVariant?.maxSide && selectedImageVariant.maxSide > 0
@@ -516,6 +518,16 @@ export function ImageStudioTab({
 
   const formatImageGb = (gb: number): string => (gb >= 10 ? `${gb.toFixed(0)} GB` : `${gb.toFixed(1)} GB`);
 
+  // One verdict per row (FU-472): a caution the Models page's fit verdict already covers is not repeated here.
+  const imageRiskShown =
+    imageSafety.riskLevel === "caution"
+    && cautionCoveredByFit(
+      readVariantFit(selectedImageVariant),
+      { width: imageWidth, height: imageHeight },
+      { recommendedResolution: selectedImageVariant?.recommendedResolution },
+    )
+      ? "safe"
+      : imageSafety.riskLevel;
   const imageGenerateBlockedByDanger = dangerBlocked(imageSafety.riskLevel, dangerOverrideAck);
   const imageGenerateDisabled =
     imageBusy || !selectedImageVariant || imageGenerateBlockedByDanger;
@@ -637,7 +649,7 @@ export function ImageStudioTab({
       <Panel
         title={t("image.title")}
         subtitle={selectedImageVariant
-          ? `${selectedImageVariant.name} / ${selectedImageVariant.runtime} / ${imageOutputs.length} ${t("image.savedOutputsLabel", { defaultValue: "saved outputs" })}`
+          ? `${selectedImageVariant.name} / ${selectedImageVariant.runtimeLabel || selectedImageVariant.runtime} / ${imageOutputs.length} ${t("image.savedOutputsLabel", { defaultValue: "saved outputs" })}`
           : t("image.subtitle", { defaultValue: "Choose a model, prompt it, and iterate on saved outputs" })}
         className="span-2"
         actions={
@@ -996,7 +1008,7 @@ export function ImageStudioTab({
             override checkbox for danger runs lives in the run estimate strip
             below (auto-resets on variant / width / height change).
           */}
-          {imageSafety.riskLevel !== "safe" && selectedImageVariant ? (
+          {imageRiskShown !== "safe" && selectedImageVariant ? (
             <div
               className={`callout image-callout ${
                 imageSafety.riskLevel === "danger" ? "error" : "warning"
@@ -1062,7 +1074,7 @@ export function ImageStudioTab({
               totalGb={selectedImageVariant && imageSafety.modelFootprintGb > 0 ? imageSafety.deviceMemoryGb : null}
               diskMb={null}
               basis={estimateBasis}
-              risk={selectedImageVariant ? imageSafety.riskLevel : "safe"}
+              risk={selectedImageVariant ? imageRiskShown : "safe"}
               busy={busyAdvice}
               ack={{ checked: dangerOverrideAck, onChange: (checked) => setDangerAck({ key: dangerKey, checked }) }}
               action={

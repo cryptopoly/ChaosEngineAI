@@ -1,7 +1,7 @@
 {
   "liveStats": {
     "title": "Live-Systemstatistik",
-    "subtitle": "Aktualisiert vom Python-Sidecar, damit die Desktop-Shell Fit-Empfehlungen geben kann.",
+    "subtitle": null,
     "runtimeEngine": "Laufzeit-Engine",
     "noModelLoaded": "Kein Modell geladen",
     "inferenceActivity": "Inferenz-Aktivität",
@@ -76,7 +76,8 @@
     },
     "backendReadiness": {
       "title": "Backend-Bereitschaft",
-      "detail": "MLX installiert: {mlx} / mlx-lm installiert: {mlxLm} / MLX nutzbar: {mlxUsable} / GGUF-Laufzeit: {gguf}"
+      "detail": "MLX installiert: {mlx} / mlx-lm installiert: {mlxLm} / MLX nutzbar: {mlxUsable} / GGUF-Laufzeit: {gguf}",
+      "detailGguf": null
     }
   },
   "recommendation": {

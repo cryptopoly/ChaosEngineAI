@@ -1,7 +1,7 @@
 {
   "liveStats": {
     "title": "实时系统统计",
-    "subtitle": "从 Python 边车刷新数据,以便桌面 Shell 提供适配建议。",
+    "subtitle": null,
     "runtimeEngine": "运行时引擎",
     "noModelLoaded": "未加载模型",
     "inferenceActivity": "推理活动",
@@ -76,7 +76,8 @@
     },
     "backendReadiness": {
       "title": "后端就绪状态",
-      "detail": "MLX 已安装：{mlx} / mlx-lm 已安装：{mlxLm} / MLX 可用：{mlxUsable} / GGUF 运行时：{gguf}"
+      "detail": "MLX 已安装：{mlx} / mlx-lm 已安装：{mlxLm} / MLX 可用：{mlxUsable} / GGUF 运行时：{gguf}",
+      "detailGguf": null
     }
   },
   "recommendation": {

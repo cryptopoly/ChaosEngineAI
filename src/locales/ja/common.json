@@ -1058,7 +1058,7 @@
     },
     "providers": {
       "title": "リモートプロバイダー",
-      "subtitle": "OpenAI 互換のクラウド API をフォールバックとして設定します。キーはローカルに 0600 権限で保存されます。",
+      "subtitle": null,
       "addButton": "+ プロバイダーを追加",
       "emptyState": "リモートプロバイダーが設定されていません。クラウドモデルをフォールバックとして使うには追加してください。",
       "labelField": "ラベル",
@@ -1076,7 +1076,7 @@
       "tokenLabel": "Hugging Face トークン",
       "tokenStoredPlaceholder": "•••• 保存済み ••••",
       "tokenPlaceholder": "hf_...",
-      "helpText": "ローカルに保存されます。Hugging Face からゲート付きモデルを取得する際の MLX 変換で使用されます。"
+      "helpText": null
     },
     "agentAccess": {
       "title": "エージェントアクセス",
@@ -1205,6 +1205,7 @@
     "searchPlaceholder": "モデルを検索...",
     "contextDetected": "{contextLabel} を検出",
     "emptyState": "検索条件に一致するモデルはありません。",
+    "emptyLibrary": null,
     "launchSettings": "起動設定",
     "cancelButton": "キャンセル",
     "busyConfirm": "そのまま読み込む"
@@ -1405,7 +1406,7 @@
   },
   "wslBridgePanel": {
     "title": "WSL2 vLLM ブリッジ",
-    "backendOffline": "バックエンドがオフラインです — sidecar を起動して WSL の状態を確認してください。",
+    "backendOffline": null,
     "capsError": "WSL の状態を読み取れませんでした: {error}",
     "probing": "WSL の状態を確認中...",
     "ready": "✓ 準備完了{version}",
@@ -1427,7 +1428,7 @@
     "title": "ブーストパック",
     "description": "画像・動画・チャット推論向けのオプションのアクセラレータです。どれも pip install ひとつで導入できます — お使いのハードウェアが対応している行で「インストール」をクリックしてください。",
     "capError": "アクセラレータの対応状況を読み取れませんでした: {error}",
-    "backendOffline": "バックエンドがオフラインです — sidecar を起動してアクセラレータの状態を読み取ってください。",
+    "backendOffline": null,
     "columns": {
       "accelerator": "アクセラレータ",
       "size": "サイズ",
@@ -1452,7 +1453,7 @@
     "moveConfirm": "{from} から {to} へ、{size} のモデルを移動しますか？\n\nコピーが正常に完了すると、元のフォルダは削除されます。回転ディスク式の HDD では、100 GB で 15〜45 分かかることがあります。\n\n開始する前に、実行中の生成をすべて閉じてください。",
     "reading": "ストレージ情報を読み取り中...",
     "loading": "ストレージ情報を読み込み中...",
-    "backendOffline": "バックエンドがオフラインです — sidecar を起動してストレージを設定してください。",
+    "backendOffline": null,
     "currentLocation": "現在のキャッシュの場所",
     "inCache": "キャッシュ内 {size}",
     "free": "空き {size}",

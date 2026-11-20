@@ -1058,7 +1058,7 @@
     },
     "providers": {
       "title": "Proveedores remotos",
-      "subtitle": "Configura APIs en la nube compatibles con OpenAI como plan de respaldo. Las claves se almacenan localmente con permisos 0600.",
+      "subtitle": null,
       "addButton": "+ Añadir proveedor",
       "emptyState": "Ningún proveedor remoto configurado. Añade uno para usar modelos en la nube como plan de respaldo.",
       "labelField": "Etiqueta",
@@ -1076,7 +1076,7 @@
       "tokenLabel": "Token de Hugging Face",
       "tokenStoredPlaceholder": "•••• almacenado ••••",
       "tokenPlaceholder": "hf_...",
-      "helpText": "Se almacena localmente. Usado por la conversión MLX al obtener modelos restringidos de Hugging Face."
+      "helpText": null
     },
     "agentAccess": {
       "title": "Acceso de agentes",
@@ -1205,6 +1205,7 @@
     "searchPlaceholder": "Buscar modelos...",
     "contextDetected": "{contextLabel} detectado",
     "emptyState": "Ningún modelo coincide con tu búsqueda.",
+    "emptyLibrary": null,
     "launchSettings": "Configuración de lanzamiento",
     "cancelButton": "Cancelar",
     "busyConfirm": "Cargar de todos modos"
@@ -1405,7 +1406,7 @@
   },
   "wslBridgePanel": {
     "title": "Puente WSL2 vLLM",
-    "backendOffline": "Backend sin conexión — inicia el sidecar para comprobar el estado de WSL.",
+    "backendOffline": null,
     "capsError": "No se pudo leer el estado de WSL: {error}",
     "probing": "Comprobando el estado de WSL...",
     "ready": "✓ Listo{version}",
@@ -1427,7 +1428,7 @@
     "title": "Boost Pack",
     "description": "Aceleradores opcionales para la inferencia de imagen, video y chat. Cada uno está a un solo pip install — haz clic en Instalar en las filas que tu hardware admita.",
     "capError": "No se pudieron leer las capacidades de los aceleradores: {error}",
-    "backendOffline": "Backend sin conexión — inicia el sidecar para leer el estado de los aceleradores.",
+    "backendOffline": null,
     "columns": {
       "accelerator": "Acelerador",
       "size": "Tamaño",
@@ -1452,7 +1453,7 @@
     "moveConfirm": "¿Mover {size} de modelos de {from} a {to}?\n\nEl árbol de origen se eliminará tras una copia correcta. En un HDD mecánico puede tardar de 15 a 45 min para 100 GB.\n\nCierra cualquier generación en curso antes de empezar.",
     "reading": "Leyendo la información de almacenamiento...",
     "loading": "Cargando la información de almacenamiento...",
-    "backendOffline": "Backend sin conexión — inicia el sidecar para configurar el almacenamiento.",
+    "backendOffline": null,
     "currentLocation": "Ubicación actual de la caché",
     "inCache": "{size} en la caché",
     "free": "{size} libres",

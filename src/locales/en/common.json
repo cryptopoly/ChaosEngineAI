@@ -1058,7 +1058,7 @@
     },
     "providers": {
       "title": "Remote Providers",
-      "subtitle": "Configure cloud OpenAI-compatible APIs as a fallback. Keys are stored locally with 0600 permissions.",
+      "subtitle": "Use a cloud API that speaks the OpenAI format when no local model is loaded. Keys are stored on this computer, in the ChaosEngineAI data folder.",
       "addButton": "+ Add Provider",
       "emptyState": "No remote providers configured. Add one to use cloud models as a fallback.",
       "labelField": "Label",
@@ -1076,7 +1076,7 @@
       "tokenLabel": "Hugging Face token",
       "tokenStoredPlaceholder": "•••• stored ••••",
       "tokenPlaceholder": "hf_...",
-      "helpText": "Stored locally. Used by MLX conversion when fetching gated models from Hugging Face."
+      "helpText": "Stored on this computer. Used whenever a download needs your Hugging Face account, for example a gated model."
     },
     "agentAccess": {
       "title": "Agent access",
@@ -1205,6 +1205,7 @@
     "searchPlaceholder": "Search models...",
     "contextDetected": "{contextLabel} detected",
     "emptyState": "No models match your search.",
+    "emptyLibrary": "No chat models downloaded yet. Download one under Chat > Models, then come back here.",
     "launchSettings": "Launch settings",
     "cancelButton": "Cancel",
     "busyConfirm": "Load anyway"
@@ -1405,7 +1406,7 @@
   },
   "wslBridgePanel": {
     "title": "WSL2 vLLM bridge",
-    "backendOffline": "Backend offline — start the sidecar to probe WSL state.",
+    "backendOffline": "The backend is not answering, so the WSL state cannot be read. It fills in when the backend is back.",
     "capsError": "Could not read WSL state: {error}",
     "probing": "Probing WSL state...",
     "ready": "✓ Ready{version}",
@@ -1427,7 +1428,7 @@
     "title": "Boost Pack",
     "description": "Optional accelerators for image, video, and chat inference. Each is a single pip install away — click Install on the rows your hardware supports.",
     "capError": "Could not read accelerator capabilities: {error}",
-    "backendOffline": "Backend offline — start the sidecar to read accelerator state.",
+    "backendOffline": "The backend is not answering, so what is installed cannot be read. It fills in when the backend is back.",
     "columns": {
       "accelerator": "Accelerator",
       "size": "Size",
@@ -1452,7 +1453,7 @@
     "moveConfirm": "Move {size} of models from {from} to {to}?\n\nThe source tree will be deleted after a successful copy. On a spinning HDD this can take 15-45 min for 100 GB.\n\nClose any running generations before starting.",
     "reading": "Reading storage info...",
     "loading": "Loading storage info...",
-    "backendOffline": "Backend offline — start the sidecar to configure storage.",
+    "backendOffline": "The backend is not answering, so storage cannot be changed. It fills in when the backend is back.",
     "currentLocation": "Current cache location",
     "inCache": "{size} in cache",
     "free": "{size} free",

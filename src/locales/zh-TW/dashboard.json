@@ -1,7 +1,7 @@
 {
   "liveStats": {
     "title": "即時系統統計",
-    "subtitle": "從 Python sidecar 重新整理資料,以便桌面 Shell 提供適配建議。",
+    "subtitle": null,
     "runtimeEngine": "執行階段引擎",
     "noModelLoaded": "未載入模型",
     "inferenceActivity": "推論活動",
@@ -76,7 +76,8 @@
     },
     "backendReadiness": {
       "title": "後端就緒狀態",
-      "detail": "MLX 已安裝：{mlx} / mlx-lm 已安裝：{mlxLm} / MLX 可用：{mlxUsable} / GGUF 執行階段：{gguf}"
+      "detail": "MLX 已安裝：{mlx} / mlx-lm 已安裝：{mlxLm} / MLX 可用：{mlxUsable} / GGUF 執行階段：{gguf}",
+      "detailGguf": null
     }
   },
   "recommendation": {

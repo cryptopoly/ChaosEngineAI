@@ -1058,7 +1058,7 @@
     },
     "providers": {
       "title": "Provedores remotos",
-      "subtitle": "Configure APIs em nuvem compatíveis com OpenAI como fallback. As chaves são armazenadas localmente com permissões 0600.",
+      "subtitle": null,
       "addButton": "+ Adicionar provedor",
       "emptyState": "Nenhum provedor remoto configurado. Adicione um para usar modelos em nuvem como fallback.",
       "labelField": "Rótulo",
@@ -1076,7 +1076,7 @@
       "tokenLabel": "Token do Hugging Face",
       "tokenStoredPlaceholder": "•••• armazenado ••••",
       "tokenPlaceholder": "hf_...",
-      "helpText": "Armazenado localmente. Usado pela conversão MLX ao buscar modelos com acesso restrito no Hugging Face."
+      "helpText": null
     },
     "agentAccess": {
       "title": "Acesso de agentes",
@@ -1205,6 +1205,7 @@
     "searchPlaceholder": "Pesquisar modelos...",
     "contextDetected": "{contextLabel} detectado",
     "emptyState": "Nenhum modelo corresponde à sua busca.",
+    "emptyLibrary": null,
     "launchSettings": "Configurações de inicialização",
     "cancelButton": "Cancelar",
     "busyConfirm": "Carregar mesmo assim"
@@ -1405,7 +1406,7 @@
   },
   "wslBridgePanel": {
     "title": "Ponte WSL2 para vLLM",
-    "backendOffline": "Backend offline — inicie o sidecar para verificar o estado do WSL.",
+    "backendOffline": null,
     "capsError": "Não foi possível ler o estado do WSL: {error}",
     "probing": "Verificando o estado do WSL...",
     "ready": "✓ Pronto{version}",
@@ -1427,7 +1428,7 @@
     "title": "Pacote de aceleração",
     "description": "Aceleradores opcionais para inferência de imagem, vídeo e chat. Cada um está a um único pip install de distância — clique em Instalar nas linhas compatíveis com o seu hardware.",
     "capError": "Não foi possível ler os recursos dos aceleradores: {error}",
-    "backendOffline": "Backend offline — inicie o sidecar para ler o estado dos aceleradores.",
+    "backendOffline": null,
     "columns": {
       "accelerator": "Acelerador",
       "size": "Tamanho",
@@ -1452,7 +1453,7 @@
     "moveConfirm": "Mover {size} de modelos de {from} para {to}?\n\nA árvore de origem será excluída após uma cópia bem-sucedida. Em um HDD giratório, isso pode levar de 15 a 45 min para 100 GB.\n\nFeche todas as gerações em andamento antes de começar.",
     "reading": "Lendo informações de armazenamento...",
     "loading": "Carregando informações de armazenamento...",
-    "backendOffline": "Backend offline — inicie o sidecar para configurar o armazenamento.",
+    "backendOffline": null,
     "currentLocation": "Local atual do cache",
     "inCache": "{size} no cache",
     "free": "{size} livres",

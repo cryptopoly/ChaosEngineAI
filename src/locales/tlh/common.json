@@ -1058,7 +1058,7 @@
     },
     "providers": {
       "title": "Hop nobwI'",
-      "subtitle": "OpenAI rurbogh cloud API mIw cha'DIch yIwIv. key naDev pollu' (0600 chaw').",
+      "subtitle": null,
       "addButton": "+ nobwI' yIchel",
       "emptyState": "Hop nobwI' tu'lu'be'. cloud yab mIw cha'DIch lo'meH wa' yIchel.",
       "labelField": "pong",
@@ -1076,7 +1076,7 @@
       "tokenLabel": "Hugging Face token",
       "tokenStoredPlaceholder": "•••• pollu'ta' ••••",
       "tokenPlaceholder": "hf_...",
-      "helpText": "naDev pollu'. Hugging Facevo' yab ngaQ qemtaHvIS MLX choH lo'."
+      "helpText": null
     },
     "agentAccess": {
       "title": "Duy 'el",
@@ -1205,6 +1205,7 @@
     "searchPlaceholder": "yab yInej...",
     "contextDetected": "{contextLabel} tu'lu'ta'",
     "emptyState": "nejlIjvaD yab tu'lu'be'.",
+    "emptyLibrary": null,
     "launchSettings": "tagh wIv",
     "cancelButton": "yIqIl",
     "busyConfirm": "yIchu'; qaSjaj"
@@ -1405,7 +1406,7 @@
   },
   "wslBridgePanel": {
     "title": "WSL2 vLLM He",
-    "backendOffline": "Qapbe' qoD pat; WSL Dotlh nuDmeH sidecar yItagh.",
+    "backendOffline": null,
     "capsError": "WSL Dotlh laDlaHbe'lu': {error}",
     "probing": "WSL Dotlh nuDlI'...",
     "ready": "✓ ghuH{version}",
@@ -1427,7 +1428,7 @@
     "title": "nommoHwI' jo",
     "description": "mIllogh, mIllogh vIH, ja'chuq je nommoHwI' wIvlaH. pip install wa' neH poQ Hoch; mIqta'lIj Qapbogh tlheghDaq yIjom yI'uy.",
     "capError": "nommoHwI' laH laDlaHbe'lu': {error}",
-    "backendOffline": "Qapbe' qoD pat; nommoHwI' Dotlh laDmeH sidecar yItagh.",
+    "backendOffline": null,
     "columns": {
       "accelerator": "nommoHwI'",
       "size": "tInghach",
@@ -1452,7 +1453,7 @@
     "moveConfirm": "{from}vo' {to}Daq yab {size} DavIHmoH'a'?\n\nqon Qapla'pu'DI' Hal Qaw'lu'. HDD jIrbogh 100 GBvaD 15-45 tup nI'laH.\n\nDataghpa' chenmoH QaptaHbogh Hoch yImev.",
     "reading": "polmeH Daq De' laDlI'...",
     "loading": "polmeH Daq De' qemlI'...",
-    "backendOffline": "Qapbe' qoD pat; polmeH Daq wIvmeH sidecar yItagh.",
+    "backendOffline": null,
     "currentLocation": "cache Daq DaH",
     "inCache": "cacheDaq {size}",
     "free": "{size} chIm",

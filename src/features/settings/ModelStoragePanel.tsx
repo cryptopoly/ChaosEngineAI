@@ -262,7 +262,7 @@ export function ModelStoragePanel({
         <p className="muted-text">
           {backendOnline
             ? t("modelStoragePanel.loading", { defaultValue: "Loading storage info..." })
-            : t("modelStoragePanel.backendOffline", { defaultValue: "Backend offline — start the sidecar to configure storage." })}
+            : t("modelStoragePanel.backendOffline", { defaultValue: "The backend is not answering, so storage cannot be changed. It fills in when the backend is back." })}
         </p>
       ) : null}
 

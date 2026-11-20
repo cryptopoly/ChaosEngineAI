@@ -84,7 +84,7 @@
     "fetchError": "Could not fetch diagnostics: {error}",
     "gathering": "Gathering system info...",
     "clickRefresh": "Click Refresh to fetch diagnostics.",
-    "backendOffline": "Backend offline — start the sidecar first.",
+    "backendOffline": "The backend is not answering. The snapshot fills in when it is back.",
     "captured": "captured {timestamp}",
     "logTail": "Backend log tail ({count, plural, one {# line} other {# lines}})",
     "pipOutput": "pip output",

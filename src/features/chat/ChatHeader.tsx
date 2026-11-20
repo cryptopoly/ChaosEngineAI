@@ -204,7 +204,7 @@ export function ChatHeader({
             </button>
           ) : null}
           {voiceControl}
-          {activeChat?.modelRef === loadedModelRef ? (
+          {loadedModelRef && activeChat?.modelRef === loadedModelRef ? (
             <span className="badge success">{t("header.ready", { defaultValue: "Ready" })}</span>
           ) : serverLoading ? (
             <div className="badge accent chat-loading-pill">

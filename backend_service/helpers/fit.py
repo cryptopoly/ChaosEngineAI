@@ -412,6 +412,16 @@ def variant_fit(
             return _unknown(hardware, "No size information for this model.")
         need, reason = numbers
         basis = "estimated"
+        measured = _positive(variant.get("measuredGpuGb"))
+        if (
+            measured is not None and layout is None and hardware.kind == "cuda" and not hardware.unified
+            and context_tokens == DEFAULT_CHAT_CONTEXT_TOKENS
+        ):
+            # A row that was run on a discrete NVIDIA card carries the GPU memory it took there. Before the
+            # file is downloaded (no layout to read) the generic weights + 10 % + cache estimate called two
+            # rows named "24 GB card" "won't fit" on a 24 GB card they were measured on (FU-451).
+            need, basis = measured, "measured"
+            reason = f"{measured:.1f} GB of GPU memory, measured on an RTX 4090 at {_context_label(context_tokens)} context"
     else:
         footprint = _media_footprint(variant, hardware)
         if footprint is None:

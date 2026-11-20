@@ -84,7 +84,7 @@
     "fetchError": "Não foi possível obter o diagnóstico: {error}",
     "gathering": "Coletando informações do sistema...",
     "clickRefresh": "Clique em “Atualizar” para obter o diagnóstico.",
-    "backendOffline": "Backend offline — inicie primeiro o sidecar.",
+    "backendOffline": "O backend não está respondendo. O snapshot aparece quando ele voltar a responder.",
     "captured": "capturado em {timestamp}",
     "logTail": "Final do log do backend ({count, plural, one {# linha} other {# linhas}})",
     "pipOutput": "Saída do pip",

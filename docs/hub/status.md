@@ -9,6 +9,14 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-20 (UI/UX review A for v0.10.0: Dashboard, Chat, Chat Models, Server, Settings; agent branch off `test/rtx4090`, not pushed)
+
+**Done:** every page in those areas at 1280 px and 375 px against a throwaway backend on the 4090 PC ([docs/review/ui-ux-v0100-a/](https://github.com/cryptopoly/ChaosEngineAI/blob/test/rtx4090/docs/review/ui-ux-v0100-a/README.md): 22 findings, 125 screenshots, plan). The numbers a new PC owner reads first were not honest: the Dashboard said "70B", two rows named "24 GB card" said "Won't fit" on a 24 GB card, and the memory cell disagreed with the fit badge. Fixed with tests (FU-450 to FU-455), with Keep going's panel pushing the thread sideways, a "Ready" badge with nothing loaded, and Windows-untrue copy. tsc, vitest 1,998, i18n, the touched pytest files, browser spec 43.
+
+**Open for Claude:** FU-456 to FU-463 once D-105 is answered. Not verified: a real load, chat, download or render; the Tauri window, tray and menus; macOS, Linux, a smaller GPU; the full pytest, browser and E2E suites.
+
+**Open for Dan:** D-105 (may "LM Studio" and "Ollama" be named in the UI; Dashboard target from the catalogue's best-fit row; hide the performance preview until a model is chosen; Chat Models opening on a recommended list; build the fit-number and first-run work before the tag).
+
 ## Update 2026-11-20 (Voice review for v0.10.0, agent branch off `test/rtx4090`, not pushed)
 
 **Done:** second D-73 review of every Voice screen at 1280 px and 375 px against throwaway backends on the 4090 PC ([docs/review/voice-v0100/](https://github.com/cryptopoly/ChaosEngineAI/blob/test/rtx4090/docs/review/voice-v0100/README.md): 18 findings, 48 screenshots, plan). The Mac view holds; the Windows GPU view did not. Six small fixes with tests (FU-320): the speech table no longer opens on an Apple-only row, GPU rows name the missing add-on, no dead Download buttons on Voices and Speak, an unusable 67.5 GB dictation model is not offered, the dictation default switch is announced, the add-on label names what it gives. tsc, vitest 1,970, i18n, voice pytest files, 66 of 67 voice browser tests.

@@ -2246,3 +2246,39 @@ xet resume, ACE-Step MLX). FU-494 (Windows-only weight-copy advice), FU-495 (par
 **Tests.** pytest across downloads, image, music, voice, lip sync, sd.cpp, studio tiers, backend service and the hub
 tracker pass in one run; `test_music_worker`'s path test still fails on Windows as before. vitest 1,995 pass, `tsc`
 clean, `i18n:validate` OK, `audit-catalog-repos.py` all repos and files exist.
+## 2026-11-20: UI/UX review A (Dashboard, Chat, Chat Models, Server, Settings), agent branch
+
+Owner asked for a review of every page before the tag; this is part A (part B, another agent: Images, Video,
+Projects, Music, Voice, Tools). Branch `worktree-agent-ab9af51b5afbe0c75` off `test/rtx4090` (`131f9031`), not pushed.
+Report with 22 ranked findings, 125 screenshots at 1280 and 375 px, a plan and five questions: `docs/review/ui-ux-v0100-a/README.md`.
+
+**Method.** Vite on 8960 against one throwaway backend on 8961 (`HOME` and `USERPROFILE` on `E:\tmp\uxa\home`), the
+pinned Playwright, loaded-model, download, plan, job, event and offline states mocked at the browser. Nothing installed,
+downloaded, loaded or generated; real settings and `E:\AI Models` untouched.
+
+**Found and fixed (FU-450 to FU-455), each with a test:**
+- Two chat rows named "24 GB card" said "Won't fit" on the 24 GB card they were measured on (no file, so the generic
+  estimate). Rows can carry `measuredGpuGb`; Nemotron 3.5 Lightning Q4_0 18.1 GB and Qwen3.6 35B A3B Q4_K_M 20.1 GB now
+  read "Tight, measured".
+- The Dashboard said "70B GGUF, headroom 65 %" on this PC (judged on 64 GB of RAM). A discrete card is now the basis
+  ("14B"). The tier table and the constant headroom figure are left for the owner's choice (D-105 B).
+- The Models memory cell disagreed with the fit badge (28.6 GB file, "~23.7 GB", "Won't fit"); it now shows the verdict's figure.
+- Keep going's panel scrolled the thread sideways at 1280 px; it opens leftwards now (checked at 1280, 1100, 900, 700 px).
+- First run in Chat: a green "Ready" with nothing loaded; "No models match your search" with an empty library; a long
+  word ran out of the reply bubble; "SEAR" badge; "Unknown on disk".
+- Copy: "0600 permissions" and "Used by MLX conversion" (untrue on Windows), "start the sidecar" (four panels), the
+  Dashboard subtitle, three "MLX ...: no" lines in the Activity feed of a PC.
+
+**Checks.** `tsc --noEmit` clean; vitest 1,998 passed (171 files); `i18n:validate` OK; pytest `test_model_fit`,
+`test_dashboard_recommendation`, `test_catalog_text_families`, `test_system`, `test_media_fit_cuda`,
+`test_route_contracts`, `test_backend_service`, `test_hub_tracker` passed; new browser spec `43-ui-review-a` 4 of 4
+against the review servers (not through the stock `npm run e2e` config).
+
+**Open (FU-456 to FU-463, D-105):** one source for fit numbers, a first-run path, Windows wording, Chat polish, phone
+layout, Server wording, accessibility labels, the performance preview that shows numbers with no model chosen, and
+whether "LM Studio" and "Ollama" may be named in the UI against the editorial rule.
+
+**Not done or not verified.** No real load, chat turn, download, Keep going run or render. The Tauri window, tray,
+menus and update prompt were not seen. macOS, Linux, a smaller GPU and a machine without a GPU were not looked at. The
+full pytest suite, the other 51 browser specs and the backend E2E suite were not run. Contrast was not measured. The
+18.1 GB figure for Nemotron is from an 8,192-context run; the app loads it at 16,384.

@@ -284,7 +284,11 @@ export function ModelLaunchModal({
                 ))}
                 {filteredOptions.length === 0 ? (
                   <p className="model-select-empty">
-                    {t("modelLaunchModal.emptyState", { defaultValue: "No models match your search." })}
+                    {options.length === 0
+                      ? t("modelLaunchModal.emptyLibrary", {
+                          defaultValue: "No chat models downloaded yet. Download one under Chat > Models, then come back here.",
+                        })
+                      : t("modelLaunchModal.emptyState", { defaultValue: "No models match your search." })}
                   </p>
                 ) : null}
               </div>

@@ -909,6 +909,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "format": "GGUF",
                 "quantization": "Q4_K_M",
                 "ggufFile": "Qwen3.6-35B-A3B-Q4_K_M.gguf",
+                "measuredGpuGb": 20.1,  # FU-263: VRAM above idle on the RTX 4090, 8,192 context, f16 KV, no drafter
                 "capabilities": ["reasoning", "coding", "vision", "agents", "tool-use"],
                 # FU-263: re-pinned from Q8_0 (36.9 GB); the Q8_0 stays reachable as the -MTP-GGUF row above.
                 "note": (
@@ -1276,6 +1277,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "format": "GGUF",
                 "quantization": "Q4_0",
                 "ggufFile": "NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Q4_0.gguf",
+                "measuredGpuGb": 18.1,  # 2026-11-19 run: VRAM peak on the RTX 4090, 8,192 context, f16 KV, no drafter
                 "minContextTokens": 16384,
                 "capabilities": ["reasoning", "agents", "tool-use"],
                 "note": "Q4_0 (19.1 GB) fits a 24 GB card; the repo's mtp- drafter sidecar (1.2 GB) downloads beside it. On an RTX 4090: 233 tok/s, about 245 with the drafter. The Studio tool list is about 9,200 tokens here, so the app loads it with at least a 16,384 context (the Context setting stays as you set it) and says so in the load note. NVIDIA open model licence.",

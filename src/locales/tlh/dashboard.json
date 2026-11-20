@@ -1,7 +1,7 @@
 {
   "liveStats": {
     "title": "pat Dotlh DaH",
-    "subtitle": "Python sidecarvo' chu'moHlu', vaj yap'a' 'e' noHlaH app.",
+    "subtitle": null,
     "runtimeEngine": "jonta'",
     "noModelLoaded": "yab chu'lu'be'",
     "inferenceActivity": "yab vum",
@@ -76,7 +76,8 @@
     },
     "backendReadiness": {
       "title": "qoD pat ghuH",
-      "detail": "MLX jomlu'ta': {mlx} / mlx-lm jomlu'ta': {mlxLm} / MLX lo'laH: {mlxUsable} / GGUF jonta': {gguf}"
+      "detail": "MLX jomlu'ta': {mlx} / mlx-lm jomlu'ta': {mlxLm} / MLX lo'laH: {mlxUsable} / GGUF jonta': {gguf}",
+      "detailGguf": null
     }
   },
   "recommendation": {

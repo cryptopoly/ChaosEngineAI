@@ -1,7 +1,7 @@
 {
   "liveStats": {
     "title": "ライブシステム統計",
-    "subtitle": "デスクトップシェルが適合推奨を提示できるよう Python サイドカーから更新します。",
+    "subtitle": null,
     "runtimeEngine": "ランタイムエンジン",
     "noModelLoaded": "モデルが読み込まれていません",
     "inferenceActivity": "推論アクティビティ",
@@ -76,7 +76,8 @@
     },
     "backendReadiness": {
       "title": "バックエンドの準備状況",
-      "detail": "MLX インストール済み：{mlx} / mlx-lm インストール済み：{mlxLm} / MLX 使用可能：{mlxUsable} / GGUF ランタイム：{gguf}"
+      "detail": "MLX インストール済み：{mlx} / mlx-lm インストール済み：{mlxLm} / MLX 使用可能：{mlxUsable} / GGUF ランタイム：{gguf}",
+      "detailGguf": null
     }
   },
   "recommendation": {

@@ -1058,7 +1058,7 @@
     },
     "providers": {
       "title": "Remote-Anbieter",
-      "subtitle": "Konfiguriere OpenAI-kompatible Cloud-APIs als Fallback. Schlüssel werden lokal mit Berechtigungen 0600 gespeichert.",
+      "subtitle": null,
       "addButton": "+ Anbieter hinzufügen",
       "emptyState": "Keine Remote-Anbieter konfiguriert. Füge einen hinzu, um Cloud-Modelle als Fallback zu nutzen.",
       "labelField": "Bezeichnung",
@@ -1076,7 +1076,7 @@
       "tokenLabel": "Hugging-Face-Token",
       "tokenStoredPlaceholder": "•••• gespeichert ••••",
       "tokenPlaceholder": "hf_...",
-      "helpText": "Lokal gespeichert. Wird von der MLX-Konvertierung beim Abrufen gated-Modelle von Hugging Face verwendet."
+      "helpText": null
     },
     "agentAccess": {
       "title": "Agent-Zugriff",
@@ -1205,6 +1205,7 @@
     "searchPlaceholder": "Modelle suchen...",
     "contextDetected": "{contextLabel} erkannt",
     "emptyState": "Keine Modelle entsprechen deiner Suche.",
+    "emptyLibrary": null,
     "launchSettings": "Starteinstellungen",
     "cancelButton": "Abbrechen",
     "busyConfirm": "Trotzdem laden"
@@ -1405,7 +1406,7 @@
   },
   "wslBridgePanel": {
     "title": "WSL2-vLLM-Brücke",
-    "backendOffline": "Backend offline — starte den Sidecar, um den WSL-Status zu prüfen.",
+    "backendOffline": null,
     "capsError": "WSL-Status konnte nicht gelesen werden: {error}",
     "probing": "WSL-Status wird geprüft...",
     "ready": "✓ Bereit{version}",
@@ -1427,7 +1428,7 @@
     "title": "Boost Pack",
     "description": "Optionale Beschleuniger für Bild-, Video- und Chat-Inferenz. Jeder ist nur ein pip install entfernt — klicke bei den Zeilen, die deine Hardware unterstützt, auf Installieren.",
     "capError": "Beschleuniger-Fähigkeiten konnten nicht gelesen werden: {error}",
-    "backendOffline": "Backend offline — starte den Sidecar, um den Beschleuniger-Status zu lesen.",
+    "backendOffline": null,
     "columns": {
       "accelerator": "Beschleuniger",
       "size": "Größe",
@@ -1452,7 +1453,7 @@
     "moveConfirm": "{size} an Modellen von {from} nach {to} verschieben?\n\nDer Quellordner wird nach erfolgreichem Kopieren gelöscht. Auf einer drehenden HDD kann das bei 100 GB 15–45 Min. dauern.\n\nBeende vor dem Start alle laufenden Generierungen.",
     "reading": "Speicherinfos werden gelesen...",
     "loading": "Speicherinfos werden geladen...",
-    "backendOffline": "Backend offline — starte den Sidecar, um den Speicher zu konfigurieren.",
+    "backendOffline": null,
     "currentLocation": "Aktueller Cache-Speicherort",
     "inCache": "{size} im Cache",
     "free": "{size} frei",

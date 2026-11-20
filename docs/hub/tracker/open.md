@@ -1,7 +1,7 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 219 rows with work, decisions or watch items still open, newest first.
+summary: 223 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
@@ -96,6 +96,42 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** Before the v0.10.0 tag, or write down why not
 
 **Notes:** `check-upstreams.py` 2026-11-20. A bump moves `LLAMA_CPP_REF` in `scripts/update-llama-cpp.sh` and `LLAMA_CPP_TAG` in `scripts/stage-runtime.mjs`, changes the Windows CUDA digests, and needs the chat rows re-run on the 4090 (the 4090 speed table was measured on b12441). Not bumped by the hygiene pass.
+
+</details>
+
+<details>
+<summary>FU-495 · Partial pruning can remove a partial another download is writing (POSIX) — If a companion download ever fails on its final rename</summary>
+
+**Status or trigger:** If a companion download ever fails on its final rename
+
+**Notes:** `start_download` prunes `.incomplete` files for the repo and its companions; POSIX `unlink` succeeds on an open file. With the resume patch there is one partial per blob, so the snapshot helper is safe; an in-process `hf_hub_download` of a companion next to an older, larger partial would lose its file. Prune only partials older than a minute, or only the repo being started.
+
+</details>
+
+<details>
+<summary>FU-494 · Weight-copy advice names Windows Developer Mode on a Mac or Linux — When the music weight copy is next touched</summary>
+
+**Status or trigger:** When the music weight copy is next touched
+
+**Notes:** `music_env._copy_notice_message` and `MusicWeightCopyPanel` (`musicStudio.copy.wayDeveloper`) advise Windows Developer Mode whenever symlinks and hard links both fail; on a Mac or Linux that only happens on exFAT / FAT32 or across file systems, where the advice is wrong. Say "this file system does not allow links" there.
+
+</details>
+
+<details>
+<summary>FU-493 · Mac run of the Windows / CUDA pass before it merges into the release — Before test/rtx4090 merges into release/v0.10.0</summary>
+
+**Status or trigger:** Before `test/rtx4090` merges into `release/v0.10.0`
+
+**Notes:** Not provable on the PC (`docs/review/mac-regression-review-2026-11-20.md`): (1) sounds pack reinstall on Apple Silicon (marker schema 2) with the new `stable-audio-3` step and verify import on MPS, then a Stable Audio Open sound; consider skipping the SA3 install on the `mps` lane, since its rows are CUDA-only; (2) lip sync through `ltx-2-mlx a2v --distilled` (never run); (3) a paused and resumed Hub download with xet; (4) ACE-Step on MLX after the CUDA lane changes; (5) Nemotron 3.5 Lightning GGUF with the raised 16K context; (6) Voice > Models collapsed rows and Dictation default; (7) the Image catalog without the Nunchaku rows.
+
+</details>
+
+<details>
+<summary>FU-492 · Other app names left in UI strings after the share rewording — Next translation pass</summary>
+
+**Status or trigger:** Next translation pass; D-12 for the Server tab label
+
+**Notes:** The "Share with ..." button, its done / already messages, the folder label and hint, and three backend error details were reworded in English ("Link to shared folder", "Shared models folder", 2026-11-20). Still naming the app: the same five keys in the 9 other shipping locales (re-translate from the new English), `serverTab.connect.ollamaApps` / `ollamaHint` in every locale (protocol label, D-12 open), the API names `lmstudioDir` and `/api/models/share-lmstudio`, code comments and identifiers.
 
 </details>
 

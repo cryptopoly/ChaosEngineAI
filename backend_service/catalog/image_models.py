@@ -139,6 +139,8 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "provider": "Black Forest Labs · MIT-Han-Lab",
                 "repo": "black-forest-labs/FLUX.1-schnell",
                 "nunchakuRepo": "mit-han-lab/svdq-int4-flux.1-schnell",
+                # No bf16 transformer is downloaded, so a Mac cannot run it: not offered there (FU-490).
+                "cudaOnly": True,
                 "defaultSteps": 4,
                 "cfgOverride": 0.0,
                 "link": "https://huggingface.co/mit-han-lab/svdq-int4-flux.1-schnell",
@@ -375,6 +377,8 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "provider": "Black Forest Labs · MIT-Han-Lab",
                 "repo": "black-forest-labs/FLUX.1-dev",
                 "nunchakuRepo": "mit-han-lab/svdq-int4-flux.1-dev",
+                # No bf16 transformer is downloaded, so a Mac cannot run it: not offered there (FU-490).
+                "cudaOnly": True,
                 "link": "https://huggingface.co/mit-han-lab/svdq-int4-flux.1-dev",
                 "runtime": "diffusers + nunchaku SVDQuant (CUDA)",
                 "styleTags": ["general", "detailed", "fast", "cuda", "int4"],

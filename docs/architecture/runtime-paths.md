@@ -68,7 +68,7 @@ Settings persist alongside the OS-conventional config dir:
 Settings include: default cache strategy, default context length,
 default fused-attention state, the storage directory list, Hugging
 Face tokens (for gated models), remote provider configs, UI scale,
-integrations metadata, plugin enable / disable state.
+integrations metadata.
 
 Hugging Face tokens are written to the file in plaintext — there's no
 keyring integration yet. If multi-user / shared-disk security matters

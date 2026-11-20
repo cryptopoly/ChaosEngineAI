@@ -297,54 +297,37 @@ class PromptsRouteTests(_RouteContractCase):
         self.assertEqual(resp.status_code, 404)
 
 
-class PluginsRouteTests(_RouteContractCase):
-    """``/api/plugins``: the answer is the type-to-rows map itself, with no wrapper key (review C).
+class RemovedPluginsRouteTests(_RouteContractCase):
+    """D-87: the Plugins feature was removed. Its routes are gone and nothing else answers in their place."""
 
-    The Plugins page read a ``plugins`` key for six months and showed "No plugins found"; the shape is
-    pinned here so the page and the route cannot drift apart again.
-    """
-
-    def tearDown(self):
-        from backend_service.plugins import plugin_registry
-
-        for manifest in plugin_registry.list_all():
-            manifest.enabled = True
-        super().tearDown()
-
-    def test_list_is_a_map_of_type_to_rows(self):
-        resp = self.client.get("/api/plugins")
-        self.assertEqual(resp.status_code, 200)
-        body = resp.json()
-        self.assertNotIn("plugins", body)
-        self.assertIn("cache_strategy", body)
-        self.assertIn("tool", body)
-        row = body["cache_strategy"][0]
-        self.assertEqual(
-            sorted(row), ["author", "builtin", "description", "enabled", "id", "name", "type", "version"])
-        self.assertTrue(row["builtin"])
-        self.assertIn("cache.native", [r["id"] for r in body["cache_strategy"]])
-
-    def test_disable_then_enable_round_trip(self):
-        resp = self.client.post("/api/plugins/tool.calculator/disable")
-        self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.json(), {"ok": True, "plugin_id": "tool.calculator", "enabled": False})
-        rows = {r["id"]: r for r in self.client.get("/api/plugins").json()["tool"]}
-        self.assertFalse(rows["tool.calculator"]["enabled"])
-        resp = self.client.post("/api/plugins/tool.calculator/enable")
-        self.assertEqual(resp.json()["enabled"], True)
-
-    def test_unknown_plugin_is_404(self):
+    def test_plugins_routes_are_gone(self):
+        self.assertEqual(self.client.get("/api/plugins").status_code, 404)
         for action in ("enable", "disable"):
-            resp = self.client.post(f"/api/plugins/no-such-plugin/{action}")
-            self.assertEqual(resp.status_code, 404)
+            self.assertEqual(self.client.post(f"/api/plugins/tool.calculator/{action}").status_code, 404)
 
-    @unittest.expectedFailure
-    def test_switching_a_tool_off_takes_it_away_from_chat(self):
-        # Known gap (review C): the switch only changes the row. /api/tools (what Chat offers the model)
-        # does not read it, so a tool switched off is still offered. Remove expectedFailure when it is wired.
-        self.client.post("/api/plugins/tool.calculator/disable")
-        names = [tool["name"] for tool in self.client.get("/api/tools").json()["tools"]]
-        self.assertNotIn("calculator", names)
+    def test_old_plugin_data_on_disk_is_ignored_not_deleted(self):
+        # A settings file or a ``plugins`` folder left from an older build must not stop start-up. No build wrote
+        # plugin state to settings.json (the switches lived in memory), but an unknown key is ignored either way,
+        # and nothing in the backend reads or removes the old ``~/.chaosengine/plugins/`` folder.
+        from backend_service.helpers.settings import _load_settings
+
+        with tempfile.TemporaryDirectory() as tmp:
+            data_dir = Path(tmp)
+            manifest = data_dir / "plugins" / "old" / "manifest.json"
+            manifest.parent.mkdir(parents=True)
+            manifest.write_text('{"id": "old", "name": "Old", "type": "tool"}', encoding="utf-8")
+            settings_path = data_dir / "settings.json"
+            settings_path.write_text(
+                json.dumps({"preferredServerPort": 8877, "plugins": {"tool.calculator": {"enabled": False}}}),
+                encoding="utf-8",
+            )
+            loaded = _load_settings(settings_path, 8876, data_dir)
+            self.assertEqual(loaded["preferredServerPort"], 8877)
+            self.assertNotIn("plugins", loaded)
+            self.assertTrue(manifest.exists())
+        backend = Path(__file__).resolve().parents[1] / "backend_service"
+        self.assertFalse((backend / "plugins" / "__init__.py").exists())
+        self.assertFalse((backend / "routes" / "plugins.py").exists())
 
 
 if __name__ == "__main__":

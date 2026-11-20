@@ -1,4 +1,4 @@
-import type { Ref } from "react";
+import type { ReactNode, Ref } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
@@ -144,6 +144,8 @@ export interface ChatTabProps {
   noChatModelsInstalled?: boolean;
   onBrowseDiscover?: () => void;
   onOpenModels?: () => void;
+  /** D-87: the Prompts panel, shown beside the composer's Send button. */
+  composerPromptsControl?: ReactNode;
 }
 
 // Avoid an unused-import diagnostic — ChatModelOption is still part of
@@ -211,6 +213,7 @@ export function ChatTab({
   noChatModelsInstalled = false,
   onBrowseDiscover,
   onOpenModels,
+  composerPromptsControl,
 }: ChatTabProps) {
   const { t } = useTranslation("chat");
   const voice = useVoice();
@@ -525,6 +528,7 @@ export function ChatTab({
           <BusyAdviceNotice advice={busyNotice.advice} onDismiss={() => setDismissedAdviceKey(busyNotice.key)} />
         ) : null}
         <ChatComposer
+          promptsControl={composerPromptsControl}
           draftMessage={draftMessage}
           pendingImages={pendingImages}
           loadedModelRef={loadedModelRef}

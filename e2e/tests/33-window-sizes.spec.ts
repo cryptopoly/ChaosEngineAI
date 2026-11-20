@@ -119,9 +119,10 @@ test.describe("1100 x 760, the smallest window", () => {
     await expect(page.locator(".panel", { hasText: "Help improve translations" }).getByRole("button", { name: "Copy" })).toHaveClass(/secondary-button/);
   });
 
-  test("the drawer: Settings can be clicked with the Chat or Tools group open", async ({ page }) => {
+  // Benchmarks, not Tools: off Apple Silicon the Tools group has no listed page since Prompts moved into Chat (D-87).
+  test("the drawer: Settings can be clicked with the Chat or Benchmarks group open", async ({ page }) => {
     await openApp(page);
-    for (const group of ["Chat", "Tools"]) {
+    for (const group of ["Chat", "Benchmarks"]) {
       await openMenuIfCompact(page);
       const nav = page.getByRole("navigation", { name: "Primary" });
       const header = nav.locator(".nav-group-header", { hasText: new RegExp(`^${group}$`) });

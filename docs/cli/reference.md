@@ -168,15 +168,6 @@ Model catalog, library, download, convert, load/unload
 | POST | `/api/models/unload` | Unload Model |
 | GET | `/v1/models` | List Openai Models |
 
-### /api/plugins
-Plugin system (cache strategies, engines, tools, ...)
-
-| Method | Path | Operation |
-|---|---|---|
-| GET | `/api/plugins` | List Plugins |
-| POST | `/api/plugins/{plugin_id}/disable` | Disable Plugin |
-| POST | `/api/plugins/{plugin_id}/enable` | Enable Plugin |
-
 ### /api/prompts
 Prompt library (templates)
 

@@ -21,7 +21,7 @@ Two layers:
      diagnostics-snapshot / diagnostics-log-tail / diagnostics-reextract
      gpu-status / cache-preview / prompts-list
      settings-get / settings-patch / workspaces-list
-     plugins-list / plugins-enable / plugins-disable / tools-list / adapters-list
+     tools-list / adapters-list
      finetuning-start / finetuning-status / metrics-gpu / compare
      routes / openapi / mcp (stdio relay for MCP clients)
 
@@ -1034,7 +1034,7 @@ def cmd_diagnostics_reextract(args: argparse.Namespace) -> int:
 
 
 # ---------------------------------------------------------------------------
-# Misc — gpu, cache, prompts, settings, workspaces, plugins, tools, adapters
+# Misc — gpu, cache, prompts, settings, workspaces, tools, adapters
 # ---------------------------------------------------------------------------
 
 
@@ -1115,21 +1115,6 @@ def cmd_settings_storage_get(args: argparse.Namespace) -> int:
 
 def cmd_workspaces_list(args: argparse.Namespace) -> int:
     _ok(_hit_get(args, "/api/workspaces", timeout=10.0))
-    return 0
-
-
-def cmd_plugins_list(args: argparse.Namespace) -> int:
-    _ok(_hit_get(args, "/api/plugins", timeout=10.0))
-    return 0
-
-
-def cmd_plugins_enable(args: argparse.Namespace) -> int:
-    _ok(_hit_post(args, f"/api/plugins/{args.plugin_id}/enable", timeout=10.0))
-    return 0
-
-
-def cmd_plugins_disable(args: argparse.Namespace) -> int:
-    _ok(_hit_post(args, f"/api/plugins/{args.plugin_id}/disable", timeout=10.0))
     return 0
 
 
@@ -1823,9 +1808,6 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("settings-patch"); s.add_argument("--body", default=None); s.add_argument("--file", default=None); s.set_defaults(func=cmd_settings_patch)
     sub.add_parser("settings-storage-get").set_defaults(func=cmd_settings_storage_get)
     sub.add_parser("workspaces-list").set_defaults(func=cmd_workspaces_list)
-    sub.add_parser("plugins-list").set_defaults(func=cmd_plugins_list)
-    s = sub.add_parser("plugins-enable"); s.add_argument("plugin_id"); s.set_defaults(func=cmd_plugins_enable)
-    s = sub.add_parser("plugins-disable"); s.add_argument("plugin_id"); s.set_defaults(func=cmd_plugins_disable)
     sub.add_parser("tools-list").set_defaults(func=cmd_tools_list)
     sub.add_parser("adapters-list").set_defaults(func=cmd_adapters_list)
     sub.add_parser("finetuning-status").set_defaults(func=cmd_finetuning_status)

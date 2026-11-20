@@ -29,7 +29,6 @@ ChaosEngineAI is three cooperating processes joined by HTTP:
 │  ├─ video_runtime/ — diffusers / mlx-video / sd-cli     │
 │  ├─ catalog/       — curated text / image / video lists │
 │  ├─ helpers/       — system stats, settings, persist    │
-│  ├─ plugins/       — plugin host                        │
 │  ├─ rag/           — workspace knowledge stack          │
 │  ├─ mcp/           — stdio JSON-RPC tool client         │
 │  └─ tools/         — built-in agent tools               │
@@ -130,7 +129,6 @@ Every API surface lives in its own file under `backend_service/routes/`:
 | `metrics.py` | `/api/metrics/gpu` |
 | `models.py` | `/api/models/*` |
 | `openai_compat.py` | `/v1/*` |
-| `plugins.py` | `/api/plugins/*` |
 | `prompts.py` | `/api/prompts/*` |
 | `server.py` | `/api/server/*` |
 | `settings.py` | `/api/settings/*` |

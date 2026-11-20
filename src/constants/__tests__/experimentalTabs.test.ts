@@ -43,43 +43,42 @@ describe("Show experimental tabs", () => {
   });
 });
 
-// D-87 verdicts (overnight review): Fine-Tuning trains nothing yet and Plugins loads no outside code, so both are
-// experimental. Prompts, Conversion and Benchmarks stay listed.
-describe("Fine-Tuning and Plugins are experimental", () => {
-  it("hides only those two by default", () => {
+// D-87: Fine-Tuning trains nothing yet, so it is experimental. Prompts moved into Chat and Plugins was removed, so
+// neither is a tab any more. Conversion and Benchmarks stay listed.
+describe("Fine-Tuning is experimental; Prompts and Plugins are gone", () => {
+  it("hides only Fine-Tuning by default and lists neither Prompts nor Plugins", () => {
     const hidden = tabs.filter((tab) => tab.experimental).map((tab) => tab.id);
-    expect(hidden).toEqual(["finetuning", "plugins"]);
+    expect(hidden).toEqual(["finetuning"]);
+    const ids = tabs.map((tab) => tab.id as string);
+    expect(ids).not.toContain("prompt-library");
+    expect(ids).not.toContain("plugins");
     const listed = visibleSidebarTabs(tabs, "Darwin", true).map((tab) => tab.id);
     expect(listed).not.toContain("finetuning");
-    expect(listed).not.toContain("plugins");
-    expect(listed).toEqual(expect.arrayContaining(["prompt-library", "conversion", "benchmarks", "benchmark-history"]));
-    expect(visibleSidebarTabs(tabs, "Darwin", true, true).map((tab) => tab.id)).toEqual(
-      expect.arrayContaining(["finetuning", "plugins"]),
-    );
+    expect(listed).toEqual(expect.arrayContaining(["conversion", "benchmarks", "benchmark-history"]));
+    expect(visibleSidebarTabs(tabs, "Darwin", true, true).map((tab) => tab.id)).toContain("finetuning");
   });
 
-  it("sends a request for either one to the Dashboard while the switch is off", () => {
+  it("sends a request for Fine-Tuning to the Dashboard while the switch is off", () => {
     expect(visibleTabRequest("finetuning", false)).toBe("dashboard");
-    expect(visibleTabRequest("plugins", false)).toBe("dashboard");
-    expect(visibleTabRequest("plugins", true)).toBe("plugins");
-    expect(visibleTabRequest("prompt-library", false)).toBe("prompt-library");
+    expect(visibleTabRequest("finetuning", true)).toBe("finetuning");
   });
 
-  it("does not reopen a remembered hidden tab from the Tools group", () => {
+  it("does not reopen a remembered hidden or removed tab from the Tools group", () => {
     const tools = visibleSidebarTabs(tabs, "Darwin", true).filter((tab) => tab.group === "tools");
     expect(resolveGroupTarget("tools", tools, { tools: "plugins" })).toBe("conversion");
-    const toolsElsewhere = visibleSidebarTabs(tabs, "Linux", true).filter((tab) => tab.group === "tools");
-    expect(resolveGroupTarget("tools", toolsElsewhere, { tools: "finetuning" })).toBe("prompt-library");
+    expect(resolveGroupTarget("tools", tools, { tools: "finetuning" })).toBe("conversion");
+    // Elsewhere Conversion is not listed, so with the switch off the Tools group has no page and is not shown.
+    expect(visibleSidebarTabs(tabs, "Linux", true).filter((tab) => tab.group === "tools")).toEqual([]);
   });
 
-  it("keeps them out of the sub-tab bar unless the switch is on", () => {
+  it("keeps Fine-Tuning out of the sub-tab bar unless the switch is on", () => {
     const props = { activeTab: "conversion" as const, onTabChange: () => {}, platform: "Darwin", onRememberLastChild: () => {} };
     const off = renderToStaticMarkup(createElement(SubtabBar, props));
-    expect(off).toContain("Prompts");
+    expect(off).not.toContain("Prompts");
     expect(off).not.toContain("Fine-Tuning");
     expect(off).not.toContain("Plugins");
     const on = renderToStaticMarkup(createElement(SubtabBar, { ...props, showExperimentalTabs: true }));
     expect(on).toContain("Fine-Tuning");
-    expect(on).toContain("Plugins");
+    expect(on).not.toContain("Plugins");
   });
 });

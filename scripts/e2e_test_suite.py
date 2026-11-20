@@ -3882,14 +3882,14 @@ PHASES[15] = phase_15
 # Overnight whole-app review (2026-11-18): group 21, one key per stream (211 A, 212 B, 213 C, 214 E, 215 GGUF, 216 ROUTING).
 from e2e_phases.phase_21_benchmarks_conversion import phase_21_benchmarks_conversion  # noqa: E402
 from e2e_phases import phase_21_finetuning as _phase_21_finetuning  # noqa: E402
-from e2e_phases import phase_21_prompts_plugins as _phase_21_prompts_plugins  # noqa: E402
+from e2e_phases import phase_21_prompts as _phase_21_prompts  # noqa: E402
 from e2e_phases.phase_21_server_activity import phase_21_server_activity  # noqa: E402
 from e2e_phases.phase_gguf_routing import phase_gguf_routing  # noqa: E402
 from e2e_phases.phase_routing_hints import phase_routing_hints  # noqa: E402
 
 PHASES[211] = phase_21_benchmarks_conversion  # stream A: Benchmarks and Conversion to MLX
 PHASES[_phase_21_finetuning.PHASE_KEY] = _phase_21_finetuning.bind(sys.modules[__name__])  # 212, stream B: Fine-Tuning
-PHASES[_phase_21_prompts_plugins.PHASE_KEY] = _phase_21_prompts_plugins.bind(sys.modules[__name__])  # 213, stream C
+PHASES[_phase_21_prompts.PHASE_KEY] = _phase_21_prompts.bind(sys.modules[__name__])  # 213, stream C: Prompts in Chat (Plugins removed, D-87)
 PHASES[214] = phase_21_server_activity  # stream E: Server Activity (model events)
 PHASES[215] = phase_gguf_routing  # stream GGUF: format read from the files, not the name
 PHASES[216] = phase_routing_hints  # stream ROUTING: the model's path decides the repo, not the hints (L-16)

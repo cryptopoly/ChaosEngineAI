@@ -49,6 +49,18 @@ describe("resolveTabRequest", () => {
     expect(tabs.some((tab) => tab.id === ("logs" as string))).toBe(false);
   });
 
+  it("opens Chat for the old Prompts id and the Dashboard for the removed Plugins id (D-87)", () => {
+    expect(resolveTabRequest("prompt-library")).toEqual({ tab: "chat" });
+    expect(resolveTabRequest("plugins")).toEqual({ tab: "dashboard" });
+    expect(resolveTabRequest({ tab: "prompt-library" } as unknown as TabRequest)).toEqual({ tab: "chat" });
+    expect(normalizeStoredTabId("prompt-library")).toBe("chat");
+    expect(normalizeStoredTabId("plugins")).toBe("dashboard");
+    for (const id of ["prompt-library", "plugins"]) {
+      expect(isLegacyTabId(id)).toBe(true);
+      expect(tabs.some((tab) => tab.id === id)).toBe(false);
+    }
+  });
+
   it("ignores an empty request", () => {
     expect(resolveTabRequest(null)).toBeNull();
     expect(resolveTabRequest(undefined)).toBeNull();

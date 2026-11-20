@@ -1,12 +1,11 @@
-"""Phase 213 (Prompts and Plugins), from the overnight whole-app review, stream C.
+"""Phase 213 (Prompts in Chat), from the overnight whole-app review, stream C; D-87 built.
 
-Prompts: the template store behind the Prompts page (list, create with variables, update, search, the
-refusals, delete), and one real-model check: a template's text sent as ``systemPrompt`` reaches the chat
-model (the prompt gets longer by about the template's length, and the reply follows it when the model is
-able to). Plugins: the list is the type-to-rows map the page reads, the built-in tools and cache strategies
-are in it, a switch round-trips and an unknown id is refused.
+The template store behind Chat's Prompts panel (list, create with variables, update, search, the refusals,
+delete), and one real-model check: a template's text sent as ``systemPrompt`` (the panel's "Use as system
+prompt") reaches the chat model (the prompt gets longer by about the template's length, and the reply follows
+it when the model is able to). The Plugins feature was removed (D-87): its routes must answer 404.
 
-Every template made here has a unique name and is deleted at the end; switches are put back. The real-model
+Every template made here has a unique name and is deleted at the end. The real-model
 check loads the smallest MLX text model on disk and unloads it, and skips with the reason when there is none.
 
 Called from ``scripts/e2e_test_suite.py`` under key 213 (review group 21, stream C; the other review streams
@@ -23,17 +22,17 @@ from pathlib import Path
 from typing import Any
 
 PHASE_KEY = 213
-NAME = "Phase 213: Prompts and Plugins"
+NAME = "Phase 213: Prompts in Chat"
 MARKER = "PINEAPPLE"
 
 
 def bind(suite: Any):
     """The suite's ``PHASES`` entry: a named function of ``cap``, so the run log prints its name."""
 
-    def phase_21_prompts_plugins(cap: Any):
+    def phase_21_prompts(cap: Any):
         return run(cap, suite)
 
-    return phase_21_prompts_plugins
+    return phase_21_prompts
 
 
 def _folder_bytes(path: str, limit: int = 4000) -> int:
@@ -54,7 +53,7 @@ def run(cap: Any, suite: Any):
     phase = suite.PhaseResult(phase=PHASE_KEY, name=NAME)
     if not cap.backend_reachable:
         phase.status = "skip"
-        phase.checks.append(suite.CheckResult("phase 21 prompts and plugins", "skip", reason="backend not reachable"))
+        phase.checks.append(suite.CheckResult("phase 21 prompts", "skip", reason="backend not reachable"))
         return phase
 
     def api(method: str, path: str, payload: dict[str, Any] | None = None, timeout: float = 30.0) -> tuple[int, Any]:
@@ -217,64 +216,21 @@ def run(cap: Any, suite: Any):
             return "fail", "the marker word is in the reply that had no template", detail
         return "pass", "" if detail["followed"] else "the prompt reached the model; this model did not follow it word for word", detail
 
-    # ---- Plugins -------------------------------------------------------------------------------------
+    # ---- Plugins (removed, D-87) -------------------------------------------------------------------
 
-    def plugins_list():
-        code, data = api("GET", "/api/plugins")
-        if code == 404:
-            return "skip", "plugin routes not present in this build", {}
-        if code != 200 or not isinstance(data, dict):
-            return "fail", f"HTTP {code}: {str(data)[:160]}", {}
-        if "plugins" in data or not all(isinstance(rows, list) for rows in data.values()):
-            return "fail", f"the answer is not the type-to-rows map the page reads: keys {sorted(data)[:6]}", {}
-        rows = [row for group in data.values() for row in group]
-        for row in rows:
-            if sorted(row) != ["author", "builtin", "description", "enabled", "id", "name", "type", "version"]:
-                return "fail", f"row {row.get('id')} has fields {sorted(row)}", {}
-        ids = {row["id"] for row in rows}
-        if "cache.native" not in ids or not any(i.startswith("tool.") for i in ids):
-            return "fail", f"the built-in cache strategies or tools are missing: {sorted(ids)[:8]}", {}
-        _, tools = api("GET", "/api/tools")
-        builtin_tools = {f"tool.{t['name']}" for t in (tools or {}).get("tools", []) if t.get("provenance") == "builtin"}
-        if not builtin_tools <= ids:
-            return "fail", f"tools Chat offers are not in the list: {sorted(builtin_tools - ids)}", {}
-        state["plugins"] = sorted(ids)
-        state["enabled"] = {row["id"]: row["enabled"] for row in rows}
-        return "pass", "", {"rows": len(rows), "types": sorted(data)}
-
-    def plugins_switch():
-        if not state.get("plugins"):
-            return "skip", "plugin routes not present", {}
-        target = next(i for i in state["plugins"] if i.startswith("tool."))
-        was = state["enabled"][target]
-        first, second = ("disable", "enable") if was else ("enable", "disable")
-        try:
-            code, data = api("POST", f"/api/plugins/{target}/{first}")
-            if code != 200 or data != {"ok": True, "plugin_id": target, "enabled": not was}:
-                return "fail", f"{first} answered HTTP {code}: {data}", {}
-            _, listed = api("GET", "/api/plugins")
-            now = {row["id"]: row["enabled"] for group in listed.values() for row in group}[target]
-            if now == was:
-                return "fail", "the list did not follow the switch", {}
-        finally:
-            back, _ = api("POST", f"/api/plugins/{target}/{second}")
-        if back != 200:
-            return "fail", f"could not put {target} back: HTTP {back}", {}
-        return "pass", "", {"plugin": target}
-
-    def plugins_unknown():
-        if not state.get("plugins"):
-            return "skip", "plugin routes not present", {}
-        answers = {action: api("POST", f"/api/plugins/no-such-plugin-{tag}/{action}")[0] for action in ("enable", "disable")}
+    def plugins_gone():
+        answers = {"GET /api/plugins": api("GET", "/api/plugins")[0]}
+        for action in ("enable", "disable"):
+            answers[f"POST /api/plugins/tool.calculator/{action}"] = api("POST", f"/api/plugins/tool.calculator/{action}")[0]
         if set(answers.values()) != {404}:
-            return "fail", f"expected 404 for an unknown plugin, got {answers}", {}
+            return "fail", f"the removed Plugins routes still answer: {answers}", {}
         return "pass", "", answers
 
     def token_needed():
-        # With auth on (the default), both routes refuse a call that carries no token.
+        # With auth on (the default), the prompt routes refuse a call that carries no token.
         answers = {}
         anonymous = getattr(suite, "_anonymous_http", None)  # the in-process test supplies its own client
-        for path in ("/api/prompts", "/api/plugins"):
+        for path in ("/api/prompts",):
             if anonymous is not None:
                 answers[path] = anonymous(path)
                 continue
@@ -298,10 +254,8 @@ def run(cap: Any, suite: Any):
             ("an update keeps the id, and search finds it by text, tag and category", prompts_update_and_search),
             ("a missing name, an oversized prompt, bad tags, a bad variable and an unknown delete are refused", prompts_refusals),
             ("delete removes the template and a second delete is 404", prompts_delete),
-            ("GET /api/plugins is the type-to-rows map with the built-in strategies and tools", plugins_list),
-            ("a plugin switch round-trips and is put back", plugins_switch),
-            ("an unknown plugin id is 404", plugins_unknown),
-            ("prompts and plugins need the API token", token_needed),
+            ("the removed Plugins routes answer 404", plugins_gone),
+            ("the prompt routes need the API token", token_needed),
             ("a template sent as the system prompt reaches a real chat model", prompt_reaches_the_model),
         ]:
             phase.checks.append(suite._check(label, fn))

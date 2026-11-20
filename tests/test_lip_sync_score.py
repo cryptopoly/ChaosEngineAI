@@ -82,6 +82,18 @@ class ScoreSeriesTests(unittest.TestCase):
         self.assertLess(result.motion, 0.1)
         self.assertLess(result.score, 0.3)
 
+    def test_a_head_turned_away_lowers_the_ranking_score(self):
+        env = _voice()
+        mouth = _following(env)
+        front = S.score_series(mouth, env, yaw=np.zeros(N))
+        yaw = np.zeros(N)
+        yaw[60:] = 0.9  # profile for the second half
+        turned = S.score_series(mouth, env, yaw=yaw)
+        self.assertEqual(front.turned_away, 0.0)
+        self.assertAlmostEqual(turned.turned_away, round(61 / N, 4))
+        self.assertLess(turned.score, front.score)
+        self.assertEqual(turned.balanced, front.balanced)
+
     def test_lengths_must_match(self):
         with self.assertRaises(ValueError):
             S.score_series(np.zeros(10), np.zeros(11))

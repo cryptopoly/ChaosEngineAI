@@ -12,7 +12,8 @@ a 100-4000 Hz band-pass. Numbers reported (FU-334, measured in ``docs/research/l
   closed mouth). ``open_while_silent``: share of silent frames with the mouth open (gaps between words count as
   silent, so even good speech scores 0.3-0.5 here).
 - ``balanced``: mean of the two complements, 0.5 for a mouth that ignores the audio, 1.0 for perfect agreement.
-- ``score``: ``0.5 * balanced + 0.5 * max(0, r) * motion``, the one number used to rank takes of the same shot, where
+- ``turned_away``: share of frames with the head turned away (or no face found).
+- ``score``: ``(0.5 * balanced + 0.5 * max(0, r) * motion) * (1 - 0.5 * turned_away)``, the one number used to rank takes of the same shot, where
   ``motion`` (0 to 1) scales r down for a mouth that hardly opens (its jitter can still correlate with the audio).
   It is a ranking aid, not a quality grade: compare it between takes of one shot, not across different songs.
 
@@ -27,6 +28,8 @@ from pathlib import Path
 from typing import Any
 
 UPPER_LIP, LOWER_LIP, FOREHEAD, CHIN = 13, 14, 10, 152
+NOSE_TIP, EYE_OUTER_A, EYE_OUTER_B = 1, 33, 263
+TURNED_YAW = 0.35  # |nose offset from the eye midpoint| / eye distance above which the face counts as turned away
 BAND_HZ = (100.0, 4000.0)
 ENV_RATE = 16000
 VOICED_FRACTION = 0.15  # voiced when the envelope is above 15 % of its 95th percentile
@@ -51,6 +54,7 @@ class SyncScore:
     open_while_silent: float
     balanced: float
     motion: float
+    turned_away: float
     score: float
     mouth_mean: float
 
@@ -97,9 +101,12 @@ def _lagged(mouth: Any, env: Any, lag: int) -> float:
     return _pearson(mouth, env)
 
 
-def score_series(mouth: Any, env: Any, *, max_lag: int = MAX_LAG, open_threshold: float = OPEN_THRESHOLD,
-                 seed: int = 0) -> SyncScore:
-    """Score a mouth-opening series (NaN where no face was found) against a voice envelope of the same length."""
+def score_series(mouth: Any, env: Any, *, yaw: Any = None, max_lag: int = MAX_LAG,
+                 open_threshold: float = OPEN_THRESHOLD, seed: int = 0) -> SyncScore:
+    """Score a mouth-opening series (NaN where no face was found) against a voice envelope of the same length.
+
+    ``yaw`` (optional, same length) is the head-turn measure from ``mouth_series``; frames turned away (or with no
+    face) count against the ranking score, since a singer in profile hides the very mouth being judged."""
     import numpy as np  # noqa: PLC0415
 
     mouth = np.asarray(mouth, dtype=np.float64)
@@ -133,6 +140,11 @@ def score_series(mouth: Any, env: Any, *, max_lag: int = MAX_LAG, open_threshold
     # mouth really moves (full weight once its 95th percentile reaches twice the open threshold).
     moving = float(np.nanpercentile(mouth, 95)) if face.any() else 0.0
     motion = min(1.0, max(0.0, moving / (2 * open_threshold)))
+    if yaw is not None:
+        yaw = np.asarray(yaw, dtype=np.float64)
+        turned = float(((np.abs(np.nan_to_num(yaw, nan=9.0)) > TURNED_YAW)).mean()) if n else 0.0
+    else:
+        turned = float((~face).mean()) if n else 0.0
     return SyncScore(
         frames=int(n),
         face_frames=int(face.sum()),
@@ -147,7 +159,8 @@ def score_series(mouth: Any, env: Any, *, max_lag: int = MAX_LAG, open_threshold
         open_while_silent=round(open_s, 4),
         balanced=round(balanced, 4),
         motion=round(motion, 4),
-        score=round(0.5 * balanced + 0.5 * max(0.0, r_safe) * motion, 4),
+        turned_away=round(turned, 4),
+        score=round((0.5 * balanced + 0.5 * max(0.0, r_safe) * motion) * (1.0 - 0.5 * turned), 4),
         mouth_mean=round(float(np.nanmean(mouth)), 4) if face.any() else 0.0,
     )
 
@@ -166,8 +179,9 @@ def smooth(mouth: Any) -> Any:
     return out
 
 
-def mouth_series(video: Path, model: Path) -> tuple[Any, float, list[Any]]:
-    """Per-frame mouth opening of the first face, the video's fps, and the decoded BGR frames (for a strip)."""
+def mouth_series(video: Path, model: Path) -> tuple[Any, float, list[Any], Any]:
+    """Per-frame mouth opening of the first face, the video's fps, the decoded BGR frames (for a strip) and the head
+    turn per frame (nose offset from the eye midpoint over the eye distance: about 0 frontal, above 0.35 turned)."""
     import cv2  # noqa: PLC0415
     import mediapipe as mp  # noqa: PLC0415
     import numpy as np  # noqa: PLC0415
@@ -187,29 +201,35 @@ def mouth_series(video: Path, model: Path) -> tuple[Any, float, list[Any]]:
         num_faces=1,
     )
     values: list[float] = []
+    yaws: list[float] = []
     with mp.tasks.vision.FaceLandmarker.create_from_options(options) as landmarker:
         for i, frame in enumerate(frames):
             image = mp.Image(image_format=mp.ImageFormat.SRGB, data=cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
             found = landmarker.detect_for_video(image, int(i * 1000 / fps))
             if not found.face_landmarks:
                 values.append(float("nan"))
+                yaws.append(float("nan"))
                 continue
             p = found.face_landmarks[0]
             gap = np.hypot(p[UPPER_LIP].x - p[LOWER_LIP].x, p[UPPER_LIP].y - p[LOWER_LIP].y)
             height = np.hypot(p[FOREHEAD].x - p[CHIN].x, p[FOREHEAD].y - p[CHIN].y)
             values.append(float(gap / height) if height > 0 else float("nan"))
-    return smooth(values), fps, frames
+            eyes = np.hypot(p[EYE_OUTER_A].x - p[EYE_OUTER_B].x, p[EYE_OUTER_A].y - p[EYE_OUTER_B].y)
+            mid = (p[EYE_OUTER_A].x + p[EYE_OUTER_B].x) / 2
+            yaws.append(float((p[NOSE_TIP].x - mid) / eyes) if eyes > 0 else float("nan"))
+    return smooth(values), fps, frames, np.asarray(yaws)
 
 
 def score_files(video: Path, audio: Path, model: Path) -> tuple[SyncScore, dict[str, Any]]:
     """Score ``video`` against the voice in ``audio`` (trimmed or zero-padded to the video's length)."""
     import soundfile as sf  # noqa: PLC0415
 
-    mouth, fps, _frames = mouth_series(video, model)
+    mouth, fps, _frames, yaw = mouth_series(video, model)
     samples, rate = sf.read(str(audio), always_2d=True, dtype="float64")
     env = envelope(samples, rate, len(mouth), fps)
-    result = score_series(mouth, env)
+    result = score_series(mouth, env, yaw=yaw)
     return result, {"mouth": [None if v != v else round(float(v), 4) for v in mouth],
+                    "yaw": [None if v != v else round(float(v), 3) for v in yaw],
                     "env": [round(float(v), 5) for v in env], "fps": fps}
 
 

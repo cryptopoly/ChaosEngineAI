@@ -134,6 +134,12 @@ def start_download(
             pinned_catalog_gb = round(float(catalog_gb) * 1e9 / 1024 ** 3, 2)
 
     total_gb = pinned_catalog_gb or _known_repo_size_gb(repo)
+    # Nothing downloads this repo now: drop partials no download can resume (FU-275), so the bar and the disk
+    # carry only the one partial per file that the next run continues from.
+    from backend_service.helpers.hf_cache_paths import _hf_repo_cache_dir, prune_stale_partials
+
+    for stale_repo in [repo, *(c_repo for c_repo, _ in _counted_companions(repo))]:
+        prune_stale_partials(_hf_repo_cache_dir(stale_repo))
     downloaded_gb = _bytes_to_gb(_hf_repo_downloaded_bytes(repo))
     try:
         preflight_total_gb = _hf_repo_preflight_size_gb(repo)

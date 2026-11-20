@@ -245,6 +245,32 @@ class CudaOffloadTests(unittest.TestCase):
         self.assertFalse(offload("acestep-v15-xl-turbo", 2.0, "0"))
 
 
+class VramShortfallTests(unittest.TestCase):
+    """FU-278: a run the card cannot hold is refused up front, in words about the GPU, not batch size."""
+
+    def test_xl_on_a_shared_card_names_free_and_needed_memory(self) -> None:
+        message = music_worker_acestep.vram_shortfall_message("acestep-v15-xl-turbo", 60.0, 0.2, 11.5)
+        self.assertIsNotNone(message)
+        self.assertIn("0.2 GB", message)
+        self.assertIn("12.5 GB", message)
+        self.assertIn("Another program may be using the GPU", message)
+        self.assertIn("turbo model", message)
+        self.assertNotIn("batch", message)
+
+    def test_enough_room_or_unknown_model_passes(self) -> None:
+        check = music_worker_acestep.vram_shortfall_message
+        self.assertIsNone(check("acestep-v15-xl-turbo", 60.0, 1.5, 11.5))
+        self.assertIsNone(check("acestep-v15-xl-turbo", 60.0, 20.0, 0.0))
+        self.assertIsNone(check("some-new-model", 60.0, 0.0, 0.0))
+
+    def test_long_tracks_need_more_and_turbo_gets_no_turbo_advice(self) -> None:
+        check = music_worker_acestep.vram_shortfall_message
+        self.assertIsNone(check("acestep-v15-turbo", 60.0, 0.5, 8.5))
+        message = check("acestep-v15-turbo", 600.0, 0.5, 8.5)
+        self.assertIn("10.7 GB", message)
+        self.assertNotIn("use the turbo model", message)
+
+
 class DecoderHookTests(unittest.TestCase):
     """FU-139: progress and cancel on the CUDA path come from forward hooks on the torch DiT decoder."""
 

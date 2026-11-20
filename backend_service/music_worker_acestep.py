@@ -35,6 +35,34 @@ def cuda_offload(model: str, free_gb: float, forced: str = "") -> bool:
     if forced:
         return forced in ("1", "true", "yes")
     return free_gb < CUDA_FULL_GPU_NEED_GB.get(model, CUDA_DEFAULT_NEED_GB)
+# Total VRAM a run holds on the card at its peak (torch reserved, measured on the 4090: turbo 8.1 to 8.6 GB, XL turbo
+# 12.4 GB, 14.3 GB for a 10 minute track). A run that cannot get it fails inside ACE-Step with a message about batch
+# size and duration, so the worker checks first and says what is wrong.
+CUDA_RUN_PEAK_GB = {"acestep-v15-turbo": 8.7, "acestep-v15-xl-turbo": 12.5}
+CUDA_RUN_LONG_EXTRA_GB = 2.0
+CUDA_RUN_LONG_SECONDS = 300.0
+
+
+def vram_shortfall_message(model: str, seconds: float, free_gb: float, held_gb: float) -> str | None:
+    """A plain sentence when the card lacks room for this run, else None.
+
+    ``held_gb`` is what this process already has reserved on the card (the loaded model), ``free_gb`` what the
+    driver reports free besides that. Unknown models are left to ACE-Step's own check.
+    """
+    peak = CUDA_RUN_PEAK_GB.get(model)
+    if peak is None:
+        return None
+    if seconds > CUDA_RUN_LONG_SECONDS:
+        peak += CUDA_RUN_LONG_EXTRA_GB
+    extra = max(0.0, peak - held_gb)
+    if free_gb >= extra:
+        return None
+    name = "ACE-Step XL" if "xl" in model else "ACE-Step"
+    advice = "Close it, or use the turbo model (it needs about 9 GB)." if "xl" in model else "Close it and try again."
+    return (
+        f"Not enough free GPU memory to run {name}: it needs about {peak:.1f} GB on the card, this app already "
+        f"holds {held_gb:.1f} GB and only {free_gb:.1f} GB more is free. Another program may be using the GPU. {advice}"
+    )
 # The worker runs in its own process and imports nothing from the backend, so this sentence is a copy of
 # ``music_env.UNSUPPORTED_PLATFORM_REASON``; tests/test_music_worker.py keeps the two equal.
 UNSUPPORTED_PLATFORM_REASON = (
@@ -333,6 +361,10 @@ class AceStepEngine:
         if self.cuda:
             import torch
 
+            free_gb = torch.cuda.mem_get_info()[0] / 1e9
+            problem = vram_shortfall_message(model, seconds, free_gb, torch.cuda.memory_reserved() / 1e9)
+            if problem:
+                raise RuntimeError(problem)
             torch.cuda.reset_peak_memory_stats()
             decoder = getattr(getattr(self.handler, "model", None), "decoder", None)
             if decoder is not None:

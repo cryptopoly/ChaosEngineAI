@@ -29,6 +29,7 @@ from fastapi import FastAPI, Request  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from starlette.responses import JSONResponse  # noqa: E402
 
+from backend_service.hf_resume_script import HF_RESUME_PATCH
 from backend_service.models import ImageGenerationRequest, VideoGenerationRequest
 from backend_service.routes import register_routes
 from backend_service.state import ChaosEngineState
@@ -88,7 +89,8 @@ APP_STARTED_AT = time.time()
 HF_SNAPSHOT_DOWNLOAD_HELPER = (
     "import json, sys\n"
     "from huggingface_hub import snapshot_download\n"
-    "repo_id = sys.argv[1]\n"
+    + HF_RESUME_PATCH
+    + "repo_id = sys.argv[1]\n"
     "raw_allow = sys.argv[2] if len(sys.argv) > 2 else ''\n"
     "allow_patterns = json.loads(raw_allow) if raw_allow else None\n"
     "kwargs = {'repo_id': repo_id, 'resume_download': True}\n"

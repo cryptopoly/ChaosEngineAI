@@ -169,6 +169,20 @@ class CudaOnlyVariantTests(unittest.TestCase):
         self.assertIs(rows["Wan-AI/Wan2.2-TI2V-5B-Diffusers"].get("cudaOnly"), True)
         self.assertNotIn("cudaOnly", rows["Wan-AI/Wan2.2-T2V-A14B-Diffusers"])
 
+    def test_a_mac_is_not_offered_the_nunchaku_rows(self) -> None:
+        # FU-490: a Nunchaku download has no bf16 transformer to fall back to, so on a Mac the row could only fail.
+        from backend_service.catalog.image_models import IMAGE_MODEL_FAMILIES
+
+        def nunchaku_ids(families: list[dict[str, object]]) -> list[str]:
+            return [v["id"] for f in families for v in f["variants"] if v.get("nunchakuRepo")]
+
+        self.assertEqual(len(nunchaku_ids(IMAGE_MODEL_FAMILIES)), 2)
+        self.assertEqual(nunchaku_ids(filter_mlx_only_families(IMAGE_MODEL_FAMILIES, on_apple_silicon=True)), [])
+        self.assertEqual(len(nunchaku_ids(filter_mlx_only_families(IMAGE_MODEL_FAMILIES, on_apple_silicon=False))), 2)
+        mac = {v["id"] for f in filter_mlx_only_families(IMAGE_MODEL_FAMILIES, on_apple_silicon=True) for v in f["variants"]}
+        self.assertIn("black-forest-labs/FLUX.1-schnell", mac)
+        self.assertIn("black-forest-labs/FLUX.1-dev", mac)
+
     def test_a_mac_with_no_cuda_only_rows_gets_the_input_back_untouched(self) -> None:
         families = [{"id": "x", "variants": [_flux_dev_gguf()]}]
         self.assertIs(filter_mlx_only_families(families, on_apple_silicon=True), families)

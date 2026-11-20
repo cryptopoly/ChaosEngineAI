@@ -1,13 +1,31 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 121 shipped, obsoleted or dropped rows, newest first.
+summary: 123 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Shipped, obsoleted or dropped rows (struck through, or marked shipped with no open points left). Kept as the history of why things are the way they are.
 
+
+<details>
+<summary>FU-491 · The download resume wrapper could break every Hub download on another huggingface_hub — Shipped 2026-11-20 (Mac regression review).</summary>
+
+**Status or trigger:** **Shipped 2026-11-20 (Mac regression review).**
+
+**Notes:** `hf_resume_script.HF_RESUME_PATCH` replaced `_download_to_tmp_and_move` whenever the name existed; the library calls it by keyword and the wrapper forwards ten arguments, so 0.26 to 0.36 (`proxies`, allowed by `pyproject.toml`) would fail every download. It now installs only when the parameter names match; otherwise downloads run unpatched. Tests in `tests/test_download_resume.py`, one of them pinned to the installed library.
+
+</details>
+
+<details>
+<summary>FU-490 · Nunchaku INT4 FLUX rows offered on a Mac with nothing to run — Shipped 2026-11-20 (Mac regression review of test/rtx4090).</summary>
+
+**Status or trigger:** **Shipped 2026-11-20 (Mac regression review of `test/rtx4090`).**
+
+**Notes:** The Windows pass made a Nunchaku download the 4-bit pack plus the base repo's encoders and VAE (no bf16 transformer) and made generation refuse without Nunchaku, but both rows stayed listed on Apple Silicon (release v0.10.0 fell back to bf16 there). Both rows now carry `cudaOnly`, so `platform_filter` drops them on a Mac only. Test `tests/test_platform_filter.py::CudaOnlyVariantTests::test_a_mac_is_not_offered_the_nunchaku_rows`. Review: `docs/review/mac-regression-review-2026-11-20.md`.
+
+</details>
 
 <details>
 <summary>FU-430 · Chat quality tiers: a sub-second draft prices as 0 s, and the E2E tiers check fails — Done 2026-11-20</summary>

@@ -369,11 +369,11 @@ export function ModelStoragePanel({
           ) : null}
 
           <div className="field-label-row" style={{ marginTop: 14 }}>
-            <label className="field-label">{t("modelStoragePanel.lmstudioDir", { defaultValue: "LM Studio models folder" })}</label>
+            <label className="field-label">{t("modelStoragePanel.lmstudioDir", { defaultValue: "Shared models folder" })}</label>
           </div>
           <p className="help-text" style={{ margin: "0 0 6px" }}>
             {t("modelStoragePanel.lmstudioHint", {
-              defaultValue: "Used by Share with LM Studio, which links a GGUF into <publisher>/<model>/ here without copying it. Keep it on the same drive as your models.",
+              defaultValue: "Used by Link to shared folder, which links a GGUF into <publisher>/<model>/ here without copying it. Keep it on the same drive as your models.",
             })}
           </p>
           <div className="directory-add-row">

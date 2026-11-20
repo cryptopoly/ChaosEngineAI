@@ -7,14 +7,21 @@ calls the original (fast path, xet storage); with a partial from an earlier run 
 the rest, cuts a safety margin off the end (the storage client may write ahead of what was flushed) and fetches
 the remainder with an HTTP range request, checking the finished file against its SHA-256 name when it has one.
 It runs as a string because the subprocess starts with ``python -c`` and cannot import this package. If the
-library moves the private function, the wrapper is simply not installed and downloads behave as before.
+library moves the private function or changes its parameters, the wrapper is simply not installed and downloads
+behave as before.
 """
 
 HF_RESUME_PATCH = '''
-import glob, hashlib, os
+import glob, hashlib, inspect, os
+_RESUME_PARAMS = ("incomplete_path", "destination_path", "url_to_download", "headers", "expected_size", "filename",
+                  "force_download", "etag", "xet_file_data", "tqdm_class")
 try:
     import huggingface_hub.file_download as _fd
     _orig_dl = _fd._download_to_tmp_and_move
+    # The library calls it by keyword and the wrapper passes all ten on: any other signature (0.x has
+    # ``proxies``, early 1.x no ``tqdm_class``) would make every download fail, so leave those alone.
+    if tuple(inspect.signature(_orig_dl).parameters) != _RESUME_PARAMS:
+        _orig_dl = None
 except Exception:
     _fd = _orig_dl = None
 _SAFETY = 32 * 1024 * 1024

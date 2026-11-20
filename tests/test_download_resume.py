@@ -16,13 +16,29 @@ from backend_service.hf_resume_script import HF_RESUME_PATCH
 MB = 1024 * 1024
 
 
-def _install_patch(payload: bytes):
+def _orig_1x(calls):
+    # The huggingface_hub 1.33 signature the patch wraps.
+    def orig(incomplete_path, destination_path, url_to_download, headers, expected_size, filename, force_download,
+             etag, xet_file_data, tqdm_class=None):
+        calls["orig"] += 1
+
+    return orig
+
+
+def _orig_0x(calls):
+    # The 0.2x / 0.3x signature (``proxies``, no ``tqdm_class``): the library calls it with ``proxies=``.
+    def orig(incomplete_path, destination_path, url_to_download, proxies, headers, expected_size, filename,
+             force_download, etag, xet_file_data):
+        calls["orig"] += 1
+
+    return orig
+
+
+def _install_patch(payload: bytes, make_orig=_orig_1x):
     """Run the subprocess patch text against a stub ``file_download`` module serving ``payload``."""
     calls: dict[str, object] = {"orig": 0}
     fd = types.ModuleType("huggingface_hub.file_download")
-
-    def orig(*args, **kwargs):
-        calls["orig"] += 1
+    orig = make_orig(calls)
 
     def http_get(url, f, *, headers=None, expected_size=None, resume_size=0, tqdm_class=None):
         calls["resume_size"] = resume_size
@@ -87,6 +103,34 @@ class ResumePatchTests(unittest.TestCase):
             self._run(fd)
         self.assertEqual(list(self.blobs.glob("*.incomplete")), [])
         self.assertFalse((self.blobs / self.sha).exists())
+
+    def test_other_signature_leaves_the_library_function_alone(self) -> None:
+        # FU-491: on an older huggingface_hub the wrapper would get ``proxies=`` and every download would fail.
+        fd, calls = _install_patch(self.payload, make_orig=_orig_0x)
+        self.assertEqual(fd._download_to_tmp_and_move.__name__, "orig")
+        fd._download_to_tmp_and_move(
+            incomplete_path=self.blobs / "etag1.incomplete", destination_path=self.blobs / self.sha,
+            url_to_download="https://example.invalid/f", proxies=None, headers={}, expected_size=1, filename="f.bin",
+            force_download=False, etag="etag1", xet_file_data=None,
+        )
+        self.assertEqual(calls["orig"], 1)
+
+    def test_installed_on_the_pinned_library(self) -> None:
+        fd, _calls = _install_patch(self.payload)
+        self.assertEqual(fd._download_to_tmp_and_move.__name__, "_resumable")
+
+    def test_installed_library_matches_the_wrapped_signature(self) -> None:
+        # The release pin (huggingface_hub 1.33) must keep the resume wrapper; a bump that changes it shows here.
+        import inspect
+
+        try:
+            from huggingface_hub import file_download
+        except ImportError:
+            self.skipTest("huggingface_hub not installed")
+        params = tuple(inspect.signature(file_download._download_to_tmp_and_move).parameters)
+        namespace: dict[str, object] = {}
+        exec(HF_RESUME_PATCH.split("try:", 1)[0], namespace)
+        self.assertEqual(params, namespace["_RESUME_PARAMS"])
 
 
 class PartialAccountingTests(unittest.TestCase):

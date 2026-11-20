@@ -2190,3 +2190,25 @@ at: `e2e/screenshots/29-prompts-chat-1280-detail.png`, `-1280-list.png`, `-375-l
 test covers it without a model). The packaged desktop app was not run. `src/locales/.extract-report.json` was not
 regenerated (it was already far out of date; regenerating made a 13,000-line diff). Per-thread system prompt and
 `/prompt` (FU-410) and template presets (FU-411) are open.
+
+## 2026-11-20: Mac and Linux regression review of the Windows pass (FU-490 to FU-495, agent)
+
+Read-mostly review of `release/v0.10.0...test/rtx4090` (77 commits) for regressions on Apple Silicon and Linux;
+full findings in [mac-regression-review-2026-11-20.md](../review/mac-regression-review-2026-11-20.md). A platform
+simulation (system, machine, `sys.platform` and `nvidia-smi` patched) against this branch and the release export shows
+the Mac lane choices unchanged: music `mlx`, sounds `mps`, voice `mlx` with Parakeet the Dictation default, lip sync's
+Mac command `ltx2-venv/bin/ltx-2-mlx a2v --distilled`, sd.cpp `mps`. The catalog diff found no Mac row removed and no
+default changed.
+
+**Fixed.** (1) FU-490: the two Nunchaku INT4 rows were still offered on a Mac although their download no longer has a
+bf16 transformer to fall back to; they are `cudaOnly` now. (2) FU-491: the download resume wrapper is installed only on
+the `huggingface_hub` signature it was written for (another one would have failed every download). (3) The "Share with
+..." button, folder label, hint and errors reworded in English without the other app's name (FU-492 holds the rest).
+(4) `tests/test_lipsync.py` route tests cleared a stale image-progress flag left by earlier tests.
+
+**Open.** FU-493 lists what needs a real Mac (sounds pack reinstall with the new Stable Audio 3 step, Mac lip sync,
+xet resume, ACE-Step MLX). FU-494 (Windows-only weight-copy advice), FU-495 (partial pruning on POSIX).
+
+**Tests.** pytest across downloads, image, music, voice, lip sync, sd.cpp, studio tiers, backend service and the hub
+tracker pass in one run; `test_music_worker`'s path test still fails on Windows as before. vitest 1,995 pass, `tsc`
+clean, `i18n:validate` OK, `audit-catalog-repos.py` all repos and files exist.

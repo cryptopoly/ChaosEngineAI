@@ -782,9 +782,9 @@
         "status": "Status"
       },
       "share": {
-        "action": "Share with LM Studio",
-        "done": "Shared with LM Studio as {where}. No extra disk space used.",
-        "already": "Already shared with LM Studio ({where})."
+        "action": "Link to shared folder",
+        "done": "Linked into the shared models folder as {where}. No extra disk space used.",
+        "already": "Already in the shared models folder ({where})."
       }
     }
   }

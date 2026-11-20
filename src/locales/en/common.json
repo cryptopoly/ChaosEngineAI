@@ -1469,8 +1469,8 @@
     "moveModels": "Move existing models to new path",
     "filesProgress": "{copied} / {total} files",
     "restartBackend": "Restart backend",
-    "lmstudioDir": "LM Studio models folder",
-    "lmstudioHint": "Used by Share with LM Studio, which links a GGUF into <publisher>/<model>/ here without copying it. Keep it on the same drive as your models.",
+    "lmstudioDir": "Shared models folder",
+    "lmstudioHint": "Used by Link to shared folder, which links a GGUF into <publisher>/<model>/ here without copying it. Keep it on the same drive as your models.",
     "saveLmstudioDir": "Save folder"
   },
   "videoPlaceholderTab": {

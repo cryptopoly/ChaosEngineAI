@@ -323,6 +323,11 @@ class RouteTests(unittest.TestCase):
         ram = mock.patch("backend_service.helpers.memory_gate.snapshot_memory_signals", return_value=(45.0, 30.0))
         ram.start()
         self.addCleanup(ram.stop)
+        # An earlier test file can leave the shared image progress marked active; the video route then answers 409
+        # "An image generation is still running" before lip sync is reached (seen in combined Windows runs).
+        from backend_service.progress import IMAGE_PROGRESS
+
+        IMAGE_PROGRESS.finish()
 
     def body(self, **overrides) -> dict:
         body = {"modelId": CUDA_REPO, "prompt": "a woman sings to the camera", "numFrames": 121, "fps": 24,

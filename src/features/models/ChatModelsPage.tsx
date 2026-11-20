@@ -354,8 +354,8 @@ export function ChatModelsPage({
         setShareNotice({
           ok: true,
           text: result.shared.alreadyShared
-            ? t("models.chat.share.already", { defaultValue: "Already shared with LM Studio ({where}).", where })
-            : t("models.chat.share.done", { defaultValue: "Shared with LM Studio as {where}. No extra disk space used.", where }),
+            ? t("models.chat.share.already", { defaultValue: "Already in the shared models folder ({where}).", where })
+            : t("models.chat.share.done", { defaultValue: "Linked into the shared models folder as {where}. No extra disk space used.", where }),
         });
       } catch (err) {
         setShareNotice({ ok: false, text: err instanceof Error ? err.message : String(err) });
@@ -685,8 +685,8 @@ export function ChatModelsPage({
             {item && status.state === "installed" && item.path.toLowerCase().endsWith(".gguf") ? (
               <IconActionButton
                 icon="share"
-                label={t("models.chat.share.action", { defaultValue: "Share with LM Studio" })}
-                title={t("models.chat.share.action", { defaultValue: "Share with LM Studio" })}
+                label={t("models.chat.share.action", { defaultValue: "Link to shared folder" })}
+                title={t("models.chat.share.action", { defaultValue: "Link to shared folder" })}
                 onClick={() => void handleShareWithLmStudio(item.path, entry.repo ?? undefined)}
               />
             ) : null}

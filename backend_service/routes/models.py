@@ -425,7 +425,7 @@ def share_model_with_lmstudio(request: Request, body: ShareLmStudioRequest) -> d
     if body.lmstudioDir and body.lmstudioDir.strip():
         raw = body.lmstudioDir.strip()
         if not (raw.startswith("~") or Path(raw).expanduser().is_absolute()):
-            raise HTTPException(status_code=400, detail=localized_detail(request, "LM Studio folder must be an absolute path."))
+            raise HTTPException(status_code=400, detail=localized_detail(request, "The shared models folder must be an absolute path."))
         target = Path(raw).expanduser()
     else:
         saved = str(request.app.state.chaosengine.settings.get("lmstudioDir") or "").strip()
@@ -435,7 +435,7 @@ def share_model_with_lmstudio(request: Request, body: ShareLmStudioRequest) -> d
                 status_code=400,
                 detail=localized_detail(
                     request,
-                    "LM Studio's models folder is not set. Add it under Settings > Model Storage and try again.",
+                    "The shared models folder is not set. Add it under Settings > Model Storage and try again.",
                 ),
             )
         target = existing[0]
@@ -448,7 +448,7 @@ def share_model_with_lmstudio(request: Request, body: ShareLmStudioRequest) -> d
             status_code=400,
             detail=localized_detail(
                 request,
-                f"Could not link the model into LM Studio's folder (it must be on the same drive as the model): {exc}",
+                f"Could not link the model into the shared models folder (it must be on the same drive as the model): {exc}",
             ),
         ) from exc
     return {"shared": result, "lmstudioDir": str(target)}

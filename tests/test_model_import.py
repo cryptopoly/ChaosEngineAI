@@ -283,7 +283,7 @@ class ShareRouteTests(unittest.TestCase):
         with mock.patch.dict(os.environ, {"CHAOSENGINE_LMSTUDIO_DIR": str(self.root / "missing")}):
             resp = self.client.post("/api/models/share-lmstudio", json={"path": str(self.gguf)})
         self.assertEqual(resp.status_code, 400)
-        self.assertIn("LM Studio", resp.json()["detail"]["message"])
+        self.assertIn("shared models folder is not set", resp.json()["detail"]["message"])
 
     def test_saved_folder_is_used_and_persisted(self):
         lm = self.root / "lmstudio"

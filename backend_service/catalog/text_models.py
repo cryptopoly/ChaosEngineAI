@@ -150,11 +150,15 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "repo": "google/gemma-4-31B-it-qat-q4_0-gguf",
                 "link": "https://huggingface.co/google/gemma-4-31B-it-qat-q4_0-gguf",
                 "paramsB": 31.0,
-                "sizeGb": 17.0,
+                "sizeGb": 17.7,
                 "format": "GGUF",
                 "quantization": "Q4_0 (QAT)",
                 "capabilities": ["vision", "reasoning", "coding", "agents", "tool-use"],
-                "note": "Google's official QAT (Quantization-Aware Training) Q4_0 — higher fidelity than post-hoc Q4 at the same size.",
+                "note": (
+                    "Google's official QAT (Quantization-Aware Training) Q4_0 — higher fidelity than post-hoc Q4 at the same size "
+                    "(17.7 GB plus a 1.2 GB mmproj). On an RTX 4090: 45 tok/s, about 60 with Speculative decoding on "
+                    "(the unsloth mtp- drafter, 0.5 GB, downloads beside it); 19.3 GB of VRAM at 8,192 context."
+                ),
                 "contextWindow": "256K",
                 "launchMode": "direct",
                 "backend": "llama.cpp",
@@ -495,8 +499,9 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         #   MLX 2-bit      -> stock mlx-lm; ternary weights stored as affine
         #                     bits=2 (ran Ternary-Bonsai-27B + -4B)
         # Left out: Q2_0-g64 GGUF (needs llama.cpp >= b9994), MLX 1-bit
-        # (needs mlx-vlm 1-bit kernels). Bonsai 2's GGUFs (PQ2_0 / PTQ1_0)
-        # need the PrismML llama.cpp fork, and its MLX pack is model_type
+        # (needs mlx-vlm 1-bit kernels). Bonsai 2's PQ2_0 / PTQ1_0 GGUFs
+        # need the PrismML llama.cpp fork (its plain Q2_0 GGUF loads on
+        # stock b12441, FU-269), and its MLX pack is model_type
         # prism_hadamard_qwen35 (mlx-vlm >= 0.7.2 only) — but TensorFold
         # serves that MLX pack natively, so it is listed with backend
         # "tensorfold" (the only route; size and memory figures from
@@ -571,6 +576,29 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "launchMode": "direct",
                 "backend": "llama.cpp",
                 "releaseDate": "2026-07",
+            },
+            {
+                # FU-269: the card says stock llama.cpp reads Q2_0 from b11556; loaded and decoded on b12441 CUDA.
+                "id": "prism-ml/Ternary-Bonsai-2-27B-gguf",
+                "name": "Ternary Bonsai 2 27B GGUF (Q2_0, 24 GB card)",
+                "repo": "prism-ml/Ternary-Bonsai-2-27B-gguf",
+                "link": "https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf",
+                "paramsB": 27.0,
+                "sizeGb": 7.6,
+                "format": "GGUF",
+                "quantization": "Q2_0 (ternary)",
+                "ggufFile": "Ternary-Bonsai-2-27B-Q2_0.gguf",
+                "capabilities": ["reasoning", "coding", "tool-use", "vision"],
+                "note": (
+                    "Qwen3.8-based ternary 27B at 7.6 GB (+0.9 GB mmproj for vision), on stock llama.cpp: no fork "
+                    "needed for Q2_0. On an RTX 4090: about 77 tok/s; 8.2 GB of VRAM at 8,192 context "
+                    "for text, about 13.8 GB with the vision projector loaded. The repo's PQ2_0 and PTQ1_0 files need "
+                    "PrismML's fork and are not offered."
+                ),
+                "contextWindow": "262K",
+                "launchMode": "direct",
+                "backend": "llama.cpp",
+                "releaseDate": "2026-11",
             },
             {
                 "id": "prism-ml/Ternary-Bonsai-8B-mlx-2bit",
@@ -660,7 +688,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             "Bonsai models are 1-bit or ternary end to end, not post-hoc quants of an FP16 model.",
             "Bonsai 27B keeps Qwen3.6-27B's hybrid architecture, 262K context and vision in 3.8 GB (1-bit GGUF) or 8.5 GB (ternary MLX).",
             "The 1.7B / 4B / 8B builds are Qwen3-based, text-only, and fit entry-level laptops.",
-            "Bonsai 2 (Qwen3.8-27B base) runs only on the TensorFold engine: its GGUFs need PrismML's llama.cpp fork and its MLX pack a newer mlx-vlm.",
+            "Bonsai 2 (Qwen3.8-27B base) runs as a Q2_0 GGUF on stock llama.cpp (about 8 GB of VRAM at 8,192 context) or as an MLX pack on the TensorFold engine; its PQ2_0 and PTQ1_0 GGUFs need PrismML's llama.cpp fork.",
         ],
     },
     {
@@ -873,16 +901,21 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "ggml-org/Qwen3.6-35B-A3B-GGUF",
-                "name": "Qwen3.6 35B A3B GGUF (ggml-org Q8_0)",
+                "name": "Qwen3.6 35B A3B GGUF (ggml-org Q4_K_M, 24 GB card)",
                 "repo": "ggml-org/Qwen3.6-35B-A3B-GGUF",
                 "link": "https://huggingface.co/ggml-org/Qwen3.6-35B-A3B-GGUF",
                 "paramsB": 35.0,
-                "sizeGb": 36.9,
+                "sizeGb": 20.5,
                 "format": "GGUF",
-                "quantization": "Q8_0",
-                "ggufFile": "Qwen3.6-35B-A3B-Q8_0.gguf",
+                "quantization": "Q4_K_M",
+                "ggufFile": "Qwen3.6-35B-A3B-Q4_K_M.gguf",
                 "capabilities": ["reasoning", "coding", "vision", "agents", "tool-use"],
-                "note": "ggml-org canonical Q8_0 MoE pack + mmproj sibling for vision. No MTP heads — pick the -MTP-GGUF sibling for speculative decoding.",
+                # FU-263: re-pinned from Q8_0 (36.9 GB); the Q8_0 stays reachable as the -MTP-GGUF row above.
+                "note": (
+                    "ggml-org canonical Q4_K_M (20.5 GB, fits a 24 GB card) + one mmproj for vision, with the repo's "
+                    "mtp- sidecar (1.1 GB) for Speculative decoding. On an RTX 4090: 177 tok/s, about 204 with the "
+                    "sidecar at two per round (+16 %). The repo's DFlash drafter is not used: it measured slower (about 120)."
+                ),
                 "contextWindow": "262K",
                 "launchMode": "direct",
                 "backend": "llama.cpp",
@@ -1207,6 +1240,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "format": "GGUF",
                 "quantization": "Q4_K_M",
                 "ggufFile": "NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Q4_K_M.gguf",
+                "minContextTokens": 16384,
                 "capabilities": ["reasoning", "agents", "tool-use"],
                 "note": "Q4_K_M for 32 GB GPUs or Macs. Only the pinned quant downloads.",
                 "contextWindow": "262K",
@@ -1224,6 +1258,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "format": "GGUF",
                 "quantization": "Q8_0",
                 "ggufFile": "NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Q8_0.gguf",
+                "minContextTokens": 16384,
                 "capabilities": ["reasoning", "agents", "tool-use"],
                 "note": "Canonical ggml-org Q8_0. Its mtp- drafter sidecar isn't wired yet, so it runs standard decode.",
                 "contextWindow": "262K",
@@ -1241,8 +1276,9 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "format": "GGUF",
                 "quantization": "Q4_0",
                 "ggufFile": "NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Q4_0.gguf",
+                "minContextTokens": 16384,
                 "capabilities": ["reasoning", "agents", "tool-use"],
-                "note": "Q4_0 (19.1 GB) fits a 24 GB card; the repo's mtp- drafter sidecar (1.2 GB) downloads beside it. On an RTX 4090: 233 tok/s, about 245 with the drafter. The Studio tool list is about 9,200 tokens here, so use a context above 8,192 for tool calls. NVIDIA open model licence.",
+                "note": "Q4_0 (19.1 GB) fits a 24 GB card; the repo's mtp- drafter sidecar (1.2 GB) downloads beside it. On an RTX 4090: 233 tok/s, about 245 with the drafter. The Studio tool list is about 9,200 tokens here, so the app loads it with at least a 16,384 context (the Context setting stays as you set it) and says so in the load note. NVIDIA open model licence.",
                 "contextWindow": "262K",
                 "launchMode": "direct",
                 "backend": "llama.cpp",

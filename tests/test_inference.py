@@ -337,7 +337,8 @@ class MtpGgufDetectionTests(unittest.TestCase):
         from backend_service.inference._mtp import get_mtp_draft_n
 
         self.assertEqual(get_mtp_draft_n("ggml-org/Qwen3.6-27B-MTP-GGUF"), 3)
-        self.assertEqual(get_mtp_draft_n("ggml-org/Qwen3.6-35B-A3B-MTP-GGUF"), 3)
+        self.assertEqual(get_mtp_draft_n("ggml-org/Qwen3.6-35B-A3B-MTP-GGUF"), 2)
+        self.assertEqual(get_mtp_draft_n("Qwen/Qwen3.6-35B-A3B"), 3)  # the MLX lane keeps its own value
 
 
 class MtpTensorProbeTests(unittest.TestCase):

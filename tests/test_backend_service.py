@@ -1085,6 +1085,24 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(again["loadedAt"], loaded["loadedAt"])
         self.assertEqual(again["requestedContextTokens"], 2_000_000)
 
+    def test_a_row_with_a_min_context_loads_larger_and_says_so(self):
+        # FU-265: Nemotron 3.5 Lightning's template renders the Studio tool list as ~9,200 tokens.
+        folder = Path(self.tempdir.name) / "bartowski" / "NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF"
+        folder.mkdir(parents=True)
+        body = {"modelRef": "bartowski/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF", "source": "catalog",
+                "backend": "mock", "contextTokens": 8192, "path": str(folder)}
+        loaded = self.client.post("/api/models/load", json=body).json()["runtime"]["loadedModel"]
+        self.assertEqual(loaded["contextTokens"], 16384)
+        self.assertEqual(loaded["requestedContextTokens"], 8192)
+        self.assertIn("16,384", loaded["runtimeNote"])
+        # A larger request is left alone, and an ordinary row is never raised.
+        again = self.client.post("/api/models/load", json={**body, "contextTokens": 32768}).json()["runtime"]["loadedModel"]
+        self.assertEqual(again["contextTokens"], 32768)
+        ordinary = self.client.post("/api/models/load", json={
+            "modelRef": "google/gemma-4-E4B-it", "source": "catalog", "backend": "mock", "contextTokens": 8192,
+        }).json()["runtime"]["loadedModel"]
+        self.assertEqual(ordinary["contextTokens"], 8192)
+
     def test_voice_turn_does_not_save_its_thinking_mode_to_the_thread(self):
         self.client.post(
             "/api/models/load",

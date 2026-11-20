@@ -81,8 +81,13 @@ class NewTextFamiliesTests(unittest.TestCase):
         # Bonsai 2 (PrismML fork / mlx-vlm >= 0.7.2), MLX 1-bit (mlx-vlm
         # kernels) and Q2_0-g64 GGUF (llama.cpp >= b9994) can't run on the
         # shipped runtimes — keep them out until they can. The one exception
-        # is Bonsai 2's MLX pack, which the TensorFold engine reads.
+        # is Bonsai 2's MLX pack, which the TensorFold engine reads, and its
+        # plain Q2_0 GGUF, which stock llama.cpp b12441 loads (FU-269).
         for v in self.by_id["bonsai"]["variants"]:
+            if v["repo"] == "prism-ml/Ternary-Bonsai-2-27B-gguf":
+                self.assertEqual(v["backend"], "llama.cpp", v["id"])
+                self.assertEqual(v["ggufFile"], "Ternary-Bonsai-2-27B-Q2_0.gguf", v["id"])
+                continue
             if "Bonsai-2-" in v["repo"]:
                 self.assertEqual(v["backend"], "tensorfold", v["id"])
                 self.assertEqual(v["format"], "MLX", v["id"])
@@ -232,6 +237,10 @@ class NewTextFamiliesTests(unittest.TestCase):
         "bartowski/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF": (
             "nemotron-3-5-lightning", "NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Q4_0.gguf", 19.1),
         "unsloth/Qwen3.6-35B-A3B-MTP-GGUF": ("qwen-3-6", "Qwen3.6-35B-A3B-UD-IQ4_XS.gguf", 18.2),
+        # FU-263: the ggml-org Q8_0 (36.9 GB) was re-pinned to the 20.5 GB Q4_K_M; Q8_0 stays as the -MTP-GGUF row.
+        "ggml-org/Qwen3.6-35B-A3B-GGUF": ("qwen-3-6", "Qwen3.6-35B-A3B-Q4_K_M.gguf", 20.5),
+        # FU-269: Q2_0 reads on stock llama.cpp (b12441), 7.63 GB file.
+        "prism-ml/Ternary-Bonsai-2-27B-gguf": ("bonsai", "Ternary-Bonsai-2-27B-Q2_0.gguf", 7.6),
     }
 
     def test_cuda_chat_rows_are_pinned_and_sized(self):
@@ -252,11 +261,21 @@ class NewTextFamiliesTests(unittest.TestCase):
         self.assertLess(sizes["google/gemma-4-26B-A4B-it-qat-q4_0-gguf"], 24.0)
         self.assertGreater(sizes["unsloth/gemma-4-26B-A4B-it-GGUF"], 24.0)
 
+    def test_nemotron_lightning_gguf_rows_load_with_a_tool_sized_context(self):
+        # FU-265: the Studio tool list is ~9,200 tokens in this template; the app raises the context on load.
+        rows = [v for v in self.by_id["nemotron-3-5-lightning"]["variants"] if v["format"] == "GGUF"]
+        self.assertEqual(len(rows), 3)
+        for row in rows:
+            self.assertGreaterEqual(row.get("minContextTokens", 0), 10_000, row["repo"])
+        for family in MODEL_FAMILIES:
+            for row in family["variants"]:
+                self.assertLessEqual(int(row.get("minContextTokens") or 0), 32768)
+
     def test_unsloth_qwen36_mtp_row_is_read_as_mtp(self):
         from backend_service.inference._mtp import get_mtp_draft_n, is_mtp_gguf_repo
 
         self.assertTrue(is_mtp_gguf_repo("unsloth/Qwen3.6-35B-A3B-MTP-GGUF"))
-        self.assertEqual(get_mtp_draft_n("unsloth/Qwen3.6-35B-A3B-MTP-GGUF"), 3)
+        self.assertEqual(get_mtp_draft_n("unsloth/Qwen3.6-35B-A3B-MTP-GGUF"), 2)
 
     def test_one_row_per_repo_in_text_catalog(self):
         # ``pinned_gguf_file`` pins one file per repo, so a second row for a repo would be ignored.

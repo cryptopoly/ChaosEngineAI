@@ -185,6 +185,17 @@ def load_model(
                 request.contextTokens = int(detected_max)
             except Exception:
                 pass
+        # A model whose chat template renders the Studio tool list larger than the default context
+        # (Nemotron 3.5 Lightning: about 9,200 tokens, FU-265) loads with the larger context the row names.
+        context_raise_note: str | None = None
+        min_context = int(catalog_entry.get("minContextTokens") or 0) if catalog_entry is not None else 0
+        if min_context and request.contextTokens < min_context and (detected_max is None or detected_max >= min_context):
+            context_raise_note = (
+                f"Context raised from {request.contextTokens:,} to {min_context:,} tokens: this model's template "
+                "turns the Studio tool list into about 9,200 tokens, which does not fit the smaller context."
+            )
+            state.add_log("runtime", "info", context_raise_note)
+            request.contextTokens = min_context
         model_name = request.modelName
         if model_name is None and catalog_entry is not None:
             model_name = catalog_entry["name"]
@@ -368,6 +379,8 @@ def load_model(
         state._loading_state = None
         loaded.requestedContextTokens = requested_context_tokens
         loaded.requestedTreeBudget = tree_budget
+        if context_raise_note:
+            loaded.runtimeNote = f"{loaded.runtimeNote} {context_raise_note}" if loaded.runtimeNote else context_raise_note
         loaded_cache_label = state._cache_label(
             cache_strategy=str(loaded.cacheStrategy),
             bits=int(loaded.cacheBits),

@@ -1,7 +1,7 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 186 rows with work, decisions or watch items still open, newest first.
+summary: 189 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
@@ -190,6 +190,33 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
+<summary>FU-292 · Draft length for the other MTP and drafter rows — Next 4090 pass</summary>
+
+**Status or trigger:** Next 4090 pass
+
+**Notes:** Pinned by measure now: Qwen3.6 35B-A3B GGUF 2 (FU-268), Gemma 4 12B, 26B-A4B and 31B QAT 2 (FU-264). Not measured on the 4090: Nemotron Lightning (`mtp-` sidecar, default 2, +6 % at 2), the dense Qwen3.6 27B MTP row (3 from the Mac), Qwen3.8 27B with the z-lab DFlash 2 drafter at 15 (only the Mac numbers). A block drafter can slow a MoE (FU-263), so any new DFlash pairing needs the plain run beside it.
+
+</details>
+
+<details>
+<summary>FU-291 · Engine takes the largest mmproj on disk — Next engine pass</summary>
+
+**Status or trigger:** Next engine pass
+
+**Notes:** `_resolve_mmproj_path` (`llama_cpp_engine.py`) sorts by size and takes the biggest, so a repo folder that holds F32 (2.3 GB on the unsloth Gemma 31B) loads F32 although F16 or Q8_0 is as good. FU-259 stops new downloads fetching more than one, so this only matters for old folders and hand-made ones. Use the same preference as `_best_mmproj` (F16, Q8_0, BF16) when several are present. Not measured: image quality of Q8_0 against BF16 on these models (the Bonsai 2 Q8_0 read a test picture correctly).
+
+</details>
+
+<details>
+<summary>FU-290 · Parallel ranged Hub download when the single stream is starved — Only if owners report slow downloads</summary>
+
+**Status or trigger:** Only if owners report slow downloads
+
+**Notes:** See FU-266: on a contended link the app's one stream got 0.35 to 1.3 MB/s while 16 ranged requests got 7 to 14 MB/s; on a quiet link the app was fine (23 MB/s). A fallback would split a file into 64 MB ranges after the stream's rate stays under a floor for a minute, write into the same `.incomplete` file and reuse `hf_resume_script.py`'s hash check. Weigh against the extra load on the Hub; ask the owner before building.
+
+</details>
+
+<details>
 <summary>FU-280 · CUDA sounds lane: what is not tested — Linux NVIDIA box, a card under 12 GB, or a listening pass</summary>
 
 **Status or trigger:** Linux NVIDIA box, a card under 12 GB, or a listening pass
@@ -271,20 +298,20 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-269 · Bonsai 2 27B GGUF Q2_0 (7.63 GB) on stock llama.cpp b12441 as a 24 GB row — Next 4090 pass</summary>
+<summary>FU-269 · Bonsai 2 27B GGUF Q2_0 (7.63 GB) on stock llama.cpp b12441 as a 24 GB row — Done (2026-11-20, agent branch), measured on the 4090</summary>
 
-**Status or trigger:** Next 4090 pass
+**Status or trigger:** **Done (2026-11-20, agent branch), measured on the 4090**
 
-**Notes:** `prism-ml/Ternary-Bonsai-2-27B-gguf` (1.37M downloads; arch qwen35, Qwen3.8-based) has `Ternary-Bonsai-2-27B-Q2_0.gguf` that the card says mainline llama.cpp reads from b11556; the catalogue comment in `text_models.py` (Bonsai family) still says Bonsai 2's GGUFs need the PrismML fork. Download, load on b12441, measure and add the row (mmproj Q8_0 0.63 GB); not tried on 2026-11-19 (link too slow).
+**Notes:** `prism-ml/Ternary-Bonsai-2-27B-gguf` `Ternary-Bonsai-2-27B-Q2_0.gguf` loads and decodes on stock b12441 CUDA, no fork: **direct 77.3, 77.0, 77.1 tok/s, prefill about 2,400; through `/api/models/load` 77.6, 75.7, 67.9 (the last while another job was on the GPU)**, load 5.6 to 8.2 s, VRAM 8.2 GB above idle for text and 13.8 GB peak through the app with the projector loaded (other programs may have shared the card). The Q8_0 mmproj (0.63 GB) read an image correctly (a generated picture: red background, the white word, the blue rectangle). Reply read: a sound two-sentence answer. Row added in the Bonsai family (`prism-ml/Ternary-Bonsai-2-27B-gguf`, 7.6 GB, vision); the catalogue comment and readme that said Bonsai 2's GGUFs need the fork now say only PQ2_0 and PTQ1_0 do. Not run: PQ2_0 and PTQ1_0 (fork), a quality comparison with the MLX pack, a DFlash drafter on it (the z-lab Qwen3.8-27B one is not paired).
 
 </details>
 
 <details>
-<summary>FU-268 · Draft length for MoE MTP (Qwen3.6 35B-A3B) — Next 4090 pass</summary>
+<summary>FU-268 · Draft length for MoE MTP (Qwen3.6 35B-A3B) — Done (2026-11-20, agent branch), measured on the 4090</summary>
 
-**Status or trigger:** Next 4090 pass
+**Status or trigger:** **Done (2026-11-20, agent branch), measured on the 4090**
 
-**Notes:** The baked-in MTP at 3 per round gave 174 tok/s against 170 plain (+2 %, 35 to 45 % accepted); the Gemma rows were best at 2. Try 1 and 2 before keeping 3 (`MTP_MODEL_MAP`).
+**Notes:** Qwen3.6-35B-A3B UD-IQ4_XS, baked-in MTP, direct on b12441 (same prompt and runs as FU-263): plain 170.4 tok/s; n=1 193.4; **n=2 196.9 and 201.7 (two sweeps)**; n=3 171.0 and 179.3; n=4 167.0. n=2 pinned for the three GGUF MoE repos in `_MTP_GGUF_DRAFT_N` (`inference/_mtp.py`); the canonical `Qwen/Qwen3.6-35B-A3B` value (3, used by the MLX lane) is unchanged, a test pins both. Earlier 'no gain' at 3 (174 vs 170) was the n=3 setting, not the model. The 27B dense GGUF (`ggml-org/Qwen3.6-27B-MTP-GGUF`) keeps 3: not run here.
 
 </details>
 
@@ -298,38 +325,38 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-266 · Check the app's own Hub download on a slow link — Next download-path change</summary>
+<summary>FU-266 · Check the app's own Hub download on a slow link — Checked (2026-11-20, agent branch)</summary>
 
-**Status or trigger:** Next download-path change
+**Status or trigger:** **Checked (2026-11-20, agent branch); no downloader change**
 
-**Notes:** On 2026-11-19 `hf_hub_download` (xet on) sat at 0 to 0.4 MB/s while 16 parallel range requests got 5 to 12 MB/s on the same link; the rows were fetched by a ranged downloader instead. The app's downloader was not measured on a clean link, so this may be the shared link only.
-
-</details>
-
-<details>
-<summary>FU-265 · Nemotron 3.5 Lightning cannot take the Studio tool list at the default 8,192 context — Before Chat offers it with tools</summary>
-
-**Status or trigger:** Before Chat offers it with tools
-
-**Notes:** Its template renders the 20 Studio tools as 9,228 tokens, so every request is refused with HTTP 400 (scorecard run 2, `tool-call-scorecard-2026-11.md`). Needs the larger default context for tool chats, or FU-231's staged tool list; the row note says so.
+**Notes:** Two checks through `/api/models/download` on a throwaway HOME and HF cache. (1) While 16 ranged requests of mine and another agent's job shared the link, the app took 1.45 GB (`openbmb/MiniCPM5-2B-GGUF`) in 1,162 s, 1.3 MB/s average, 0.35 MB/s at the slowest, while the ranged downloader beside it held 7 to 14 MB/s. (2) On a quiet link 1.08 GB (`prism-ml/Bonsai-8B-gguf`) took 51 s, 23 MB/s. So the app's single xet stream is not broken, it just gets a small share of a contended link; a ranged downloader is only faster there. **Resume works on the slow link:** paused at 94 MB of `LiquidAI/LFM3-1.7B-GGUF`, the partial was cut to 71 MB (the 32 MB safety trim) and grew from there to completion (no restart from zero). Not tested: a proxy that ignores Range, a multi-GB file paused twice. Whether to add parallel ranges for contended links: FU-290.
 
 </details>
 
 <details>
-<summary>FU-264 · Gemma 4 31B on the 4090 and its drafter — Next 4090 pass</summary>
+<summary>FU-265 · Nemotron 3.5 Lightning cannot take the Studio tool list at the default 8,192 context — Done (2026-11-20, agent branch), checked live on the 4090</summary>
 
-**Status or trigger:** Next 4090 pass
+**Status or trigger:** **Done (2026-11-20, agent branch), checked live on the 4090**
 
-**Notes:** The QAT Q4_0 (17 GB) and unsloth Q4_K_M (19 GB) rows exist and fit 24 GB; `unsloth/gemma-4-31B-it-GGUF` ships `mtp-gemma-4-31B-it.gguf` (0.51 GB). Neither was run or paired in the 2026-11-19 pass (the 12B and 26B-A4B pairings gave +26 % and +9 %).
+**Notes:** Its template renders the 20 Studio tools as 9,228 tokens, so every request was refused with HTTP 400 (scorecard run 2). **Fixed** by a per-row `minContextTokens` (16,384 on the three Lightning GGUF rows): `state/lifecycle.py` `load_model` raises a smaller requested context to it after the model-max clamp, logs it, and puts one plain sentence in the loaded model's `runtimeNote` ("Context raised from 8,192 to 16,384 tokens: this model's template turns the Studio tool list into about 9,200 tokens..."). `requestedContextTokens` stays as asked, so the launch panel still matches and the next message does not reload; a larger request is left alone. No smaller tool list was built (FU-231 stays the long-term answer). **Live:** `scripts/tool-call-scorecard.py --context 8192 --runs 1` against the Q4_0 row through `/api/models/load` on a throwaway HOME: the load came back at 16,384 and all 12 requests got an answer (12 of 12 calls, 8 right tools, 4 right values, 9,349 prompt tokens), against 12 HTTP 400 before. Tests: `tests/test_backend_service.py::test_a_row_with_a_min_context_loads_larger_and_says_so`, `tests/test_catalog_text_families.py`. Not done: the MLX Lightning rows (no measure; the text block there is smaller) and other models whose templates are large.
 
 </details>
 
 <details>
-<summary>FU-263 · ggml-org/Qwen3.6-35B-A3B-GGUF has a dflash- drafter and a 20.5 GB Q4_K_M that fits 24 GB; its row is pinned to Q8_0 (36.9 GB) — Next 4090 pass</summary>
+<summary>FU-264 · Gemma 4 31B on the 4090 and its drafter — Done (2026-11-20, agent branch), measured on the 4090</summary>
 
-**Status or trigger:** Next 4090 pass
+**Status or trigger:** **Done (2026-11-20, agent branch), measured on the 4090**
 
-**Notes:** Read from the Hub 2026-11-19: files `Qwen3.6-35B-A3B-Q4_K_M.gguf` 20.54 GB, `dflash-Qwen3.6-35B-A3B-Q8_0.gguf` 0.42 GB. One pinned file per repo means a 24 GB row needs a second repo (`lmstudio-community` Q4_K_M has no drafter). Measure DFlash against the 170 tok/s plain and 174 tok/s MTP numbers in `rtx4090-progress.md` before offering it. Not run here.
+**Notes:** QAT Q4_0 (17.65 GB + 1.2 mmproj), direct on b12441, 8,192 context: **45.0 and 45.0 tok/s plain; with `unsloth/gemma-4-31B-it-GGUF` `mtp-gemma-4-31B-it.gguf` (0.51 GB) as `draft-mtp`: n=2 58.9 and 61.1 (+31 to 36 %, 26 to 32 % accepted), n=1 57.0, n=3 57.1**; VRAM above idle 19.3 GB plain, 19.8 with the drafter; prefill about 1,770 tok/s. Pinned in `PINNED_DRAFTERS` (the engine's default of 2 is the best). Row size corrected from 17.0 to 17.7 GB and the note carries the numbers. Not run: the unsloth Q4_K_M 31B row with its `MTP/` sidecar (now resolved by FU-259) and any Q5 or larger quant.
+
+</details>
+
+<details>
+<summary>FU-263 · ggml-org/Qwen3.6-35B-A3B-GGUF Q4_K_M (20.5 GB) as the 24 GB row, and its DFlash drafter — Done (2026-11-20, agent branch), measured on the 4090</summary>
+
+**Status or trigger:** **Done (2026-11-20, agent branch), measured on the 4090**
+
+**Notes:** The row is re-pinned from Q8_0 (36.9 GB) to `Qwen3.6-35B-A3B-Q4_K_M.gguf`; Q8_0 stays reachable as the `ggml-org/Qwen3.6-35B-A3B-MTP-GGUF` row (37.8 GB, baked-in heads). Measured directly on the b12441 CUDA server with the app's flags (8,192 context, f16 KV, `--fit on`, ~500-token prompt, 300 tokens, 3 warm runs, two sweeps): **plain 175.9 and 177.7 tok/s; DFlash drafter (`dflash-...-Q8_0`, 15 per round) 119.0 and 122.1, only 6.5 % of drafted tokens accepted, so it is 32 % slower; `mtp-...-Q4_0` sidecar at two per round 204.3 (+16 %), at three 202.0.** VRAM above idle: 20.1 GB plain, 21.1 with the sidecar, 22.7 with DFlash. Because the app puts block drafters first (FU-178, measured on the dense 27B), this repo would have run DFlash and slowed down: `SIDECAR_KINDS_SKIPPED` in `helpers/text_gguf.py` now keeps `dflash-` out of this repo's download and out of `resolve_spec_sidecar`, so Speculative decoding uses the mtp- sidecar. Through `/api/models/load` (throwaway HOME): see `docs/progress/rtx4090-progress.md` 2026-11-20. Tests in `tests/test_text_gguf.py`, `tests/test_catalog_text_families.py`.
 
 </details>
 
@@ -361,11 +388,11 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-259 · Unsloth GGUF repos: MTP/ sidecar lands in a subfolder, and every mmproj precision downloads — Next catalogue pass</summary>
+<summary>FU-259 · Unsloth GGUF repos: MTP/ sidecar lands in a subfolder, and every mmproj precision downloads — Done (2026-11-20, agent branch)</summary>
 
-**Status or trigger:** Next catalogue pass
+**Status or trigger:** **Done (2026-11-20, agent branch)**; the Gemma 4 26B-A4B Q8_0 row was not run (does not fit 24 GB)
 
-**Notes:** Found 2026-11-19 on the Gemma 4 26B-A4B Q8_0 row (`unsloth/gemma-4-26B-A4B-it-GGUF`): `_best_sidecar` picks the nearest-quant `MTP/mtp-...-Q8_0.gguf`, but `resolve_spec_sidecar` scans only the model's own folder, so the 0.46 GB file is downloaded and never used (no drafter is pinned for that row because it was not run here); `*mmproj*.gguf` fetches BF16, F16 and F32 (4.7 GB) where one is enough. Same for the Qwen3.6 MTP row (3.6 GB of mmproj). Fix: scan `MTP/` or pin the top-level `mtp-` file, and cap mmproj to one file.
+**Notes:** Found 2026-11-19 on the Gemma 4 26B-A4B Q8_0 row (`unsloth/gemma-4-26B-A4B-it-GGUF`): `_best_sidecar` picked `MTP/mtp-...-Q8_0.gguf`, but `resolve_spec_sidecar` scanned only the model's own folder, so the 0.46 GB file was downloaded and never used; `*mmproj*.gguf` fetched BF16, F16 and F32 (4.7 GB). **Fixed** in `helpers/text_gguf.py`: `resolve_spec_sidecar` also reads a folder named `MTP` beside the model (that one folder only, so a neighbour repo's drafter is still never used), and with the Hub file list the allowlist names one mmproj (`_best_mmproj`: F16, then Q8_0, then BF16, else the first by name) instead of `*mmproj*.gguf`. Tests: `tests/test_text_gguf.py` (subfolder sidecar, one mmproj, the Bonsai 2 pair, Gemma-style three precisions). **Old downloads:** the engine (`_resolve_mmproj_path`) still takes the largest projector on disk when several are there, so a folder that already holds F32 keeps loading F32; only new downloads shrink. See FU-291.
 
 </details>
 

@@ -78,3 +78,28 @@ it does. That points at levers that act on the performance (prompt, framing, mor
 Frame strips looked at: all 30. Other things the strips show and the score half-catches: a grin with the mouth open
 after the phrase ends (soul seed 42; counts as open while silent), a hand coming up to the face (pop seed 7), light
 streaks in the male close-up background.
+
+## Experiment 4: prompt wording and framing
+
+Stem audio, same windows and seeds. "Explicit" prompt: "Close-up of a {young woman | man} singing, mouth opening and
+closing with each syllable, expressive face, in a music studio, soft warm light, static camera." "Medium" = the
+waist-up stills instead of head-and-shoulders.
+
+| Variant | mean score | mean r | beats chance | Never sang (cwv > 0.9) | Turned away > 30 % |
+|---|---|---|---|---|---|
+| close, neutral (today) | 0.44 | 0.35 | 4 / 6 | 1 | 2 |
+| **close, explicit** | **0.49** | **0.44** | **5 / 6** | **0** | 1 |
+| medium, neutral | 0.40 | 0.30 | 2 / 6 | 2 | 1 |
+| medium, explicit | 0.45 | 0.35 | 3 / 6 | 0 | **0** |
+
+**The explicit singing prompt is the first real lever**: it removed the "listens instead of singing" failure (ballad
+seed 42 went from a shut mouth through the whole line, cwv 1.00, to singing it, cwv 0.07) and raised r. Its cost is
+the opposite error: the face now often keeps its mouth open or grins after the line ends (open while silent 0.7-0.9
+on several takes), which costs r. **Medium framing** kept every singer facing the camera (0 of 6 turned away with the
+explicit prompt) but follows the vocal less closely (mouth smaller in the frame, r 0.35 vs 0.44); with the neutral
+prompt it was worse than the close-up (two of six never sang). Recommendation so far: head-and-shoulders still +
+explicit singing wording; medium framing only when the shot needs it, with the explicit wording.
+
+Strips: all 18 looked at. The fixed ballad take sings the line with visible open-close on the syllables, then smiles
+with the mouth open in the 0.7 s tail. Soul seed 7 (explicit) has the highest r (0.66) but looks down and away and its
+last frame smears the face; `turned_away` (yaw only) caught 22 %, the downward look is not measured (no pitch check).

@@ -661,7 +661,6 @@
       "reinstallSmall": "Переустановить"
     },
     "models": {
-      "recommended": "Рекомендуется",
       "downloaded": "Загружено",
       "use": "Использовать для диктовки",
       "download": "Скачать",
@@ -712,7 +711,6 @@
         "makes": "Создаёт",
         "makesAll": "Всё"
       },
-      "firstUseLine": "Выбранная, но не загруженная модель загружается при первой диктовке. Whisper использует язык; Parakeet и Nemotron определяют его сами.",
       "licence": "Лицензия: {name}",
       "makes": {
         "clone": "Клонирование",
@@ -751,7 +749,41 @@
       "kokoroLineAddon": "Быстрых голосов: {count} на языках: {languages}. Быстро работает на любом компьютере; дополнение среды выполнения голоса.",
       "kokoroNotInstalled": "Не установлено",
       "kokoroAddHint": "Отметьте в разделе «Среда выполнения голоса» > «Дополнения».",
-      "gpuDefaultLine": null
+      "gpuDefaultLine": null,
+      "macOnlySummary": null,
+      "macOnlyNote": null,
+      "macOnlyNoteVoices": null,
+      "licenceName": {
+        "Apache-2_0": null,
+        "MIT": null,
+        "CC-BY-4_0": null,
+        "OpenMDW-1_1": null
+      },
+      "licenceOpen": null,
+      "sttGuide": {
+        "qwen3-asr-1_7b": null,
+        "qwen3-asr-0_6b": null,
+        "parakeet-tdt-v3": null,
+        "nemotron-3_5-asr": null,
+        "whisper-large-v3-turbo": null,
+        "whisper-small": null,
+        "whisper-base": null,
+        "granite-speech-5_0-2b": null,
+        "nemotron-3_5-transcribe-30b": null
+      },
+      "sttFit": null,
+      "sttFitAbout": null,
+      "sttFitMeasured": null,
+      "sttFitEstimate": null,
+      "sttDownloading": null,
+      "sttDownloadingName": null,
+      "defaultBadge": null,
+      "defaultTitle": null,
+      "recommendedGpu": null,
+      "recommendedGpuTitle": null,
+      "wordTimings": null,
+      "wordTimingsLine": null,
+      "firstUseLanguageLine": null
     },
     "voices": {
       "addChinese": "Добавить голоса китайского (мандарин)",
@@ -823,7 +855,8 @@
       "fallbackNoteNone": "Запасной голос не задан: если выбранный голос не может говорить, чтение вслух и звонки показывают ошибку вместо смены голоса.",
       "quickNoteAddon": "Kokoro, дополнение среды выполнения голоса. Быстрый, меньше 1 ГБ, только скорость. Лучшие по оценке показаны первыми.",
       "kokoroMissing": "Быстрые голоса Kokoro не установлены. Отметьте их в разделе «Голос» > «Модели» > «Среда выполнения голоса» > «Дополнения» (примерно 330 МБ).",
-      "openModels": "Открыть модели голоса"
+      "openModels": "Открыть модели голоса",
+      "macOnlyHidden": null
     },
     "settings": {
       "autoSend": "Отправлять сообщение сразу после завершения диктовки",
@@ -859,7 +892,8 @@
       "chooseFiles": "Выбрать файлы",
       "fileTypes": "WAV, MP3, M4A, FLAC, OGG, MP4, MOV и другие",
       "subtitleLibrary": "Запишите или перетащите аудио- и видеофайлы. Расшифровки сохраняются в библиотеке.",
-      "translateWhich": "Перевести на английский (Whisper Small или Base)"
+      "translateWhich": "Перевести на английский (Whisper Small или Base)",
+      "needsWordTimings": null
     },
     "stopRecording": "Остановить запись",
     "record": "Записать",
@@ -1007,9 +1041,9 @@
     "stop": "Остановить",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "Голос работает на этом компьютере и требует среду выполнения голоса (около 2.3 ГБ). Установите её один раз в разделе «Голос» > «Модели».",
       "openModels": "Открыть голосовые модели",
-      "library": "Библиотека"
+      "library": "Библиотека",
+      "needsPackGb": null
     },
     "savedToLibrary": "Сохранено в библиотеке",
     "saveToLibrary": "Сохранить в библиотеку",
@@ -1217,7 +1251,7 @@
       "updateFeatures": "Обновите среду выполнения голоса для голосовых звонков в чате и меток говорящих в расшифровках (добавляет около 40 МБ моделей; минута-две).",
       "workerOnly": "рабочий процесс голоса, модели пока нет",
       "partsNoKokoro": "{total} ГБ на диске: пакеты речи {packages} ГБ, определение очереди реплик и метки говорящих {small} ГБ; быстрые голоса Kokoro не установлены. Ничего не отправляется в сеть.",
-      "aboutOptional": "Около 2 ГБ: пакеты речи, определение очереди реплик и метки говорящих, а также быстрые голоса Kokoro, если они отмечены ниже. Модели диктовки и речи загружаются на этой странице отдельно. Ничего не отправляется в сеть."
+      "aboutTickedGb": null
     }
   },
   "residentChatModelNote": "Загруженная чат-модель занимает около {gb} ГБ этой памяти; выгрузка модели освободит её.",

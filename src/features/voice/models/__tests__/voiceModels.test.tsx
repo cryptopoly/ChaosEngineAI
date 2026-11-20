@@ -8,13 +8,18 @@ import { VoiceProvider } from "../../VoiceContext";
 import { VoiceRuntimePanel } from "../../VoicePackPanel";
 import { runtimePartsSummary } from "../../voicePackState";
 import type { VoiceCatalog } from "../../speak/useVoiceCatalog";
-import { DictationModelsPanel } from "../DictationModelsPanel";
-import { SpeechModelsPanel } from "../SpeechModelsPanel";
+import { DictationModelsPanel, SttDownloadProgress } from "../DictationModelsPanel";
+import { MacOnlyModels, SpeechModelsPanel } from "../SpeechModelsPanel";
 import { voiceRowToEntry } from "../../../../components/models/adapters/voice";
+import { addonSizeText, runtimeInstallGb } from "../../runtimeSize";
 import {
   collapsedFamilyRows,
   familyHeadingTracker,
   gpuDefaultPending,
+  licenceLabel,
+  macOnlyOnThisPc,
+  splitForLane,
+  sttFitText,
   speechGpuAddonMissing,
   unsupportedModelText,
   runtimeRemoveConfirmText,
@@ -216,9 +221,116 @@ describe("Dictation models (D-73 M1)", () => {
         onChanged={() => {}}
       />,
     );
-    expect(gpu).toContain("40 languages · 67.5 GB · OpenMDW-1.1");
+    // The licence by a readable name, linking to the model's page (D-102 D, P2).
+    expect(gpu).toContain("40 languages · 67.5 GB · ");
+    expect(gpu).toContain("OpenMDW 1.1 (open model licence)</button>");
+    expect(gpu).not.toContain(">OpenMDW-1.1<");
     expect(gpu).toContain("Untested here.");
     expect(gpu).toContain("Needs about 72 GB of GPU memory; this GPU has 24 GB.");
+    expect(gpu).not.toContain("Fits ·"); // no fit chip on a row this GPU cannot run
+  });
+
+  it("gives every card a line on what it is for, a fit chip saying measured or estimate, and badges the default (D-102 C, D)", () => {
+    const qwen = {
+      id: "Qwen/Qwen3-ASR-1.7B-hf", key: "qwen3-asr-1.7b", name: "Qwen3-ASR 1.7B", languages: "30 languages", sizeGb: 4.09, installed: true,
+      default: true, backend: "transformers-asr", licence: "Apache-2.0", minVramGb: 5, vramBasis: "measured" as const, gpuFacts: null,
+    };
+    const whisper = { id: "org/whisper", key: "whisper-large-v3-turbo", name: "Whisper Large v3 Turbo", languages: "99 languages", sizeGb: 1.6, installed: true, default: false, backend: "faster-whisper", licence: "MIT" };
+    const html = wrap(<DictationModelsPanel runtime={runtime({ lane: "portable", sttModels: [qwen, whisper] })} onChanged={() => {}} />);
+    const card = html.slice(html.indexOf('data-stt-model="qwen3-asr-1.7b"'), html.indexOf('data-stt-model="whisper-large-v3-turbo"'));
+    expect(card).toContain("The pick for an NVIDIA GPU");
+    expect(card).toContain(">Default<"); // with Downloaded beside it, not instead of it
+    expect(card).toContain(">Downloaded<");
+    expect(card).toContain("Fits · 5 GB GPU memory");
+    expect(card).toContain("Measured on an RTX 4090");
+    const w = html.slice(html.indexOf('data-stt-model="whisper-large-v3-turbo"'));
+    expect(w).toContain("does not translate");
+    expect(w).toContain(">MIT</button>");
+    expect(w).not.toContain("Fits ·");
+    // Before the download: the GPU row is "Recommended for this GPU" and Whisper is the default.
+    const pending = wrap(
+      <DictationModelsPanel runtime={runtime({ lane: "portable", sttModels: [{ ...qwen, installed: false, default: false }, { ...whisper, default: true }] })} onChanged={() => {}} />,
+    );
+    expect(pending.slice(0, pending.indexOf('data-stt-model="whisper-large-v3-turbo"'))).toContain("Recommended for this GPU");
+    expect(pending.slice(pending.indexOf('data-stt-model="whisper-large-v3-turbo"'))).toContain(">Default<");
+    expect(sttFitText({ minVramGb: 72, vramBasis: "estimate", gpuFacts: null })?.text).toBe("Fits · about 72 GB GPU memory (estimate)");
+    expect(licenceLabel("CC-BY-4.0")).toBe("Creative Commons BY 4.0 (credit the author)");
+    expect(licenceLabel("Some-Other")).toBe("Some-Other");
+    expect(licenceLabel(null)).toBeNull();
+    // The footer says which models use the Language setting.
+    expect(html).toContain("Whisper, Qwen3-ASR and Nemotron 3.5 ASR use the Language above");
+  });
+
+  it("offers the forced aligner as its own Word timings download, and Delete once it is there (D-101)", () => {
+    const aligner = { key: "qwen3-forced-aligner-0.6b", id: "Qwen/Qwen3-ForcedAligner-0.6B-hf", name: "Qwen3-ForcedAligner 0.6B", sizeGb: 1.84, licence: "Apache-2.0", vramGb: 1.9, installed: false };
+    const html = wrap(<DictationModelsPanel runtime={runtime({ lane: "portable", aligner })} onChanged={() => {}} />);
+    const card = html.slice(html.indexOf('data-stt-aligner="qwen3-forced-aligner-0.6b"'));
+    expect(card).toContain("Word timings");
+    expect(card).toContain("Times each word");
+    expect(card).toContain("Qwen3-ForcedAligner 0.6B · 1.84 GB · ");
+    expect(card).toContain("Apache 2.0</button>");
+    expect(card).toContain("Download 1.84 GB");
+    const there = wrap(<DictationModelsPanel runtime={runtime({ lane: "portable", aligner: { ...aligner, installed: true } })} onChanged={() => {}} />);
+    expect(there.slice(there.indexOf("data-stt-aligner"))).toContain("Delete model (1.84 GB)");
+    expect(wrap(<DictationModelsPanel runtime={runtime()} onChanged={() => {}} />)).not.toContain("data-stt-aligner");
+  });
+
+  it("shows a running dictation download as a progress bar with the size and Cancel", () => {
+    const html = renderToStaticMarkup(
+      <SttDownloadProgress name="Qwen3-ASR 0.6B" sizeGb={1.58} onCancel={() => {}} status={{ repo: "r", state: "downloading", progress: 0.37, downloadedGb: 0.58, totalGb: 1.58, error: null }} />,
+    );
+    expect(html).toContain('role="progressbar"');
+    expect(html).toContain('aria-valuenow="37"');
+    expect(html).toContain("37% · 0.58 of 1.58 GB");
+    expect(html).toContain(">Cancel<");
+    expect(html).toContain('aria-label="Downloading Qwen3-ASR 0.6B"');
+  });
+});
+
+describe("A PC shows only what a PC runs (D-102 A, P1)", () => {
+  const pcModels = [
+    model("qwen3-tts-custom-1.7b", "Qwen3-TTS 1.7B CustomVoice", { lanes: ["mlx"], supported: false }),
+    model("chatterbox-turbo", "Chatterbox-Turbo", { kind: "turbo", family: "chatterbox-turbo", lanes: ["mlx"], supported: false }),
+    model("qwen3-tts-custom-1.7b-cuda", "Qwen3-TTS 1.7B CustomVoice (GPU)", { lanes: ["cuda"], capabilities: { ...caps, style: true } }),
+  ];
+  const pcVoices: VoiceEntry[] = [
+    { id: "qwen3:Ryan", name: "Ryan", kind: "preset", language: "en", model: "qwen3-tts-custom-1.7b", models: ["qwen3-tts-custom-1.7b", "qwen3-tts-custom-1.7b-cuda"], capabilities: caps, available: true },
+    { id: "chatterbox-turbo", name: "Turbo", kind: "preset", language: "en", model: "chatterbox-turbo", models: ["chatterbox-turbo"], capabilities: caps, available: false },
+    { id: "clone:1", name: "Ada", kind: "clone", language: "auto", model: "chatterbox-turbo", models: ["chatterbox-turbo"], capabilities: caps, available: true },
+  ];
+
+  it("folds the Mac-only rows and their voices away on the portable lane, keeps cloned voices, drops (GPU)", () => {
+    const split = splitForLane(pcModels, pcVoices, "portable");
+    expect(split.models.map((m) => m.name)).toEqual(["Qwen3-TTS 1.7B CustomVoice"]);
+    expect(split.macOnly.map((m) => m.key)).toEqual(["qwen3-tts-custom-1.7b", "chatterbox-turbo"]);
+    expect(split.voices.map((v) => v.id)).toEqual(["qwen3:Ryan", "clone:1"]);
+    expect(split.hiddenVoices).toBe(1);
+    // A Mac, a downloaded Mac row, or an older backend without lanes: nothing is folded.
+    expect(splitForLane(pcModels, pcVoices, "mlx").models).toHaveLength(3);
+    expect(macOnlyOnThisPc({ lanes: ["mlx"], installed: true }, "portable")).toBe(false);
+    expect(macOnlyOnThisPc({ installed: false }, "portable")).toBe(false);
+  });
+
+  it("lists them behind one closed line with their count", () => {
+    const split = splitForLane(pcModels, pcVoices, "portable");
+    const html = wrap(
+      <SpeechModelsPanel
+        catalog={{ ...catalog, models: split.models, voices: split.voices, macOnly: split.macOnly, hiddenVoices: split.hiddenVoices }}
+        runtime={runtime({ lane: "portable" })}
+        availability="all"
+        onAvailabilityChange={() => {}}
+      />,
+    );
+    expect(html).toContain('<details class="voice-models__mac-only"><summary>2 models for Apple Silicon Macs</summary>');
+    expect(html).toContain("they and their 1 voices are left out");
+    expect(html).not.toContain('data-model-id="chatterbox-turbo"');
+    expect(html).not.toContain("Apple Silicon Macs only for now.");
+    expect(wrap(<MacOnlyModels models={[]} />)).toBe("");
+  });
+
+  it("collapses a family to the recommended natural row when nothing is downloaded", () => {
+    const rows = ["a", "b", "c"].map((k) => voiceRowToEntry(model(k, k)));
+    expect([...collapsedFamilyRows(rows, "c").get("qwen3-tts")!.shown]).toEqual(["c"]);
   });
 });
 
@@ -260,7 +372,12 @@ describe("Voice runtime panel (D-73 M4, M5)", () => {
     const before = wrap(<VoiceRuntimePanel runtime={runtime({ installed: false, parts: [], workerPid: null, extras, ttsModelInstalled: false })} pack={pack} />);
     expect(before).toMatch(/<input type="checkbox" checked=""\/>Kokoro quick voices \(about 330 MB\)/);
     expect(before).toMatch(/<input type="checkbox"\/>Mandarin Chinese quick voices/);
-    expect(before).toContain("plus the Kokoro quick voices when ticked below");
+    // One size source (runtimeSize.ts): the base plus the ticked add-ons; Kokoro is ticked by default.
+    expect(before).toContain("About 2.6 GB with the add-ons ticked below");
+    expect(runtimeInstallGb([])).toBe(2.3);
+    expect(runtimeInstallGb(["kokoro", "speech-gpu"])).toBe(8.3);
+    expect(addonSizeText("kokoro")).toBe("330 MB");
+    expect(addonSizeText("speech-gpu")).toBe("5.7 GB");
     // Installed without Kokoro: unticked, the runtime is healthy, and the parts line says Kokoro is not installed.
     const without = wrap(
       <VoiceRuntimePanel

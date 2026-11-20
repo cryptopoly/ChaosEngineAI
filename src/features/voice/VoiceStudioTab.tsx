@@ -8,6 +8,7 @@ import { VoicesScreen } from "./speak/VoicesScreen";
 import { DESIGN_VOICE_ID, defaultVoice } from "./speak/speakLogic";
 import { useVoiceCatalog } from "./speak/useVoiceCatalog";
 import { useVoice } from "./VoiceContext";
+import { runtimeInstallGb } from "./runtimeSize";
 import { TranscribePanel, type OpenRequest as TranscriptRequest } from "./studio/TranscribePanel";
 import { STUDIO_MODES, readStudioMode, requestedMode, writeStudioMode, type StudioMode, type VoiceStudioRequest } from "./voiceStudioMode";
 
@@ -48,7 +49,7 @@ export function VoiceStudioTab({ voiceRuntime, backendOnline, openRequest, onSen
   const { t, i18n } = useTranslation("studio");
   const [mode, setModeState] = useState<StudioMode>(readStudioMode);
   const { settings, saveSettings } = useVoice();
-  const catalog = useVoiceCatalog(backendOnline && Boolean(voiceRuntime?.installed));
+  const catalog = useVoiceCatalog(backendOnline && Boolean(voiceRuntime?.installed), voiceRuntime?.lane);
   const [voiceId, setVoiceId] = useState("");
   const [speakText, setSpeakText] = useState<{ text: string; nonce: number } | null>(null);
   // Until the person picks a voice, Speak follows the default rule, so a natural voice that finishes downloading
@@ -117,8 +118,9 @@ export function VoiceStudioTab({ voiceRuntime, backendOnline, openRequest, onSen
         <Panel title={title} className="span-2">
           <div className="empty-state">
             <p className="muted-text">
-              {t("voice.studio.needsPack", {
-                defaultValue: "Voice runs on this computer and needs the voice runtime (about 2.3 GB). Install it once from Voice > Models.",
+              {t("voice.studio.needsPackGb", {
+                defaultValue: "Voice runs on this computer and needs the voice runtime (about {gb} GB with the Kokoro quick voices). Install it once from Voice > Models.",
+                gb: runtimeInstallGb(["kokoro"]).toFixed(1),
               })}
             </p>
             <button type="button" className="primary-button" onClick={() => onTabChange("voice-models")}>

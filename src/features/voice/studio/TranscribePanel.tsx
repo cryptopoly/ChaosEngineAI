@@ -321,6 +321,18 @@ export function TranscribePanel({ runtime, openRequest, onSendToChat, onOpenMode
                 ))}
               </select>
             ) : null}
+            {model?.needsAligner && runtime.aligner && !runtime.aligner.installed ? (
+              <span className="muted-text voice-studio__word-timings">
+                {t("voice.transcribe.needsWordTimings", {
+                  defaultValue: "{name} gives segment times only until the Word timings download ({gb} GB) is in.",
+                  name: model.name,
+                  gb: runtime.aligner.sizeGb,
+                })}{" "}
+                <button type="button" className="link-button" onClick={onOpenModels}>
+                  {t("voice.studio.openModels", { defaultValue: "Open Voice Models" })}
+                </button>
+              </span>
+            ) : null}
             {!runtime.speakersAvailable ? (
               <span className="muted-text">
                 {t("voice.transcribe.speakersNeedUpdate", { defaultValue: "Speaker labels need a voice runtime update." })}{" "}

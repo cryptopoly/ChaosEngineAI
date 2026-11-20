@@ -115,3 +115,7 @@ Dictation models                                            Language [Detect aut
 | D | Build P1 to P4 before the v0.10.0 tag? | Yes for P1 and P2 (about 2.5 days): they are the Windows first-run. P3 to P6 can follow. |
 
 Logged as D-102 on the Decisions page; follow-ups FU-320 to FU-327.
+
+## 7. Built after the owner's decisions (2026-11-20)
+
+A, C and D decided as recommended; B is open. P1 and P2 are built (FU-321, FU-323), with the "Word timings" row (D-101, FU-310), one source for the runtime sizes and the FU-327 test fix. Before and after shots, same recipe and scenarios: [p1p2/before/](p1p2/before/) and [p1p2/after/](p1p2/after/) (`d-05-models-downloaded`, `d-09-models-download-states`, `d-06-voices`, `d-06-transcribe`, `d-01-*`, phone `m-` versions; `*-05-models-mac-only-open` is after only). Details and checks: `docs/progress/rtx4090-progress.md`, 2026-11-20 "Voice P1 and P2". P3 to P6 are untouched.

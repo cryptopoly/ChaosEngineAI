@@ -661,7 +661,6 @@
       "reinstallSmall": "다시 설치"
     },
     "models": {
-      "recommended": "권장",
       "downloaded": "다운로드됨",
       "use": "음성 입력에 사용",
       "download": "다운로드",
@@ -712,7 +711,6 @@
         "makes": "생성 기능",
         "makesAll": "전체"
       },
-      "firstUseLine": "선택했지만 아직 내려받지 않은 모델은 처음 받아쓰기할 때 내려받습니다. Whisper는 언어를 지정해 사용하고, Parakeet과 Nemotron은 언어를 스스로 찾습니다.",
       "licence": "라이선스: {name}",
       "makes": {
         "clone": "복제",
@@ -751,7 +749,41 @@
       "kokoroLineAddon": "{languages}개 언어의 빠른 음성 {count}종. 어떤 컴퓨터에서도 빠르며, 음성 런타임의 추가 기능입니다.",
       "kokoroNotInstalled": "설치되지 않음",
       "kokoroAddHint": "음성 런타임 > 추가 기능에서 선택하세요.",
-      "gpuDefaultLine": null
+      "gpuDefaultLine": null,
+      "macOnlySummary": null,
+      "macOnlyNote": null,
+      "macOnlyNoteVoices": null,
+      "licenceName": {
+        "Apache-2_0": null,
+        "MIT": null,
+        "CC-BY-4_0": null,
+        "OpenMDW-1_1": null
+      },
+      "licenceOpen": null,
+      "sttGuide": {
+        "qwen3-asr-1_7b": null,
+        "qwen3-asr-0_6b": null,
+        "parakeet-tdt-v3": null,
+        "nemotron-3_5-asr": null,
+        "whisper-large-v3-turbo": null,
+        "whisper-small": null,
+        "whisper-base": null,
+        "granite-speech-5_0-2b": null,
+        "nemotron-3_5-transcribe-30b": null
+      },
+      "sttFit": null,
+      "sttFitAbout": null,
+      "sttFitMeasured": null,
+      "sttFitEstimate": null,
+      "sttDownloading": null,
+      "sttDownloadingName": null,
+      "defaultBadge": null,
+      "defaultTitle": null,
+      "recommendedGpu": null,
+      "recommendedGpuTitle": null,
+      "wordTimings": null,
+      "wordTimingsLine": null,
+      "firstUseLanguageLine": null
     },
     "voices": {
       "addChinese": "중국어(표준어) 음성 추가",
@@ -823,7 +855,8 @@
       "fallbackNoteNone": "대체 음성이 설정되어 있지 않습니다. 선택한 음성을 말할 수 없으면 음성을 바꾸지 않고 소리 내어 읽기와 통화에서 오류를 표시합니다.",
       "quickNoteAddon": "음성 런타임의 추가 기능인 Kokoro입니다. 빠르고 1 GB 미만이며 속도만 중요할 때 적합합니다. 등급이 가장 높은 음성이 먼저 표시됩니다.",
       "kokoroMissing": "Kokoro 빠른 음성이 설치되지 않았습니다. 음성 > 모델 > 음성 런타임 > 추가 기능에서 선택하세요 (약 330 MB).",
-      "openModels": "음성 모델 열기"
+      "openModels": "음성 모델 열기",
+      "macOnlyHidden": null
     },
     "settings": {
       "autoSend": "음성 입력이 끝나면 바로 메시지 보내기",
@@ -859,7 +892,8 @@
       "chooseFiles": "파일 선택",
       "fileTypes": "WAV, MP3, M4A, FLAC, OGG, MP4, MOV 등",
       "subtitleLibrary": "녹음하거나 오디오 및 비디오 파일을 끌어다 놓으세요. 변환된 텍스트는 라이브러리에 보관됩니다.",
-      "translateWhich": "영어로 번역 (Whisper Small 또는 Base)"
+      "translateWhich": "영어로 번역 (Whisper Small 또는 Base)",
+      "needsWordTimings": null
     },
     "stopRecording": "녹음 중지",
     "record": "녹음",
@@ -1007,9 +1041,9 @@
     "stop": "중지",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "음성은 이 컴퓨터에서 실행되며 음성 런타임(약 2.3 GB)이 필요합니다. 음성 > 모델에서 한 번 설치하세요.",
       "openModels": "음성 모델 열기",
-      "library": "라이브러리"
+      "library": "라이브러리",
+      "needsPackGb": null
     },
     "savedToLibrary": "라이브러리에 저장됨",
     "saveToLibrary": "라이브러리에 저장",
@@ -1217,7 +1251,7 @@
       "updateFeatures": "채팅의 음성 통화와 텍스트 변환의 화자 라벨을 위해 음성 런타임을 업데이트합니다 (모델 약 40 MB 추가; 1~2분 소요).",
       "workerOnly": "음성 워커만 있고 아직 모델은 없습니다",
       "partsNoKokoro": "디스크 사용량 총 {total} GB: 음성 패키지 {packages} GB, 턴 감지와 화자 라벨 {small} GB. Kokoro 빠른 음성은 설치되지 않았습니다. 온라인으로 전송되는 항목은 없습니다.",
-      "aboutOptional": "약 2 GB: 음성 패키지, 턴 감지, 화자 라벨, 그리고 아래에서 선택하면 Kokoro 빠른 음성도 포함됩니다. 받아쓰기와 음성 모델은 이 페이지에서 별도로 내려받습니다. 온라인으로 전송되는 항목은 없습니다."
+      "aboutTickedGb": null
     }
   },
   "residentChatModelNote": "로드된 채팅 모델이 이 메모리의 약 {gb} GB를 차지하며, 언로드하면 해제됩니다.",

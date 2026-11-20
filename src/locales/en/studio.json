@@ -661,7 +661,6 @@
       "reinstallSmall": "Reinstall"
     },
     "models": {
-      "recommended": "Recommended",
       "downloaded": "Downloaded",
       "use": "Use for dictation",
       "download": "Download",
@@ -712,7 +711,6 @@
         "makes": "Makes",
         "makesAll": "Everything"
       },
-      "firstUseLine": "A model you pick but have not downloaded is fetched the first time you dictate. Whisper uses the language; Parakeet and Nemotron find it themselves.",
       "licence": "Licence: {name}",
       "makes": {
         "clone": "Clone",
@@ -751,7 +749,41 @@
       "kokoroLineAddon": "{count} quick voices in {languages} languages. Fast on any machine; an add-on of the voice runtime.",
       "kokoroNotInstalled": "Not installed",
       "kokoroAddHint": "Tick it under Voice runtime > Add-ons.",
-      "gpuDefaultLine": "{name} becomes the dictation model once it is downloaded, unless you pick another."
+      "gpuDefaultLine": "{name} becomes the dictation model once it is downloaded, unless you pick another.",
+      "macOnlySummary": "{count} models for Apple Silicon Macs",
+      "macOnlyNote": "They do not run on this PC, so they are left out of Speak and Voices.",
+      "macOnlyNoteVoices": "They do not run on this PC, so they and their {voices} voices are left out of Speak and Voices.",
+      "licenceName": {
+        "Apache-2_0": "Apache 2.0",
+        "MIT": "MIT",
+        "CC-BY-4_0": "Creative Commons BY 4.0 (credit the author)",
+        "OpenMDW-1_1": "OpenMDW 1.1 (open model licence)"
+      },
+      "licenceOpen": "Read the licence on the model page",
+      "sttGuide": {
+        "qwen3-asr-1_7b": "The pick for an NVIDIA GPU: 30 languages and 22 Chinese dialects, finds the language itself.",
+        "qwen3-asr-0_6b": "A smaller Qwen3-ASR: less GPU memory and quicker, for the same languages.",
+        "parakeet-tdt-v3": "Very fast for 25 European languages; finds the language itself and times each word on its own.",
+        "nemotron-3_5-asr": "Small and quick, made for live speech in 40 languages; uses the Language setting or finds it.",
+        "whisper-large-v3-turbo": "Works on any machine in 99 languages and times each word; does not translate.",
+        "whisper-small": "Small and quick in 99 languages; one of the two that can translate speech into English.",
+        "whisper-base": "The smallest: quick on any machine and can translate into English, but the least accurate.",
+        "granite-speech-5_0-2b": "Six languages, English first; finds the language itself.",
+        "nemotron-3_5-transcribe-30b": "The largest, 40 languages; for a GPU with about 80 GB of memory."
+      },
+      "sttFit": "Fits · {gb} GB GPU memory",
+      "sttFitAbout": "Fits · about {gb} GB GPU memory (estimate)",
+      "sttFitMeasured": "Measured on an RTX 4090 (24 GB), with about 1 GB of room added.",
+      "sttFitEstimate": "An estimate from the size of the weights; not measured here.",
+      "sttDownloading": "{percent}% · {done} of {total} GB",
+      "sttDownloadingName": "Downloading {name}",
+      "defaultBadge": "Default",
+      "defaultTitle": "Dictation uses this model unless you pick another.",
+      "recommendedGpu": "Recommended for this GPU",
+      "recommendedGpuTitle": "Becomes the default once it is downloaded.",
+      "wordTimings": "Word timings",
+      "wordTimingsLine": "Times each word (captions, the transcript editor) for Qwen3-ASR, Granite Speech and Nemotron Transcribe, which have no word times of their own; Nemotron ASR uses it too. Adds about {vram} GB of GPU memory while in use.",
+      "firstUseLanguageLine": "A model you pick but have not downloaded is fetched the first time you dictate. Whisper, Qwen3-ASR and Nemotron 3.5 ASR use the Language above (or find it when it is set to detect); Parakeet, Granite and Nemotron Transcribe always find it themselves."
     },
     "voices": {
       "addChinese": "Add Mandarin Chinese voices",
@@ -823,7 +855,8 @@
       "fallbackNoteNone": "No fallback voice is set: if a chosen voice cannot speak, read-aloud and calls show an error instead of switching voice.",
       "quickNoteAddon": "Kokoro, an add-on of the voice runtime. Fast, under 1 GB, speed only. The best-graded shown first.",
       "kokoroMissing": "The Kokoro quick voices are not installed. Tick them under Voice > Models > Voice runtime > Add-ons (about 330 MB).",
-      "openModels": "Open Voice Models"
+      "openModels": "Open Voice Models",
+      "macOnlyHidden": "{count} voices of the speech models for Apple Silicon Macs are not listed: they do not run on this PC."
     },
     "settings": {
       "autoSend": "Send the message as soon as dictation finishes",
@@ -859,7 +892,8 @@
       "chooseFiles": "Choose files",
       "fileTypes": "WAV, MP3, M4A, FLAC, OGG, MP4, MOV and more",
       "subtitleLibrary": "Record, or drop audio and video files. Transcripts are kept in the Library.",
-      "translateWhich": "Translate to English (Whisper Small or Base)"
+      "translateWhich": "Translate to English (Whisper Small or Base)",
+      "needsWordTimings": "{name} gives segment times only until the Word timings download ({gb} GB) is in."
     },
     "stopRecording": "Stop recording",
     "record": "Record",
@@ -1007,9 +1041,9 @@
     "stop": "Stop",
     "studio": {
       "title": "Voice Studio",
-      "needsPack": "Voice runs on this computer and needs the voice runtime (about 2.3 GB). Install it once from Voice > Models.",
       "openModels": "Open Voice Models",
-      "library": "Library"
+      "library": "Library",
+      "needsPackGb": "Voice runs on this computer and needs the voice runtime (about {gb} GB with the Kokoro quick voices). Install it once from Voice > Models."
     },
     "savedToLibrary": "Saved to Library",
     "saveToLibrary": "Save to Library",
@@ -1191,8 +1225,8 @@
     "runtime": {
       "addon": {
         "chinese": "Mandarin Chinese quick voices (8 voices, about 60 MB)",
-        "speech-gpu": "Speech GPU add-on: Qwen3-TTS natural voices, voice design and cloning on the NVIDIA GPU (about 5 GB)",
-        "stt-gpu": "Speech-to-text GPU add-on: Qwen3-ASR, Parakeet, Nemotron and Granite on the NVIDIA GPU (about 3 GB)",
+        "speech-gpu": "Speech GPU add-on: Qwen3-TTS natural voices, voice design and cloning on the NVIDIA GPU (about {size})",
+        "stt-gpu": "Speech-to-text GPU add-on: Qwen3-ASR, Parakeet, Nemotron and Granite on the NVIDIA GPU (about {size})",
         "kokoro": "Kokoro quick voices (about 330 MB)"
       },
       "addons": "Add-ons",
@@ -1217,7 +1251,7 @@
       "updateFeatures": "Update the voice runtime for voice calls in Chat and speaker labels on transcripts (adds about 40 MB of models; a minute or two).",
       "workerOnly": "the voice worker, no model yet",
       "partsNoKokoro": "{total} GB on disk: speech packages {packages} GB, turn detection and speaker labels {small} GB; the Kokoro quick voices are not installed. Nothing is sent online.",
-      "aboutOptional": "About 2 GB: the speech packages, turn detection and speaker labels, plus the Kokoro quick voices when ticked below. Dictation and speech models are separate downloads on this page. Nothing is sent online."
+      "aboutTickedGb": "About {gb} GB with the add-ons ticked below: the speech packages, turn detection and speaker labels, plus each ticked add-on. Dictation and speech models are separate downloads on this page. Nothing is sent online."
     }
   },
   "residentChatModelNote": "A loaded chat model holds about {gb} GB of this memory; unloading it frees that.",

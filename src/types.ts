@@ -264,6 +264,7 @@ export type { HubModel, HubFile, HubFileListResponse } from "./types/hub";
 export type {
   VoiceRuntime,
   SttModel,
+  SttAligner,
   TtsVoice,
   VoiceSettings,
   VoiceInstallJob,

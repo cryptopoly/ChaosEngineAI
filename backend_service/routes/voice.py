@@ -144,6 +144,7 @@ def _worker_error(exc: Exception) -> HTTPException:
 @router.get("/api/voice/runtime")
 def voice_runtime(request: Request) -> dict[str, Any]:
     from backend_service.voice_runtime import (  # noqa: PLC0415
+        aligner_row,
         get_voice_capabilities,
         list_stt_models,
         list_tts_voices,
@@ -152,6 +153,8 @@ def voice_runtime(request: Request) -> dict[str, Any]:
 
     caps = get_voice_capabilities()
     caps["sttModels"] = list_stt_models()
+    # The forced aligner's "Word timings" download (D-101), or null where the GPU dictation models are not offered.
+    caps["aligner"] = aligner_row()
     caps["ttsVoices"] = list_tts_voices()
     caps["settings"] = load_settings()
     from backend_service import voice_runtime_disk  # noqa: PLC0415

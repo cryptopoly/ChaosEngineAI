@@ -177,9 +177,13 @@ export async function mockVoiceApi(
     // The Kokoro add-on (D-75) follows the mocked voice list: installed unless ``noKokoro``. The throwaway backend has
     // no Kokoro files, so without this the runtime would say "not installed" while the voices say available.
     runtime.ttsModelInstalled = !options.noKokoro;
+    // The mocked lists are the Apple Silicon lane's (Mandarin quick voices behind the "chinese" add-on, no GPU rows),
+    // so the runtime says the same on every host: on Windows the real backend reports the portable lane, which has
+    // no Mandarin add-on, and the Voices test's Mandarin button was missing there (FU-327).
+    runtime.lane = "mlx";
     runtime.extras = [
       { id: "kokoro", label: "Kokoro quick voices", installed: !options.noKokoro },
-      ...(runtime.extras ?? []).filter((e: { id: string }) => e.id !== "kokoro"),
+      { id: "chinese", label: "Mandarin Chinese voices", installed: false },
     ];
     lastSettings = runtime.settings;
     await route.fulfill({ response, json: body });

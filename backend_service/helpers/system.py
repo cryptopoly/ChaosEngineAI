@@ -292,6 +292,11 @@ def _build_system_snapshot(
 
 def _best_fit_recommendation(system_stats: dict[str, Any]) -> dict[str, Any]:
     memory_gb = system_stats["totalMemoryGb"]
+    gpu_gb = system_stats.get("gpuVramTotalGb")
+    if gpu_gb and not system_stats.get("gpuUnifiedMemory"):
+        # A PC with its own graphics card runs the model in GPU memory, and the Models page judges fit by the
+        # card. System RAM said "70B" on a 64 GB PC whose 24 GB card holds a 27B at 4-bit at most (FU-452).
+        memory_gb = round(float(gpu_gb))
     is_macos_mlx = (
         system_stats["platform"] == "Darwin"
         and system_stats["arch"] == "arm64"

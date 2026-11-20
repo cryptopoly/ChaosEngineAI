@@ -127,6 +127,25 @@ class ChatNeedTests(unittest.TestCase):
         self.assertAlmostEqual(result["needGb"], 21.125, delta=0.06)
         self.assertIn("catalog estimate", result["reason"])
 
+    def test_a_gpu_figure_measured_on_a_card_replaces_the_estimate_before_download(self):
+        # FU-451: 19.1 GB of weights estimated 23.0 GB, "won't fit" on the 24 GB card the row was run on (18.1 GB).
+        row = chat_variant(sizeGb=19.1, paramsB=30.0, measuredGpuGb=18.1)
+        self.assertEqual(variant_fit(chat_variant(sizeGb=19.1, paramsB=30.0), "chat", CUDA_24)["status"], "wont-fit")
+        fit = variant_fit(row, "chat", CUDA_24)
+        self.assertEqual((fit["status"], fit["needGb"], fit["basis"]), ("tight", 18.1, "measured"))
+        self.assertIn("measured on an RTX 4090", fit["reason"])
+        # Not a claim for a Mac, for another context size, or once the file's own layout can be read.
+        self.assertEqual(variant_fit(row, "chat", APPLE_64)["basis"], "estimated")
+        self.assertEqual(variant_fit(row, "chat", CUDA_24, context_tokens=32768)["basis"], "estimated")
+
+    def test_the_24_gb_card_rows_do_not_say_wont_fit_on_a_24_gb_card(self):
+        from backend_service.catalog.text_models import MODEL_FAMILIES
+
+        rows = [v for family in MODEL_FAMILIES for v in family["variants"] if "24 GB card" in v["name"]]
+        self.assertGreaterEqual(len(rows), 4)
+        for row in rows:
+            self.assertNotEqual(variant_fit(row, "chat", CUDA_24)["status"], "wont-fit", row["name"])
+
     def test_no_file_size_falls_back_to_parameters_and_quantisation(self):
         variant = chat_variant(sizeGb=None, paramsB=8.0, quantization="BF16")
         result = variant_fit(variant, "chat", APPLE_64)

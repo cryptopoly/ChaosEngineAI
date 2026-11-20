@@ -35,6 +35,12 @@ class RecommendationTitleTests(unittest.TestCase):
         rec = _best_fit_recommendation(_system(platform="Linux", arch="x86_64", mlxUsable=False, totalMemoryGb=32.0))
         self.assertEqual(rec["title"], "Recommended target: 14B GGUF")
 
+    def test_a_pc_with_its_own_graphics_card_is_judged_by_the_card(self):
+        # FU-452: 64 GB of RAM said "70B GGUF" on a PC whose 24 GB card holds a 27B at 4-bit at most.
+        pc = dict(platform="Windows", arch="AMD64", mlxUsable=False, totalMemoryGb=63.8, gpuUnifiedMemory=False)
+        self.assertEqual(_best_fit_recommendation(_system(gpuVramTotalGb=23.99, **pc))["targetModel"], "14B")
+        self.assertEqual(_best_fit_recommendation(_system(gpuVramTotalGb=None, **pc))["targetModel"], "70B")
+
 
 class HardwareProfileActivityTests(unittest.TestCase):
     def _state(self, snapshots: list[dict]):

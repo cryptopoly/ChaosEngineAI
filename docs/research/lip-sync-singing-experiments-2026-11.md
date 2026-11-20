@@ -128,6 +128,43 @@ at phrase boundaries and keeping sung shots at 3-5 s.
 Strips: all 18 looked at (the 8 s ones show the open-mouth grimace through the gap; the mid-phrase ones the late
 start; hands come up to the face in one mid-phrase take).
 
+## Experiment 3: denoise settings
+
+Explicit prompt, stem, close-up, 5 s with lead-in, the same 3 lines x seeds 42 and 7; each knob changed alone from
+the default (8 distilled steps, STG 1, modality 3, guidance rescale 0.7, audio held at sigma 0). Paired against the
+same line and seed with the default (`p-explicit`, mean score 0.49). 12 and 16 steps interpolate the distilled sigma
+schedule (linear between its points, ending at 0). `sf` = the audio's timestep and sigma reported as that fraction of the
+video's instead of 0 (the tokens stay clean). `gain 1.5` multiplies the audio-to-video cross-attention output.
+
+| Knob | mean score | paired diff (sd) | better in | mean r | beats chance | s per shot |
+|---|---|---|---|---|---|---|
+| **default** | **0.49** | - | - | 0.44 | 5 / 6 | 57 |
+| audio sigma 0.1 x video (`sf01`) | 0.52 | +0.03 (0.06) | 4 / 6 | 0.46 | 5 / 6 | 56 |
+| audio sigma 0.3 x video | 0.49 | +0.00 (0.14) | 4 / 6 | 0.43 | 5 / 6 | 56 |
+| guidance rescale 0, modality 3 | 0.46 | -0.02 (0.09) | 3 / 6 | 0.41 | 4 / 6 | 56 |
+| STG 0 (two passes per step) | 0.46 | -0.02 (0.20) | 4 / 6 | 0.39 | 3 / 6 | **40** |
+| rescale 0, modality 5 | 0.45 | -0.03 (0.12) | 2 / 6 | 0.38 | 4 / 6 | 56 |
+| modality 5 | 0.44 | -0.05 (0.17) | 3 / 6 | 0.42 | 4 / 6 | 56 |
+| modality 1 (off, two passes) | 0.42 | -0.06 (0.18) | 3 / 6 | 0.31 | 3 / 6 | 42 |
+| audio cross-attention x 1.5 | 0.42 | -0.06 (0.09) | 1 / 6 | 0.34 | 4 / 6 | 56 |
+| 12 steps | 0.40 | -0.09 (0.18) | 2 / 6 | 0.31 | 4 / 6 | 78 |
+| modality 8 | 0.39 | -0.10 (0.13) | 1 / 6 | 0.36 | 4 / 6 | 56 |
+| 16 steps | 0.39 | -0.10 (0.18) | 1 / 6 | 0.29 | 3 / 6 | 101 |
+| STG 2 | 0.38 | -0.11 (0.18) | 1 / 6 | 0.29 | 4 / 6 | 56 |
+
+**No denoise knob improves singing sync; the shipped defaults are already the best of these.** The only positive,
+audio sigma 0.1, is +0.03 with a paired sd of 0.06 on six pairs: noise-level, not worth a change without more takes.
+Everything that pushes harder (more steps, STG 2, modality 8, a louder audio attention) is worse: the face over-acts,
+keeps its mouth open through gaps (open while silent 0.74-0.83) or turns to profile. Modality 8 also adds grain and
+a smeared logo-like artefact (strip). STG 0 is 30 % faster but brings back the shut-mouth start on ballad seed 42
+(closed while voiced 0.65 vs 0.07): STG is part of what makes the face start performing. More steps on the distilled
+weights did not help at 1.4-1.8x the time. The paired sds (0.06-0.20) are as large as the means: a changed knob mostly
+re-rolls the performance, the same lesson as experiment 2. Route (a)'s 30-step two-stage dev path is experiment 3b.
+
+Strips: 7 of the 72 looked at, chosen at the extremes of the score (st12 soul seed 7 turns to profile from frame 65; stg0 ballad seed 42 shut until frame 54;
+mod8 ballad seed 42 grimaces; hands come up to the head in the tail of several ballad seed 42 takes, which the score
+does not see).
+
 ## Experiment 6: LipDub re-sync second pass (not run: gated)
 
 `Lightricks/LTX-2.3-22b-IC-LoRA-LipDub` (model card title "LTX-2.3 22B IC-LoRA Dub-It", last change 2026-10-22):
@@ -139,4 +176,38 @@ ready. **Blocked by the gate**: the repo is gated (`auto`, "Agree and Access"), 
 account holder to consent to marketing offers. The saved Hugging Face token gets HTTP 403 on the file. Accepting is
 the owner's call (I do not accept terms on the account's behalf). Once accepted, the test is one command per clip
 (the take from the main recipe as the reference video, the stem window as the audio) on the existing venv, about
-4-5 minutes per 5 s shot by analogy with route (a) (same 22B fp8 checkpoint and streamed offload). FU row added.
+4-5 minutes per 5 s shot by analogy with route (a) (same 22B fp8 checkpoint and streamed offload). FU-385.
+
+## Experiment 8: InfiniteTalk on Windows (installs, far too slow; not scored)
+
+MeiGen-AI InfiniteTalk (Apache-2.0), commit `50aa0a9` (2026-11-20), in its own uv venv (Python 3.12.10, torch
+2.11.0+cu128, transformers 4.57.6, diffusers 0.35.2, optimum-quanto 0.2.6, decord 0.6.0) under `C:\tmp\lipsync-it`
+(E: was short of space). The repo's torch 2.4.1 pin is not needed.
+
+Weights, 31.9 GB, all ungated and fetched without a token: `MeiGen-AI/InfiniteTalk` `quant_models/` only
+(`infinitetalk_single_fp8.safetensors` 19.5 GB, which is the whole DiT with the audio layers, its
+`infinitetalk_single_fp8.json` map, `t5_fp8.safetensors` 6.7 GB and `t5_map_fp8.json`); from
+`Wan-AI/Wan2.1-I2V-14B-480P` only `config.json`, `Wan2.1_VAE.pth` (0.5 GB), the CLIP `.pth` (4.8 GB) and the two
+tokenizer folders (the fp8 path never opens the 66 GB of diffusion shards or the bf16 T5); `TencentGameMate/
+chinese-wav2vec2-base` at `refs/pr/1`. LoRAs (distillation) apply only on the non-quantised path, and the pre-merged
+LoRA fp8 files are another 19.5 GB each, so none was used.
+
+**It runs after 8 local fixes**: (1) xformers 0.0.36 needs a module with no Windows build: removed, an SDPA shim
+stands in for `memory_efficient_attention`; (2) `xfuser` imports `fcntl`: stubbed (single GPU only); (3)
+`flash_attention()` asserts flash-attn: an SDPA branch added; (4) `from inspect import ArgSpec` (gone in 3.11)
+commented out; (5) the Kokoro import (TTS only) wrapped; (6) `optimum-quanto` `requantize` allocates a 4-byte
+placeholder per quantised weight (about 56 GB for 14B) and the process dies with an access violation: patched to a
+1-byte placeholder; (7) the quanto fp8 Marlin kernel needs nvcc + ninja to JIT-build: disabled (plain dequantise);
+(8) transformers 5 returns no wav2vec2 hidden states (pinned below 5, wav2vec2 with eager attention) and
+`TORCHDYNAMO_DISABLE=1` (no triton on Windows).
+
+**Speed rules it out on this card**: about **4 minutes per denoising step per 81-frame chunk** at 480p (fp8 weights
+dequantised on every call, `--num_persistent_param_in_dit 0`, three guidance passes per step; a 33-frame profile put
+29 s in the quantised matmuls, 8 s in casts, 6 s in attention). A 5 s clip is two streamed chunks, so the default 40
+steps is about **5.3 hours per 5 s clip** (about 3,000 s of wall time per second of video, against about 11 s for
+LTX-2.3 route (b)); even 4 steps would be 30+ minutes and is not a meaningful setting without a distillation
+LoRA. VRAM peak 19.5-19.9 GB (81 frames), 20.7 GB streaming; a 125-frame single chunk and streaming with teacache
+both ran out of memory. Host RAM peak not captured. **No sung clip was made, so there is no sync score**: the
+pipeline was proven on the repo's own example at 1-2 steps only. Running it fairly needs either a Linux box with
+flash-attn and the Marlin kernel, or the bf16/LoRA path (66 GB more download, then a 14B bf16 model offloaded from
+64 GB of RAM). Verdict: not a practical tier on a 24 GB Windows card today (FU-386).

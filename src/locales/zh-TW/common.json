@@ -1205,6 +1205,7 @@
     "searchPlaceholder": "搜尋模型...",
     "contextDetected": "偵測到 {contextLabel}",
     "emptyState": "沒有模型符合您的搜尋。",
+    "emptyLibrary": null,
     "launchSettings": "啟動設定",
     "cancelButton": "取消",
     "busyConfirm": "仍然載入"

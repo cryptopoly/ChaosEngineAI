@@ -1205,6 +1205,7 @@
     "searchPlaceholder": "yab yInej...",
     "contextDetected": "{contextLabel} tu'lu'ta'",
     "emptyState": "nejlIjvaD yab tu'lu'be'.",
+    "emptyLibrary": null,
     "launchSettings": "tagh wIv",
     "cancelButton": "yIqIl",
     "busyConfirm": "yIchu'; qaSjaj"

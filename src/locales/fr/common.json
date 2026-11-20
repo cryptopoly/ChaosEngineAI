@@ -1205,6 +1205,7 @@
     "searchPlaceholder": "Rechercher des modèles...",
     "contextDetected": "{contextLabel} détecté",
     "emptyState": "Aucun modèle ne correspond à votre recherche.",
+    "emptyLibrary": null,
     "launchSettings": "Paramètres de lancement",
     "cancelButton": "Annuler",
     "busyConfirm": "Charger quand même"

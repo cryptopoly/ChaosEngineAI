@@ -1205,6 +1205,7 @@
     "searchPlaceholder": "搜索模型...",
     "contextDetected": "检测到 {contextLabel}",
     "emptyState": "没有模型匹配您的搜索。",
+    "emptyLibrary": null,
     "launchSettings": "启动设置",
     "cancelButton": "取消",
     "busyConfirm": "仍然加载"

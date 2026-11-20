@@ -1205,6 +1205,7 @@
     "searchPlaceholder": "Search models...",
     "contextDetected": "{contextLabel} detected",
     "emptyState": "No models match your search.",
+    "emptyLibrary": "No chat models downloaded yet. Download one under Chat > Models, then come back here.",
     "launchSettings": "Launch settings",
     "cancelButton": "Cancel",
     "busyConfirm": "Load anyway"

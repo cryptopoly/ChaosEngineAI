@@ -1205,6 +1205,7 @@
     "searchPlaceholder": "モデルを検索...",
     "contextDetected": "{contextLabel} を検出",
     "emptyState": "検索条件に一致するモデルはありません。",
+    "emptyLibrary": null,
     "launchSettings": "起動設定",
     "cancelButton": "キャンセル",
     "busyConfirm": "そのまま読み込む"

@@ -1205,6 +1205,7 @@
     "searchPlaceholder": "Buscar modelos...",
     "contextDetected": "{contextLabel} detectado",
     "emptyState": "Ningún modelo coincide con tu búsqueda.",
+    "emptyLibrary": null,
     "launchSettings": "Configuración de lanzamiento",
     "cancelButton": "Cancelar",
     "busyConfirm": "Cargar de todos modos"

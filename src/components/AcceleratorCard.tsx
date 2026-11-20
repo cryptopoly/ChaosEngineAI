@@ -317,9 +317,6 @@ export function AcceleratorCard(props: AcceleratorCardProps) {
             ? t("acceleratorCard.backgroundInstall", { defaultValue: "Background install" })
             : t("acceleratorCard.quickInstall", { defaultValue: "Quick install" })}
         </span>
-        <span className="accelerator-card-meta-item accelerator-card-meta-follow-up">
-          {meta.followUp}
-        </span>
       </div>
 
       {!readOnly && actionLabel && (

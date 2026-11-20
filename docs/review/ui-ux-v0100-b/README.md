@@ -58,6 +58,15 @@ Checks: `npx tsc --noEmit` clean; `npx vitest run` 1,998 passed (170 files); `np
 `pytest tests/test_music_routes.py -k "EstimateTotal or estimate"` passed; Playwright specs 01, 02, 04, 10, 24, 28,
 42 passed (24 tests) on this PC.
 
+## Built afterwards (same day, D-108, D-109, FU-471 to FU-478)
+
+H1 (catalogue size before a download), H2 (measured Nunchaku and Klein figures, distilled steps on pick, one
+verdict per row), H4 (Make held with the reason), M1 (loading state), M2 (default row, refusal text and dialog),
+M3 frames (the first clip is the chip's length), M4 (D-109 pointer line), M5 (phone layout) and M6 (runtime label)
+were built on an agent branch. Eleven screenshots after the change are in [after/](after/); the table, what was left
+and the tests are in `docs/progress/rtx4090-progress.md` (2026-11-20, "review B follow-ups built"). H3 (Benchmarks)
+is still open. The findings below are kept as written.
+
 ## Findings left open
 
 Ranked. "Shot" paths are under [shots/](shots/).

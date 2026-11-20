@@ -2306,3 +2306,30 @@ Agree with this file: the music fit numbers (turbo 8.6, XL 14, Stable Audio 3 Sm
 **Also found:** the Run benchmark button sits below the end of a 465 px inner scroll box at 1280 x 900 (FU-473); Projects offers Make with no model installed (FU-474); Tools is empty on a PC with experimental tabs off (Conversion is listed on macOS only), so spec 27's Conversion half cannot run on Windows; spec 04 expected the D-80 music sentence (fixed).
 
 **Tests.** `npx tsc --noEmit` clean; `npx vitest run` 1,998 passed; `npm run i18n:validate` OK; `pytest tests/test_music_routes.py -k "EstimateTotal or estimate"` passed; Playwright 01, 02, 04, 10, 24, 28, 42 passed (24 tests, ports 8985/8986). Not run: the full pytest suite, the full Playwright suite, anything on a GPU.
+
+## 2026-11-20: review B follow-ups built (agent branch, FU-471 to FU-478, D-108, D-109; not pushed)
+
+The owner was away; the reviewer's recommendations were built as his standing practice approves them. Nothing ran on the GPU, nothing was downloaded or generated. Screenshots after the change: `docs/review/ui-ux-v0100-b/after/` (11, each looked at), taken with the review's own capture specs against two throwaway backends (`HOME`/`USERPROFILE` under `E:\tmp\fu47x`, ports 8991 to 8994; world B read `E:\AI Models` with `HF_HUB_OFFLINE=1` and every mutating request answered 503).
+
+| Screen | Before | After | Source of the figure |
+|---|---|---|---|
+| Video Studio, LTX-Video not downloaded | "236.4 GB weights" | "2.0 GB download" | catalogue (D-108) |
+| Video Models, LTX-2.5 4-bit | 162.4 GB | 71.1 GB | catalogue; 66.2 GB on disk |
+| Image Models, Qwen-Image-2.1 Turbo sd.cpp | 60.4 GB | 3.9 GB on disk | disk |
+| Image Studio, Nunchaku INT4 schnell | About 2 s, Peak 10.2 GB | About 6 s, Peak 18 GB of 24 GB | measured 2026-11-19: 5.9 s, about 18 GB |
+| Image Studio, FLUX 3 Klein | 24 steps, 13 s, "may struggle", CFG decay offered | 8 steps, about 7 s, no warning, no CFG decay | measured 7.0 s at 8 steps |
+| Video Studio, LTX-2.3 4-bit | 33 frames (1.4 s) under a "4.0s clip" chip, "may struggle" | 97 frames, about 1 min 10 s, no warning, lip-sync line | catalogue 70 s for the 4 s clip |
+| Projects, no model installed | Make 3 missing live | off, with "No image model is installed. ..." beside it | backend estimate |
+| Image Studio default, world B | Nunchaku row (package missing), Generate live | Qwen-Image-2.1 sd.cpp Q4_K (installed, runs) | `nunchakuAvailable` |
+| MiniMax H3 licence at 375 px | Not now / Confirm cut in half | pinned at the bottom, body scrolls | |
+| Music and Audio Models at 375 px | licence chips and Accept licence past the right edge | inside the card | |
+
+**Changed.** Sizes: `src/utils/format.ts`, both `*SizeSortKey`, `discoverSort.ts`. The backend sum of the files the download patterns match was not built: it needs every row's allow patterns and companion repos resolved against the Hub listing, and the catalogue figure was within 10 % of disk on all nine rows here (FU-471 keeps it). Estimates: Nunchaku row `estimatedGenerationSeconds` 5.9 and `runtimeFootprintCudaGb` 16.5 with `footprintBasis: measured` (Models now "Tight, measured"; a 32 GB card will be faster than shown, not measured in the app); `stepsForPickedVariant`; `cautionCoveredByFit` (a caution is dropped only when the fit verdict is fits or tight and the run is at or under the recommended size and clip; danger stays). `tests/fixtures/time_estimate_cases.json` unchanged (no Nunchaku case; the Klein cases pass). Nunchaku refusal: `_nunchaku_generation_block` refuses before any load when the package is missing (the load used to fail after it with "Falling back to the standard transformer" followed by "nothing to fall back to"). Display label `runtimeLabel` for the ten "Stub diffusion pipeline" rows; `runtime` and the gate unchanged. Loading state on Image and Video Models. Video Studio frames from the row's clip length. D-109 line (`videoStudio.lipSyncPointer`).
+
+**Side effect to know.** The Nunchaku row now counts as a measured peak in the image memory gate, which then adds no extra headroom on top of its footprint (the FLUX 3 Klein rows already did this).
+
+**Tests.** `npx tsc --noEmit` clean; `npx vitest run` 2,015 passed (172 files; new `studioNumbers.test.ts`, run bar and Image Models cases); `npm run i18n:validate` OK; pytest `test_nunchaku_download.py`, new `test_image_runtime_label.py`, `test_model_fit.py`, `test_time_estimate.py`, `test_image_cpu_offload.py`, `test_platform_filter.py`, `test_e2e_rtx4090_checks.py`, `test_image*.py`, `test_storyboard_routes.py`, `test_backend_service.py -k image` passed; Playwright 01, 02, 04, 05 (new FU-474 test), 10, 24, 28, 42 passed on a fresh run home. `21-slow-row-labels` "slow rows are labelled on an Apple Silicon Mac" fails on this PC: the Windows backend leaves the MLX row out of the catalogue before the test's host patch applies; not touched here.
+
+**Not done.** FU-473 (Benchmarks Run button; its files belong to the D-105 agent). The shot card's Make clip and Plan's Make / Rework buttons still offer to run with no model. The Balanced pill stays highlighted beside a distilled row's 8 steps. No Install or Download button inside the refusal dialog. Video Studio's SD pill label, disabled pills and 4-bit switch (FU-475). Icon-only status, licence "Other", fit tooltip (FU-476).
+
+**Not verified.** No model ran; the Nunchaku refusal text was checked by unit test, not end to end. The longer default clip on a Mac or a card under 24 GB. macOS, Linux, the packaged app.

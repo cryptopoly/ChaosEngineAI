@@ -9,6 +9,14 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-20 (review B follow-ups built: D-108, D-109, FU-471 to FU-478; agent branch, not pushed)
+
+**Done:** sizes before a download come from the catalogue (LTX-Video 2.0 GB, was 236.4); Image Studio's Nunchaku and FLUX 3 Klein estimates match the measured 5.9 s / 18 GB and 7.0 s at 8 steps; distilled rows start at their own steps; no "may struggle" on rows measured working; Projects holds Make with the reason while no model is installed; Video Studio opens on the row's 4 s clip and points to lip sync in Projects; loading state on Image and Video Models; "Stub diffusion pipeline" shows as "diffusers"; Image Studio no longer opens on a Nunchaku row without the package, and that run is refused before loading with how to install; phone layout of the H3 licence dialog and music rows. Details and before/after: [progress](https://github.com/cryptopoly/ChaosEngineAI/blob/test/rtx4090/docs/progress/rtx4090-progress.md), [after shots](https://github.com/cryptopoly/ChaosEngineAI/blob/test/rtx4090/docs/review/ui-ux-v0100-b/after/).
+
+**Open for Claude:** FU-473 (Benchmarks, waits on the D-105 agent); backend sum of the real download (FU-471); the rest of FU-474 to FU-476 listed in their rows. Not verified: any model run, a Mac or a smaller card.
+
+**Open for Dan:** nothing new; D-108 and D-109 were built as recommended.
+
 ## Update 2026-11-20 (UI/UX review A for v0.10.0: Dashboard, Chat, Chat Models, Server, Settings; agent branch off `test/rtx4090`, not pushed)
 
 **Done:** every page in those areas at 1280 px and 375 px against a throwaway backend on the 4090 PC ([docs/review/ui-ux-v0100-a/](https://github.com/cryptopoly/ChaosEngineAI/blob/test/rtx4090/docs/review/ui-ux-v0100-a/README.md): 22 findings, 125 screenshots, plan). The numbers a new PC owner reads first were not honest: the Dashboard said "70B", two rows named "24 GB card" said "Won't fit" on a 24 GB card, and the memory cell disagreed with the fit badge. Fixed with tests (FU-450 to FU-455), with Keep going's panel pushing the thread sideways, a "Ready" badge with nothing loaded, and Windows-untrue copy. tsc, vitest 1,998, i18n, the touched pytest files, browser spec 43.

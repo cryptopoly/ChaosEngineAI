@@ -1522,6 +1522,7 @@
     "openLibrary": "Open Library",
     "openModels": "Open Music and Audio Models",
     "packMissing": "The music pack is not installed yet. Install it from Music and Audio Models (about 1.6 GB).",
+    "packMissingCuda": "The music pack is not installed yet. Install it from Music and Audio Models (about {size} GB, with the NVIDIA build of PyTorch).",
     "progress": {
       "compose": "Compose",
       "decode": "Decode audio",

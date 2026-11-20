@@ -1522,6 +1522,7 @@
     "openLibrary": "라이브러리 열기",
     "openModels": "음악 모델 열기",
     "packMissing": "음악 팩이 아직 설치되지 않았습니다. '음악 모델'에서 설치하세요(약 1.6 GB).",
+    "packMissingCuda": null,
     "progress": {
       "compose": "작곡",
       "decode": "오디오 디코딩",

@@ -170,6 +170,12 @@ describe("MusicPackBanner", () => {
     expect(html).toContain("About 1.6 GB");
   });
 
+  it("states the larger pack on an NVIDIA GPU (the CUDA build of PyTorch, 6.6 GB measured)", () => {
+    const html = banner(runtime({ installed: false, lane: "cuda" }), IDLE_JOB);
+    expect(html).toContain("About 6.6 GB");
+    expect(html).not.toContain("1.6 GB");
+  });
+
   it("shows progress, Cancel and the log while installing", () => {
     const html = banner(runtime({ installed: false }), { ...IDLE_JOB, running: true, percent: 40, phaseLabel: "Installing ACE-Step", log: ["$ pip install"] });
     expect(html).toContain("Cancel");

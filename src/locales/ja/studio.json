@@ -1522,6 +1522,7 @@
     "openLibrary": "ライブラリを開く",
     "openModels": "ミュージックモデルを開く",
     "packMissing": "ミュージックパックがまだインストールされていません。「ミュージックモデル」からインストールしてください（約 1.6 GB）。",
+    "packMissingCuda": null,
     "progress": {
       "compose": "作曲",
       "decode": "音声をデコード",

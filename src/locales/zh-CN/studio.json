@@ -1522,6 +1522,7 @@
     "openLibrary": "打开库",
     "openModels": "打开音乐模型",
     "packMissing": "音乐组件包尚未安装。请在“音乐模型”中安装（约 1.6 GB）。",
+    "packMissingCuda": null,
     "progress": {
       "compose": "作曲",
       "decode": "解码音频",

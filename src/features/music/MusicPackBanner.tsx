@@ -4,7 +4,7 @@
  */
 import { useTranslation } from "react-i18next";
 import type { UseMusicState } from "../../hooks/useMusicState";
-import { MUSIC_PACK_GB } from "./musicLogic";
+import { musicPackGb } from "./musicLogic";
 
 export function MusicPackBanner({ music }: { music: Pick<UseMusicState, "runtime" | "installJob" | "startInstall" | "cancelInstall"> }) {
   const { t } = useTranslation("studio");
@@ -27,7 +27,7 @@ export function MusicPackBanner({ music }: { music: Pick<UseMusicState, "runtime
           <p className="muted-text">
             {t("musicModels.pack.body", {
               defaultValue: "The pack runs the music models. About {size} GB, installed once.",
-              size: MUSIC_PACK_GB,
+              size: musicPackGb(runtime.lane),
             })}
           </p>
         </div>

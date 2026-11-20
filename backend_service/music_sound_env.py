@@ -5,9 +5,9 @@ never in the music venv or the backend: ``stable-audio-tools`` and the music eng
 and keeping the Stability code and weights apart keeps the licence notice honest. Same recipe as the music
 pack in ``music_env``: plain pip from the backend's own Python (3.11 or 3.12) from ``sound_requirements.txt``,
 then the pinned ``stable-audio-tools`` release with ``--no-deps`` (its own metadata asks for Python 3.10 and
-exact old pins, so its dependencies are listed in the requirements file instead), then the MIT
-``stable-audio-3`` library at a pinned commit, also ``--no-deps`` (every library it imports is already in the
-requirements file: torch 2.7.1, transformers >= 5.8). The same ``music_worker`` runs in that venv with the
+exact old pins, so its dependencies are listed in the requirements file instead), then, on the CUDA lane only,
+the MIT ``stable-audio-3`` library at a pinned commit, also ``--no-deps`` (every library it imports is already in
+the requirements file: torch 2.7.1, transformers >= 5.8; its rows are CUDA-only, so the Mac lane skips it, FU-493). The same ``music_worker`` runs in that venv with the
 Stable Audio engine file selected by environment. On Apple Silicon it runs on PyTorch on the Apple GPU (MPS);
 on an NVIDIA GPU (FU-274) the requirements install with the PyTorch CUDA index, so ``torch==2.7.1`` resolves to
 ``2.7.1+cu128``, and attention falls back to PyTorch SDPA (no flash-attn wheel is assumed). The model and its
@@ -49,19 +49,32 @@ _VERIFY_CODE = (
     "from stable_audio_tools.inference.generation import generate_diffusion_cond\n"
     "from stable_audio_tools.models.factory import create_model_from_config\n"
     "import stable_audio_tools.models.diffusion  # the model-building imports (pytorch_lightning) only load here\n"
-    "from stable_audio_3.loading_utils import load_diffusion_cond\n"
-    "from transformers import T5GemmaEncoderModel\n"
     "print(json.dumps({'torch': torch.__version__, 'transformers': transformers.__version__, "
     "'mps': bool(getattr(torch.backends, 'mps', None) and torch.backends.mps.is_available()), "
     "'cuda': torch.version.cuda if torch.cuda.is_available() else None, "
     "'python': '.'.join(map(str, sys.version_info[:3]))}))\n"
 )
-# The CUDA lane needs a CUDA torch that sees the GPU (a CPU wheel would be a silent, very slow fallback).
+# The CUDA lane also holds Stable Audio 3 (its rows are CUDA-only, FU-493: the Mac lane never installs or imports
+# it, so a failure there cannot break Stable Audio Open on a Mac) and needs a CUDA torch that sees the GPU (a CPU
+# wheel would be a silent, very slow fallback).
 _VERIFY_CODE_CUDA = _VERIFY_CODE.replace(
-    "from transformers import T5GemmaEncoderModel\n",
+    "print(json.dumps(",
+    "from stable_audio_3.loading_utils import load_diffusion_cond\n"
     "from transformers import T5GemmaEncoderModel\n"
-    "assert torch.cuda.is_available(), 'torch ' + torch.__version__ + ' sees no CUDA GPU'\n",
+    "assert torch.cuda.is_available(), 'torch ' + torch.__version__ + ' sees no CUDA GPU'\n"
+    "print(json.dumps(",
+    1,
 )
+
+
+def _with_sa3() -> bool:
+    """Stable Audio 3 is part of the pack on the CUDA lane only (its rows are ``platforms: ["cuda"]``)."""
+    return lane() == "cuda"
+
+
+def _sa3_marker() -> str | None:
+    """What the marker's ``sa3`` field holds for this lane: the pinned commit on CUDA, nothing on the Mac."""
+    return SA3_REF if _with_sa3() else None
 
 
 def lane() -> str:
@@ -111,7 +124,7 @@ def is_installed() -> bool:
         marker
         and marker.get("schema") == _SCHEMA
         and marker.get("version") == SAT_VERSION
-        and marker.get("sa3") == SA3_REF
+        and marker.get("sa3") == _sa3_marker()
         and marker.get("venv") == str(SOUND_VENV_DIR)
         and marker.get("lane") == lane()
         and venv_python().exists()
@@ -310,7 +323,7 @@ def _write_marker(versions: dict[str, Any]) -> None:
     _marker_path().write_text(json.dumps({
         "schema": _SCHEMA,
         "version": SAT_VERSION,
-        "sa3": SA3_REF,
+        "sa3": _sa3_marker(),
         "venv": str(SOUND_VENV_DIR),
         "lane": lane(),
         "python": ".".join(map(str, sys.version_info[:3])),
@@ -360,7 +373,8 @@ def _run_install() -> None:
         _set_phase("installing-engine")
         _run([str(venv_python()), "-m", "pip", "install", "--no-deps", "--ignore-requires-python",
               f"stable-audio-tools=={SAT_VERSION}"])
-        _run([str(venv_python()), "-m", "pip", "install", "--no-deps", f"stable-audio-3 @ {SA3_ARCHIVE}"])
+        if _with_sa3():
+            _run([str(venv_python()), "-m", "pip", "install", "--no-deps", f"stable-audio-3 @ {SA3_ARCHIVE}"])
 
         _set_phase("verifying")
         _write_marker(_verify())

@@ -121,7 +121,13 @@ class StableAudioEngine:
     def unavailable_reason(self) -> str | None:
         import importlib.util
 
-        for name in ("torch", "soundfile", "stable_audio_tools", "stable_audio_3", "transformers"):
+        import sys
+
+        # Stable Audio 3 is installed on the CUDA lane only (FU-493); a Mac pack has no ``stable_audio_3``.
+        names = ["torch", "soundfile", "stable_audio_tools", "transformers"]
+        if sys.platform != "darwin":
+            names.append("stable_audio_3")
+        for name in names:
             if importlib.util.find_spec(name) is None:
                 return f"The package '{name}' is missing from the sounds environment. Reinstall the sounds pack."
         return None

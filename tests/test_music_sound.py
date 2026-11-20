@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import shutil
 import sys
 import tempfile
 import time
@@ -212,10 +213,9 @@ class SoundEnvTests(_SoundEnvBox):
         engine = [c for c in flat if "stable-audio-tools==" in c][0]
         self.assertIn("--no-deps", engine)
         self.assertIn("--ignore-requires-python", engine)
-        sa3 = [c for c in flat if "stable-audio-3 @ " in c][0]
-        self.assertIn("--no-deps", sa3)
-        self.assertIn(f"/archive/{music_sound_env.SA3_REF}.zip", sa3)
-        self.assertEqual(len(music_sound_env.SA3_REF), 40)
+        # FU-493: Stable Audio 3 rows are CUDA-only, so the Mac lane never installs it.
+        self.assertFalse(any("stable-audio-3" in c for c in flat))
+        self.assertIsNone(music_sound_env.read_marker()["sa3"])
         self.assertFalse(any("download.pytorch.org" in c for c in flat))  # the Mac lane takes torch from PyPI
 
     def test_the_cuda_lane_installs_cuda_torch_and_checks_the_gpu(self) -> None:
@@ -241,11 +241,74 @@ class SoundEnvTests(_SoundEnvBox):
             self.assertEqual(music_sound_env.read_marker()["lane"], "cuda")
         requirements = [c for c in commands if "-r" in c][0]
         self.assertEqual(requirements[-2:], ["--extra-index-url", music_env.CUDA_TORCH_INDEX])
+        sa3 = [" ".join(c) for c in commands if any("stable-audio-3 @ " in part for part in c)][0]
+        self.assertIn("--no-deps", sa3)
+        self.assertIn(f"/archive/{music_sound_env.SA3_REF}.zip", sa3)
+        self.assertEqual(len(music_sound_env.SA3_REF), 40)
+        self.assertEqual(music_sound_env.read_marker()["sa3"], music_sound_env.SA3_REF)
         check = [c for c in commands if "-c" in c][-1][-1]
         self.assertIn("torch.cuda.is_available()", check)
         self.assertIn("stable_audio_3", check)
+        self.assertIn("T5GemmaEncoderModel", check)
         with mock.patch.object(music_env, "lane", lambda: "mlx"):
             self.assertFalse(music_sound_env.is_installed())  # a CUDA pack is not a Mac pack
+
+    def test_simulated_hosts_only_cuda_installs_or_imports_stable_audio_3(self) -> None:
+        """FU-493: simulate each host through the real lane check (platform and nvidia-smi patched): an Apple
+        Silicon Mac neither installs nor imports ``stable_audio_3`` (so it cannot break Stable Audio Open there);
+        a Windows or Linux PC with an NVIDIA GPU still does both."""
+        hosts = {
+            "mac-arm64": ("Darwin", "arm64", None, "mps"),
+            "windows-nvidia": ("Windows", "AMD64", "C:/nvidia-smi.exe", "cuda"),
+            "linux-nvidia": ("Linux", "x86_64", "/usr/bin/nvidia-smi", "cuda"),
+        }
+        for host, (system, machine, smi, expected_lane) in hosts.items():
+            with self.subTest(host=host):
+                commands: list[list[str]] = []
+                python = music_sound_env.venv_python()
+                shutil.rmtree(self.venv, ignore_errors=True)  # each host builds its pack from nothing
+
+                def fake_run(command: list[str]) -> str:
+                    commands.append(command)
+                    if "venv" in command:
+                        python.parent.mkdir(parents=True, exist_ok=True)
+                        python.write_text("")
+                    return '{"torch": "2.7.1"}'
+
+                with mock.patch("platform.system", lambda: system), \
+                        mock.patch("platform.machine", lambda: machine), \
+                        mock.patch("shutil.which", lambda name: smi if name == "nvidia-smi" else None), \
+                        mock.patch.object(music_env, "_python_supported", lambda *a: True), \
+                        mock.patch.object(music_sound_env, "_run", fake_run), \
+                        mock.patch("shutil.disk_usage", lambda p: mock.Mock(free=100e9)), \
+                        mock.patch("backend_service.voice_env._base_python", lambda: "python3"):
+                    self.assertEqual(music_sound_env.lane(), expected_lane)
+                    music_sound_env._JOB.__init__()
+                    music_sound_env._run_install()
+                    self.assertEqual(music_sound_env.job_status()["error"], None)
+                    self.assertTrue(music_sound_env.is_installed())
+                checks = [c[-1] for c in commands if "-c" in c]
+                installs = [" ".join(c) for c in commands]
+                on_cuda = expected_lane == "cuda"
+                self.assertEqual(any("stable-audio-3 @ " in c for c in installs), on_cuda)
+                self.assertEqual(all("stable_audio_3" in c for c in checks), on_cuda)
+                self.assertTrue(checks and all("stable_audio_tools" in c for c in checks))  # Open is checked everywhere
+                self.assertEqual(any("T5GemmaEncoderModel" in c for c in checks), on_cuda)
+
+    def test_the_mac_worker_does_not_ask_for_stable_audio_3(self) -> None:
+        engine = _load_engine_module().StableAudioEngine(Path(self.tmp.name))
+        seen: list[str] = []
+
+        def find_spec(name: str) -> object:
+            seen.append(name)
+            return object()
+
+        for platform_name, wants_sa3 in (("darwin", False), ("win32", True), ("linux", True)):
+            seen.clear()
+            with mock.patch("sys.platform", platform_name), mock.patch("importlib.util.find_spec", find_spec):
+                self.assertIsNone(engine.unavailable_reason())
+            self.assertEqual("stable_audio_3" in seen, wants_sa3, platform_name)
+            self.assertIn("stable_audio_tools", seen)
 
     def test_install_refuses_off_apple_silicon(self) -> None:
         with mock.patch.object(music_env, "lane", lambda: "unsupported"):

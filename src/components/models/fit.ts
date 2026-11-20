@@ -32,6 +32,8 @@ export interface Fit {
   reason: string;
   /** ``measured`` only when the number comes from a run on this machine. */
   basis: FitBasis;
+  /** Set by an area's adapter when ``unknown`` means "gated, no access yet", not "cannot run here". */
+  accessBlocked?: boolean;
 }
 
 const FIT_STATUSES: readonly FitStatus[] = ["fits", "tight", "wont-fit", "unknown"];

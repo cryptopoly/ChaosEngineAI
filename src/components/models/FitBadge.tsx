@@ -15,7 +15,10 @@ export function fitLabel(fit: Fit, t: TFunction<"library">): string {
     case "wont-fit":
       return t("models.fit.wontFit", { defaultValue: "Won't fit" });
     default:
-      return t("models.fit.unknown", { defaultValue: "Not for this machine" });
+      // A gated row nobody has access to yet has no verdict either, but the machine is not the reason.
+      return fit.accessBlocked
+        ? t("models.fit.needsAccess", { defaultValue: "Needs access" })
+        : t("models.fit.unknown", { defaultValue: "Not for this machine" });
   }
 }
 

@@ -103,6 +103,13 @@ function optionalFlags(variant: VideoModelVariant): { trackedOnly: boolean; gate
   };
 }
 
+/** The backend's verdict; a gated row with no access yet (``accessBlockedReason``) is marked so the chip says so. */
+function videoFit(variant: VideoModelVariant) {
+  const fit = readVariantFit(variant);
+  const blocked = (variant as VideoModelVariant & { accessBlockedReason?: unknown }).accessBlockedReason;
+  return fit && fit.status === "unknown" && typeof blocked === "string" && blocked ? { ...fit, accessBlocked: true } : fit;
+}
+
 export function videoVariantToEntry(variant: VideoModelVariant, ctx: VideoEntryContext = {}): VideoModelEntry {
   const family = ctx.family ?? null;
   const longLive = isLongLiveRepo(variant.repo);
@@ -153,7 +160,7 @@ export function videoVariantToEntry(variant: VideoModelVariant, ctx: VideoEntryC
     downloads: variant.downloads ?? null,
     likesLabel: variant.likesLabel ?? null,
     downloadsLabel: variant.downloadsLabel ?? null,
-    fit: readVariantFit(variant),
+    fit: videoFit(variant),
     bestFit: Boolean(family && readBestFitVariantId(family) === variant.id),
     shared:
       siblings > 0

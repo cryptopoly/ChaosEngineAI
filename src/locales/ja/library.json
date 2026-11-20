@@ -697,6 +697,7 @@
       "numbers": "約 {need} GB が必要です(このマシンで使えるのは {usable} GB)。",
       "tight": "ギリギリ",
       "unknown": "このマシン向けではありません",
+      "needsAccess": null,
       "wontFit": "収まらない"
     },
     "image": {

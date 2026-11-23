@@ -72,7 +72,9 @@ def phase_gguf_routing(cap: Any):
             code, body = _json("GET", "/api/workspace", timeout=60.0)
             library = (body or {}).get("library") if code == 200 and isinstance(body, dict) else []
             state["library"] = [i for i in library or [] if i.get("modelType") == "text" and not i.get("broken")]
-        rows = sorted((i for i in state["library"] if i.get("format") == fmt), key=lambda i: float(i.get("sizeGb") or 0))
+        rows = sorted((i for i in state["library"] if i.get("format") == fmt
+                       and (fmt != "GGUF" or suite._holds_model_gguf(i.get("path") or ""))),
+                      key=lambda i: float(i.get("sizeGb") or 0))
         return rows[0] if rows else None
 
     def _load_and_chat(name: str, path: Path, backend: str, chat: bool = True):
@@ -107,6 +109,8 @@ def phase_gguf_routing(cap: Any):
 
     def _mlx_named_gguf(backend: str, chat: bool):
         def check():
+            if not cap.mlx_usable:
+                return "skip", "MLX is not usable here (Apple Silicon only)", {}
             item = _smallest("MLX")
             if item is None:
                 return "skip", "no local MLX text model", {}

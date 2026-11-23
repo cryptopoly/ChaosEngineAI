@@ -102,6 +102,8 @@ def phase_routing_hints(cap: Any):
 
     def _guarded(fn):
         def check():
+            if not cap.mlx_usable:
+                return "skip", "MLX is not usable here (Apple Silicon only)", {}
             if _model() is None:
                 return "skip", "no MLX text model in the Hugging Face cache", {}
             return fn()

@@ -535,3 +535,7 @@ class VideoGenerationRequest(BaseModel):
     # Takes of a lip-sync shot, each with its own seed; the sync score keeps one (D-110). None: 3 for a sung vocal,
     # 1 for speech; 4 is the best-quality setting.
     lipSyncTakes: int | None = Field(default=None, ge=1, le=4)
+    # Seconds at the clip's end the film cuts off again (a Storyboard shot's room after its phrase, FU-609): made and
+    # scored for sync, never counted against a take's mouth or head. 0: the runtime adds its own room when the vocal
+    # ends on a syllable (`lipsync_room`) and cuts it off the finished clip.
+    lipSyncTailSeconds: float = Field(default=0.0, ge=0.0, le=8.0)

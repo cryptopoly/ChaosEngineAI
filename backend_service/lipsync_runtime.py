@@ -190,23 +190,24 @@ def _ffmpeg() -> str:
     return found[0]
 
 
-def prepare_audio_command(exe: str, src: Path, dst: Path, start: float, seconds: float) -> list[str]:
+def prepare_audio_command(exe: str, src: Path, dst: Path, start: float, seconds: float,
+                           keep: float | None = None) -> list[str]:
     """ffmpeg arguments that make ``dst``: stereo 48 kHz 16-bit WAV, ``seconds`` long from ``start`` (padded with
-    silence when the clip is shorter). ffmpeg reads the type from the content, not the name, so a ``.wav`` holding a
-    playlist could fetch URLs: inputs are held to local files like every Storyboard ffmpeg call (``PROTOCOLS``)."""
+    silence when the clip is shorter, or after ``keep`` seconds of it: the room after a phrase, FU-609). ffmpeg reads
+    the type from the content, not the name, so a ``.wav`` holding a playlist could fetch URLs: inputs are held to local files like every Storyboard ffmpeg call (``PROTOCOLS``)."""
     from backend_service.storyboard.ffmpeg_bin import PROTOCOLS
 
     return [
         exe, "-hide_banner", "-nostdin", "-loglevel", "error", "-y", "-protocol_whitelist", PROTOCOLS,
-        "-ss", f"{max(0.0, start):.3f}", "-i", str(src),
+        "-ss", f"{max(0.0, start):.3f}", *(["-t", f"{keep:.6f}"] if keep is not None else []), "-i", str(src),
         "-map", "0:a:0", "-ac", "2", "-ar", str(SAMPLE_RATE),
         "-af", "apad", "-t", f"{seconds:.6f}",
         "-c:a", "pcm_s16le", str(dst),
     ]
 
 
-def prepare_audio(src: Path, dst: Path, start: float, seconds: float) -> None:
-    command = prepare_audio_command(_ffmpeg(), src, dst, start, seconds)
+def prepare_audio(src: Path, dst: Path, start: float, seconds: float, keep: float | None = None) -> None:
+    command = prepare_audio_command(_ffmpeg(), src, dst, start, seconds, keep)
     run = subprocess.run(command, capture_output=True, text=True, timeout=300)
     if run.returncode != 0 or not dst.is_file() or dst.stat().st_size <= 44:
         last = (run.stderr or "").strip().splitlines()[-1:] or ["no output"]
@@ -410,7 +411,7 @@ def generate(body: Any, variant: dict[str, Any]) -> dict[str, Any]:
     and every take is listed in ``lipSyncTakes``. Cancel stops the run between takes as well as inside one. Raises
     ``LipSyncError``, ``GenerationCancelled`` or ``RuntimeError``.
     """
-    from backend_service import lipsync_takes
+    from backend_service import lipsync_room, lipsync_takes
     from backend_service.helpers.generation_limits import normalize_video_size, size_limits
     from backend_service.helpers.video_audio import mp4_has_audio_bytes
     from backend_service.progress import PHASE_LOADING, PHASE_SAVING, VIDEO_PROGRESS, GenerationCancelled
@@ -457,6 +458,17 @@ def generate(body: Any, variant: dict[str, Any]) -> dict[str, Any]:
             folder = Path(tmp)
             wav = folder / "vocal.wav"
             prepare_audio(Path(body.audioPath), wav, body.audioStartSeconds, seconds)
+            # FU-609: the window the model and the score see. A tail the film cuts off (song to shots) is made and
+            # scored, never penalised; a vocal that ends on a syllable gets silence after it, cut off the clip again.
+            tail = float(getattr(body, "lipSyncTailSeconds", 0.0) or 0.0)
+            made_frames, made_wav = frames, wav
+            shown = max(1, frames - int(round(tail * body.fps))) if tail > 0 else None
+            if lipsync_room.ends_voiced(wav):
+                room = lipsync_room.room_frames(frames, body.fps, int(MAX_SECONDS * body.fps) // 8 * 8 + 1)
+                if room is not None:
+                    made_frames, made_wav, shown = room, folder / "vocal-room.wav", shown or frames
+                    prepare_audio(Path(body.audioPath), made_wav, body.audioStartSeconds, room / body.fps, keep=seconds)
+                    notes.append(lipsync_room.note(room - frames, body.fps))
             run = _run_cuda if engine == "cuda" else _run_mlx
             extra = {} if engine == "cuda" else {"model_name": str(variant["name"])}
             for index, take_seed in enumerate(seeds):
@@ -465,14 +477,18 @@ def generate(body: Any, variant: dict[str, Any]) -> dict[str, Any]:
                 label = f"Take {index + 1} of {takes}: " if takes > 1 else ""
                 silent, final = folder / f"silent-{index}.mp4", folder / f"shot-{index}.mp4"
                 take_started = time.perf_counter()
-                result = run(repo=repo, prompt=prompt, width=width, height=height, frames=frames, fps=body.fps,
-                             seed=take_seed, audio=wav, image=Path(body.startImagePath), output=silent, label=label,
-                             **extra)
+                result = run(repo=repo, prompt=prompt, width=width, height=height, frames=made_frames, fps=body.fps,
+                             seed=take_seed, audio=made_wav, image=Path(body.startImagePath), output=silent,
+                             label=label, **extra)
+                scored = final
+                if made_frames != frames:  # score the whole window, keep the frames asked for
+                    scored, silent = silent, folder / f"cut-{index}.mp4"
+                    lipsync_room.trim(_ffmpeg(), scored, silent, frames, result["width"], result["height"], body.fps)
                 mux(silent, wav, final)
                 value = None
                 if isinstance(found, tuple):
                     VIDEO_PROGRESS.set_phase(PHASE_SAVING, message=f"{label}Scoring the mouth against the vocal")
-                    value, problem = lipsync_takes.score(found, final, wav)
+                    value, problem = lipsync_takes.score(found, scored, made_wav, shown)
                     no_score = no_score or problem
                 scores.append(value)
                 made.append({"seed": take_seed, "data": final.read_bytes(), "result": result,

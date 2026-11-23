@@ -382,3 +382,20 @@ close-up still, singing switch, 3 takes, seeds 42 / 43 / 44) kept no usable take
   end on the last syllable is both harder for the model (the explicit prompt's seed-42 fix, cwv 0.07 at 5 s, is gone
   at 4 s: cwv 0.45) and impossible for the score to confirm. Filed as FU-609 next to FU-607 (phrase-start cuts).
   The prompt stays as shipped (the leading form's +0.02 mean is noise on 3 seeds).
+
+### The app fix, re-run (2026-11-23, FU-607 / FU-609)
+
+Song to shots now ends a sung slice 0.5 s after its phrase (the room is cut off again by `trimOut`), moves cuts
+between sung shots to phrase starts, and the score counts that room for `r` and chance only (not for the mouth or
+head penalties). Same line, still, stem, prompt, singing switch and seeds (42 / 43 / 44) through
+`POST /api/video/generate` on a throwaway backend with the add-on scorer:
+
+| Window | frames | scores | usable | r / chance_p95 |
+|---|---|---|---|---|
+| old: 4.04 s cut ending on the last syllable | 97 | 0.38 / 0.30 / 0.29 | 0 / 3 | 0.12 / 0.48, 0.09 / 0.61, 0.05 / 0.54 |
+| new: lead 0.4 s, phrase to 4.2 s, 0.5 s room (song to shots) | 113 | **0.49 / 0.46 / 0.27** | **2 / 3** | 0.54 / 0.37, 0.33 / 0.30, -0.17 / 0.52 |
+| the 4.04 s cut as a hand-attached vocal, 0.67 s of silence added by the app | 113 made, 97 kept | 0.34 / 0.29 / 0.27 | 0 / 3 | 0.17 / 0.28, -0.02 / 0.40, -0.11 / 0.51 |
+
+The kept take's strip: frontal, the mouth opens on the syllables and shuts in the room. Padding a cut that chops the
+last syllable does not rescue it; ending the cut after the phrase does. One line and three seeds: a direction, not a
+rate.

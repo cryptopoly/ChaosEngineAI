@@ -16,6 +16,10 @@ gallery clip (the sync score needs MediaPipe, so the takes may come back unscore
 
 D-132: the sync-scoring add-on's status route answers without the add-on, and when the add-on is installed both
 takes of the 2-take shot must carry a score (skipped, with the reason, when it is not installed).
+
+FU-607 / FU-609 (no model): with a synthetic vocal stem, song to shots moves the cut between two sung shots to the
+next phrase start and gives a shot whose phrase runs to its end 0.5 s of room that ``trimOut`` cuts off again, so the
+film keeps its length.
 """
 
 from __future__ import annotations
@@ -221,6 +225,59 @@ def run(cap: Any, suite: Any):
                 item.unlink(missing_ok=True)
             folder.rmdir()
 
+    def song_to_shots_phrases():
+        # FU-607 / FU-609: two 4 s shots, a 12 s song and a stem sung 0.2-3.3 s and 4.6-12 s. The cut moves from 4.0 to
+        # the phrase at 4.6; the second shot's phrase runs to its end, so its slice gets 0.5 s of room past trimOut.
+        import math
+        import struct
+        import wave
+
+        def write(path: Path, sung: list[tuple[float, float]]) -> None:
+            with wave.open(str(path), "wb") as out:
+                out.setnchannels(1)
+                out.setsampwidth(2)
+                out.setframerate(16000)
+                out.writeframes(b"".join(
+                    struct.pack("<h", int(8000 * math.sin(2 * math.pi * 220 * i / 16000))
+                                if any(a <= i / 16000 < b for a, b in sung) else 0) for i in range(16000 * 12)))
+
+        code, made = api("POST", "/api/storyboard/projects", {"name": "E2E sung shots on phrases"})
+        if code == 404:
+            return "skip", "storyboard not present in this build", {}
+        if code != 200:
+            return "fail", f"create project: HTTP {code}", {}
+        pid, rev = made["project"]["id"], made["project"]["revision"]
+        folder = Path(tempfile.mkdtemp(prefix="e2e-song-phrases-"))
+        try:
+            for _ in range(2):
+                code, body = api("POST", f"/api/storyboard/projects/{pid}/ops",
+                                 {"revision": rev, "op": "add_shot", "args": {"seconds": 4, "trimOut": 4}})
+                if code != 200:
+                    return "fail", f"add_shot: HTTP {code}", {}
+                rev = body["project"]["revision"]
+            write(folder / "song.wav", [(0.0, 12.0)])
+            write(folder / "stem.wav", [(0.2, 3.3), (4.6, 12.0)])
+            code, body = api("POST", f"/api/storyboard/projects/{pid}/song",
+                             {"revision": rev, "path": str(folder / "song.wav")}, timeout=300)
+            if code != 200:
+                return "fail", f"attach song: HTTP {code} {str(body)[:200]}", {}
+            rev = body["project"]["revision"]
+            code, body = api("POST", f"/api/storyboard/projects/{pid}/song/vocals",
+                             {"revision": rev, "stemPath": str(folder / "stem.wav")}, timeout=300)
+            if code != 200:
+                return "fail", f"song/vocals: HTTP {code} {str(body)[:200]}", {}
+            rev = body["project"]["revision"]
+            shots = [(s.get("trimIn"), s.get("trimOut"), s.get("seconds")) for s in body["project"]["shots"]]
+            total, snapped = body["timeline"]["total"], body["vocals"].get("snapped")
+            if snapped != 1 or shots != [(0.0, 4.6, 4.6), (0.4, 3.8, 4.3)] or abs(total - 8.0) > 0.01:
+                return "fail", f"snapped {snapped}, shots {shots}, film {total} s", {}
+            return "pass", "", {"shots": shots, "film": total}
+        finally:
+            api("DELETE", f"/api/storyboard/projects/{pid}?revision={rev}")
+            for item in folder.iterdir():
+                item.unlink(missing_ok=True)
+            folder.rmdir()
+
     def agent_tool():
         # make_lipsync_shot on the agent bridge: listed, and a missing still is refused in words before any job starts.
         code, access = api("GET", "/api/agent/access")
@@ -299,6 +356,8 @@ def run(cap: Any, suite: Any):
         ("more than 4 lip-sync takes is refused", takes_refused_over_four),
         ("the sync-scoring add-on reports its status", score_addon_status),
         ("song to shots: each shot gets its vocal slice with a 0.4 s lead-in, and keeps its vocal fields", song_to_shots),
+        ("song to shots with a stem: cuts move to phrase starts, a phrase that runs on gets room past trimOut",
+         song_to_shots_phrases),
         ("a Kokoro line and a still make a 5 s lip-sync clip with the line as its sound", real_shot),
         ("2 takes of that shot: one kept, the other in the Video Gallery", real_takes),
         ("with sync scoring installed, both takes are scored", takes_scored),

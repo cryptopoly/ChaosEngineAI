@@ -84,8 +84,9 @@ def scorer() -> Scorer | str:
     return Scorer(chosen, model, site)
 
 
-def score(found: Scorer, video: Path, audio: Path) -> tuple[Any | None, str | None]:
-    """(``SyncScore``, None) for one take, or (None, reason) when the scoring process failed."""
+def score(found: Scorer, video: Path, audio: Path, shown: int | None = None) -> tuple[Any | None, str | None]:
+    """(``SyncScore``, None) for one take, or (None, reason) when the scoring process failed. ``shown``: the frames
+    the finished clip or the film keeps; the room after the phrase past them counts for r only (FU-609)."""
     from backend_service.lip_sync_score import SyncScore
 
     python, model, site = Scorer(*found)
@@ -94,6 +95,8 @@ def score(found: Scorer, video: Path, audio: Path) -> tuple[Any | None, str | No
         command = [python, "-I", str(_SCRIPT), str(video), str(audio), "--model", str(model), "--json", str(out)]
         if site is not None:
             command += ["--site", str(site)]
+        if shown is not None:
+            command += ["--shown-frames", str(int(shown))]
         try:
             run = subprocess.run(command, capture_output=True, text=True, timeout=_SCORE_TIMEOUT_S)
         except (OSError, subprocess.TimeoutExpired) as exc:

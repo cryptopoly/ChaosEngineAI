@@ -55,23 +55,48 @@ class PickTests(unittest.TestCase):
 
 
 class ScorerTests(unittest.TestCase):
-    def test_no_modules_and_no_override_says_so(self) -> None:
-        with mock.patch.dict("os.environ", {takes.SCORE_PYTHON_ENV: ""}), \
+    def test_no_addon_no_modules_and_no_override_says_so(self) -> None:
+        with mock.patch.dict("os.environ", {takes.SCORE_PYTHON_ENV: "", takes.FACE_MODEL_ENV: ""}), \
+                mock.patch.object(takes.lipsync_score_addon, "site_installed", return_value=False), \
                 mock.patch.object(takes, "_has_score_modules", return_value=False):
-            self.assertIn("MediaPipe", takes.scorer())
+            self.assertEqual(takes.scorer(), takes.NOT_INSTALLED)
 
     def test_a_missing_face_model_says_so(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, \
                 mock.patch.dict("os.environ", {takes.SCORE_PYTHON_ENV: sys.executable,
                                                takes.FACE_MODEL_ENV: str(Path(tmp) / "none.task")}):
-            self.assertIn("face_landmarker.task", takes.scorer())
+            self.assertIn("face model that does not exist", takes.scorer())
 
     def test_the_override_and_model_are_used(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             model = Path(tmp) / "face.task"
             model.write_bytes(b"x")
             with mock.patch.dict("os.environ", {takes.SCORE_PYTHON_ENV: sys.executable, takes.FACE_MODEL_ENV: str(model)}):
-                self.assertEqual(takes.scorer(), (sys.executable, model))
+                self.assertEqual(takes.scorer(), takes.Scorer(sys.executable, model, None))
+
+    def test_the_installed_addon_is_used_without_any_override(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "lipsync-score"
+            (root / "site").mkdir(parents=True)
+            (root / "face_landmarker.task").write_bytes(b"x")
+            with mock.patch.dict("os.environ", {takes.SCORE_PYTHON_ENV: "", takes.FACE_MODEL_ENV: ""}), \
+                    mock.patch.object(takes.lipsync_score_addon, "addon_dir", return_value=root), \
+                    mock.patch.object(takes.lipsync_score_addon, "site_installed", return_value=True):
+                self.assertEqual(takes.scorer(),
+                                 takes.Scorer(sys.executable, root / "face_landmarker.task", root / "site"))
+
+    def test_the_addon_folder_reaches_the_score_process(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            site = Path(tmp) / "site-abc"
+            fake = mock.Mock(returncode=1, stderr="stopped", stdout="")
+            with mock.patch.object(takes.subprocess, "run", return_value=fake) as run:
+                value, problem = takes.score(takes.Scorer(sys.executable, Path("face.task"), site), Path("v.mp4"),
+                                             Path("a.wav"))
+            command = run.call_args.args[0]
+        self.assertIsNone(value)
+        self.assertIn("stopped", problem)
+        self.assertEqual(command[command.index("--site") + 1], str(site))
+        self.assertIn("-I", command)
 
     def test_the_score_process_result_is_read(self) -> None:
         fields = {**_score(0.42, True).as_dict(), "mouth": [0.01], "env": [0.1]}
@@ -83,7 +108,8 @@ class ScorerTests(unittest.TestCase):
                 open(out, "w").write({json.dumps(fields)!r})
             """), encoding="utf-8")
             with mock.patch.object(takes, "_SCRIPT", script):
-                value, problem = takes.score((sys.executable, Path("face.task")), Path("v.mp4"), Path("a.wav"))
+                value, problem = takes.score(takes.Scorer(sys.executable, Path("face.task")), Path("v.mp4"),
+                                             Path("a.wav"))
         self.assertIsNone(problem)
         self.assertEqual((value.score, value.usable), (0.42, True))
 
@@ -92,7 +118,8 @@ class ScorerTests(unittest.TestCase):
             script = Path(tmp) / "fail.py"
             script.write_text("import sys\nsys.stderr.write('no face found\\n')\nsys.exit(2)\n", encoding="utf-8")
             with mock.patch.object(takes, "_SCRIPT", script):
-                value, problem = takes.score((sys.executable, Path("face.task")), Path("v.mp4"), Path("a.wav"))
+                value, problem = takes.score(takes.Scorer(sys.executable, Path("face.task")), Path("v.mp4"),
+                                             Path("a.wav"))
         self.assertIsNone(value)
         self.assertIn("no face found", problem)
 
@@ -105,6 +132,7 @@ class ScorerTests(unittest.TestCase):
                              timeout=60)
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn("--model", run.stdout)
+        self.assertIn("--site", run.stdout)
 
 
 class EstimateTests(unittest.TestCase):

@@ -133,6 +133,14 @@ def check_transformers_asr() -> Row:
                note="a bump needs the GPU dictation rows re-run: voice_worker_asr calls its auto classes")
 
 
+def check_mediapipe() -> Row:
+    """MediaPipe in the sync-scoring add-on for lip-sync takes (D-132)."""
+    pinned = read_pin("backend_service/lipsync_score_addon.py", r'"mediapipe==([\d.]+)"')
+    data = http_json("https://pypi.org/pypi/mediapipe/json")
+    return row("MediaPipe (lip-sync score add-on)", pinned, (data or {}).get("info", {}).get("version"),
+               note="a bump needs a research take re-scored to the same numbers (tests/test_lip_sync_score.py maths)")
+
+
 def check_commit_pin(name: str, repo: str, pinned: str | None, branch: str = "HEAD") -> Row:
     return row(name, pinned[:8] if pinned else None, (head_sha(repo, branch) or "")[:8] or None, same=sha_same)
 
@@ -208,6 +216,7 @@ def collect() -> list[Row]:
         check_ltx2(),
         check_mflux(),
         check_transformers_asr(),
+        check_mediapipe(),
         check_dflash(),
         check_commit_pin(
             "ACE-Step 1.5", "https://github.com/ace-step/ACE-Step-1.5.git",

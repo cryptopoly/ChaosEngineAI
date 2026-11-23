@@ -574,7 +574,16 @@
       "takesHint": "Each take uses its own seed; with more than one, the sync score keeps the best and the others stay in the Video Gallery. Sung vocals default to 3 takes, speech to 1.",
       "length": "This clip is {seconds} s; lip sync needs {min} to {max} s. Change the clip length.",
       "needsStill": "Lip sync starts from a start image: add one above.",
-      "estimate": "About {value} {unit} for {takes, plural, one {# take} other {# takes}} of a {seconds} s clip (measured on an RTX 4090)."
+      "estimate": "About {value} {unit} for {takes, plural, one {# take} other {# takes}} of a {seconds} s clip (measured on an RTX 4090).",
+      "score": {
+        "installed": "Sync scoring is installed: the best of the {takes} takes is kept.",
+        "missing": "Takes are not scored: sync scoring is not installed, so all {takes} takes are kept in the Video Gallery and take 1 is used.",
+        "install": "Install sync scoring (about {size} MB)",
+        "phasePackages": "Installing MediaPipe and OpenCV…",
+        "phaseModel": "Downloading the face model…",
+        "phaseCheck": "Checking the install…",
+        "failed": "Install failed: {error}"
+      }
     }
   },
   "imageGallery": {

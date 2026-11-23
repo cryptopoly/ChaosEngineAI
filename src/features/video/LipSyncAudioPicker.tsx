@@ -5,6 +5,7 @@
  */
 import { useTranslation } from "react-i18next";
 import { PathField } from "../storyboard/PathField";
+import { LipSyncScoreAddon } from "./LipSyncScoreAddon";
 import {
   LIP_SYNC_MAX_SECONDS,
   LIP_SYNC_MIN_SECONDS,
@@ -122,6 +123,7 @@ export function LipSyncAudioPicker({
                 "Each take uses its own seed; with more than one, the sync score keeps the best and the others stay in the Video Gallery. Sung vocals default to 3 takes, speech to 1.",
             })}
           </p>
+          {takes > 1 ? <LipSyncScoreAddon takes={takes} disabled={disabled} /> : null}
           {!clip.ok ? (
             <p className="caution-text" role="note">
               {t("videoStudio.lipSync.length", {

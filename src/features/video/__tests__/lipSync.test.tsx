@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(), isTauri: vi.fn(() => false) }));
 
+import type { LipSyncScoreStatus } from "../../../api";
 import { LipSyncAudioPicker } from "../LipSyncAudioPicker";
+import { LipSyncScoreNote } from "../LipSyncScoreAddon";
 import {
   EMPTY_LIP_SYNC,
   lipSyncClip,
@@ -79,5 +81,35 @@ describe("LipSyncAudioPicker", () => {
     const html = render({ audioPath: "v.wav", start: 0, singing: false, takes: 1 }, 241, false);
     expect(html).toContain("lip sync needs 3 to 8 s");
     expect(html).toContain("add one above");
+  });
+});
+
+describe("LipSyncScoreNote (D-132)", () => {
+  const status = (patch: Partial<LipSyncScoreStatus> = {}, job: Partial<LipSyncScoreStatus["job"]> = {}): LipSyncScoreStatus => ({
+    installed: false, packagesInstalled: false, modelInstalled: false, folder: "~/.chaosengine/addons/lipsync-score",
+    downloadMb: 90, diskMb: 0, packages: [], faceModelUrl: "https://example.invalid/face.task",
+    job: { phase: "idle", error: null, running: false, done: false, startedAt: 0, finishedAt: 0, ...job },
+    ...patch,
+  });
+  const render = (value: LipSyncScoreStatus | null) =>
+    renderToStaticMarkup(<LipSyncScoreNote status={value} takes={3} onInstall={() => undefined} />);
+
+  it("says plainly that takes are not scored and offers the install with its size", () => {
+    const html = render(status());
+    expect(html).toContain("Takes are not scored");
+    expect(html).toContain("take 1 is used");
+    expect(html).toContain("Install sync scoring (about 90 MB)");
+  });
+
+  it("shows the install step while it runs and the reason when it failed", () => {
+    expect(render(status({}, { phase: "model", running: true }))).toContain("Downloading the face model");
+    const failed = render(status({}, { phase: "error", error: "pip said no", done: true }));
+    expect(failed).toContain("Install failed: pip said no");
+    expect(failed).toContain("Install sync scoring");
+  });
+
+  it("says the best take is kept once installed, and nothing before the status arrives", () => {
+    expect(render(status({ installed: true }))).toContain("the best of the 3 takes is kept");
+    expect(render(null)).toBe("");
   });
 });

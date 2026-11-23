@@ -13,6 +13,9 @@ Phase 2 (D-110, FU-371 to FU-373): more than 4 takes is refused; a shot keeps it
 count; "song to shots" gives each shot of a throwaway project its slice of a synthetic song with the 0.4 s lead-in
 (no model); and with the real model a second shot runs 2 takes and checks that one is kept and the other is a
 gallery clip (the sync score needs MediaPipe, so the takes may come back unscored; the note then says so).
+
+D-132: the sync-scoring add-on's status route answers without the add-on, and when the add-on is installed both
+takes of the 2-take shot must carry a score (skipped, with the reason, when it is not installed).
 """
 
 from __future__ import annotations
@@ -142,8 +145,29 @@ def run(cap: Any, suite: Any):
         others = [t["artifactId"] for t in takes if not t.get("kept")]
         if len(takes) != 2 or len(kept) != 1 or not all(o in gallery for o in others):
             return "fail", f"takes {takes!r}; other takes in the gallery: {[o in gallery for o in others]}", {}
+        state["takes"], state["note"] = takes, str(art.get("runtimeNote"))
         return "pass", "", {"takes": [(t["seed"], (t.get("score") or {}).get("score"), t["kept"]) for t in takes],
                             "note": str(art.get("runtimeNote"))[-200:]}
+
+    def score_addon_status():
+        # D-132: the sync-scoring add-on's status route answers without the add-on (no model, no download).
+        code, data = api("GET", "/api/setup/lipsync-score/status")
+        keys = ("installed", "packagesInstalled", "modelInstalled", "downloadMb", "diskMb", "job")
+        if code != 200 or not isinstance(data, dict) or any(k not in data for k in keys):
+            return "fail", f"HTTP {code}: {str(data)[:200]}", {}
+        state["score_installed"] = bool(data["installed"])
+        return "pass", "", {"installed": data["installed"], "diskMb": data["diskMb"], "job": data["job"]["phase"]}
+
+    def takes_scored():
+        # With the add-on installed, every take of the 2-take shot carries a sync score and the note names the kept one.
+        if not state.get("score_installed"):
+            return "skip", "the sync-scoring add-on is not installed (Install sync scoring in the Video Studio)", {}
+        if not state.get("takes"):
+            return "skip", "no 2-take shot was made above", {}
+        unscored = [t["take"] for t in state["takes"] if not t.get("score")]
+        if unscored or "the sync score kept take" not in state["note"]:
+            return "fail", f"unscored takes {unscored}; note: {state['note'][-200:]}", {}
+        return "pass", "", {"scores": [t["score"]["score"] for t in state["takes"]]}
 
     def song_to_shots():
         # FU-371: a throwaway project with two 4 s shots and a synthetic 12 s song; each shot gets its vocal slice.
@@ -273,9 +297,11 @@ def run(cap: Any, suite: Any):
         ("make_lipsync_shot is on the agent bridge and refuses a missing still in words", agent_tool),
         ("a Storyboard shot takes a WAV vocal, refuses a text file and clears it", vocal_clip_op),
         ("more than 4 lip-sync takes is refused", takes_refused_over_four),
+        ("the sync-scoring add-on reports its status", score_addon_status),
         ("song to shots: each shot gets its vocal slice with a 0.4 s lead-in, and keeps its vocal fields", song_to_shots),
         ("a Kokoro line and a still make a 5 s lip-sync clip with the line as its sound", real_shot),
         ("2 takes of that shot: one kept, the other in the Video Gallery", real_takes),
+        ("with sync scoring installed, both takes are scored", takes_scored),
     ]:
         phase.checks.append(suite._check(name, fn))
     fails = [c for c in phase.checks if c.status == "fail"]

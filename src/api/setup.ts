@@ -740,3 +740,36 @@ export async function startEmbeddingModelInstall(): Promise<EmbeddingInstallJobS
 export async function getEmbeddingModelInstallStatus(): Promise<EmbeddingInstallJobState> {
   return await fetchJson<EmbeddingInstallJobState>("/api/setup/install-embedding-model/status", 10000);
 }
+
+// ---------------------------------------------------------------------------
+// Sync scoring for lip-sync takes (D-132): MediaPipe, OpenCV and the face model, installed on demand into
+// ``~/.chaosengine/addons/lipsync-score``. Without it the takes still run but are not scored (take 1 is kept).
+
+export interface LipSyncScoreJob {
+  phase: "idle" | "packages" | "model" | "check" | "done" | "error";
+  error: string | null;
+  running: boolean;
+  done: boolean;
+  startedAt: number;
+  finishedAt: number;
+}
+
+export interface LipSyncScoreStatus {
+  installed: boolean;
+  packagesInstalled: boolean;
+  modelInstalled: boolean;
+  folder: string;
+  downloadMb: number;
+  diskMb: number;
+  packages: string[];
+  faceModelUrl: string;
+  job: LipSyncScoreJob;
+}
+
+export async function getLipSyncScoreStatus(): Promise<LipSyncScoreStatus> {
+  return await fetchJson<LipSyncScoreStatus>("/api/setup/lipsync-score/status", 10000);
+}
+
+export async function startLipSyncScoreInstall(): Promise<LipSyncScoreStatus> {
+  return await postJson<LipSyncScoreStatus>("/api/setup/install-lipsync-score", {}, 15000);
+}

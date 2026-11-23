@@ -6,10 +6,12 @@ scored by ``lip_sync_score`` against the vocal it followed, and ``lip_sync_score
 first, then the highest score. Measured usable rate: 0.72 with 1 take, 0.93 with 3, 0.98 with 4.
 
 The score reads the video with MediaPipe Face Landmarker and OpenCV, which the backend's Python does not carry. It
-runs as its own process (``python -I lip_sync_score.py``) from the first Python that has both: the one named by
-``CHAOSENGINE_LIPSYNC_SCORE_PYTHON``, else the backend's own. The face model (``face_landmarker.task``) is read from
-``CHAOSENGINE_LIPSYNC_FACE_MODEL`` or ``~/.chaosengine/models/lipsync/face_landmarker.task``. Without either the takes
-still run, every one is kept in the gallery, and the first is used; the clip's note says the takes were not scored.
+runs as its own process (``python -I lip_sync_score.py``) from, in order: the Python named by
+``CHAOSENGINE_LIPSYNC_SCORE_PYTHON``; the backend's own Python with the sync-score add-on's folder (``--site``,
+``lipsync_score_addon``, D-132); the backend's own Python when it has both modules. The face model
+(``face_landmarker.task``) is read from ``CHAOSENGINE_LIPSYNC_FACE_MODEL``, else the add-on's folder. Without a scorer
+the takes still run, every one is kept in the gallery, and the first is used; the clip's note says the takes were not
+scored.
 """
 
 from __future__ import annotations
@@ -21,7 +23,9 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
+
+from backend_service import lipsync_score_addon
 
 TAKES_SPEECH = 1
 TAKES_SUNG = 3
@@ -32,8 +36,14 @@ _SCORE_TIMEOUT_S = 300
 
 SCORE_PYTHON_ENV = "CHAOSENGINE_LIPSYNC_SCORE_PYTHON"
 FACE_MODEL_ENV = "CHAOSENGINE_LIPSYNC_FACE_MODEL"
-DEFAULT_FACE_MODEL = Path.home() / ".chaosengine" / "models" / "lipsync" / "face_landmarker.task"
 _SCRIPT = Path(__file__).resolve().with_name("lip_sync_score.py")
+NOT_INSTALLED = "sync scoring is not installed; Install sync scoring is in the Video Studio's lip-sync panel"
+
+
+class Scorer(NamedTuple):
+    python: str
+    model: Path
+    site: Path | None = None  # the add-on's package folder, put first on the score process's import path
 
 
 def take_count(requested: int | None, singing: bool) -> int:
@@ -52,32 +62,38 @@ def _has_score_modules() -> bool:
     return all(importlib.util.find_spec(name) is not None for name in ("mediapipe", "cv2"))
 
 
-def scorer() -> tuple[str, Path] | str:
-    """(Python to run the score with, face model) or the reason the takes cannot be scored."""
-    model = Path(os.environ.get(FACE_MODEL_ENV) or DEFAULT_FACE_MODEL).expanduser()
+def scorer() -> Scorer | str:
+    """How to run the score (Python, face model, add-on folder) or the reason the takes cannot be scored."""
+    model = Path(os.environ.get(FACE_MODEL_ENV) or lipsync_score_addon.face_model_path()).expanduser()
     configured = os.environ.get(SCORE_PYTHON_ENV, "").strip()
+    site: Path | None = None
     if configured:
         python = Path(configured).expanduser()
         if not python.is_file():
             return f"{SCORE_PYTHON_ENV} names a Python that does not exist"
         chosen = str(python)
+    elif lipsync_score_addon.site_installed():
+        chosen, site = sys.executable, lipsync_score_addon.site_dir()
     elif _has_score_modules():
         chosen = sys.executable
     else:
-        return "the sync score needs MediaPipe and OpenCV, which are not installed"
+        return NOT_INSTALLED
     if not model.is_file():
-        return "the face model for the sync score (face_landmarker.task) is not installed"
-    return chosen, model
+        return f"{FACE_MODEL_ENV} names a face model that does not exist" if os.environ.get(FACE_MODEL_ENV) \
+            else NOT_INSTALLED
+    return Scorer(chosen, model, site)
 
 
-def score(found: tuple[str, Path], video: Path, audio: Path) -> tuple[Any | None, str | None]:
+def score(found: Scorer, video: Path, audio: Path) -> tuple[Any | None, str | None]:
     """(``SyncScore``, None) for one take, or (None, reason) when the scoring process failed."""
     from backend_service.lip_sync_score import SyncScore
 
-    python, model = found
+    python, model, site = Scorer(*found)
     with tempfile.TemporaryDirectory(prefix="chaosengine-lipscore-") as tmp:
         out = Path(tmp) / "score.json"
         command = [python, "-I", str(_SCRIPT), str(video), str(audio), "--model", str(model), "--json", str(out)]
+        if site is not None:
+            command += ["--site", str(site)]
         try:
             run = subprocess.run(command, capture_output=True, text=True, timeout=_SCORE_TIMEOUT_S)
         except (OSError, subprocess.TimeoutExpired) as exc:

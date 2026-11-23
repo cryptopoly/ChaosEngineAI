@@ -352,3 +352,33 @@ a slow quality tier (more steps, a merged-weight LoRA, 2-3 lines), not as the de
 Score formula note: the experiment 1-4 tables above were first written with a half-weight head-turn penalty; the
 extra-data tables use the final formula (full penalty), which lowers takes that turn away (for example the close
 neutral recipe 0.44 -> 0.37, the explicit one 0.49 -> 0.44); the rankings did not change.
+
+## Follow-up (2026-11-23): why the app's 4 s ballad shot scored 0.38 / 0.30 / 0.29
+
+The phase-2 app run (`POST /api/video/generate`, 97 frames = 4.04 s from the start of `ballad_f_5s_lead_stem.wav`,
+close-up still, singing switch, 3 takes, seeds 42 / 43 / 44) kept no usable take. Checked against the research path:
+
+- **The app path is the research path.** The research harness (`E:\tmp\lipsync\sing\tools\harness.py`) on the same
+  4 s window, prompt and seeds gives the same three scores to the second decimal (0.38 / 0.30 / 0.29, r 0.12 / 0.09 /
+  0.05). Prompt handling, steps (8), STG 1, modality 3, rescale 0.7, audio hold at sigma 0, seed per take, audio
+  start (0 s), stem input and the scoring window (the stem window, `frames` long) all match; no defect found.
+- **The prompt form does not rescue this window.** Same 4 s window, scored against the stem:
+
+| Prompt | seeds | scores | beats chance |
+|---|---|---|---|
+| neutral + appended cue (the app) | 42 / 43 / 44 | 0.38 / 0.30 / 0.29 | 0 / 3 |
+| explicit sentence (research) | 42 / 43 / 44 | 0.38 / 0.32 / 0.25 | 0 / 3 |
+| cue leading the prompt | 42 / 43 / 44 | 0.40 / 0.34 / 0.31 | 0 / 3 |
+| explicit sentence, the research's usable 5 s seeds | 11 / 99 | 0.40 / 0.28 | 0 / 2 |
+
+- **The window is the difference.** The research's 0.80 (best-of-3 usable) is on the **5 s** window: the phrase, then
+  0.7 s of silence. Cutting it at 4.04 s drops that silent tail, so 80 of 97 frames are voiced and the envelope has
+  little on/off structure; the chance threshold rises from 0.27-0.41 to 0.34-0.61 and no take beats it. Re-scoring the
+  research's own 5 s takes on their first 97 frames turns both usable ballad takes (seeds 11 and 99) unusable (s99:
+  r 0.43 > chance 0.27 at 5 s; r 0.20 < chance 0.44 on the first 97 frames). The strips still show singing that
+  follows the line broadly (seed 11 explicit: mouth opens with the phrase, grins open at the end); the score cannot
+  confirm it on a window that is almost all voice.
+- **Takeaway:** a sung shot should keep a little silence after its phrase (the research windows did); a shot cut to
+  end on the last syllable is both harder for the model (the explicit prompt's seed-42 fix, cwv 0.07 at 5 s, is gone
+  at 4 s: cwv 0.45) and impossible for the score to confirm. Filed as FU-609 next to FU-607 (phrase-start cuts).
+  The prompt stays as shipped (the leading form's +0.02 mean is noise on 3 seeds).

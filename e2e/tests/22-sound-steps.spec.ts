@@ -61,13 +61,14 @@ test("Sounds Options: Steps changes the estimate and is sent with the request", 
   await expect(steps.getByRole("spinbutton", { name: "Number of steps" })).toHaveValue("100");
   await expect(steps).toContainText("Fewer steps are faster but can sound worse. 100 is the model author's setting.");
   await expect(strip(page)).toContainText("Measured");
-  await expect(strip(page)).toContainText(/3 min|About 20\d s/);
+  // The measured run is the host's own: about 3.4 min on an M-series Mac, about 28 s on an RTX 4090 (lane cuda).
+  await expect(strip(page)).toContainText(/3 min|About 20\d s|About 2\d s/);
 
   // Balanced: about half the time, labelled as scaled from the measured run.
   await steps.getByRole("button", { name: "50", exact: true }).click();
   await expect(strip(page)).toContainText("Estimated from the measured run");
   await expect(strip(page)).not.toContainText("Measured");
-  await expect(strip(page)).toContainText(/1 min|About 1\d\d s/);
+  await expect(strip(page)).toContainText(/1 min|About 1\d\d s|About [12]\d s/);
   expect(estimateBodies.at(-1)).toMatchObject({ modelId: FULL, steps: 50 });
 
   // A free number inside the range.

@@ -108,6 +108,26 @@ def _non_mlx_engine_skip(loaded: Any) -> str | None:
     return f"loaded engine is {engine!r}, not MLX; the settings guard check is the MLX lane's"
 
 
+def _holds_model_gguf(path: str | Path) -> bool:
+    """True when a GGUF library row's file or folder holds model weights, not only a drafter or projector.
+
+    A repo downloaded for its drafter alone (``mtp-...gguf``, pinned for another model) is listed as a GGUF text
+    model (FU-611) but cannot load; the checks that take "the smallest GGUF" must not pick it.
+    """
+    root = str(Path(__file__).resolve().parents[1])
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    from backend_service.helpers.text_gguf import is_aux_gguf  # noqa: PLC0415
+
+    target = Path(path)
+    if target.is_file():
+        return not is_aux_gguf(target.name)
+    try:
+        return any(not is_aux_gguf(f.name) for f in target.rglob("*.gguf"))
+    except OSError:
+        return False
+
+
 def _check(name: str, fn) -> CheckResult:
     """Run a check fn and capture pass/fail/skip + reason."""
     started = time.perf_counter()
@@ -1425,12 +1445,32 @@ def phase_1(cap: Capability) -> PhaseResult:
             except OSError:
                 return False
 
-        baked = [
+        def block_drafter_wins(ref: str, path: str) -> bool:
+            # A pinned or sidecar block drafter (DFlash / DSpark) is preferred over the baked-in head by design
+            # (FU-178, ``_speculative_args``), so such a file never runs draft-mtp and cannot prove this check.
+            root = str(Path(__file__).resolve().parents[1])
+            if root not in sys.path:
+                sys.path.insert(0, root)
+            try:
+                from backend_service.helpers.text_gguf import (  # noqa: PLC0415
+                    BLOCK_DRAFT_TYPES,
+                    resolve_pinned_drafter,
+                    resolve_spec_sidecar,
+                )
+            except ImportError:
+                return False
+            drafter = resolve_pinned_drafter(ref, path) or resolve_spec_sidecar(path)
+            return drafter is not None and drafter[0] in BLOCK_DRAFT_TYPES
+
+        heads = [
             (ref, p) for (ref, p) in cap.local_gguf_files
             if not Path(p).name.lower().startswith(("mtp-", "dflash-", "mmproj")) and model_has_mtp_tensors(p)
         ]
-        if not baked:
+        if not heads:
             return "skip", "no GGUF with a baked-in MTP head on disk", {}
+        baked = [(ref, p) for (ref, p) in heads if not block_drafter_wins(ref, p)]
+        if not baked:
+            return "skip", "every GGUF with a baked-in MTP head here has a block drafter, which wins by design", {}
         ref, gguf_path = min(baked, key=lambda item: Path(item[1]).stat().st_size)
         status, reason, detail = _load_unload_prompt(
             ref, path=gguf_path, backend="gguf", spec=True, fused=True,
@@ -3113,9 +3153,10 @@ def phase_8(cap: Capability) -> PhaseResult:
         rows = [r for r in models_payload.get("models", []) if r.get("family") in ("chatterbox-turbo", "voxcpm2", "chatterbox", "orpheus")]
         if not rows:
             return "skip", "no wave-2 speech rows listed in this build", {}
-        installed = [r for r in rows if r.get("installed")]
+        installed = [r for r in rows if r.get("installed") and r.get("supported")]
         if not installed:
-            return "skip", "no wave-2 speech model downloaded (Voice Models)", {}
+            # A downloaded row the lane cannot run (the speech GPU add-on missing) answers 400 by design.
+            return "skip", "no wave-2 speech model downloaded and supported here (Voice Models)", {}
         voice_for = {"chatterbox-turbo": "chatterbox-turbo", "chatterbox": "chatterbox", "orpheus": "orpheus:tara", "voxcpm2": "design"}
         spoken = {}
         import io

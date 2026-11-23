@@ -85,7 +85,9 @@ def phase_21_benchmarks_conversion(cap: Any):
         return state["library"]
 
     def _smallest(fmt: str) -> dict[str, Any] | None:
-        rows = sorted((i for i in _library() if i.get("format") == fmt), key=lambda i: float(i.get("sizeGb") or 0))
+        rows = sorted((i for i in _library() if i.get("format") == fmt
+                       and (fmt != "GGUF" or suite._holds_model_gguf(i.get("path") or ""))),
+                      key=lambda i: float(i.get("sizeGb") or 0))
         return rows[0] if rows else None
 
     def _run(item: dict[str, Any], **extra: Any):

@@ -1075,6 +1075,19 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertEqual(workspace["server"]["status"], "running")
         self.assertGreaterEqual(workspace["server"]["requestsServed"], 1)
 
+    def test_chat_that_cannot_load_its_model_says_why(self):
+        # Found on the Windows gate (2026-11-23): a chat naming an MLX model on a PC answered a bare
+        # "Internal Server Error"; it must carry the load's reason, as /api/models/load does.
+        runtime = self.client.app.state.chaosengine.runtime
+        reason = "MLX backend requested but unavailable: MLX is not available in this environment."
+        body = {"prompt": "Hi", "maxTokens": 16, "modelRef": "org/some-mlx", "modelName": "some-mlx",
+                "source": "library", "backend": "mlx", "path": "/tmp/some-mlx"}
+        with mock.patch.object(runtime, "load_model", side_effect=RuntimeError(reason)):
+            for route in ("/api/chat/generate", "/api/chat/generate/stream"):
+                response = self.client.post(route, json=body)
+                self.assertEqual(response.status_code, 500, route)
+                self.assertIn("MLX backend requested but unavailable", response.text, route)
+
 
     def test_a_clamped_context_records_what_was_requested(self):
         body = {"modelRef": "google/gemma-4-E4B-it", "modelName": "Gemma 4 E4B Instruct", "source": "catalog",

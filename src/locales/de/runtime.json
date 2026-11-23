@@ -250,14 +250,14 @@
     "updateAvailable": "Update verfügbar"
   },
   "moeOffload": {
-    "label": null,
-    "auto": null,
-    "autoShort": null,
-    "autoWithCount": null,
-    "none": null,
-    "layers": null,
-    "hint": null,
-    "aboutTitle": null,
-    "body": null
+    "label": "Experten im System-RAM",
+    "auto": "Automatisch",
+    "autoShort": "Auto",
+    "autoWithCount": "Automatisch (etwa {count} von {total} Schichten)",
+    "none": "Keine, alles auf der GPU",
+    "layers": "{count} von {total} Schichten",
+    "hint": "Ein Mixture-of-Experts-Modell nutzt pro Token nur wenige Experten, deshalb können deren Gewichte im System-RAM liegen und auf der CPU laufen, während der Rest auf der GPU bleibt. Je mehr Schichten im RAM liegen, desto weniger GPU-Speicher wird belegt und desto langsamer antwortet das Modell. Automatisch aktuell: etwa {gpu} GB auf der GPU, {ram} GB im System-RAM.",
+    "aboutTitle": "Über Experten im System-RAM",
+    "body": "„Automatisch“ hält alles auf der GPU, wenn es passt. Passt es nicht und „In Speicher passen“ ist an, verschiebt die Engine Experten Schicht für Schicht ins System-RAM, bis das Modell passt; bei ausgeschaltetem „In Speicher passen“ wählt ChaosEngineAI die Anzahl anhand des freien GPU-Speichers. Gemessen auf einer RTX 4090 mit einem 35-Mrd.-Modell, das pro Token 3 Mrd. Parameter liest: 150 Tokens pro Sekunde mit allen Experten auf der GPU, etwa 85 mit der Hälfte der Schichten im RAM, etwa 52 mit allen im RAM."
   }
 }

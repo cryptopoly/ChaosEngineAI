@@ -250,14 +250,14 @@
     "updateAvailable": "有可用更新"
   },
   "moeOffload": {
-    "label": null,
-    "auto": null,
-    "autoShort": null,
-    "autoWithCount": null,
-    "none": null,
-    "layers": null,
-    "hint": null,
-    "aboutTitle": null,
-    "body": null
+    "label": "系统内存中的专家",
+    "auto": "自动",
+    "autoShort": "自动",
+    "autoWithCount": "自动（约 {count} / {total} 层）",
+    "none": "无，全部在 GPU 上",
+    "layers": "{total} 层中的 {count} 层",
+    "hint": "混合专家模型每个 token 只用到少数几个专家，因此它们的权重可以放在系统内存中并在 CPU 上运行，其余部分留在 GPU 上。放入内存的层越多，占用的 GPU 显存越少，但回复越慢。当前自动设置：GPU 上约 {gpu} GB，系统内存中 {ram} GB。",
+    "aboutTitle": "关于系统内存中的专家",
+    "body": "自动模式在放得下时会把所有内容都留在 GPU 上。放不下且“适配内存”已开启时，引擎会逐层把专家移到系统内存，直到模型放得下；“适配内存”关闭时，ChaosEngineAI 会根据 GPU 的可用显存来决定层数。在 RTX 4090 上用每个 token 读取 30 亿参数的 350 亿参数模型实测：所有专家都在 GPU 上时每秒 150 个 token，一半的层在内存中时约 85，全部在内存中时约 52。"
   }
 }

@@ -250,14 +250,14 @@
     "updateAvailable": "アップデートあり"
   },
   "moeOffload": {
-    "label": null,
-    "auto": null,
-    "autoShort": null,
-    "autoWithCount": null,
-    "none": null,
-    "layers": null,
-    "hint": null,
-    "aboutTitle": null,
-    "body": null
+    "label": "システム RAM 上のエキスパート",
+    "auto": "自動",
+    "autoShort": "自動",
+    "autoWithCount": "自動 (約 {count} / {total} レイヤー)",
+    "none": "なし (すべて GPU 上)",
+    "layers": "{total} レイヤー中 {count}",
+    "hint": "Mixture-of-Experts モデルはトークンごとに少数のエキスパートしか使わないため、その重みをシステム RAM に置いて CPU で実行し、残りを GPU に置けます。RAM に置くレイヤーが多いほど GPU メモリの使用量は減りますが、応答は遅くなります。現在の自動設定: GPU に約 {gpu} GB、システム RAM に {ram} GB。",
+    "aboutTitle": "システム RAM 上のエキスパートについて",
+    "body": "自動では、収まる場合はすべてを GPU に置きます。収まらず、「メモリに収める」がオンのときは、モデルが収まるまでエンジンがエキスパートを 1 レイヤーずつシステム RAM に移します。「メモリに収める」がオフのときは、ChaosEngineAI が GPU の空きメモリからレイヤー数を決めます。RTX 4090 で、トークンごとに 30 億パラメーターを読む 350 億パラメーターのモデルを測定した結果: すべてのエキスパートを GPU に置くと毎秒 150 トークン、レイヤーの半分を RAM に置くと約 85、すべてを RAM に置くと約 52 です。"
   }
 }

@@ -654,7 +654,7 @@
     },
     "statTokens": "Tokens générés",
     "ofMaxTokens": "sur {max} autorisés",
-    "previewNeedsModel": null
+    "previewNeedsModel": "Choisissez un modèle pour voir sa vitesse attendue, sa mémoire et s'il tient."
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, one {# exécution} other {# exécutions}}{filterSuffix}",
@@ -749,7 +749,7 @@
       "category": "Catégorie",
       "tags": "Étiquettes (séparées par des virgules)",
       "systemPrompt": "Invite système",
-      "promptText": null,
+      "promptText": "Prompt",
       "placeholderHint": "Utilisez les espaces réservés '{{'nom'}}' pour les variables que vous déclarez ci-dessous.",
       "variables": "Variables (tableau JSON)",
       "save": "Enregistrer",
@@ -770,16 +770,16 @@
     "variablesInvalid": "Les variables doivent former un tableau JSON (une liste entre crochets). Rien n'a été enregistré.",
     "inUseNote": "Le Chat utilise ce prompt système dans chaque fil jusqu'à ce que vous l'arrêtiez ou redémarriez l'app :",
     "stopUsing": "Ne plus l'utiliser",
-    "chatButton": null,
-    "chatButtonTooltip": null,
-    "chatButtonActiveTooltip": null,
-    "chatPanelTitle": null,
-    "back": null,
-    "close": null,
-    "insert": null,
-    "useAsSystem": null,
-    "saveDraft": null,
-    "saveDraftEmpty": null
+    "chatButton": "Prompts",
+    "chatButtonTooltip": "Prompts enregistrés : en insérer un dans le message ou en utiliser un comme prompt système",
+    "chatButtonActiveTooltip": "Prompts enregistrés. Un prompt système est utilisé.",
+    "chatPanelTitle": "Prompts",
+    "back": "Retour à la liste",
+    "close": "Fermer",
+    "insert": "Insérer dans le message",
+    "useAsSystem": "Utiliser comme prompt système",
+    "saveDraft": "Enregistrer le message comme prompt",
+    "saveDraftEmpty": "Saisissez d'abord un message"
   },
   "fineTuning": {
     "loadingAdapters": "Chargement des adaptateurs...",
@@ -1059,7 +1059,7 @@
     },
     "providers": {
       "title": "Fournisseurs distants",
-      "subtitle": null,
+      "subtitle": "Utilisez une API cloud au format OpenAI lorsqu'aucun modèle local n'est chargé. Les clés sont stockées sur cet ordinateur, dans le dossier de données de ChaosEngineAI.",
       "addButton": "+ Ajouter un fournisseur",
       "emptyState": "Aucun fournisseur distant configuré. Ajoutez-en un pour utiliser des modèles cloud en repli.",
       "labelField": "Libellé",
@@ -1077,7 +1077,7 @@
       "tokenLabel": "Jeton Hugging Face",
       "tokenStoredPlaceholder": "•••• stocké ••••",
       "tokenPlaceholder": "hf_...",
-      "helpText": null
+      "helpText": "Stocké sur cet ordinateur. Utilisé chaque fois qu'un téléchargement nécessite votre compte Hugging Face, par exemple pour un modèle à accès restreint."
     },
     "agentAccess": {
       "title": "Accès des agents",
@@ -1206,11 +1206,11 @@
     "searchPlaceholder": "Rechercher des modèles...",
     "contextDetected": "{contextLabel} détecté",
     "emptyState": "Aucun modèle ne correspond à votre recherche.",
-    "emptyLibrary": null,
+    "emptyLibrary": "Aucun modèle de discussion n'est encore téléchargé. Téléchargez-en un dans Discussion > Modèles, puis revenez ici.",
     "launchSettings": "Paramètres de lancement",
     "cancelButton": "Annuler",
     "busyConfirm": "Charger quand même",
-    "previewNeedsModel": null
+    "previewNeedsModel": "Choisissez un modèle pour voir sa vitesse attendue, sa mémoire et s'il tient."
   },
   "modelPicker": {
     "weightFileTitle": "Sélectionner le fichier de poids : {name}",
@@ -1408,7 +1408,7 @@
   },
   "wslBridgePanel": {
     "title": "Pont WSL2 vLLM",
-    "backendOffline": null,
+    "backendOffline": "Le backend ne répond pas, donc l'état de WSL ne peut pas être lu. Il s'affichera quand le backend sera de retour.",
     "capsError": "Impossible de lire l'état de WSL : {error}",
     "probing": "Sondage de l'état de WSL...",
     "ready": "✓ Prêt{version}",
@@ -1430,7 +1430,7 @@
     "title": "Boost Pack",
     "description": "Accélérateurs optionnels pour l'inférence image, vidéo et chat. Chacun est à un seul pip install — cliquez sur Installer sur les lignes prises en charge par votre matériel.",
     "capError": "Impossible de lire les capacités des accélérateurs : {error}",
-    "backendOffline": null,
+    "backendOffline": "Le backend ne répond pas, donc ce qui est installé ne peut pas être lu. Cela s'affichera quand le backend sera de retour.",
     "columns": {
       "accelerator": "Accélérateur",
       "size": "Taille",
@@ -1455,7 +1455,7 @@
     "moveConfirm": "Déplacer {size} de modèles de {from} vers {to} ?\n\nL'arborescence source sera supprimée après une copie réussie. Sur un disque dur mécanique, cela peut prendre 15-45 min pour 100 Go.\n\nFermez toutes les générations en cours avant de commencer.",
     "reading": "Lecture des informations de stockage...",
     "loading": "Chargement des informations de stockage...",
-    "backendOffline": null,
+    "backendOffline": "Le backend ne répond pas, donc le stockage ne peut pas être modifié. Cela s'affichera quand le backend sera de retour.",
     "currentLocation": "Emplacement actuel du cache",
     "inCache": "{size} dans le cache",
     "free": "{size} libres",

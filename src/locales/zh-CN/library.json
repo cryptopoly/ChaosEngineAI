@@ -96,7 +96,7 @@
       "context": "上下文",
       "status": "状态",
       "released": "发布时间",
-      "gpuMemory": null
+      "gpuMemory": "GPU 显存"
     },
     "status": {
       "downloading": "下载中",
@@ -698,14 +698,14 @@
       "numbers": "需要约 {need} GB，本机可用 {usable} GB。",
       "tight": "紧张",
       "unknown": "不适合本机",
-      "needsAccess": null,
+      "needsAccess": "需要访问权限",
       "wontFit": "放不下",
-      "fitsOffload": null
+      "fitsOffload": "卸载后可放入"
     },
     "image": {
       "emptyAttention": "没有需要关注的图像模型。",
       "emptyCatalog": "目录中暂无图像模型。请确认后端正在运行。",
-      "loadingCatalog": null,
+      "loadingCatalog": "正在加载图像模型…",
       "emptyDownloading": "没有正在下载的图像模型。",
       "emptyInstalled": "尚未安装图像模型。请从可下载的模型中选择一个进行下载。",
       "intro": "所有图像模型汇总在一个列表中。下载后即可在图像工作室中使用；可按已安装、可下载或下载中筛选。"
@@ -734,7 +734,7 @@
     "video": {
       "intro": "所有视频模型汇总在一个列表中。下载后即可在视频工作室中使用；可按已安装、可下载或下载中筛选。",
       "emptyCatalog": "目录中暂无视频模型。请确认后端正在运行。",
-      "loadingCatalog": null,
+      "loadingCatalog": "正在加载视频模型…",
       "emptyInstalled": "尚未安装视频模型。请从可下载的模型中选择一个进行下载。",
       "emptyDownloading": "没有正在下载的视频模型。",
       "emptyAttention": "没有需要关注的视频模型。"
@@ -792,15 +792,15 @@
         "already": "已在共享模型文件夹中（{where}）。"
       },
       "recommended": {
-        "subtitle": null,
-        "subtitleBare": null,
-        "intro": null,
-        "best": null,
-        "showAll": null,
-        "fastest": null,
-        "newest": null,
-        "popular": null,
-        "popularTitle": null
+        "subtitle": "为这台电脑推荐（{hardware}）",
+        "subtitleBare": "为这台电脑推荐",
+        "intro": "还没有下载对话模型。这些最适合这台电脑：下载一个，然后打开对话。第一个是仪表板的推荐。",
+        "best": "最适合",
+        "showAll": "显示全部 {count} 个模型和筛选器",
+        "fastest": "最快",
+        "newest": "最新",
+        "popular": "最受欢迎",
+        "popularTitle": "过去 30 天在 Hugging Face 上被下载 {count} 次（截至 {date}）"
       }
     }
   }

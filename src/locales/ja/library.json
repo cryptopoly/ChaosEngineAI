@@ -96,7 +96,7 @@
       "context": "コンテキスト",
       "status": "ステータス",
       "released": "リリース日",
-      "gpuMemory": null
+      "gpuMemory": "GPU メモリ"
     },
     "status": {
       "downloading": "ダウンロード中",
@@ -698,14 +698,14 @@
       "numbers": "約 {need} GB が必要です(このマシンで使えるのは {usable} GB)。",
       "tight": "ギリギリ",
       "unknown": "このマシン向けではありません",
-      "needsAccess": null,
+      "needsAccess": "アクセス権が必要",
       "wontFit": "収まらない",
-      "fitsOffload": null
+      "fitsOffload": "オフロードで収まる"
     },
     "image": {
       "emptyAttention": "要確認の画像モデルはありません。",
       "emptyCatalog": "カタログにはまだ画像モデルがありません。バックエンドが起動しているか確認してください。",
-      "loadingCatalog": null,
+      "loadingCatalog": "画像モデルを読み込み中…",
       "emptyDownloading": "ダウンロード中の画像モデルはありません。",
       "emptyInstalled": "インストール済みの画像モデルはまだありません。ダウンロード可能なモデルから選んでダウンロードしてください。",
       "intro": "すべての画像モデルを 1 つのリストにまとめました。ダウンロードすると画像スタジオで使えます。インストール済み・ダウンロード可能・ダウンロード中で絞り込めます。"
@@ -734,7 +734,7 @@
     "video": {
       "intro": "すべての動画モデルを 1 つのリストにまとめました。ダウンロードすると動画スタジオで使えます。インストール済み・ダウンロード可能・ダウンロード中で絞り込めます。",
       "emptyCatalog": "カタログにはまだ動画モデルがありません。バックエンドが起動しているか確認してください。",
-      "loadingCatalog": null,
+      "loadingCatalog": "動画モデルを読み込み中…",
       "emptyInstalled": "インストール済みの動画モデルはまだありません。ダウンロード可能なモデルから選んでダウンロードしてください。",
       "emptyDownloading": "ダウンロード中の動画モデルはありません。",
       "emptyAttention": "要確認の動画モデルはありません。"
@@ -792,15 +792,15 @@
         "already": "すでに共有モデルフォルダーにあります ({where})。"
       },
       "recommended": {
-        "subtitle": null,
-        "subtitleBare": null,
-        "intro": null,
-        "best": null,
-        "showAll": null,
-        "fastest": null,
-        "newest": null,
-        "popular": null,
-        "popularTitle": null
+        "subtitle": "このコンピューター向けのおすすめ ({hardware})",
+        "subtitleBare": "このコンピューター向けのおすすめ",
+        "intro": "チャットモデルがまだダウンロードされていません。このコンピューターに最も合うものを挙げています。1 つダウンロードして、チャットを開いてください。先頭はダッシュボードのおすすめです。",
+        "best": "最適",
+        "showAll": "全 {count} モデルとフィルターを表示",
+        "fastest": "最速",
+        "newest": "最新",
+        "popular": "最も人気",
+        "popularTitle": "Hugging Face での直近 30 日間のダウンロード数: {count} ({date} 時点)"
       }
     }
   }

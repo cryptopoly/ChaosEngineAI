@@ -644,7 +644,7 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 
 **Status or trigger:** Before the release notes claim the nine locales; adds to FU-254
 
-**Notes:** 119 flagged strings in `docs/progress/i18n-translation-doubts-2026-11-20.md`, per locale. Common themes: "Kept warm", "Prefill" and "Word timings" wording, the "Voice > Models > Voice runtime > Add-ons" menu paths (must match each locale's real labels), "Share with LM Studio" quoted inside `modelStoragePanel.lmstudioHint`, Windows Settings path names in `musicStudio.copy.wayDeveloper`, the word for shot in `board.editor.vocalHint`, and plural agreement in `serverActivity.paused`.
+**Notes:** 119 flagged strings in `docs/progress/i18n-translation-doubts-2026-11-20.md`, per locale. Common themes: "Kept warm", "Prefill" and "Word timings" wording, the "Voice > Models > Voice runtime > Add-ons" menu paths (must match each locale's real labels), "Share with LM Studio" quoted inside `modelStoragePanel.lmstudioHint`, Windows Settings path names in `musicStudio.copy.wayDeveloper`, the word for shot in `board.editor.vocalHint`, and plural agreement in `serverActivity.paused`. The 2026-11-23 pass adds 47 more flagged points in `docs/progress/i18n-translation-doubts-2026-11-23.md` (vocal stem, sync score, "Sung vocal", experts in system RAM, take and shot wording that differs between sections, the `Fit in memory` label quoted in `moeOffload.body`).
 
 </details>
 
@@ -653,7 +653,7 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 
 **Status or trigger:** Near the `release/v0.10.0` merge (D-97: strings still change)
 
-**Notes:** The 2026-11-20 pass filled every null in the nine shipping locales (254 strings each; `npm run i18n:validate` reports 5265 of 5270 per locale). Left on purpose: the 3 `common.pluginsTab.*` keys (another stream removes the Plugins tab) and the 2 `meta.supportedLocales.10.*` fields of the experimental `tlh` entry. Re-run `node` null scan (any `null` leaf in a non-`en` file) for the Chat Prompts keys and whatever else lands, translate those, and rerun the validator. Nothing was pending in `src-tauri/locales/*.yml` or `backend_service/locales/*.po`.
+**Notes:** The 2026-11-20 pass filled every null in the nine shipping locales (254 strings each; `npm run i18n:validate` reports 5265 of 5270 per locale). Left on purpose: the 3 `common.pluginsTab.*` keys (another stream removes the Plugins tab) and the 2 `meta.supportedLocales.10.*` fields of the experimental `tlh` entry. Re-run `node` null scan (any `null` leaf in a non-`en` file) for the Chat Prompts keys and whatever else lands, translate those, and rerun the validator. Nothing was pending in `src-tauri/locales/*.yml` or `backend_service/locales/*.po`. **2026-11-23 pass done** (branch `chore/translation-pass-2026-11-23`): 104 keys filled in each of the nine locales (Chat Prompts, expert offload, lip-sync takes and the Video Studio vocal picker, Storyboard song vocals, sync scoring add-on, Dashboard start-here and best fit, recommended chat models, Hugging Face and backend-offline notes), plus the `tlh` entry of `meta.supportedLocales` copied into the nine `meta.json` arrays (language-neutral; only `en`'s array is read). `npm run i18n:validate` reports 5333 of 5333 per locale. Strings still change before the release, so scan again after the last merge.
 
 </details>
 

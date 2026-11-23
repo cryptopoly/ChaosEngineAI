@@ -1,7 +1,7 @@
 {
   "liveStats": {
     "title": "Живая статистика системы",
-    "subtitle": null,
+    "subtitle": "Текущие показатели этого компьютера: память, диск и запущенные модели.",
     "runtimeEngine": "Движок среды выполнения",
     "noModelLoaded": "Модель не загружена",
     "inferenceActivity": "Активность вывода",
@@ -77,7 +77,7 @@
     "backendReadiness": {
       "title": "Готовность бэкенда",
       "detail": "MLX установлен: {mlx} / mlx-lm установлен: {mlxLm} / MLX работает: {mlxUsable} / GGUF среда: {gguf}",
-      "detailGguf": null
+      "detailGguf": "Среда выполнения GGUF: {gguf}"
     }
   },
   "recommendation": {
@@ -87,30 +87,30 @@
     "ggufDetail": "Кросс-платформенный режим предпочитает llama.cpp GGUF для широкой аппаратной поддержки."
   },
   "bestFit": {
-    "subtitle": null,
-    "badge": null,
-    "openModels": null,
-    "seeInModels": null,
-    "download": null,
-    "needsGpu": null,
-    "needsMemory": null,
-    "speedMeasured": null,
-    "speedEstimated": null,
-    "speedRtx4090": null
+    "subtitle": "Лучший выбор из каталога для этого компьютера; оценка такая же, как на странице «Модели».",
+    "badge": "Лучший выбор для этого компьютера",
+    "openModels": "Открыть модели чата",
+    "seeInModels": "Посмотреть в моделях чата",
+    "download": "загрузка {size}",
+    "needsGpu": "нужно около {need} ГБ из {usable} ГБ памяти GPU",
+    "needsMemory": "нужно около {need} ГБ из {usable} ГБ доступной памяти",
+    "speedMeasured": "{value} tok/s, измерено на этом компьютере",
+    "speedEstimated": "около {value} tok/s (оценка)",
+    "speedRtx4090": "{value} tok/s, замер на RTX 4090"
   },
   "startHere": {
-    "title": null,
-    "subtitle": null,
-    "step1": null,
-    "step2": null,
-    "recommended": null,
-    "download": null,
-    "downloadSize": null,
-    "downloading": null,
-    "downloaded": null,
-    "otherModels": null,
-    "noPick": null,
-    "openModels": null,
-    "openChat": null
+    "title": "Начните здесь",
+    "subtitle": "Модель чата ещё не скачана. Два шага до первого чата на этом компьютере ({hardware}).",
+    "step1": "Скачайте модель, которая подходит этому компьютеру.",
+    "step2": "Откройте Чат и выберите модель в верхней части ветки.",
+    "recommended": "Рекомендуется",
+    "download": "Скачать",
+    "downloadSize": "Скачать ({size})",
+    "downloading": "Скачивание, {percent}%",
+    "downloaded": "Скачано",
+    "otherModels": "Другие рекомендуемые модели",
+    "noPick": "Ни одна модель каталога не помещается на этом компьютере с запасом. В «Моделях чата» перечислены все модели с оценкой пригодности.",
+    "openModels": "Открыть модели чата",
+    "openChat": "Открыть чат"
   }
 }

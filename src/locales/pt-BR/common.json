@@ -654,7 +654,7 @@
     },
     "statTokens": "Tokens gerados",
     "ofMaxTokens": "de {max} permitidos",
-    "previewNeedsModel": null
+    "previewNeedsModel": "Escolha um modelo para ver a velocidade esperada, a memória e se ele cabe."
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, one {# execução} other {# execuções}}{filterSuffix}",
@@ -749,7 +749,7 @@
       "category": "Categoria",
       "tags": "Tags (separadas por vírgula)",
       "systemPrompt": "Prompt de sistema",
-      "promptText": null,
+      "promptText": "Prompt",
       "placeholderHint": "Use marcadores '{{'nome'}}' para variáveis declaradas abaixo.",
       "variables": "Variáveis (array JSON)",
       "save": "Salvar",
@@ -770,16 +770,16 @@
     "variablesInvalid": "As variáveis devem ser uma matriz JSON (uma lista entre colchetes). Nada foi salvo.",
     "inUseNote": "O Chat está usando este prompt de sistema em todas as conversas até você parar ou reiniciar o app:",
     "stopUsing": "Parar de usar",
-    "chatButton": null,
-    "chatButtonTooltip": null,
-    "chatButtonActiveTooltip": null,
-    "chatPanelTitle": null,
-    "back": null,
-    "close": null,
-    "insert": null,
-    "useAsSystem": null,
-    "saveDraft": null,
-    "saveDraftEmpty": null
+    "chatButton": "Prompts",
+    "chatButtonTooltip": "Prompts salvos: insira um na mensagem ou use um como prompt de sistema",
+    "chatButtonActiveTooltip": "Prompts salvos. Um prompt de sistema está em uso.",
+    "chatPanelTitle": "Prompts",
+    "back": "Voltar à lista",
+    "close": "Fechar",
+    "insert": "Inserir na mensagem",
+    "useAsSystem": "Usar como prompt de sistema",
+    "saveDraft": "Salvar a mensagem como prompt",
+    "saveDraftEmpty": "Digite uma mensagem primeiro"
   },
   "fineTuning": {
     "loadingAdapters": "Carregando adaptadores...",
@@ -1059,7 +1059,7 @@
     },
     "providers": {
       "title": "Provedores remotos",
-      "subtitle": null,
+      "subtitle": "Use uma API em nuvem no formato OpenAI quando nenhum modelo local estiver carregado. As chaves ficam salvas neste computador, na pasta de dados do ChaosEngineAI.",
       "addButton": "+ Adicionar provedor",
       "emptyState": "Nenhum provedor remoto configurado. Adicione um para usar modelos em nuvem como fallback.",
       "labelField": "Rótulo",
@@ -1077,7 +1077,7 @@
       "tokenLabel": "Token do Hugging Face",
       "tokenStoredPlaceholder": "•••• armazenado ••••",
       "tokenPlaceholder": "hf_...",
-      "helpText": null
+      "helpText": "Armazenado neste computador. Usado sempre que um download precisa da sua conta do Hugging Face, por exemplo um modelo com acesso restrito."
     },
     "agentAccess": {
       "title": "Acesso de agentes",
@@ -1206,11 +1206,11 @@
     "searchPlaceholder": "Pesquisar modelos...",
     "contextDetected": "{contextLabel} detectado",
     "emptyState": "Nenhum modelo corresponde à sua busca.",
-    "emptyLibrary": null,
+    "emptyLibrary": "Nenhum modelo de chat baixado ainda. Baixe um em Chat > Modelos e volte aqui.",
     "launchSettings": "Configurações de inicialização",
     "cancelButton": "Cancelar",
     "busyConfirm": "Carregar mesmo assim",
-    "previewNeedsModel": null
+    "previewNeedsModel": "Escolha um modelo para ver a velocidade esperada, a memória e se ele cabe."
   },
   "modelPicker": {
     "weightFileTitle": "Selecionar arquivo de pesos: {name}",
@@ -1408,7 +1408,7 @@
   },
   "wslBridgePanel": {
     "title": "Ponte WSL2 para vLLM",
-    "backendOffline": null,
+    "backendOffline": "O backend não está respondendo, então o estado do WSL não pode ser lido. Ele aparece quando o backend voltar.",
     "capsError": "Não foi possível ler o estado do WSL: {error}",
     "probing": "Verificando o estado do WSL...",
     "ready": "✓ Pronto{version}",
@@ -1430,7 +1430,7 @@
     "title": "Pacote de aceleração",
     "description": "Aceleradores opcionais para inferência de imagem, vídeo e chat. Cada um está a um único pip install de distância — clique em Instalar nas linhas compatíveis com o seu hardware.",
     "capError": "Não foi possível ler os recursos dos aceleradores: {error}",
-    "backendOffline": null,
+    "backendOffline": "O backend não está respondendo, então não é possível ler o que está instalado. Aparece quando o backend voltar.",
     "columns": {
       "accelerator": "Acelerador",
       "size": "Tamanho",
@@ -1455,7 +1455,7 @@
     "moveConfirm": "Mover {size} de modelos de {from} para {to}?\n\nA árvore de origem será excluída após uma cópia bem-sucedida. Em um HDD giratório, isso pode levar de 15 a 45 min para 100 GB.\n\nFeche todas as gerações em andamento antes de começar.",
     "reading": "Lendo informações de armazenamento...",
     "loading": "Carregando informações de armazenamento...",
-    "backendOffline": null,
+    "backendOffline": "O backend não está respondendo, então o armazenamento não pode ser alterado. Aparece quando o backend voltar.",
     "currentLocation": "Local atual do cache",
     "inCache": "{size} no cache",
     "free": "{size} livres",

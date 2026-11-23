@@ -96,7 +96,7 @@
       "context": "컨텍스트",
       "status": "상태",
       "released": "출시일",
-      "gpuMemory": null
+      "gpuMemory": "GPU 메모리"
     },
     "status": {
       "downloading": "다운로드 중",
@@ -698,14 +698,14 @@
       "numbers": "약 {need} GB가 필요합니다(이 컴퓨터에서 사용 가능한 용량: {usable} GB).",
       "tight": "빠듯함",
       "unknown": "이 컴퓨터용이 아님",
-      "needsAccess": null,
+      "needsAccess": "접근 권한 필요",
       "wontFit": "부적합",
-      "fitsOffload": null
+      "fitsOffload": "오프로드하면 적합"
     },
     "image": {
       "emptyAttention": "확인이 필요한 이미지 모델이 없습니다.",
       "emptyCatalog": "카탈로그에 아직 이미지 모델이 없습니다. 백엔드가 실행 중인지 확인하세요.",
-      "loadingCatalog": null,
+      "loadingCatalog": "이미지 모델을 불러오는 중…",
       "emptyDownloading": "다운로드 중인 이미지 모델이 없습니다.",
       "emptyInstalled": "설치된 이미지 모델이 아직 없습니다. 다운로드 가능한 모델 중 하나를 골라 다운로드하세요.",
       "intro": "모든 이미지 모델을 한 목록에 모았습니다. 다운로드하면 이미지 스튜디오에서 사용할 수 있으며, 설치됨·다운로드 가능·다운로드 중으로 필터링할 수 있습니다."
@@ -734,7 +734,7 @@
     "video": {
       "intro": "모든 비디오 모델을 한 목록에 모았습니다. 다운로드하면 비디오 스튜디오에서 사용할 수 있으며, 설치됨·다운로드 가능·다운로드 중으로 필터링할 수 있습니다.",
       "emptyCatalog": "카탈로그에 아직 비디오 모델이 없습니다. 백엔드가 실행 중인지 확인하세요.",
-      "loadingCatalog": null,
+      "loadingCatalog": "비디오 모델을 불러오는 중…",
       "emptyInstalled": "설치된 비디오 모델이 아직 없습니다. 다운로드 가능한 모델 중 하나를 골라 다운로드하세요.",
       "emptyDownloading": "다운로드 중인 비디오 모델이 없습니다.",
       "emptyAttention": "확인이 필요한 비디오 모델이 없습니다."
@@ -792,15 +792,15 @@
         "already": "이미 공유 모델 폴더에 있습니다({where})."
       },
       "recommended": {
-        "subtitle": null,
-        "subtitleBare": null,
-        "intro": null,
-        "best": null,
-        "showAll": null,
-        "fastest": null,
-        "newest": null,
-        "popular": null,
-        "popularTitle": null
+        "subtitle": "이 컴퓨터 추천({hardware})",
+        "subtitleBare": "이 컴퓨터 추천",
+        "intro": "다운로드한 채팅 모델이 아직 없습니다. 이 컴퓨터에 가장 잘 맞는 모델입니다. 하나를 다운로드한 다음 채팅을 여세요. 첫 번째가 대시보드의 추천입니다.",
+        "best": "가장 적합",
+        "showAll": "모델 {count}개 전체와 필터 보기",
+        "fastest": "가장 빠름",
+        "newest": "최신",
+        "popular": "가장 인기",
+        "popularTitle": "최근 30일간 Hugging Face에서 {count}회 다운로드(기준: {date})"
       }
     }
   }

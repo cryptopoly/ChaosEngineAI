@@ -414,7 +414,10 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 # embedding table, which llama.cpp keeps in system RAM anyway; Q2_0 is a mainline type (b12649's
                 # quantizer lists it). activeParamsB from the base config.json: 10 of 512 routed experts
                 # (moe_intermediate 640, hidden 2560, 48 layers) = 2.4B, plus the shared expert, attention and
-                # head, about 4B. Untested: not downloaded or run here.
+                # head, about 4B. Run 2026-11-23 on the RTX 4090 + 64 GB RAM (b12649 CUDA, 8K, f16 KV, the app's
+                # routes): Auto 21.8 GB VRAM above idle, 49.9 tok/s; all 48 layers' experts in RAM 4.2 GB, 31.9 tok/s.
+                # No measuredGpuGb on purpose: before download it would replace the "Fits with offload" estimate
+                # (GPU + RAM) with a GPU-only figure that is "tight" on 24 GB, whatever the RAM.
                 "id": "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF-q2-0",
                 "name": "Qwen3.8 Flash Next GGUF Q2_0 (GSQ-RCO)",
                 "repo": "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF",
@@ -424,14 +427,15 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "sizeGb": 66.4,
                 "format": "GGUF",
                 "quantization": "Q2_0",
+                "measuredGpuTokS": 49.9,  # FU-550: RTX 4090 + 64 GB RAM, Auto expert offload, 8,192 context
                 "ggufFile": "Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf",
                 "capabilities": ["reasoning", "coding", "agents", "tool-use"],
                 "note": (
                     "2-bit build with a precision chosen per tensor (ISTA-DASLab GSQ-RCO, 96 % of the base "
-                    "model's task average by the publisher's measurements). On a 24 GB NVIDIA card with 64 GB of "
-                    "RAM it should load with the experts of most layers in system RAM (expert offload); not yet "
-                    "run on that machine. A Mac needs about 76 GB for it (128 GB or more). Inherits the base "
-                    "model's licence."
+                    "model's task average by the publisher's measurements). On an RTX 4090 (24 GB) with 64 GB of "
+                    "RAM it loads with the experts of about 21 of 48 layers in system RAM (expert offload): "
+                    "about 50 tok/s at 8K context, Thinking on and off both work. Not run on a Mac, which needs "
+                    "about 76 GB for it (128 GB or more). Inherits the base model's licence."
                 ),
                 "contextWindow": "262K",
                 "launchMode": "direct",

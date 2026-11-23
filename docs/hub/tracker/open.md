@@ -28,18 +28,18 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-611 · A repo downloaded only for its drafter is listed as a runnable GGUF model — With FU-610</summary>
+<summary>FU-611 · A repo downloaded only for its drafter is listed as a runnable GGUF model — Fixed 2026-11-23 on test/rtx4090 (discovery._aux_gguf_only_kind: an HF-cache repo with only drafter, projector…</summary>
 
-**Status or trigger:** With FU-610
+**Status or trigger:** **Fixed 2026-11-23 on `test/rtx4090`** (`discovery._aux_gguf_only_kind`: an HF-cache repo with only drafter, projector or imatrix GGUF files is `modelType` `draft` or `other`, so it is out of the chat picker and nothing calls it broken; tests `DrafterOnlyRepoTests`)
 
 **Notes:** Found by the Windows final gate 2026-11-23: `models--unsloth--gemma-4-12B-it-GGUF` holds only `mtp-gemma-4-12b-it.gguf` (the pinned drafter for Google's QAT Gemma 4, `PINNED_DRAFTERS`), and `/api/workspace` lists it as a GGUF text model (0.43 GB, `broken: false`, actions Run Chat / Run Server). Loading it answers 400 "No .gguf weights found ... The download may be incomplete or corrupt. Re-download the model", which is wrong advice for a drafter. `_detect_broken_library_item` counts any `*.gguf`; `text_gguf.is_aux_gguf` already knows the drafter, projector and imatrix names. Decide: hide drafter-only repos from the chat library, or list them as "Drafter for ..." without Run Chat (marking them broken would invite deleting a drafter a model needs). The E2E picks now skip such rows (`_holds_model_gguf`, `tests/test_e2e_gguf_pick.py`).
 
 </details>
 
 <details>
-<summary>FU-610 · Text model library does not follow a moved Hugging Face cache — Before v0.10.0 ships (needs a look in the app first)</summary>
+<summary>FU-610 · Text model library does not follow a moved Hugging Face cache — Fixed 2026-11-23 on test/rtx4090 (hf_cache_paths.model_directory_root: the untouched built-in hf-cache entry r…</summary>
 
-**Status or trigger:** Before v0.10.0 ships (needs a look in the app first)
+**Status or trigger:** **Fixed 2026-11-23 on `test/rtx4090`** (`hf_cache_paths.model_directory_root`: the untouched built-in `hf-cache` entry resolves through `_hf_hub_cache_root()` in the scan, the cache fingerprint and the `exists` flag; library cache version 8; tests `MovedHfCacheTests`; not yet looked at in a packaged app)
 
 **Notes:** Found by the Windows final gate 2026-11-23. The library scan (`helpers/discovery.py` `_discover_local_models`) walks `settings.modelDirectories` only, and its "Hugging Face cache" entry is the literal `~/.cache/huggingface/hub` (`helpers/settings.py` `DEFAULT_MODEL_DIRECTORIES`). The desktop shell sets `HF_HOME` / `HF_HUB_CACHE` from `hfCachePath` (`src-tauri/src/backend.rs`), so downloads land in the moved cache but the text library never lists them. Repro: throwaway `HOME`, `HF_HUB_CACHE=E:\AI Models` (about 70 text and image repos), `PATCH /api/settings {"hfCachePath":"E:\\AI Models"}`, restart: `GET /api/workspace` has `library: []` (71 rows once a user directory `E:\AI Models` is added by hand); the image library and the Hub-cache lookups (`_hf_hub_cache_root`) do follow it. The owner's own settings have `hfCachePath=E:\AI Models` and a default `~/.cache/huggingface/hub` with 2 folders. Fix to weigh: resolve the `hf-cache` entry through `_hf_hub_cache_root()` (scan, `exists`, `modelCount`, the library cache fingerprint), with a test that sets `HF_HUB_CACHE`. Phases 211 and 215 found no library model until the directory was added, which is how the gate ran.
 

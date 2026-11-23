@@ -144,3 +144,50 @@ class HfCacheNameTests(unittest.TestCase):
             detected = _detect_directory_model(repo)
         self.assertIsNotNone(detected)
         self.assertEqual(detected[0], "meta-models/Muse-Glimmer-30B-GGUF")
+
+
+class MovedHfCacheTests(unittest.TestCase):
+    """FU-610: the built-in Hugging Face cache entry follows HF_HUB_CACHE."""
+
+    ENTRY = {"id": "hf-cache", "label": "Hugging Face cache", "path": "~/.cache/huggingface/hub", "enabled": True}
+
+    def test_builtin_entry_scans_the_moved_cache(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as home:
+            _write_gguf(Path(tmp) / "models--org--Model-GGUF" / "snapshots" / "abc" / "Model-Q4_K_M.gguf")
+            env = {"HF_HUB_CACHE": tmp, "HOME": home, "USERPROFILE": home}
+            old = {k: os.environ.get(k) for k in env}
+            os.environ.update(env)
+            try:
+                items = _discover_local_models([dict(self.ENTRY)])
+            finally:
+                for k, v in old.items():
+                    if v is None:
+                        os.environ.pop(k, None)
+                    else:
+                        os.environ[k] = v
+        self.assertEqual([i["name"] for i in items], ["org/Model-GGUF"])
+
+    def test_entry_the_user_pointed_elsewhere_is_left_alone(self) -> None:
+        from backend_service.helpers.hf_cache_paths import model_directory_root
+
+        entry = {**self.ENTRY, "path": "~/Other"}
+        self.assertEqual(model_directory_root(entry), Path(os.path.expanduser("~/Other")).expanduser())
+
+
+class DrafterOnlyRepoTests(unittest.TestCase):
+    """FU-611: a repo holding only a drafter is not a runnable text model."""
+
+    def _types(self, *files: str) -> list[str]:
+        with tempfile.TemporaryDirectory() as tmp:
+            for name in files:
+                _write_gguf(Path(tmp) / "models--org--Model-GGUF" / "snapshots" / "abc" / name)
+            return [i["modelType"] for i in _discover(Path(tmp))]
+
+    def test_drafter_only_repo_is_a_draft(self) -> None:
+        self.assertEqual(self._types("mtp-gemma-4-12b-it.gguf"), ["draft"])
+
+    def test_projector_only_repo_is_other(self) -> None:
+        self.assertEqual(self._types("mmproj-F16.gguf"), ["other"])
+
+    def test_repo_with_a_model_and_a_drafter_stays_text(self) -> None:
+        self.assertEqual(self._types("Model-Q4_K_M.gguf", "mtp-model.gguf"), ["text"])

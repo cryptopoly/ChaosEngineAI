@@ -6,12 +6,14 @@ import os
 from pathlib import Path
 from typing import Any
 
+from backend_service.helpers.hf_cache_paths import model_directory_root
+
 MAX_CHAT_SESSIONS = 200
 MAX_BENCHMARK_RUNS = 48
 LEGACY_SEEDED_CHAT_IDS = {"ui-direction", "model-shortlist"}
 LEGACY_SEEDED_BENCHMARK_IDS = {"baseline", "native-34", "native-36", "native-44"}
 
-LIBRARY_CACHE_VERSION = 7  # 7: ACE-Step music packs are "other"; 6: ONNX-only folders are "other"; 5: loadSizeGb (size of the one GGUF that loads)
+LIBRARY_CACHE_VERSION = 8  # 8: a moved Hugging Face cache is scanned; 7: ACE-Step music packs are "other"; 6: ONNX-only folders are "other"; 5: loadSizeGb (size of the one GGUF that loads)
 
 
 def _default_chat_variant() -> dict[str, Any]:
@@ -118,7 +120,7 @@ def _library_cache_fingerprint(model_directories: list[dict[str, Any]]) -> dict[
         raw_path = str(directory.get("path") or "").strip()
         if not raw_path:
             continue
-        root = Path(os.path.expanduser(raw_path))
+        root = model_directory_root(directory)
         fingerprint[raw_path] = 0.0
         if not root.exists():
             continue

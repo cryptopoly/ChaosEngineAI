@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING, Any
 
 from fastapi import HTTPException
 
+from backend_service.helpers.hf_cache_paths import model_directory_root
 from backend_service.helpers.settings import (
     _migrate_data_directory,
     _normalize_launch_preferences,
@@ -55,7 +56,7 @@ def settings_payload(
 
     directories: list[dict[str, Any]] = []
     for directory in state.settings["modelDirectories"]:
-        expanded = Path(os.path.expanduser(str(directory.get("path") or ""))).expanduser()
+        expanded = model_directory_root(directory)
         directories.append(
             {
                 **directory,

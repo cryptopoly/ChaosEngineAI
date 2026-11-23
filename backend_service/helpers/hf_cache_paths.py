@@ -52,6 +52,23 @@ def _hf_hub_cache_root() -> Path:
     return Path.home() / ".cache" / "huggingface" / "hub"
 
 
+_DEFAULT_HF_CACHE_ENTRY = "~/.cache/huggingface/hub"
+
+
+def model_directory_root(directory: dict) -> Path:
+    """The folder a library directory entry scans.
+
+    The built-in ``hf-cache`` entry stores the literal default path, but the
+    desktop shell moves the cache with ``HF_HUB_CACHE`` / ``HF_HOME``
+    (``hfCachePath``). Follow that for the untouched built-in entry, so a moved
+    cache is listed; an entry the user pointed elsewhere stays as written.
+    """
+    raw_path = str(directory.get("path") or "").strip()
+    if directory.get("id") == "hf-cache" and raw_path == _DEFAULT_HF_CACHE_ENTRY:
+        return _hf_hub_cache_root()
+    return Path(os.path.expanduser(raw_path)).expanduser()
+
+
 def _hf_repo_cache_dir(repo_id: str) -> Path:
     return _hf_hub_cache_root() / f"models--{repo_id.replace('/', '--')}"
 

@@ -10,6 +10,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from backend_service.helpers.hf_cache_paths import model_directory_root
+from backend_service.helpers.text_gguf import is_aux_gguf
 from backend_service.helpers.formatting import (
     _bytes_to_gb,
     _detect_model_max_context,
@@ -450,6 +452,25 @@ def _iter_discovered_models(root: Path, *, max_depth: int = 8) -> list[tuple[Pat
     return discovered
 
 
+def _aux_gguf_only_kind(child: Path) -> str | None:
+    """``"draft"`` or ``"other"`` when a cache folder holds only sidecar GGUF files.
+
+    A repo downloaded for its speculative-decoding drafter (``mtp-*.gguf``, a
+    DFlash 2 drafter) or only a projector / imatrix has no weights to chat
+    with, so it must not appear as a runnable text model (FU-611). ``None``
+    when the folder has a real model file or any other weight format.
+    """
+    try:
+        ggufs = [f.name for f in child.rglob("*.gguf")]
+        if not ggufs or any(not is_aux_gguf(n) for n in ggufs):
+            return None
+        if any(child.rglob("*.safetensors")) or any(child.rglob("pytorch_model*.bin")):
+            return None
+    except OSError:
+        return None
+    return "draft" if any("mmproj" not in n.lower() and "imatrix" not in n.lower() for n in ggufs) else "other"
+
+
 def _discover_local_models(model_directories: list[dict[str, Any]], limit: int = 500) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
     seen_paths: set[str] = set()
@@ -461,7 +482,7 @@ def _discover_local_models(model_directories: list[dict[str, Any]], limit: int =
         if not raw_path:
             continue
 
-        root = Path(os.path.expanduser(raw_path)).expanduser()
+        root = model_directory_root(directory)
         if not root.exists():
             continue
 
@@ -489,7 +510,11 @@ def _discover_local_models(model_directories: list[dict[str, Any]], limit: int =
                 # Whether the MLX checkpoint holds MTP weights (MTPLX needs them). Index
                 # read only; GGUF files are not probed here (a 2 MB header read each).
                 mtp_heads = _mlx_mtp_heads(path_key) if file_format != "GGUF" else None
-                if _looks_like_video_model(name):
+                aux_only = _aux_gguf_only_kind(child) if source_kind and source_kind.lower() == "hf cache" else None
+                if aux_only:
+                    # A repo pulled only for its drafter / projector / imatrix file has no model to run.
+                    model_type = aux_only
+                elif _looks_like_video_model(name):
                     model_type = "video"
                 elif _looks_like_image_model(child, name):
                     model_type = "image"

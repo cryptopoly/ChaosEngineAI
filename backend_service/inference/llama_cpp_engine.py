@@ -867,8 +867,16 @@ class LlamaCppEngine(BaseInferenceEngine):
             context_tokens=context_tokens,
             cache_flags=cache_flags,
         )
-        if offload_args:
-            command.extend(offload_args)
+        command.extend(offload_args)
+        # Automatic with Fit in memory on passes no expert flags, but llama.cpp's own --fit then moves experts to
+        # system RAM by tensor override when the file is bigger than the card (FU-550), so it needs the same read-in.
+        if offload_args or (
+            moe_cpu_layers is None
+            and fit_enabled
+            and resolved_gguf is not None
+            and _discrete_cuda_host()
+            and _auto_cpu_moe_layers(resolved_gguf, context_tokens, cache_flags)
+        ):
             # llama.cpp warns that CPU tensor overrides under mmap are slow: reading the file in loaded in 6.6 s
             # instead of 12.6 s and decoded at 84 tok/s instead of 72 to 83 (Qwen3.6-35B-A3B, 20 blocks, 4090).
             if (

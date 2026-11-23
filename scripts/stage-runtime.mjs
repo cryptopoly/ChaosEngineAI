@@ -68,7 +68,7 @@ const BUNDLED_SAMPLE_FILM = "backend_service/storyboard/sample/film";
 // the repository's "latest" release, which had become a `v0.7.0` entry holding
 // only nightly-tag.txt, so no platform's release bundle got a llama-server.
 // Override with CHAOSENGINE_LLAMA_CPP_TAG.
-const LLAMA_CPP_TAG = process.env.CHAOSENGINE_LLAMA_CPP_TAG || "b12441";
+const LLAMA_CPP_TAG = process.env.CHAOSENGINE_LLAMA_CPP_TAG || "b12649";
 
 const NSIS_ARCHIVE_LIMIT_BYTES = 1.9 * 1024 ** 3;
 

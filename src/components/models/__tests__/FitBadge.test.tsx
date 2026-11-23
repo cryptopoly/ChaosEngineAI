@@ -118,6 +118,16 @@ describe("FitBadge", () => {
     expect(markup).toContain("The repo is gated on Hugging Face.");
   });
 
+  it("says Fits with offload for a mixture of experts that runs with experts in system RAM (FU-550)", () => {
+    const offload = { cpuMoeLayers: 21, moeLayers: 40, blocks: 40, gpuGb: 10.9, ramGb: 9.1, expertGb: 16.9 };
+    const fit = readFit({ ...makeFit({ status: "tight", reason: "Fits with expert offload: ..." }), offload });
+    expect(fit?.offload).toEqual(offload);
+    const markup = renderToStaticMarkup(<FitBadge fit={fit} />);
+    expect(markup).toContain("fit-badge--tight");
+    expect(markup).toContain("Fits with offload");
+    expect(renderToStaticMarkup(<FitBadge fit={makeFit({ status: "tight" })} />)).toContain(">Tight<");
+  });
+
   it("renders the Best fit ribbon with an explanation", () => {
     const markup = renderToStaticMarkup(<BestFitRibbon />);
     expect(markup).toContain("best-fit-ribbon");

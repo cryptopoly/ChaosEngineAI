@@ -11,7 +11,9 @@ export function fitLabel(fit: Fit, t: TFunction<"library">): string {
     case "fits":
       return t("models.fit.fits", { defaultValue: "Fits" });
     case "tight":
-      return t("models.fit.tight", { defaultValue: "Tight" });
+      return fit.offload
+        ? t("models.fit.fitsOffload", { defaultValue: "Fits with offload" })
+        : t("models.fit.tight", { defaultValue: "Tight" });
     case "wont-fit":
       return t("models.fit.wontFit", { defaultValue: "Won't fit" });
     default:

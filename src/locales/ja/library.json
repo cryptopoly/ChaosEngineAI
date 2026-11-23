@@ -699,7 +699,8 @@
       "tight": "ギリギリ",
       "unknown": "このマシン向けではありません",
       "needsAccess": null,
-      "wontFit": "収まらない"
+      "wontFit": "収まらない",
+      "fitsOffload": null
     },
     "image": {
       "emptyAttention": "要確認の画像モデルはありません。",

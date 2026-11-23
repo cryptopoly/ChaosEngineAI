@@ -248,5 +248,16 @@
     "runInTerminal": "在終端機中執行，然後重新啟動 ChaosEngineAI。",
     "updating": "正在更新...",
     "updateAvailable": "有可用更新"
+  },
+  "moeOffload": {
+    "label": null,
+    "auto": null,
+    "autoShort": null,
+    "autoWithCount": null,
+    "none": null,
+    "layers": null,
+    "hint": null,
+    "aboutTitle": null,
+    "body": null
   }
 }

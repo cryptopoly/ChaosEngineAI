@@ -699,7 +699,8 @@
       "tight": "빠듯함",
       "unknown": "이 컴퓨터용이 아님",
       "needsAccess": null,
-      "wontFit": "부적합"
+      "wontFit": "부적합",
+      "fitsOffload": null
     },
     "image": {
       "emptyAttention": "확인이 필요한 이미지 모델이 없습니다.",

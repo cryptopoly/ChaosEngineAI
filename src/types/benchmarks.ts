@@ -135,6 +135,9 @@ export interface BenchmarkRunPayload {
   treeBudget: number;
   /** FU-002: TriAttention MLX kv_budget. Defaults to 2048 server-side. */
   kvBudget: number;
+  /** Shared with ``LaunchPreferences`` for the launch controls; benchmark loads use automatic (FU-550). */
+  moeCpuLayers?: number | null;
+  moeCpuLayersFor?: string | null;
   contextTokens: number;
   maxTokens: number;
   temperature: number;

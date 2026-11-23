@@ -325,6 +325,7 @@ export function ModelLaunchModal({
               installingTensorfold={tensorfold?.installing}
               tensorfoldJob={tensorfold?.job}
               isAppleSilicon={isAppleSilicon}
+              showMoeOffload
               // Numbers for no model (speed, disk, quality, fit) are not shown (D-105 C).
               showPreview={selectedOption !== null}
               compact

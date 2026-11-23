@@ -34,6 +34,17 @@ export interface Fit {
   basis: FitBasis;
   /** Set by an area's adapter when ``unknown`` means "gated, no access yet", not "cannot run here". */
   accessBlocked?: boolean;
+  /** A mixture of experts that fits a discrete card with some experts in system RAM (FU-550). */
+  offload?: FitOffload;
+}
+
+export interface FitOffload {
+  cpuMoeLayers: number | null;
+  moeLayers: number | null;
+  blocks: number | null;
+  gpuGb: number;
+  ramGb: number;
+  expertGb: number;
 }
 
 const FIT_STATUSES: readonly FitStatus[] = ["fits", "tight", "wont-fit", "unknown"];
@@ -57,6 +68,7 @@ export function readFit(value: unknown): Fit | null {
     headroomPct: finiteOrNull(raw.headroomPct),
     reason: typeof raw.reason === "string" ? raw.reason : "",
     basis: raw.basis === "measured" ? "measured" : "estimated",
+    ...(raw.offload && typeof raw.offload === "object" ? { offload: raw.offload as FitOffload } : {}),
   };
 }
 

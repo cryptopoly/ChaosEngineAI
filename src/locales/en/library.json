@@ -699,7 +699,8 @@
       "tight": "Tight",
       "unknown": "Not for this machine",
       "needsAccess": "Needs access",
-      "wontFit": "Won't fit"
+      "wontFit": "Won't fit",
+      "fitsOffload": "Fits with offload"
     },
     "image": {
       "emptyAttention": "No image model needs attention.",

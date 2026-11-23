@@ -248,5 +248,16 @@
     "runInTerminal": "terminallIjDaq yIchu', ghIq ChaosEngineAI yItaghqa'.",
     "updating": "chu'moHlI'...",
     "updateAvailable": "chu'moH tu'lu'"
+  },
+  "moeOffload": {
+    "label": null,
+    "auto": null,
+    "autoShort": null,
+    "autoWithCount": null,
+    "none": null,
+    "layers": null,
+    "hint": null,
+    "aboutTitle": null,
+    "body": null
   }
 }

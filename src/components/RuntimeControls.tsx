@@ -7,6 +7,7 @@ import { InstallLogPanel } from "./InstallLogPanel";
 import { TensorfoldLaunchControl } from "./TensorfoldLaunchControl";
 import { tensorfoldEngaged, type TensorfoldLaunchInfo } from "./tensorfoldSupport";
 import { NativeKvTypeField } from "./NativeKvTypeField";
+import { MoeOffloadField, moeCpuLayersForLoad } from "./MoeOffloadField";
 import { SliderField } from "./SliderField";
 import { PerformancePreview } from "./PerformancePreview";
 import {
@@ -196,6 +197,9 @@ interface RuntimeControlsProps {
    * would error and the checkbox would render disabled with no path
    * to recovery. Pass true on Darwin arm64 hosts only. */
   isAppleSilicon?: boolean;
+  /** Show the mixture-of-experts "Experts in system RAM" control (FU-550); only the model launch dialog's loads
+   * send it. */
+  showMoeOffload?: boolean;
 }
 
 function StrategyInstallTerminal({
@@ -304,6 +308,7 @@ export function RuntimeControls({
   installingTensorfold,
   tensorfoldJob,
   isAppleSilicon = false,
+  showMoeOffload = false,
 }: RuntimeControlsProps) {
   const { t } = useTranslation("runtime");
   const effectiveMaxContext = Math.max(2048, maxContext ?? 262144);
@@ -643,6 +648,17 @@ export function RuntimeControls({
         ) : null}
         {isGgufBackend && selectedStrategy?.id === "native" && !tensorfoldRuns ? (
           <NativeKvTypeField cacheBits={settings.cacheBits} onChange={(bits) => onChange("cacheBits", bits)} />
+        ) : null}
+        {showMoeOffload && isGgufBackend && preview.moeOffload && selectedModelRef ? (
+          <MoeOffloadField
+            offload={preview.moeOffload}
+            modelRef={selectedModelRef}
+            value={moeCpuLayersForLoad(settings, selectedModelRef)}
+            onChange={(layers) => {
+              onChange("moeCpuLayers", layers);
+              onChange("moeCpuLayersFor", layers === null ? null : selectedModelRef);
+            }}
+          />
         ) : null}
         {fp16LayersSupported ? (
           <SliderField

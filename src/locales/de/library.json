@@ -699,7 +699,8 @@
       "tight": "Knapp",
       "unknown": "Nicht für diesen Rechner",
       "needsAccess": null,
-      "wontFit": "Passt nicht"
+      "wontFit": "Passt nicht",
+      "fitsOffload": null
     },
     "image": {
       "emptyAttention": "Kein Bildmodell muss geprüft werden.",

@@ -241,6 +241,34 @@ and soundfile (BSD-3-Clause), both already shipped. On Apple Silicon it shells o
 ``ltx-2-mlx`` (MIT) ``a2v --distilled`` command (not yet run on a Mac). ffmpeg prepares the vocal and
 muxes it into the clip. No weights are bundled.
 
+### Sync scoring for lip-sync takes (optional add-on, installed on demand, never bundled; D-132)
+
+"Install sync scoring" in the Video Studio's lip-sync panel puts these into
+``~/.chaosengine/addons/lipsync-score`` (``backend_service/lipsync_score_addon.py``); the score runs
+from the backend's own Python as a separate process. Pinned versions, wheels only:
+
+| Package | Version | Licence |
+|---|---|---|
+| MediaPipe (Google, Face Landmarker) | 1.2.3 | Apache 2.0 |
+| opencv-python-headless (OpenCV) | 5.1.0.95 | Apache 2.0 (bundled third-party notices in the wheel) |
+| absl-py | 2.5.1 | Apache 2.0 |
+| flatbuffers | 25.12.19 | Apache 2.0 |
+| matplotlib (imported by MediaPipe at start) | 3.11.2 | Matplotlib licence (PSF-based, BSD-compatible) |
+| contourpy | 1.4.0 | BSD-3-Clause |
+| cycler | 0.12.1 | BSD-3-Clause |
+| fonttools | 4.68.0 | MIT |
+| kiwisolver | 1.5.1 | BSD-3-Clause |
+| pyparsing | 3.3.3 | MIT |
+| python-dateutil | 2.9.0.post0 | Apache 2.0 and BSD-3-Clause |
+| six | 1.17.0 | MIT |
+
+The face model ``face_landmarker.task`` (MediaPipe Face Landmarker, float16 v1, 3.8 MB, Apache 2.0
+per Google's model card) is downloaded from
+``https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task``
+and kept only when its SHA-256 is
+``64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff``. numpy, scipy, soundfile,
+Pillow and packaging come from the backend.
+
 ### Nunchaku and vLLM in WSL (optional, installed by the user, never bundled)
 
 - **Nunchaku** (<https://github.com/nunchaku-ai/nunchaku>, MIT HAN Lab) - Apache-2.0. The FLUX.1 Schnell and Dev

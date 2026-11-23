@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 270 rows with work, decisions or watch items still open, newest first.
+summary: 271 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-608 · /api/chat/generate ignores thinkingMode — Next llama.cpp engine pass</summary>
+
+**Status or trigger:** Next llama.cpp engine pass
+
+**Notes:** Found 2026-11-23 while measuring FU-550: `LlamaCppEngine.generate` never passes `thinking_mode`, so the server-wide `--reasoning off` always applies on the non-streaming route; the streaming route Chat uses is correct (Thinking off gave no reasoning, on gave 341 characters). Fix: pass `thinking_mode` in `generate` and add a test beside the streaming one.
+
+</details>
 
 <details>
 <summary>FU-607 · Snap song-to-shots cuts to phrase starts — Next lip-sync quality pass</summary>

@@ -27,13 +27,14 @@ LIPSYNC_TOOLS: list[dict[str, Any]] = [
     {
         "name": "make_lipsync_shot",
         "description": "Make: start a lip-sync video job (returns a job id): a start still and a vocal clip become a 3 to 8 s clip whose mouth "
-        "follows the audio. Needs an LTX-2.3 model with lipSync in list_models. Singing: use the vocal stem, set singing, make three takes.",
+        "follows the audio. Needs an LTX-2.3 model with lipSync in list_models. Singing: use the vocal stem and set singing.",
         "inputSchema": _obj(
             {
                 "prompt": {"type": "string", "minLength": 1, "maxLength": 4000, "description": "The shot: who sings or speaks, framing, light. Keep the camera still."},
                 "start_image": {"type": "string", "description": "Path or upload: handle of the still the clip starts from (a face, frontal works best)."},
                 "audio": {"type": "string", "maxLength": 1024, "description": "upload: handle, or a file in the app's output folders: the vocal clip (WAV or FLAC; mono is fine). A vocal stem follows best; the full mix works less well."},
-                "singing": {"type": "boolean", "description": "The vocal is sung: adds singing wording to the prompt (stops takes that listen with a shut mouth). Also: use a vocal stem, start 0.4 s before a phrase, keep 3 to 5 s, a frontal still, keep the best of three takes. Leave off for speech."},
+                "singing": {"type": "boolean", "description": "The vocal is sung: adds singing wording to the prompt (stops takes that listen with a shut mouth). Also: use a vocal stem, start 0.4 s before a phrase, keep 3 to 5 s, a frontal still. Leave off for speech."},
+                "takes": {"type": "integer", "minimum": 1, "maximum": 4, "description": "Takes, each with its own seed; the sync score keeps the best. Default 3 when singing, else 1; 4 for best quality."},
                 "audio_start": {"type": "number", "minimum": 0, "maximum": 3600, "description": "Where in the audio the shot starts, in seconds (default 0)."},
                 "seconds": {"type": "number", "minimum": 3, "maximum": 8, "description": "Shot length; default: the audio from audio_start, held to 3 to 8 s. Frames follow 8k+1 at 24 fps."},
                 "model": {"type": "string", "description": "Model id from list_models with lipSync. Default: the installed one."},
@@ -111,6 +112,8 @@ def make_lipsync_shot(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         fields["seed"] = args["seed"]
     if args.get("singing"):
         fields["lipSyncSinging"] = True
+    if "takes" in args:
+        fields["lipSyncTakes"] = args["takes"]
     try:
         body = VideoGenerationRequest(**fields)
         lipsync_runtime.shot_frames(body.numFrames, body.fps)
@@ -132,9 +135,17 @@ def make_lipsync_shot(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
             "hasAudio": art.get("hasAudio"), "seed": art.get("seed"), "model": art.get("modelName"),
             "timings": art.get("timings"),
         }
+        if art.get("lipSyncTakes"):  # several takes: which one the sync score kept, the others are gallery clips
+            output["takes"] = [{"take": t.get("take"), "seed": t.get("seed"), "kept": t.get("kept"),
+                                "score": (t.get("score") or {}).get("score"), "usable": (t.get("score") or {}).get("usable")}
+                               for t in art["lipSyncTakes"]]
         return output, notes + _artifact_notes(art)
 
-    estimate = lipsync_runtime.estimate_seconds(variant, int(body.width), int(body.height), body.numFrames)
+    from backend_service.lipsync_takes import take_count
+
+    takes = take_count(body.lipSyncTakes, body.lipSyncSinging)
+    estimate = lipsync_runtime.estimate_seconds(variant, int(body.width), int(body.height), body.numFrames, takes,
+                                                warm=lipsync_runtime.loaded_repo() == variant.get("repo"))
     return _submitted(STORE.submit("video", f"lip sync · {variant.get('name') or variant['id']}", run,
                                    estimate_seconds=estimate))
 

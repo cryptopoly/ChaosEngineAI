@@ -124,15 +124,25 @@ def shot_frames(frames: int, fps: int) -> int:
 _LOAD_SECONDS = 35.0  # the spike's measured load from the page cache, part of every fresh-process shot
 
 
-def estimate_seconds(variant: dict[str, Any] | None, width: int, height: int, frames: int) -> float | None:
-    """Seconds for one shot from the row's measured ``lipSync`` figures: the load plus the rest scaled by pixels x
-    frames against the measured shot. None when the row has no measurement (the Mac path)."""
+def estimate_seconds(variant: dict[str, Any] | None, width: int, height: int, frames: int, takes: int = 1,
+                     warm: bool = False) -> float | None:
+    """Seconds for one shot of ``takes`` takes from the row's measured ``lipSync`` figures: the first take in a fresh
+    worker (the load plus the rest scaled by pixels x frames against the measured shot; a warm take when ``warm``),
+    every further take warm, plus the sync score per take when there is more than one. None when the row has no
+    measurement (the Mac path)."""
+    from backend_service.lipsync_takes import SCORE_SECONDS
+
     block = (variant or {}).get("lipSync") or {}
     per_shot, ref = block.get("secondsPerShot"), block.get("estimateRef") or {}
     if not isinstance(per_shot, (int, float)) or not ref:
         return None
     scale = (width * height * frames) / float(ref["width"] * ref["height"] * ref["frames"])
-    return round(_LOAD_SECONDS + (float(per_shot) - _LOAD_SECONDS) * scale, 1)
+    cold = _LOAD_SECONDS + (float(per_shot) - _LOAD_SECONDS) * scale
+    per_warm = block.get("secondsPerShotWarm")
+    warm_take = float(per_warm) * scale if isinstance(per_warm, (int, float)) else cold
+    takes = max(1, int(takes))
+    total = (warm_take if warm else cold) + (takes - 1) * warm_take + (SCORE_SECONDS * takes if takes > 1 else 0.0)
+    return round(total, 1)
 
 
 def memory_refusal(
@@ -255,8 +265,12 @@ def mlx_a2v_command(
 
 
 def _run_mlx(*, repo: str, model_name: str, prompt: str, width: int, height: int, frames: int, fps: int, seed: int,
-             audio: Path, image: Path, output: Path) -> dict[str, Any]:
+             audio: Path, image: Path, output: Path, label: str = "") -> dict[str, Any]:
     from backend_service import ltx2_mlx_runtime as ltx2
+    from backend_service.progress import VIDEO_PROGRESS
+
+    if label:
+        VIDEO_PROGRESS.set_message(label.rstrip(": "))
 
     engine = ltx2.Ltx2MlxVideoEngine()
     status = engine.probe()
@@ -327,7 +341,7 @@ def release_worker(reason: str = "unloaded") -> bool:
 
 
 def _run_cuda(*, repo: str, prompt: str, width: int, height: int, frames: int, fps: int, seed: int,
-              audio: Path, image: Path, output: Path) -> dict[str, Any]:
+              audio: Path, image: Path, output: Path, label: str = "") -> dict[str, Any]:
     global _LOADED_REPO
     from backend_service.helpers.hf_local import local_snapshot_path
     from backend_service.progress import PHASE_DECODING, PHASE_DIFFUSING, PHASE_ENCODING, VIDEO_PROGRESS, GenerationCancelled
@@ -344,11 +358,11 @@ def _run_cuda(*, repo: str, prompt: str, width: int, height: int, frames: int, f
         elif event.get("event") == "stage":
             stage = event.get("stage")
             if stage == "encode":
-                VIDEO_PROGRESS.set_phase(PHASE_ENCODING, message="Encoding the vocal clip")
+                VIDEO_PROGRESS.set_phase(PHASE_ENCODING, message=f"{label}Encoding the vocal clip")
             elif stage == "denoise":
-                VIDEO_PROGRESS.set_phase(PHASE_DIFFUSING, message="Denoising against the vocal")
+                VIDEO_PROGRESS.set_phase(PHASE_DIFFUSING, message=f"{label}Denoising against the vocal")
             elif stage == "decode":
-                VIDEO_PROGRESS.set_phase(PHASE_DECODING, message="Decoding video")
+                VIDEO_PROGRESS.set_phase(PHASE_DECODING, message=f"{label}Decoding video")
 
     if _LOADED_REPO not in (None, repo):
         release_worker("another model was asked for")  # unload before reload: never two pipelines at once
@@ -390,12 +404,16 @@ def _run_cuda(*, repo: str, prompt: str, width: int, height: int, frames: int, f
 def generate(body: Any, variant: dict[str, Any]) -> dict[str, Any]:
     """Make one lip-sync shot for a checked request (``audioPath`` and ``startImagePath`` resolved by the route).
 
-    Returns the artifact fields the video gallery saves (``videoBytes`` included). Raises ``LipSyncError``,
-    ``GenerationCancelled`` or ``RuntimeError``.
+    With more than one take (``lipSyncTakes``, default 3 for a sung vocal and 1 for speech, ``lipsync_takes``) each
+    take gets its own seed and the sync score keeps one. Returns the artifact fields the video gallery saves
+    (``videoBytes`` included) for the kept take; the other takes ride along in ``otherTakes`` (artifact fields each)
+    and every take is listed in ``lipSyncTakes``. Cancel stops the run between takes as well as inside one. Raises
+    ``LipSyncError``, ``GenerationCancelled`` or ``RuntimeError``.
     """
+    from backend_service import lipsync_takes
     from backend_service.helpers.generation_limits import normalize_video_size, size_limits
     from backend_service.helpers.video_audio import mp4_has_audio_bytes
-    from backend_service.progress import PHASE_LOADING, VIDEO_PROGRESS
+    from backend_service.progress import PHASE_LOADING, PHASE_SAVING, VIDEO_PROGRESS, GenerationCancelled
     from backend_service.video_runtime.device import _resolve_video_seed
 
     engine = engine_for(variant)
@@ -413,37 +431,84 @@ def generate(body: Any, variant: dict[str, Any]) -> dict[str, Any]:
     notes.append(f"lip sync: the vocal clip from {body.audioStartSeconds:g} s, {seconds:.2f} s long, held fixed while "
                  f"the picture is made; it is the clip's sound")
     prompt = body.prompt
-    if getattr(body, "lipSyncSinging", False):
+    singing = bool(getattr(body, "lipSyncSinging", False))
+    if singing:
         prompt = singing_prompt(body.prompt)
         if prompt != body.prompt:
             notes.append(f"sung vocal: '{SINGING_CUE}' added to the prompt")
     if engine == "mlx":
         notes.append("Mac lip sync (ltx-2-mlx a2v) has not been tested yet")
+    takes = lipsync_takes.take_count(getattr(body, "lipSyncTakes", None), singing)
+    seeds = lipsync_takes.take_seeds(seed, takes)
+    found = lipsync_takes.scorer() if takes > 1 else None
+    no_score = found if isinstance(found, str) else None
 
     VIDEO_PROGRESS.begin(
-        run_label=f"{variant['name']} · lip sync · {frames}f @ {width}x{height}",
+        run_label=f"{variant['name']} · lip sync · {frames}f @ {width}x{height}" + (f" · {takes} takes" if takes > 1 else ""),
         total_steps=STEPS if engine == "cuda" else 11,
         phase=PHASE_LOADING,
-        message=f"Loading {variant['name']}",
+        message=f"Loading {variant['name']}" + (f" (take 1 of {takes})" if takes > 1 else ""),
     )
     started = time.perf_counter()
+    made: list[dict[str, Any]] = []
+    scores: list[Any] = []
     try:
         with tempfile.TemporaryDirectory(prefix="chaosengine-lipsync-") as tmp:
             folder = Path(tmp)
-            wav, silent, final = folder / "vocal.wav", folder / "silent.mp4", folder / "shot.mp4"
+            wav = folder / "vocal.wav"
             prepare_audio(Path(body.audioPath), wav, body.audioStartSeconds, seconds)
             run = _run_cuda if engine == "cuda" else _run_mlx
             extra = {} if engine == "cuda" else {"model_name": str(variant["name"])}
-            result = run(repo=repo, prompt=prompt, width=width, height=height, frames=frames, fps=body.fps,
-                         seed=seed, audio=wav, image=Path(body.startImagePath), output=silent, **extra)
-            mux(silent, wav, final)
-            data = final.read_bytes()
+            for index, take_seed in enumerate(seeds):
+                if VIDEO_PROGRESS.is_cancelled():  # Cancel pressed while the previous take was scored or muxed
+                    raise GenerationCancelled("Lip sync cancelled by user")
+                label = f"Take {index + 1} of {takes}: " if takes > 1 else ""
+                silent, final = folder / f"silent-{index}.mp4", folder / f"shot-{index}.mp4"
+                take_started = time.perf_counter()
+                result = run(repo=repo, prompt=prompt, width=width, height=height, frames=frames, fps=body.fps,
+                             seed=take_seed, audio=wav, image=Path(body.startImagePath), output=silent, label=label,
+                             **extra)
+                mux(silent, wav, final)
+                value = None
+                if isinstance(found, tuple):
+                    VIDEO_PROGRESS.set_phase(PHASE_SAVING, message=f"{label}Scoring the mouth against the vocal")
+                    value, problem = lipsync_takes.score(found, final, wav)
+                    no_score = no_score or problem
+                scores.append(value)
+                made.append({"seed": take_seed, "data": final.read_bytes(), "result": result,
+                             "seconds": round(time.perf_counter() - take_started, 2)})
     finally:
         VIDEO_PROGRESS.finish()
+    kept = lipsync_takes.pick(scores)
+    sentence = lipsync_takes.summary(scores, seeds, kept, no_score)
+    if sentence:
+        notes.append(sentence)
+    best = made[kept]
+    result, data, seed = best["result"], best["data"], best["seed"]
     from datetime import datetime, timezone
 
+    ids = [f"vid-{uuid.uuid4().hex[:12]}" for _ in made]
+    listing = [{"take": index + 1, "artifactId": ids[index], "seed": take["seed"], "kept": index == kept,
+                "seconds": take["seconds"], "score": scores[index].as_dict() if scores[index] is not None else None}
+               for index, take in enumerate(made)]
+    others = []
+    for index, take in enumerate(made):
+        if index == kept:
+            continue
+        value = scores[index]
+        others.append({
+            "artifactId": ids[index], "seed": take["seed"], "videoBytes": take["data"],
+            "hasAudio": mp4_has_audio_bytes(take["data"]), "timings": take["result"].get("timings"),
+            "durationSeconds": take["seconds"],
+            "runtimeNote": (f"Lip-sync take {index + 1} of {takes} (seed {take['seed']}), not kept"
+                            + (f": score {value.score:.2f}{', usable' if value.usable else ''}" if value is not None else "")
+                            + f"; take {kept + 1} was kept ({ids[kept]})."),
+        })
+
     return {
-        "artifactId": f"vid-{uuid.uuid4().hex[:12]}",
+        "artifactId": ids[kept],
+        "lipSyncTakes": listing if takes > 1 else None,
+        "otherTakes": others,
         "modelId": body.modelId,
         "modelName": variant["name"],
         "prompt": body.prompt,

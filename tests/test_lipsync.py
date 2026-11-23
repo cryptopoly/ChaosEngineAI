@@ -422,7 +422,7 @@ class RouteTests(unittest.TestCase):
             return {"width": kw["width"], "height": kw["height"], "timings": {}, "runtimeLabel": "x"}
 
         with mock.patch.object(lip, "_run_cuda", side_effect=fake_run):
-            sung = self.post(lipSyncSinging=True)
+            sung = self.post(lipSyncSinging=True, lipSyncTakes=1)
             spoken = self.post()
         self.assertEqual(sung.status_code, 200, sung.text)
         self.assertEqual(sent[0], lip.singing_prompt("a woman sings to the camera"))
@@ -431,6 +431,79 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(art["prompt"], "a woman sings to the camera")  # the gallery keeps the user's prompt
         self.assertIn("sung vocal", art["runtimeNote"])
         self.assertNotIn("sung vocal", spoken.json()["artifact"]["runtimeNote"])
+
+    @unittest.skipUnless(_ffmpeg(), "no ffmpeg on this machine")
+    def test_a_sung_shot_makes_three_takes_and_keeps_the_best_scored(self) -> None:
+        from backend_service import lipsync_takes
+        from backend_service.lip_sync_score import SyncScore
+
+        seeds: list[int] = []
+        labels: list[str] = []
+
+        def fake_run(**kw):
+            seeds.append(kw["seed"])
+            labels.append(kw["label"])
+            _write_mp4(_ffmpeg(), kw["output"], kw["frames"], kw["fps"])
+            return {"width": kw["width"], "height": kw["height"], "timings": {}, "runtimeLabel": "x"}
+
+        def sync(score: float, usable: bool) -> SyncScore:
+            return SyncScore(frames=121, face_frames=121, voiced_frames=80, r=0.5 if usable else 0.1, r_lag0=0.4, lag=1,
+                             chance_p95=0.3, chance_mean=0.1, beats_chance=usable, closed_while_voiced=0.1,
+                             open_while_silent=0.5, balanced=0.7, motion=1.0, turned_away=0.0, score=score,
+                             mouth_mean=0.03)
+
+        results = iter([(sync(0.60, False), None), (sync(0.45, True), None), (sync(0.40, True), None)])
+        with mock.patch.object(lip, "_run_cuda", side_effect=fake_run),                 mock.patch.object(lipsync_takes, "scorer", return_value=("python", Path("face.task"))),                 mock.patch.object(lipsync_takes, "score", side_effect=lambda *a: next(results)):
+            response = self.post(lipSyncSinging=True)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(seeds, [3, 4, 5])
+        self.assertEqual(labels, ["Take 1 of 3: ", "Take 2 of 3: ", "Take 3 of 3: "])
+        art = response.json()["artifact"]
+        self.assertEqual(art["seed"], 4)  # the usable take beats the higher-scored unusable one
+        kept = [t for t in art["lipSyncTakes"] if t["kept"]]
+        self.assertEqual([t["take"] for t in kept], [2])
+        self.assertIn("kept take 2 (seed 4, score 0.45, usable)", art["runtimeNote"])
+        gallery = {o["artifactId"]: o for o in response.json()["outputs"]}
+        others = [t["artifactId"] for t in art["lipSyncTakes"] if not t["kept"]]
+        self.assertEqual(len(others), 2)
+        for other in others:  # the other takes are one click away in the gallery
+            self.assertIn(other, gallery)
+            self.assertIn("not kept", gallery[other]["runtimeNote"])
+            self.assertTrue(Path(gallery[other]["videoPath"]).is_file())
+
+    @unittest.skipUnless(_ffmpeg(), "no ffmpeg on this machine")
+    def test_takes_without_the_score_keep_take_one_and_say_why(self) -> None:
+        from backend_service import lipsync_takes
+
+        def fake_run(**kw):
+            _write_mp4(_ffmpeg(), kw["output"], kw["frames"], kw["fps"])
+            return {"width": kw["width"], "height": kw["height"], "timings": {}, "runtimeLabel": "x"}
+
+        with mock.patch.object(lip, "_run_cuda", side_effect=fake_run) as run,                 mock.patch.object(lipsync_takes, "scorer", return_value="the sync score needs MediaPipe"):
+            response = self.post(lipSyncTakes=2)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(run.call_count, 2)
+        art = response.json()["artifact"]
+        self.assertEqual(art["seed"], 3)
+        self.assertIn("were not scored (the sync score needs MediaPipe); kept take 1", art["runtimeNote"])
+
+    @unittest.skipUnless(_ffmpeg(), "no ffmpeg on this machine")
+    def test_cancel_between_takes_stops_the_run(self) -> None:
+        from backend_service import lipsync_takes
+        from backend_service.progress import VIDEO_PROGRESS
+
+        def fake_run(**kw):
+            _write_mp4(_ffmpeg(), kw["output"], kw["frames"], kw["fps"])
+            VIDEO_PROGRESS.request_cancel()  # Cancel pressed while take 1 finishes
+            return {"width": kw["width"], "height": kw["height"], "timings": {}, "runtimeLabel": "x"}
+
+        with mock.patch.object(lip, "_run_cuda", side_effect=fake_run) as run,                 mock.patch.object(lipsync_takes, "scorer", return_value="no score"):
+            response = self.post(lipSyncTakes=3)
+        self.assertEqual((response.status_code, response.json()["detail"]), (409, "cancelled"))
+        self.assertEqual(run.call_count, 1)
+
+    def test_more_than_four_takes_is_refused(self) -> None:
+        self.assertEqual(self.post(lipSyncTakes=5).status_code, 422)
 
     def test_cancel_is_409(self) -> None:
         from backend_service.progress import GenerationCancelled
@@ -477,6 +550,7 @@ class AgentToolTests(unittest.TestCase):
                 answer = lipsync_tool.make_lipsync_shot(SimpleNamespace(request=None, app=None),
                                                         {"prompt": "sings", "start_image": str(still), "audio": str(wav),
                                                          "singing": True})
+                self.assertGreater(captured["estimate"], 250)  # three takes by default for a sung vocal
                 self.assertEqual(answer["jobId"], "j1")
                 self.assertEqual(captured["kind"], "video")
                 self.assertGreater(captured["estimate"], 100)

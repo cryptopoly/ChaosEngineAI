@@ -69,6 +69,8 @@ def _hydrate_video_artifact(payload: dict[str, Any]) -> dict[str, Any]:
         "startImagePath": str(payload.get("startImagePath") or "") or None,
         "endImagePath": str(payload.get("endImagePath") or "") or None,
         "audioPath": str(payload.get("audioPath") or "") or None,  # lip sync: the vocal clip the mouth follows
+        # lip sync with several takes (D-110): every take, its seed, sync score and whether it was kept
+        "lipSyncTakes": payload.get("lipSyncTakes") if isinstance(payload.get("lipSyncTakes"), list) else None,
         "projectId": str(payload.get("projectId") or "") or None,
         "projectName": str(payload.get("projectName") or "") or None,
         "shotId": str(payload.get("shotId") or "") or None,

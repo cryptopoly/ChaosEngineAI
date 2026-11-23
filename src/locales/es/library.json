@@ -96,7 +96,7 @@
       "context": "Contexto",
       "status": "Estado",
       "released": "Publicado",
-      "gpuMemory": null
+      "gpuMemory": "Memoria de GPU"
     },
     "status": {
       "downloading": "Descargando",
@@ -698,14 +698,14 @@
       "numbers": "Necesita unos {need} GB de los {usable} GB utilizables en esta máquina.",
       "tight": "Justo",
       "unknown": "No para esta máquina",
-      "needsAccess": null,
+      "needsAccess": "Requiere acceso",
       "wontFit": "No cabe",
-      "fitsOffload": null
+      "fitsOffload": "Cabe con offload"
     },
     "image": {
       "emptyAttention": "Ningún modelo de imagen requiere atención.",
       "emptyCatalog": "Aún no hay modelos de imagen en el catálogo. Comprueba que el backend esté en ejecución.",
-      "loadingCatalog": null,
+      "loadingCatalog": "Cargando los modelos de imagen…",
       "emptyDownloading": "No se está descargando ningún modelo de imagen.",
       "emptyInstalled": "Aún no hay modelos de imagen instalados. Elige uno de los modelos disponibles para descargarlo.",
       "intro": "Todos los modelos de imagen en una sola lista. Descarga uno para usarlo en Estudio de imagen; filtra por instalados, disponibles o en descarga."
@@ -734,7 +734,7 @@
     "video": {
       "intro": "Todos los modelos de video en una sola lista. Descarga uno para usarlo en Estudio de video; filtra por instalados, disponibles o en descarga.",
       "emptyCatalog": "Aún no hay modelos de video en el catálogo. Comprueba que el backend esté en ejecución.",
-      "loadingCatalog": null,
+      "loadingCatalog": "Cargando los modelos de video…",
       "emptyInstalled": "Aún no hay modelos de video instalados. Elige uno de los modelos disponibles para descargarlo.",
       "emptyDownloading": "No se está descargando ningún modelo de video.",
       "emptyAttention": "Ningún modelo de video requiere atención."
@@ -792,15 +792,15 @@
         "already": "Ya está en la carpeta de modelos compartida ({where})."
       },
       "recommended": {
-        "subtitle": null,
-        "subtitleBare": null,
-        "intro": null,
-        "best": null,
-        "showAll": null,
-        "fastest": null,
-        "newest": null,
-        "popular": null,
-        "popularTitle": null
+        "subtitle": "Recomendado para este equipo ({hardware})",
+        "subtitleBare": "Recomendado para este equipo",
+        "intro": "Aún no hay ningún modelo de chat descargado. Estos son los que mejor encajan en este equipo: descarga uno y abre Chat. El primero es la elección del Panel.",
+        "best": "Mejor opción",
+        "showAll": "Mostrar los {count} modelos y los filtros",
+        "fastest": "Más rápido",
+        "newest": "Más reciente",
+        "popular": "Más popular",
+        "popularTitle": "{count} descargas en Hugging Face en los últimos 30 días (a fecha de {date})"
       }
     }
   }

@@ -1,7 +1,7 @@
 {
   "liveStats": {
     "title": "ライブシステム統計",
-    "subtitle": null,
+    "subtitle": "このコンピューターのリアルタイムの数値: メモリ、ディスク、実行中のモデル。",
     "runtimeEngine": "ランタイムエンジン",
     "noModelLoaded": "モデルが読み込まれていません",
     "inferenceActivity": "推論アクティビティ",
@@ -77,7 +77,7 @@
     "backendReadiness": {
       "title": "バックエンドの準備状況",
       "detail": "MLX インストール済み：{mlx} / mlx-lm インストール済み：{mlxLm} / MLX 使用可能：{mlxUsable} / GGUF ランタイム：{gguf}",
-      "detailGguf": null
+      "detailGguf": "GGUF ランタイム: {gguf}"
     }
   },
   "recommendation": {
@@ -87,30 +87,30 @@
     "ggufDetail": "クロスプラットフォームモードでは、幅広いハードウェアサポートのため llama.cpp GGUF が優先されます。"
   },
   "bestFit": {
-    "subtitle": null,
-    "badge": null,
-    "openModels": null,
-    "seeInModels": null,
-    "download": null,
-    "needsGpu": null,
-    "needsMemory": null,
-    "speedMeasured": null,
-    "speedEstimated": null,
-    "speedRtx4090": null
+    "subtitle": "カタログの中でこのコンピューターに最も合うモデルです。判定は「モデル」ページと同じです。",
+    "badge": "このコンピューターに最適",
+    "openModels": "チャットモデルを開く",
+    "seeInModels": "チャットモデルで見る",
+    "download": "ダウンロード {size}",
+    "needsGpu": "GPU メモリ {usable} GB のうち約 {need} GB が必要",
+    "needsMemory": "使用可能なメモリ {usable} GB のうち約 {need} GB が必要",
+    "speedMeasured": "{value} tok/s (このコンピューターで測定)",
+    "speedEstimated": "約 {value} tok/s (推定)",
+    "speedRtx4090": "RTX 4090 で測定: {value} tok/s"
   },
   "startHere": {
-    "title": null,
-    "subtitle": null,
-    "step1": null,
-    "step2": null,
-    "recommended": null,
-    "download": null,
-    "downloadSize": null,
-    "downloading": null,
-    "downloaded": null,
-    "otherModels": null,
-    "noPick": null,
-    "openModels": null,
-    "openChat": null
+    "title": "ここから始める",
+    "subtitle": "チャットモデルがまだダウンロードされていません。このコンピューター ({hardware}) で最初のチャットを始めるまで、2 ステップです。",
+    "step1": "このコンピューターに合うモデルをダウンロードします。",
+    "step2": "チャットを開き、スレッド上部でそのモデルを選びます。",
+    "recommended": "おすすめ",
+    "download": "ダウンロード",
+    "downloadSize": "ダウンロード ({size})",
+    "downloading": "ダウンロード中、{percent}%",
+    "downloaded": "ダウンロード済み",
+    "otherModels": "その他のおすすめモデル",
+    "noPick": "カタログに、このコンピューターで余裕を持って動くモデルはありません。チャットモデルにはすべてのモデルが適合判定つきで並んでいます。",
+    "openModels": "チャットモデルを開く",
+    "openChat": "チャットを開く"
   }
 }

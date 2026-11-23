@@ -96,7 +96,7 @@
       "context": "Contexte",
       "status": "Statut",
       "released": "Publié",
-      "gpuMemory": null
+      "gpuMemory": "Mémoire GPU"
     },
     "status": {
       "downloading": "Téléchargement",
@@ -698,14 +698,14 @@
       "numbers": "Nécessite environ {need} Go sur les {usable} Go utilisables sur cette machine.",
       "tight": "Juste",
       "unknown": "Pas pour cette machine",
-      "needsAccess": null,
+      "needsAccess": "Accès requis",
       "wontFit": "Ne tient pas",
-      "fitsOffload": null
+      "fitsOffload": "Tient avec déchargement"
     },
     "image": {
       "emptyAttention": "Aucun modèle d'image ne demande d'attention.",
       "emptyCatalog": "Aucun modèle d'image dans le catalogue pour l'instant. Vérifiez que le backend est lancé.",
-      "loadingCatalog": null,
+      "loadingCatalog": "Chargement des modèles d'image…",
       "emptyDownloading": "Aucun modèle d'image n'est en cours de téléchargement.",
       "emptyInstalled": "Aucun modèle d'image installé pour l'instant. Choisissez-en un parmi les modèles disponibles pour le télécharger.",
       "intro": "Tous les modèles d'image dans une seule liste. Téléchargez-en un pour l'utiliser dans Studio image ; filtrez par modèles installés, disponibles ou en cours de téléchargement."
@@ -734,7 +734,7 @@
     "video": {
       "intro": "Tous les modèles vidéo dans une seule liste. Téléchargez-en un pour l'utiliser dans Studio vidéo ; filtrez par modèles installés, disponibles ou en cours de téléchargement.",
       "emptyCatalog": "Aucun modèle vidéo dans le catalogue pour l'instant. Vérifiez que le backend est lancé.",
-      "loadingCatalog": null,
+      "loadingCatalog": "Chargement des modèles vidéo…",
       "emptyInstalled": "Aucun modèle vidéo installé pour l'instant. Choisissez-en un parmi les modèles disponibles pour le télécharger.",
       "emptyDownloading": "Aucun modèle vidéo n'est en cours de téléchargement.",
       "emptyAttention": "Aucun modèle vidéo ne demande d'attention."
@@ -792,15 +792,15 @@
         "already": "Déjà dans le dossier de modèles partagé ({where})."
       },
       "recommended": {
-        "subtitle": null,
-        "subtitleBare": null,
-        "intro": null,
-        "best": null,
-        "showAll": null,
-        "fastest": null,
-        "newest": null,
-        "popular": null,
-        "popularTitle": null
+        "subtitle": "Recommandé pour cet ordinateur ({hardware})",
+        "subtitleBare": "Recommandé pour cet ordinateur",
+        "intro": "Aucun modèle de discussion n'est encore téléchargé. Ceux-ci conviennent le mieux à cet ordinateur : téléchargez-en un, puis ouvrez Discussion. Le premier est le choix du Tableau de bord.",
+        "best": "Meilleur choix",
+        "showAll": "Afficher les {count} modèles et les filtres",
+        "fastest": "Plus rapide",
+        "newest": "Plus récent",
+        "popular": "Plus populaire",
+        "popularTitle": "{count} téléchargements sur Hugging Face ces 30 derniers jours (au {date})"
       }
     }
   }

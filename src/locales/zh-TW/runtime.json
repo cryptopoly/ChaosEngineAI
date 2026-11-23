@@ -250,14 +250,14 @@
     "updateAvailable": "有可用更新"
   },
   "moeOffload": {
-    "label": null,
-    "auto": null,
-    "autoShort": null,
-    "autoWithCount": null,
-    "none": null,
-    "layers": null,
-    "hint": null,
-    "aboutTitle": null,
-    "body": null
+    "label": "系統記憶體中的專家",
+    "auto": "自動",
+    "autoShort": "自動",
+    "autoWithCount": "自動（約 {count} / {total} 層）",
+    "none": "無，全部在 GPU 上",
+    "layers": "{total} 層中的 {count} 層",
+    "hint": "混合專家模型每個 token 只會用到少數幾個專家，因此它們的權重可以放在系統記憶體中並在 CPU 上執行，其餘部分留在 GPU 上。放進記憶體的層越多，佔用的 GPU 記憶體越少，但回覆越慢。目前自動設定：GPU 上約 {gpu} GB，系統記憶體中 {ram} GB。",
+    "aboutTitle": "關於系統記憶體中的專家",
+    "body": "自動模式在放得下時，會把所有內容都留在 GPU 上。放不下且「適配記憶體」已開啟時，引擎會逐層把專家移到系統記憶體，直到模型放得下；「適配記憶體」關閉時，ChaosEngineAI 會依 GPU 的可用記憶體決定層數。在 RTX 4090 上以每個 token 讀取 30 億參數的 350 億參數模型實測：所有專家都在 GPU 上時每秒 150 個 token，一半的層在記憶體中時約 85，全部在記憶體中時約 52。"
   }
 }

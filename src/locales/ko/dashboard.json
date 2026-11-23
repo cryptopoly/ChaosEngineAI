@@ -1,7 +1,7 @@
 {
   "liveStats": {
     "title": "라이브 시스템 통계",
-    "subtitle": null,
+    "subtitle": "이 컴퓨터의 실시간 수치: 메모리, 디스크, 실행 중인 모델.",
     "runtimeEngine": "런타임 엔진",
     "noModelLoaded": "로드된 모델 없음",
     "inferenceActivity": "추론 활동",
@@ -77,7 +77,7 @@
     "backendReadiness": {
       "title": "백엔드 준비 상태",
       "detail": "MLX 설치됨: {mlx} / mlx-lm 설치됨: {mlxLm} / MLX 사용 가능: {mlxUsable} / GGUF 런타임: {gguf}",
-      "detailGguf": null
+      "detailGguf": "GGUF 런타임: {gguf}"
     }
   },
   "recommendation": {
@@ -87,30 +87,30 @@
     "ggufDetail": "크로스 플랫폼 모드는 광범위한 하드웨어 지원을 위해 llama.cpp GGUF를 선호합니다."
   },
   "bestFit": {
-    "subtitle": null,
-    "badge": null,
-    "openModels": null,
-    "seeInModels": null,
-    "download": null,
-    "needsGpu": null,
-    "needsMemory": null,
-    "speedMeasured": null,
-    "speedEstimated": null,
-    "speedRtx4090": null
+    "subtitle": "카탈로그에서 이 컴퓨터에 가장 적합한 모델이며, 모델 페이지와 같은 기준으로 판단합니다.",
+    "badge": "이 컴퓨터에 가장 적합",
+    "openModels": "채팅 모델 열기",
+    "seeInModels": "채팅 모델에서 보기",
+    "download": "다운로드 {size}",
+    "needsGpu": "GPU 메모리 {usable} GB 중 약 {need} GB 필요",
+    "needsMemory": "사용 가능한 메모리 {usable} GB 중 약 {need} GB 필요",
+    "speedMeasured": "{value} tok/s, 이 컴퓨터에서 측정",
+    "speedEstimated": "약 {value} tok/s(추정)",
+    "speedRtx4090": "RTX 4090에서 측정한 {value} tok/s"
   },
   "startHere": {
-    "title": null,
-    "subtitle": null,
-    "step1": null,
-    "step2": null,
-    "recommended": null,
-    "download": null,
-    "downloadSize": null,
-    "downloading": null,
-    "downloaded": null,
-    "otherModels": null,
-    "noPick": null,
-    "openModels": null,
-    "openChat": null
+    "title": "여기서 시작",
+    "subtitle": "다운로드한 채팅 모델이 아직 없습니다. 이 컴퓨터({hardware})에서 첫 채팅을 시작하기까지 두 단계면 됩니다.",
+    "step1": "이 컴퓨터에 맞는 모델을 다운로드합니다.",
+    "step2": "채팅을 열고 스레드 상단에서 모델을 선택합니다.",
+    "recommended": "추천",
+    "download": "다운로드",
+    "downloadSize": "다운로드({size})",
+    "downloading": "다운로드 중, {percent}%",
+    "downloaded": "다운로드됨",
+    "otherModels": "다른 추천 모델",
+    "noPick": "이 컴퓨터에 여유롭게 맞는 카탈로그 모델이 없습니다. 채팅 모델에는 모든 모델이 적합 여부 판정과 함께 나열됩니다.",
+    "openModels": "채팅 모델 열기",
+    "openChat": "채팅 열기"
   }
 }

@@ -250,14 +250,14 @@
     "updateAvailable": "Actualización disponible"
   },
   "moeOffload": {
-    "label": null,
-    "auto": null,
-    "autoShort": null,
-    "autoWithCount": null,
-    "none": null,
-    "layers": null,
-    "hint": null,
-    "aboutTitle": null,
-    "body": null
+    "label": "Expertos en la RAM del sistema",
+    "auto": "Automático",
+    "autoShort": "Auto",
+    "autoWithCount": "Automático (unas {count} de {total} capas)",
+    "none": "Ninguno, todo en la GPU",
+    "layers": "{count} de {total} capas",
+    "hint": "Un modelo de mezcla de expertos usa pocos expertos por token, así que sus pesos pueden esperar en la RAM del sistema y ejecutarse en la CPU mientras el resto queda en la GPU. Cuantas más capas hay en RAM, menos memoria de GPU se usa y más lenta es la respuesta. Automático ahora: unos {gpu} GB en la GPU, {ram} GB en la RAM del sistema.",
+    "aboutTitle": "Acerca de los expertos en la RAM del sistema",
+    "body": "El modo automático mantiene todo en la GPU cuando cabe. Si no cabe y «Ajustar a memoria» está activado, el motor mueve expertos a la RAM del sistema capa a capa hasta que el modelo cabe; con «Ajustar a memoria» desactivado, ChaosEngineAI elige la cantidad según la memoria libre de la GPU. Medido en una RTX 4090 con un modelo de 35 000 millones de parámetros que lee 3000 millones por token: 150 tokens por segundo con todos los expertos en la GPU, unos 85 con la mitad de las capas en RAM y unos 52 con todas en RAM."
   }
 }

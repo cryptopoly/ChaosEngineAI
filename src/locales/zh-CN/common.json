@@ -654,7 +654,7 @@
     },
     "statTokens": "已生成 Token",
     "ofMaxTokens": "上限 {max}",
-    "previewNeedsModel": null
+    "previewNeedsModel": "选择一个模型，查看其预期速度、内存占用和适配情况。"
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, other {# 次运行}}{filterSuffix}",
@@ -749,7 +749,7 @@
       "category": "分类",
       "tags": "标签(逗号分隔)",
       "systemPrompt": "系统提示词",
-      "promptText": null,
+      "promptText": "提示词",
       "placeholderHint": "使用 '{{'name'}}' 占位符引用下方声明的变量。",
       "variables": "变量(JSON 数组)",
       "save": "保存",
@@ -770,16 +770,16 @@
     "variablesInvalid": "变量必须是 JSON 数组（方括号中的列表）。未保存任何内容。",
     "inUseNote": "在你停止使用或重启应用之前，聊天会在每个会话中使用此系统提示词：",
     "stopUsing": "停止使用",
-    "chatButton": null,
-    "chatButtonTooltip": null,
-    "chatButtonActiveTooltip": null,
-    "chatPanelTitle": null,
-    "back": null,
-    "close": null,
-    "insert": null,
-    "useAsSystem": null,
-    "saveDraft": null,
-    "saveDraftEmpty": null
+    "chatButton": "提示词",
+    "chatButtonTooltip": "已保存的提示词：插入到消息中，或用作系统提示词",
+    "chatButtonActiveTooltip": "已保存的提示词。正在使用系统提示词。",
+    "chatPanelTitle": "提示词",
+    "back": "返回列表",
+    "close": "关闭",
+    "insert": "插入到消息",
+    "useAsSystem": "用作系统提示词",
+    "saveDraft": "将消息存为提示词",
+    "saveDraftEmpty": "请先输入消息"
   },
   "fineTuning": {
     "loadingAdapters": "正在加载适配器...",
@@ -1059,7 +1059,7 @@
     },
     "providers": {
       "title": "远程提供商",
-      "subtitle": null,
+      "subtitle": "没有加载本地模型时，使用兼容 OpenAI 格式的云端 API。密钥保存在这台电脑的 ChaosEngineAI 数据目录中。",
       "addButton": "+ 添加提供商",
       "emptyState": "尚未配置远程提供商。添加一个以使用云端模型作为回退。",
       "labelField": "标签",
@@ -1077,7 +1077,7 @@
       "tokenLabel": "Hugging Face token",
       "tokenStoredPlaceholder": "•••• 已存储 ••••",
       "tokenPlaceholder": "hf_...",
-      "helpText": null
+      "helpText": "保存在这台电脑上。每当下载需要你的 Hugging Face 账户时使用，例如受限模型。"
     },
     "agentAccess": {
       "title": "智能体访问",
@@ -1206,11 +1206,11 @@
     "searchPlaceholder": "搜索模型...",
     "contextDetected": "检测到 {contextLabel}",
     "emptyState": "没有模型匹配您的搜索。",
-    "emptyLibrary": null,
+    "emptyLibrary": "还没有下载对话模型。请在 对话 > 模型 中下载一个，然后回到这里。",
     "launchSettings": "启动设置",
     "cancelButton": "取消",
     "busyConfirm": "仍然加载",
-    "previewNeedsModel": null
+    "previewNeedsModel": "选择一个模型，查看其预期速度、内存占用和适配情况。"
   },
   "modelPicker": {
     "weightFileTitle": "选择权重文件：{name}",
@@ -1408,7 +1408,7 @@
   },
   "wslBridgePanel": {
     "title": "WSL2 vLLM 桥接",
-    "backendOffline": null,
+    "backendOffline": "后端没有响应，因此无法读取 WSL 状态。后端恢复后会自动填入。",
     "capsError": "无法读取 WSL 状态：{error}",
     "probing": "正在探测 WSL 状态...",
     "ready": "✓ 就绪{version}",
@@ -1430,7 +1430,7 @@
     "title": "加速包",
     "description": "用于图像、视频和聊天推理的可选加速器。每个都只需一次 pip install — 在你的硬件支持的行上点击“安装”即可。",
     "capError": "无法读取加速器能力信息：{error}",
-    "backendOffline": null,
+    "backendOffline": "后端没有响应，因此无法读取已安装的内容。后端恢复后会自动填入。",
     "columns": {
       "accelerator": "加速器",
       "size": "大小",
@@ -1455,7 +1455,7 @@
     "moveConfirm": "将 {size} 的模型从 {from} 移动到 {to}？\n\n复制成功后，源目录树将被删除。在机械硬盘上，100 GB 可能需要 15-45 分钟。\n\n开始之前，请先关闭所有正在进行的生成任务。",
     "reading": "正在读取存储信息...",
     "loading": "正在加载存储信息...",
-    "backendOffline": null,
+    "backendOffline": "后端没有响应，因此无法更改存储位置。后端恢复后会自动填入。",
     "currentLocation": "当前缓存位置",
     "inCache": "缓存中 {size}",
     "free": "可用 {size}",

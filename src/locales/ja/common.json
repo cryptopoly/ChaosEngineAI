@@ -654,7 +654,7 @@
     },
     "statTokens": "生成トークン数",
     "ofMaxTokens": "上限 {max}",
-    "previewNeedsModel": null
+    "previewNeedsModel": "モデルを選ぶと、想定速度、メモリ、適合度が表示されます。"
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, other {# 件の実行}}{filterSuffix}",
@@ -749,7 +749,7 @@
       "category": "カテゴリ",
       "tags": "タグ(カンマ区切り)",
       "systemPrompt": "システムプロンプト",
-      "promptText": null,
+      "promptText": "プロンプト",
       "placeholderHint": "下で宣言する変数には '{{'name'}}' プレースホルダーを使用してください。",
       "variables": "変数(JSON 配列)",
       "save": "保存",
@@ -770,16 +770,16 @@
     "variablesInvalid": "変数は JSON 配列 (角括弧で囲んだリスト) で指定してください。何も保存されませんでした。",
     "inUseNote": "停止するかアプリを再起動するまで、チャットはすべてのスレッドでこのシステムプロンプトを使用します:",
     "stopUsing": "使用を停止",
-    "chatButton": null,
-    "chatButtonTooltip": null,
-    "chatButtonActiveTooltip": null,
-    "chatPanelTitle": null,
-    "back": null,
-    "close": null,
-    "insert": null,
-    "useAsSystem": null,
-    "saveDraft": null,
-    "saveDraftEmpty": null
+    "chatButton": "プロンプト",
+    "chatButtonTooltip": "保存済みのプロンプト: メッセージに挿入するか、システムプロンプトとして使います",
+    "chatButtonActiveTooltip": "保存済みのプロンプト。システムプロンプトを使用中です。",
+    "chatPanelTitle": "プロンプト",
+    "back": "一覧に戻る",
+    "close": "閉じる",
+    "insert": "メッセージに挿入",
+    "useAsSystem": "システムプロンプトとして使う",
+    "saveDraft": "メッセージをプロンプトとして保存",
+    "saveDraftEmpty": "先にメッセージを入力してください"
   },
   "fineTuning": {
     "loadingAdapters": "アダプターを読み込み中...",
@@ -1059,7 +1059,7 @@
     },
     "providers": {
       "title": "リモートプロバイダー",
-      "subtitle": null,
+      "subtitle": "ローカルモデルが読み込まれていないときは、OpenAI 形式に対応したクラウド API を使います。キーはこのコンピューターの ChaosEngineAI データフォルダーに保存されます。",
       "addButton": "+ プロバイダーを追加",
       "emptyState": "リモートプロバイダーが設定されていません。クラウドモデルをフォールバックとして使うには追加してください。",
       "labelField": "ラベル",
@@ -1077,7 +1077,7 @@
       "tokenLabel": "Hugging Face トークン",
       "tokenStoredPlaceholder": "•••• 保存済み ••••",
       "tokenPlaceholder": "hf_...",
-      "helpText": null
+      "helpText": "このコンピューターに保存されます。ゲート付きモデルなど、ダウンロードに Hugging Face アカウントが必要なときに使われます。"
     },
     "agentAccess": {
       "title": "エージェントアクセス",
@@ -1206,11 +1206,11 @@
     "searchPlaceholder": "モデルを検索...",
     "contextDetected": "{contextLabel} を検出",
     "emptyState": "検索条件に一致するモデルはありません。",
-    "emptyLibrary": null,
+    "emptyLibrary": "チャットモデルがまだダウンロードされていません。チャット > モデルで 1 つダウンロードしてから、ここに戻ってください。",
     "launchSettings": "起動設定",
     "cancelButton": "キャンセル",
     "busyConfirm": "そのまま読み込む",
-    "previewNeedsModel": null
+    "previewNeedsModel": "モデルを選ぶと、想定速度、メモリ、適合度が表示されます。"
   },
   "modelPicker": {
     "weightFileTitle": "重みファイルを選択:{name}",
@@ -1408,7 +1408,7 @@
   },
   "wslBridgePanel": {
     "title": "WSL2 vLLM ブリッジ",
-    "backendOffline": null,
+    "backendOffline": "バックエンドが応答していないため、WSL の状態を読み取れません。バックエンドが戻ると表示されます。",
     "capsError": "WSL の状態を読み取れませんでした: {error}",
     "probing": "WSL の状態を確認中...",
     "ready": "✓ 準備完了{version}",
@@ -1430,7 +1430,7 @@
     "title": "ブーストパック",
     "description": "画像・動画・チャット推論向けのオプションのアクセラレータです。どれも pip install ひとつで導入できます — お使いのハードウェアが対応している行で「インストール」をクリックしてください。",
     "capError": "アクセラレータの対応状況を読み取れませんでした: {error}",
-    "backendOffline": null,
+    "backendOffline": "バックエンドが応答していないため、インストール済みの内容を読み取れません。バックエンドが戻ると表示されます。",
     "columns": {
       "accelerator": "アクセラレータ",
       "size": "サイズ",
@@ -1455,7 +1455,7 @@
     "moveConfirm": "{from} から {to} へ、{size} のモデルを移動しますか？\n\nコピーが正常に完了すると、元のフォルダは削除されます。回転ディスク式の HDD では、100 GB で 15〜45 分かかることがあります。\n\n開始する前に、実行中の生成をすべて閉じてください。",
     "reading": "ストレージ情報を読み取り中...",
     "loading": "ストレージ情報を読み込み中...",
-    "backendOffline": null,
+    "backendOffline": "バックエンドが応答していないため、ストレージを変更できません。バックエンドが戻ると表示されます。",
     "currentLocation": "現在のキャッシュの場所",
     "inCache": "キャッシュ内 {size}",
     "free": "空き {size}",

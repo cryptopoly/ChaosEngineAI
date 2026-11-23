@@ -1,7 +1,7 @@
 {
   "liveStats": {
     "title": "Estatísticas do sistema ao vivo",
-    "subtitle": null,
+    "subtitle": "Números ao vivo deste computador: memória, disco e os modelos em execução.",
     "runtimeEngine": "Motor do runtime",
     "noModelLoaded": "Nenhum modelo carregado",
     "inferenceActivity": "Atividade de inferência",
@@ -77,7 +77,7 @@
     "backendReadiness": {
       "title": "Prontidão do backend",
       "detail": "MLX instalado: {mlx} / mlx-lm instalado: {mlxLm} / MLX utilizável: {mlxUsable} / Runtime GGUF: {gguf}",
-      "detailGguf": null
+      "detailGguf": "Runtime GGUF: {gguf}"
     }
   },
   "recommendation": {
@@ -87,30 +87,30 @@
     "ggufDetail": "O modo multiplataforma preferirá llama.cpp GGUF para amplo suporte de hardware."
   },
   "bestFit": {
-    "subtitle": null,
-    "badge": null,
-    "openModels": null,
-    "seeInModels": null,
-    "download": null,
-    "needsGpu": null,
-    "needsMemory": null,
-    "speedMeasured": null,
-    "speedEstimated": null,
-    "speedRtx4090": null
+    "subtitle": "A melhor escolha do catálogo para este computador, avaliada como na página Modelos.",
+    "badge": "Melhor opção para este computador",
+    "openModels": "Abrir modelos de chat",
+    "seeInModels": "Ver em modelos de chat",
+    "download": "Download de {size}",
+    "needsGpu": "precisa de cerca de {need} GB dos {usable} GB de memória da GPU",
+    "needsMemory": "precisa de cerca de {need} GB dos {usable} GB de memória utilizável",
+    "speedMeasured": "{value} tok/s, medido neste computador",
+    "speedEstimated": "cerca de {value} tok/s (estimativa)",
+    "speedRtx4090": "{value} tok/s medidos em uma RTX 4090"
   },
   "startHere": {
-    "title": null,
-    "subtitle": null,
-    "step1": null,
-    "step2": null,
-    "recommended": null,
-    "download": null,
-    "downloadSize": null,
-    "downloading": null,
-    "downloaded": null,
-    "otherModels": null,
-    "noPick": null,
-    "openModels": null,
-    "openChat": null
+    "title": "Comece aqui",
+    "subtitle": "Nenhum modelo de chat baixado ainda. Dois passos para o primeiro chat neste computador ({hardware}).",
+    "step1": "Baixe um modelo que caiba neste computador.",
+    "step2": "Abra o Chat e escolha o modelo no topo da conversa.",
+    "recommended": "Recomendado",
+    "download": "Baixar",
+    "downloadSize": "Baixar ({size})",
+    "downloading": "Baixando, {percent}%",
+    "downloaded": "Baixado",
+    "otherModels": "Outros modelos recomendados",
+    "noPick": "Nenhum modelo do catálogo cabe com folga neste computador. Modelos de chat lista todos os modelos com um veredito de ajuste.",
+    "openModels": "Abrir modelos de chat",
+    "openChat": "Abrir Chat"
   }
 }

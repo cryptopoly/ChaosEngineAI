@@ -654,7 +654,7 @@
     },
     "statTokens": "생성된 토큰",
     "ofMaxTokens": "(최대 {max}개)",
-    "previewNeedsModel": null
+    "previewNeedsModel": "모델을 선택하면 예상 속도, 메모리, 적합 여부를 볼 수 있습니다."
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, other {실행 #회}}{filterSuffix}",
@@ -749,7 +749,7 @@
       "category": "카테고리",
       "tags": "태그 (쉼표로 구분)",
       "systemPrompt": "시스템 프롬프트",
-      "promptText": null,
+      "promptText": "프롬프트",
       "placeholderHint": "아래에 선언한 변수에 '{{'name'}}' 자리 표시자를 사용하세요.",
       "variables": "변수 (JSON 배열)",
       "save": "저장",
@@ -770,16 +770,16 @@
     "variablesInvalid": "변수는 JSON 배열(대괄호로 묶은 목록)이어야 합니다. 아무것도 저장되지 않았습니다.",
     "inUseNote": "중지하거나 앱을 다시 시작할 때까지 채팅이 모든 스레드에서 이 시스템 프롬프트를 사용합니다:",
     "stopUsing": "사용 중지",
-    "chatButton": null,
-    "chatButtonTooltip": null,
-    "chatButtonActiveTooltip": null,
-    "chatPanelTitle": null,
-    "back": null,
-    "close": null,
-    "insert": null,
-    "useAsSystem": null,
-    "saveDraft": null,
-    "saveDraftEmpty": null
+    "chatButton": "프롬프트",
+    "chatButtonTooltip": "저장된 프롬프트: 메시지에 삽입하거나 시스템 프롬프트로 사용합니다",
+    "chatButtonActiveTooltip": "저장된 프롬프트. 시스템 프롬프트를 사용 중입니다.",
+    "chatPanelTitle": "프롬프트",
+    "back": "목록으로 돌아가기",
+    "close": "닫기",
+    "insert": "메시지에 삽입",
+    "useAsSystem": "시스템 프롬프트로 사용",
+    "saveDraft": "메시지를 프롬프트로 저장",
+    "saveDraftEmpty": "먼저 메시지를 입력하세요"
   },
   "fineTuning": {
     "loadingAdapters": "어댑터 로딩 중...",
@@ -1059,7 +1059,7 @@
     },
     "providers": {
       "title": "원격 공급자",
-      "subtitle": null,
+      "subtitle": "로컬 모델이 로드되지 않았을 때 OpenAI 형식을 사용하는 클라우드 API를 사용합니다. 키는 이 컴퓨터의 ChaosEngineAI 데이터 폴더에 저장됩니다.",
       "addButton": "+ 공급자 추가",
       "emptyState": "구성된 원격 공급자가 없습니다. 클라우드 모델을 대체로 사용하려면 하나를 추가하세요.",
       "labelField": "레이블",
@@ -1077,7 +1077,7 @@
       "tokenLabel": "Hugging Face 토큰",
       "tokenStoredPlaceholder": "•••• 저장됨 ••••",
       "tokenPlaceholder": "hf_...",
-      "helpText": null
+      "helpText": "이 컴퓨터에 저장됩니다. 게이트 모델처럼 다운로드에 Hugging Face 계정이 필요할 때마다 사용됩니다."
     },
     "agentAccess": {
       "title": "에이전트 접근",
@@ -1206,11 +1206,11 @@
     "searchPlaceholder": "모델 검색...",
     "contextDetected": "{contextLabel} 감지됨",
     "emptyState": "검색과 일치하는 모델이 없습니다.",
-    "emptyLibrary": null,
+    "emptyLibrary": "다운로드한 채팅 모델이 아직 없습니다. 채팅 > 모델에서 하나를 다운로드한 다음 여기로 돌아오세요.",
     "launchSettings": "시작 설정",
     "cancelButton": "취소",
     "busyConfirm": "그래도 불러오기",
-    "previewNeedsModel": null
+    "previewNeedsModel": "모델을 선택하면 예상 속도, 메모리, 적합 여부를 볼 수 있습니다."
   },
   "modelPicker": {
     "weightFileTitle": "가중치 파일 선택: {name}",
@@ -1408,7 +1408,7 @@
   },
   "wslBridgePanel": {
     "title": "WSL2 vLLM 브리지",
-    "backendOffline": null,
+    "backendOffline": "백엔드가 응답하지 않아 WSL 상태를 읽을 수 없습니다. 백엔드가 다시 연결되면 채워집니다.",
     "capsError": "WSL 상태를 읽을 수 없습니다: {error}",
     "probing": "WSL 상태 확인 중...",
     "ready": "✓ 준비됨{version}",
@@ -1430,7 +1430,7 @@
     "title": "부스트 팩",
     "description": "이미지, 비디오, 채팅 추론을 위한 선택적 가속기입니다. 각각 pip install 한 번이면 설치됩니다. 사용 중인 하드웨어가 지원하는 항목에서 설치를 클릭하세요.",
     "capError": "가속기 기능 정보를 읽을 수 없습니다: {error}",
-    "backendOffline": null,
+    "backendOffline": "백엔드가 응답하지 않아 설치된 항목을 읽을 수 없습니다. 백엔드가 다시 연결되면 채워집니다.",
     "columns": {
       "accelerator": "가속기",
       "size": "크기",
@@ -1455,7 +1455,7 @@
     "moveConfirm": "모델 {size}을(를) {from}에서 {to}(으)로 이동할까요?\n\n복사가 성공하면 원본 폴더 트리가 삭제됩니다. 회전식 HDD에서는 100 GB에 15-45분이 걸릴 수 있습니다.\n\n시작하기 전에 실행 중인 생성 작업을 모두 닫으세요.",
     "reading": "저장소 정보를 읽는 중...",
     "loading": "저장소 정보를 불러오는 중...",
-    "backendOffline": null,
+    "backendOffline": "백엔드가 응답하지 않아 저장소를 변경할 수 없습니다. 백엔드가 다시 연결되면 채워집니다.",
     "currentLocation": "현재 캐시 위치",
     "inCache": "캐시에 {size}",
     "free": "{size} 여유",

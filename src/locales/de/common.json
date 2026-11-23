@@ -654,7 +654,7 @@
     },
     "statTokens": "Generierte Tokens",
     "ofMaxTokens": "von {max} erlaubten",
-    "previewNeedsModel": null
+    "previewNeedsModel": "Wähle ein Modell, um die erwartete Geschwindigkeit, den Speicherbedarf und die Passung zu sehen."
   },
   "benchmarkHistory": {
     "subtitle": "{count, plural, one {# Lauf} other {# Läufe}}{filterSuffix}",
@@ -749,7 +749,7 @@
       "category": "Kategorie",
       "tags": "Tags (kommagetrennt)",
       "systemPrompt": "System-Prompt",
-      "promptText": null,
+      "promptText": "Prompt",
       "placeholderHint": "Verwende '{{'name'}}'-Platzhalter für unten deklarierte Variablen.",
       "variables": "Variablen (JSON-Array)",
       "save": "Speichern",
@@ -770,16 +770,16 @@
     "variablesInvalid": "Variablen müssen ein JSON-Array sein (eine Liste in eckigen Klammern). Es wurde nichts gespeichert.",
     "inUseNote": "Der Chat verwendet diesen System-Prompt in jedem Thread, bis du ihn beendest oder die App neu startest:",
     "stopUsing": "Nicht mehr verwenden",
-    "chatButton": null,
-    "chatButtonTooltip": null,
-    "chatButtonActiveTooltip": null,
-    "chatPanelTitle": null,
-    "back": null,
-    "close": null,
-    "insert": null,
-    "useAsSystem": null,
-    "saveDraft": null,
-    "saveDraftEmpty": null
+    "chatButton": "Prompts",
+    "chatButtonTooltip": "Gespeicherte Prompts: einen in die Nachricht einfügen oder als System-Prompt verwenden",
+    "chatButtonActiveTooltip": "Gespeicherte Prompts. Ein System-Prompt ist aktiv.",
+    "chatPanelTitle": "Prompts",
+    "back": "Zurück zur Liste",
+    "close": "Schließen",
+    "insert": "In Nachricht einfügen",
+    "useAsSystem": "Als System-Prompt verwenden",
+    "saveDraft": "Nachricht als Prompt speichern",
+    "saveDraftEmpty": "Gib zuerst eine Nachricht ein"
   },
   "fineTuning": {
     "loadingAdapters": "Adapter werden geladen...",
@@ -1059,7 +1059,7 @@
     },
     "providers": {
       "title": "Remote-Anbieter",
-      "subtitle": null,
+      "subtitle": "Nutze eine Cloud-API im OpenAI-Format, wenn kein lokales Modell geladen ist. Die Schlüssel werden auf diesem Computer im ChaosEngineAI-Datenordner gespeichert.",
       "addButton": "+ Anbieter hinzufügen",
       "emptyState": "Keine Remote-Anbieter konfiguriert. Füge einen hinzu, um Cloud-Modelle als Fallback zu nutzen.",
       "labelField": "Bezeichnung",
@@ -1077,7 +1077,7 @@
       "tokenLabel": "Hugging-Face-Token",
       "tokenStoredPlaceholder": "•••• gespeichert ••••",
       "tokenPlaceholder": "hf_...",
-      "helpText": null
+      "helpText": "Wird auf diesem Computer gespeichert. Kommt immer dann zum Einsatz, wenn ein Download dein Hugging-Face-Konto braucht, zum Beispiel bei einem Gated-Modell."
     },
     "agentAccess": {
       "title": "Agent-Zugriff",
@@ -1206,11 +1206,11 @@
     "searchPlaceholder": "Modelle suchen...",
     "contextDetected": "{contextLabel} erkannt",
     "emptyState": "Keine Modelle entsprechen deiner Suche.",
-    "emptyLibrary": null,
+    "emptyLibrary": "Noch keine Chat-Modelle heruntergeladen. Lade unter Chat > Modelle eines herunter und komm dann hierher zurück.",
     "launchSettings": "Starteinstellungen",
     "cancelButton": "Abbrechen",
     "busyConfirm": "Trotzdem laden",
-    "previewNeedsModel": null
+    "previewNeedsModel": "Wähle ein Modell, um die erwartete Geschwindigkeit, den Speicherbedarf und die Passung zu sehen."
   },
   "modelPicker": {
     "weightFileTitle": "Gewichtsdatei auswählen: {name}",
@@ -1408,7 +1408,7 @@
   },
   "wslBridgePanel": {
     "title": "WSL2-vLLM-Brücke",
-    "backendOffline": null,
+    "backendOffline": "Das Backend antwortet nicht, daher lässt sich der WSL-Status nicht lesen. Er wird ausgefüllt, sobald das Backend wieder da ist.",
     "capsError": "WSL-Status konnte nicht gelesen werden: {error}",
     "probing": "WSL-Status wird geprüft...",
     "ready": "✓ Bereit{version}",
@@ -1430,7 +1430,7 @@
     "title": "Boost Pack",
     "description": "Optionale Beschleuniger für Bild-, Video- und Chat-Inferenz. Jeder ist nur ein pip install entfernt — klicke bei den Zeilen, die deine Hardware unterstützt, auf Installieren.",
     "capError": "Beschleuniger-Fähigkeiten konnten nicht gelesen werden: {error}",
-    "backendOffline": null,
+    "backendOffline": "Das Backend antwortet nicht, daher lässt sich nicht lesen, was installiert ist. Die Angaben erscheinen, sobald das Backend wieder da ist.",
     "columns": {
       "accelerator": "Beschleuniger",
       "size": "Größe",
@@ -1455,7 +1455,7 @@
     "moveConfirm": "{size} an Modellen von {from} nach {to} verschieben?\n\nDer Quellordner wird nach erfolgreichem Kopieren gelöscht. Auf einer drehenden HDD kann das bei 100 GB 15–45 Min. dauern.\n\nBeende vor dem Start alle laufenden Generierungen.",
     "reading": "Speicherinfos werden gelesen...",
     "loading": "Speicherinfos werden geladen...",
-    "backendOffline": null,
+    "backendOffline": "Das Backend antwortet nicht, daher lässt sich der Speicher nicht ändern. Die Angaben erscheinen, sobald das Backend wieder da ist.",
     "currentLocation": "Aktueller Cache-Speicherort",
     "inCache": "{size} im Cache",
     "free": "{size} frei",

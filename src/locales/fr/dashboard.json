@@ -1,7 +1,7 @@
 {
   "liveStats": {
     "title": "Statistiques système en direct",
-    "subtitle": null,
+    "subtitle": "Chiffres en direct de cet ordinateur : mémoire, disque et modèles en cours d'exécution.",
     "runtimeEngine": "Moteur d'exécution",
     "noModelLoaded": "Aucun modèle chargé",
     "inferenceActivity": "Activité d'inférence",
@@ -77,7 +77,7 @@
     "backendReadiness": {
       "title": "État du backend",
       "detail": "MLX installé : {mlx} / mlx-lm installé : {mlxLm} / MLX utilisable : {mlxUsable} / Runtime GGUF : {gguf}",
-      "detailGguf": null
+      "detailGguf": "Runtime GGUF : {gguf}"
     }
   },
   "recommendation": {
@@ -87,30 +87,30 @@
     "ggufDetail": "Le mode multiplateforme préférera llama.cpp GGUF pour une prise en charge matérielle étendue."
   },
   "bestFit": {
-    "subtitle": null,
-    "badge": null,
-    "openModels": null,
-    "seeInModels": null,
-    "download": null,
-    "needsGpu": null,
-    "needsMemory": null,
-    "speedMeasured": null,
-    "speedEstimated": null,
-    "speedRtx4090": null
+    "subtitle": "Le meilleur choix du catalogue pour cet ordinateur, jugé comme sur la page Modèles.",
+    "badge": "Meilleur choix pour cet ordinateur",
+    "openModels": "Ouvrir les modèles de discussion",
+    "seeInModels": "Voir dans les modèles de discussion",
+    "download": "Téléchargement de {size}",
+    "needsGpu": "nécessite environ {need} Go sur {usable} Go de mémoire GPU",
+    "needsMemory": "nécessite environ {need} Go sur {usable} Go de mémoire utilisable",
+    "speedMeasured": "{value} tok/s, mesuré sur cet ordinateur",
+    "speedEstimated": "environ {value} tok/s (estimation)",
+    "speedRtx4090": "{value} tok/s mesurés sur une RTX 4090"
   },
   "startHere": {
-    "title": null,
-    "subtitle": null,
-    "step1": null,
-    "step2": null,
-    "recommended": null,
-    "download": null,
-    "downloadSize": null,
-    "downloading": null,
-    "downloaded": null,
-    "otherModels": null,
-    "noPick": null,
-    "openModels": null,
-    "openChat": null
+    "title": "Commencer ici",
+    "subtitle": "Aucun modèle de discussion n'est encore téléchargé. Deux étapes pour une première discussion sur cet ordinateur ({hardware}).",
+    "step1": "Téléchargez un modèle adapté à cet ordinateur.",
+    "step2": "Ouvrez Discussion et choisissez le modèle en haut du fil.",
+    "recommended": "Recommandé",
+    "download": "Télécharger",
+    "downloadSize": "Télécharger ({size})",
+    "downloading": "Téléchargement, {percent} %",
+    "downloaded": "Téléchargé",
+    "otherModels": "Autres modèles recommandés",
+    "noPick": "Aucun modèle du catalogue ne tient confortablement sur cet ordinateur. Modèles de discussion liste chaque modèle avec un verdict d'adéquation.",
+    "openModels": "Ouvrir les modèles de discussion",
+    "openChat": "Ouvrir Discussion"
   }
 }

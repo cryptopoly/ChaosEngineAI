@@ -23,7 +23,8 @@ a 100-4000 Hz band-pass. Numbers reported (FU-334, measured in ``docs/research/l
   the sung test set; the gate stays as a guard.
 
 The maths (``score_series``) is plain numpy and scipy. Reading a video needs ``cv2`` and ``mediapipe``, which the app's
-venv does not carry; they are imported only in ``mouth_series`` (the experiments ran them from a tools venv).
+venv does not carry; they are imported only in ``mouth_series`` and come from the sync-score add-on's folder
+(``--site``, ``lipsync_score_addon``) when the backend runs this file.
 """
 
 from __future__ import annotations
@@ -261,7 +262,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("audio", type=Path, help="the voice to score against (a vocal stem is best)")
     parser.add_argument("--model", type=Path, required=True, help="MediaPipe face_landmarker.task")
     parser.add_argument("--json", type=Path)
+    parser.add_argument("--site", type=Path, help="a folder holding mediapipe and cv2 (the sync-score add-on)")
     args = parser.parse_args(argv)
+    if args.site:
+        import sys  # noqa: PLC0415
+
+        sys.path.insert(0, str(args.site))
     result, series = score_files(args.video, args.audio, args.model)
     print(json.dumps(result.as_dict(), indent=1))
     if args.json:

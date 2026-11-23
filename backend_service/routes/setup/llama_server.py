@@ -73,6 +73,10 @@ def _version_string(binary: Path) -> tuple[str | None, str | None]:
     match = re.search(r"version:\s*(\d+)\s*\(([a-f0-9]+)\)", blob)
     if match:
         return f"{match.group(1)} ({match.group(2)})", match.group(1)
+    # b12649 and later: ``version: 1.0.0-dev (build 12649, commit 1f8baae28)``.
+    match = re.search(r"\(build\s+(\d+),\s*commit\s+([a-f0-9]+)\)", blob)
+    if match:
+        return f"{match.group(1)} ({match.group(2)})", match.group(1)
     # Fallback — return the first non-empty line containing 'version'
     for line in blob.splitlines():
         if "version" in line.lower():

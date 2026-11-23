@@ -1,7 +1,7 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 268 rows with work, decisions or watch items still open, newest first.
+summary: 274 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
@@ -24,6 +24,51 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** Needs a score source before any badge
 
 **Notes:** Chat Models' recommended rows carry "Fastest" (`tokS`), "Newest" (`releaseDate`) and "Most popular" (Hugging Face 30-day downloads) chips (`pickBadges` in `ChatRecommendedList.tsx`; stats in `backend_service/helpers/hf_stats.py`, cached in `<dataDir>/hf-stats.json` with their date, refreshed by a background thread at most daily for the pick repos, never awaited, absent offline so the chip is simply not shown). Not built: a "Highest rated" chip. The catalogue holds no score (`popularityLabel` is an editorial string), so it needs a benchmark score per family, either measured here (Benchmarks tab) or taken from a published leaderboard with its source named. No invented ratings. Also not built: popularity on the Dashboard card and in the full list sort (likes are already on the pick as `likes`).
+
+</details>
+
+<details>
+<summary>FU-564 · Mac-only upstreams left as they are; no release-constraints refresh needed from the 2026-11-23 pass — Next Mac session</summary>
+
+**Status or trigger:** Next Mac session
+
+**Notes:** `check-upstreams.py` reports dflash-mlx current at v0.1.10, but untagged `main` (`6080323`) is ahead with the Qwen3.8 DFlash2 drafts (FU-057); the worker glue calls its private module layout, so a move to an untagged commit needs a Mac run (needs Mac). `turboquant-mlx-full` is frozen at 0.3.0 in `release-constraints.txt`; PyPI's newest is 0.30.0 (needs Mac; freeze only there, FU-514). ltx-2-mlx newest commit is CI files only. mflux, ACE-Step, stable-audio-3, TriAttention, Chatterbox and Playwright are current. llama-server-turbo tracks its branch HEAD (FU-065) and DDTree is a ported algorithm, so neither has a pin to move. This pass changed no Python package pin (llama.cpp and TensorFold are binaries; the Transformers asr-site pin was left, FU-562), so `release-constraints.txt` needs no refresh for it.
+
+</details>
+
+<details>
+<summary>FU-563 · stable-diffusion.cpp 532d2c1 -&gt; 0d71f963 (master, 2026-11-22) — Next sd.cpp pass on the 4090 or the Mac (needs a CUDA Toolkit or the 700 MB portable CUDA archives, and two bu…</summary>
+
+**Status or trigger:** Next sd.cpp pass on the 4090 or the Mac (needs a CUDA Toolkit or the 700 MB portable CUDA archives, and two builds)
+
+**Notes:** Not bumped on 2026-11-23. 11 commits, one large: DGL (a scripting language for pipelines, #2396) adds `src/dgl/*`, removes `src/pipeline/*` and rewrites the model docs with "Legacy CLI" sections. CLI flags in the `minimax_h3.md` legacy section are unchanged; reference videos may now be files (AVI, WebP, VP8 WebM). CMake: `SD_CUDA` unchanged, the MSVC parallel count now uses physical cores, WebP builds now also need `webpdemux`. Also MOSS-Image edit LoRAs, a LoRA tensor-count fix, H3 VAE speed-ups. The table requires a real Qwen-Image 2.1 sd.cpp image on the old and the new build; this PC has no CUDA Toolkit and no cached sd build. **To do:** build both commits (`scripts/build-sdcpp.ps1` with `SDCPP_REF`, `SDCPP_CUDA_ARCHITECTURES=89`), compare the `leejet/Qwen-Image-2.1-GGUF-q4k` image, re-read `_build_h3_cli_args` against the legacy CLI section, then move `SDCPP_REF` in `build-sdcpp.sh`, `update-sdcpp.sh`, `build-sdcpp.ps1` and `update-sdcpp.ps1`.
+
+</details>
+
+<details>
+<summary>FU-562 · Transformers 5.24.0 for the stt-gpu asr-site (pinned 5.23.0) — Next Windows session that has the voice venv with the stt-gpu add-on</summary>
+
+**Status or trigger:** Next Windows session that has the voice venv with the `stt-gpu` add-on
+
+**Notes:** Not bumped on 2026-11-23. The table says a bump needs the GPU dictation rows re-run, and this PC has no voice venv now (`E:\tmp\stt-home` is gone; rebuilding needs the 2.86 GB torch cu128 download and the dev venv has no torchaudio). Release notes read: 5.24.0 renames `past_key_values` / `cache_params` to `cache` (old names still accepted with a warning until 5.40 / 6.0; `voice_worker_asr.py` never passes either), adds Omnilingual ASR, Inkling 2 Mini, HY4-VL; its requirements are the same as 5.23's (tokenizers >=0.23.1,<0.24, safetensors >=0.8). **To do:** set `ASR_SITE_PACKAGES` and `_ASR_SITE_CHECK` / `asr_site_installed` to 5.24.0, reinstall the add-on, run each GPU row in `voice_stt_cuda.py` plus the forced aligner, and update the CLAUDE.md row.
+
+</details>
+
+<details>
+<summary>FU-561 · TensorFold native 1.3.4: compare capabilities --json with the family rows — Next Mac or Linux session (Windows has no archive, and running the Linux binary in WSL was not allowed here)</summary>
+
+**Status or trigger:** Next Mac or Linux session (Windows has no archive, and running the Linux binary in WSL was not allowed here)
+
+**Notes:** The pin moved 1.2.9 -> 1.3.4 on 2026-11-23 from the release notes and the source only. Same archive names (`tensorfold-1.3.4-{linux-x86_64,linux-aarch64,macos-arm64}.tar.gz`, still no Windows archive), the `LICENSES/` set unchanged. Read in the source (GitHub API, read-only): `zig/src/native/cuda_families.zig` adds `muse_spark` (format `exl3`; upstream runs Muse Spark Open on two GB10s, so no 24 GB row) and dense `qwen3_5` lists `modelopt-nvfp4` / `modelopt-mixed`; `zig/src/living/families.zig` is unchanged; new family folders `gpt_oss`, `hy4_flash` (Metal, `hy_v4_flash`), `idol` (image), `inkling2`, `muse_spark`, `nemo_audio`, `qwen3_asr`, `ricursive`, `uocr`. Serve flags the app passes are gated on the binary's own flag list (`build_native_serve_command`), and a model type no row names is listed and never offered (`family_report`), so an unlisted family cannot be offered by mistake. **To do:** run the 1.3.4 binary's `capabilities --json` on the Mac (and Linux CUDA if available), add a row for each new type (no repos and a `note` where the app cannot offer it, FU-168), refresh `tests/fixtures/tensorfold_caps_macos_*.json`, re-check the Gemma 4 26B-A4B and LFM3-VL refusals, and serve one model. Tests here: TensorFold suites pass with the new pin.
+
+</details>
+
+<details>
+<summary>FU-560 · llama.cpp b12441 -&gt; b12649: re-run the 4090 chat rows and the Mac / Linux installs — Pin shipped 2026-11-23 (branch chore/bump-upstreams-2026-11-23, not pushed)</summary>
+
+**Status or trigger:** **Pin shipped 2026-11-23** (branch `chore/bump-upstreams-2026-11-23`, not pushed). Open: next chat speed pass on the 4090, and the next Mac session
+
+**Notes:** **Done:** pin in `update-llama-cpp.sh`, `stage-runtime.mjs`, `llama_cuda.py` (tag and the three Windows CUDA digests from the release's `digest` fields; tagless cudart zips unchanged), `linux-gpu-check.sh` and the three tests naming the tag. Same asset names; the web UI is now a separate `llama-<tag>-ui.tar.gz` asset (the app uses only the API). Release titles b12442..b12649 read: no flag the app passes was removed; token-aware chat parsing (b12638), `reasoning_effort = none` passed to templates that take it (b12624), a 400 for grammar plus `ignore_eos` (b12489; the app sends neither), Inkling 2 Mini, `--ui-mcp-proxy-allow-private-urls`. **Found and fixed:** `--version` now prints `version: 1.0.0-dev (build 12649, commit 1f8baae28)`, so `/api/setup/llama-server-status` reported no build number; `routes/setup/llama_server.py` reads both formats (`tests/test_llama_server_version.py`). **Checked on the 4090** (Windows 11, driver 621.24): the `win-cuda-13.5-x64` zip and its cudart zip downloaded, sha256 equal to the pinned digests; `llama-server --version` build 12649; Qwen3-0.6B Q4_K_M with `-ngl 99 -fa on -ctk q8_0 -ctv q8_0 --reasoning off`: reply "Red, Blue, Green.", 369 tok/s on 7 tokens. `--help`: cache types unchanged (plus `f8_e4m3`), `--spec-type` still lists `draft-mtp`, `draft-dflash`, `draft-dflash2`; the engine's `_llama_server_cache_types` / `_llama_server_supports` and `_supports_draft_mtp` read the binary correctly. **Not done:** the app's Settings > Accelerators install of b12649 end to end, the CUDA 12.4 archive, the 4090 speed table rows (measured on b12441), MTP and DFlash runs, Linux CUDA, the Mac (Metal) prebuilt.
 
 </details>
 
@@ -202,6 +247,15 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 <summary>FU-512 · Competing desktop AI app names remain in code, comments and docs — Mostly done (2026-11-23, D-105 A: rename; FU-492)</summary>
 
 **Status or trigger:** **Mostly done (2026-11-23, D-105 A: rename; FU-492).** Left: wire names (FU-581), `docs/research/m4max-generation-times.md` and `docs/plans/demo-path.md` (internal research and plans). Was: owner decision on the two features
+
+**Notes:** Scan 2026-11-20 (`git grep` for the CLAUDE.md Editorial Rules names; the Hugging Face namespace `lmstudio-community` is allowed). User-visible: Settings model-storage "LM Studio models folder" and Library "Share with LM Studio" (`src/locales/*/common.json`, `library.json`, `ModelStoragePanel.tsx`, `ChatModelsPage.tsx`, `ImportModelsPanel.tsx`, `backend_service/routes/storage.py`), "Ollama-compatible apps" (`ConnectPanel.tsx`, `ollama_compat.py`). Not user-visible: `backend_service/helpers/model_import.py`, `routes/models.py`, `helpers/settings.py`, `scripts/e2e_test_suite.py`, `docs/research/m4max-generation-times.md`, `docs/plans/demo-path.md`, `docs/image-generation-mvp.md`. Another agent handles the user-visible copy; the rest needs a decision on whether importing from those folders stays a feature.
+
+</details>
+
+<details>
+<summary>FU-512 · Competing desktop AI app names remain in code, comments and docs — Owner decision on the two features</summary>
+
+**Status or trigger:** Owner decision on the two features
 
 **Notes:** Scan 2026-11-20 (`git grep` for the CLAUDE.md Editorial Rules names; the Hugging Face namespace `lmstudio-community` is allowed). User-visible: Settings model-storage "LM Studio models folder" and Library "Share with LM Studio" (`src/locales/*/common.json`, `library.json`, `ModelStoragePanel.tsx`, `ChatModelsPage.tsx`, `ImportModelsPanel.tsx`, `backend_service/routes/storage.py`), "Ollama-compatible apps" (`ConnectPanel.tsx`, `ollama_compat.py`). Not user-visible: `backend_service/helpers/model_import.py`, `routes/models.py`, `helpers/settings.py`, `scripts/e2e_test_suite.py`, `docs/research/m4max-generation-times.md`, `docs/plans/demo-path.md`, `docs/image-generation-mvp.md`. Another agent handles the user-visible copy; the rest needs a decision on whether importing from those folders stays a feature.
 

@@ -16,6 +16,14 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 **Open for Claude:** FU-581 (wire names such as `lmstudioDir` and `/api/models/share-lmstudio` need a settings migration), FU-580 (a "Highest rated" chip needs a benchmark score source). Not verified: the chips and the background fetch in a running app; the full pytest and E2E suites.
 
 **Open for Dan:** nothing new; D-105 A is decided (rename).
+## Update 2026-11-23 (upstream bumps on the 4090; branch `chore/bump-upstreams-2026-11-23`, not pushed)
+
+**Done:** llama.cpp `b12441` -> `b12649` (new Windows CUDA digests; the new `--version` format is read; the CUDA 13.5 build ran a short chat on the 4090, FU-560). TensorFold native `1.2.9` -> `1.3.4` from the release notes and source (FU-561). `audit-dependencies.py`: PASS, nothing high or critical.
+
+**Open for Claude:** TensorFold 1.3.4 family rows on the Mac (FU-561); Transformers 5.24 for `asr-site` once a voice venv exists (FU-562); sd.cpp `0d71f963` needs two CUDA builds and a Qwen-Image 2.1 image (FU-563); Mac-only pins (FU-564).
+
+**Open for Dan:** nothing to decide; push and merge the branch when ready.
+
 ## Update 2026-11-20 (D-105 B to E built, Mac sounds pack without Stable Audio 3; agent branch, not pushed)
 
 **Done:** the Dashboard names the catalogue's best-fit chat row (size, memory, speed, its own headroom) and opens on "Start here" for a new user; Chat Models opens on five recommended rows with nothing on disk; no performance preview without a model; "GPU memory" column title on a PC; measured 4090 figures on six rows (FU-456, FU-463 done, FU-457 part). The Mac (`mps`) sounds pack no longer installs or imports Stable Audio 3 (FU-493 item 1, simulated). Screenshots `docs/review/ui-ux-v0100-a/d105-build/`; tsc, vitest 2,005, i18n, touched pytest files.

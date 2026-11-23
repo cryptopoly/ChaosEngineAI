@@ -423,6 +423,14 @@ def start_download(
                     state._downloads[repo]["error"] = validation_error
                     state.add_log("library", "error", validation_error)
                 return
+            # A pinned ``*.gguf_file`` (FU-540) gets its ``.gguf`` link now, so the library lists it at once.
+            if text_patterns:
+                from backend_service.helpers.hf_cache_paths import _hf_repo_snapshot_dir
+                from backend_service.helpers.text_gguf import ensure_gguf_aliases
+
+                snapshot_dir = _hf_repo_snapshot_dir(repo)
+                if snapshot_dir is not None:
+                    ensure_gguf_aliases(snapshot_dir)
             downloaded_gb_local = _bytes_to_gb(_scoped_downloaded_bytes())
             with state._lock:
                 if state._download_tokens.get(repo) != download_token:

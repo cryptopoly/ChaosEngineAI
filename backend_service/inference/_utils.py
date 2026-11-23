@@ -187,13 +187,18 @@ def _resolve_gguf_path(path: str | None, runtime_target: str | None) -> str | No
         if not candidate:
             continue
         p = Path(candidate)
-        from backend_service.helpers.text_gguf import is_aux_gguf, pick_model_gguf  # noqa: PLC0415
+        from backend_service.helpers.text_gguf import (  # noqa: PLC0415
+            ensure_gguf_aliases,
+            is_aux_gguf,
+            pick_model_gguf,
+        )
 
         if p.is_file() and p.suffix.lower() == ".gguf":
             if is_aux_gguf(p.name):
                 continue
             return str(p)
         if p.is_dir():
+            ensure_gguf_aliases(p)
             gguf_files = sorted(p.rglob("*.gguf"), key=lambda f: f.stat().st_size, reverse=True)
             # Filter out vision projectors and spec-dec sidecars (mtp- /
             # dflash- / dspark- / eagle3-): a large drafter must never be

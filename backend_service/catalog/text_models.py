@@ -3251,6 +3251,59 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
         ],
     },
+    {
+        # Thinking Machines Inkling 2 Mini (2026-11-20, FU-540). The middle 12 of 24 layers run three times with
+        # shared weights. Unsloth's root GGUFs use a looped layout only their own llama.cpp builds read; the
+        # ``Mainline_Support/*.gguf_file`` copies hold the same tensors in the ``inkling2_loop`` layout upstream
+        # llama.cpp reads from b12611 (the bundled b12649 qualifies). ``text_gguf.ensure_gguf_aliases`` gives the
+        # pinned file its ``.gguf`` name on disk. One row: the text catalog pins one file per repo, so the
+        # UD-Q3_K_XL (13.6 GB) and UD-Q8_K_XL (22.9 GB) quants of the same repo wait for per-row pins (FU-605).
+        "id": "inkling-2",
+        "name": "Inkling 2",
+        "provider": "Thinking Machines",
+        "headline": "26B mixture of experts with 3.4B active and looped layers: text and images, 1M context.",
+        "summary": "Thinking Machines' Inkling 2 Mini (released 2026-11-20): 26.4B MoE, 3.4B active, middle layers run three times, image input, 1M context. Apache 2.0.",
+        "description": (
+            "Inkling 2 Mini is a 26.4B mixture-of-experts model with 3.4B parameters active per token (8 of 128 "
+            "experts). Its 24 layers mix local and global attention, and the middle 12 run three times with shared "
+            "weights, so each token passes through 48 layers. It reads images through a vision encoder and takes "
+            "up to 1M tokens of context. The Unsloth Dynamic Q4_K_M GGUF is 16.6 GB, which fits a 24 GB card or a "
+            "32 GB Mac. Apache 2.0, with Thinking Machines' acceptable use policy."
+        ),
+        "updatedLabel": "Released Nov 2026",
+        "popularityLabel": "New",
+        "likesLabel": "Thinking Machines",
+        "badges": ["Mixture of experts", "Vision", "Long context", "Apache 2.0"],
+        "capabilities": ["reasoning", "coding", "agents", "tool-use", "vision"],
+        "defaultVariantId": "unsloth/Inkling-2-Mini-GGUF",
+        "readme": [
+            "Inkling 2 Mini runs its middle 12 layers three times per token, so it computes like a 48-layer model while storing 24. Each pass keeps its own context cache, which the memory estimate counts.",
+            "The GGUF comes from the repo's Mainline_Support folder, the copy upstream llama.cpp reads; the app runs it on the bundled llama.cpp on Windows, macOS and Linux. An mmproj for images downloads with it.",
+            "The publisher recommends temperature 1.0 with top-p 1.0 and no top-k or min-p.",
+        ],
+        "variants": [
+            {
+                "id": "unsloth/Inkling-2-Mini-GGUF",
+                "name": "Inkling 2 Mini GGUF UD-Q4_K_M",
+                "repo": "unsloth/Inkling-2-Mini-GGUF",
+                "link": "https://huggingface.co/unsloth/Inkling-2-Mini-GGUF",
+                "paramsB": 26.4,
+                "sizeGb": 16.6,
+                "format": "GGUF",
+                "quantization": "UD-Q4_K_M",
+                "ggufFile": "Mainline_Support/Inkling-2-Mini-UD-Q4_K_M.gguf_file",
+                "capabilities": ["reasoning", "coding", "agents", "tool-use", "vision"],
+                "note": (
+                    "Unsloth Dynamic Q4_K_M (16.6 GB) plus a 0.6 GB F16 mmproj for images. Fits a 24 GB card or a "
+                    "32 GB Mac. Apache 2.0."
+                ),
+                "contextWindow": "1M",
+                "launchMode": "direct",
+                "backend": "llama.cpp",
+                "releaseDate": "2026-11",
+            },
+        ],
+    },
 ]
 
 

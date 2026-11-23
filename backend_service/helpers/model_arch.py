@@ -318,6 +318,26 @@ def architecture_from_gguf_metadata(meta: dict[str, Any]) -> KvArchitecture | No
             full = attn_count // every
             sliding = attn_count - full
 
+    # Looped models (Inkling 2 Mini, ``inkling2_loop``) run layers [loop.start, loop.end) ``loop.count`` times
+    # with shared weights, and each pass keeps its own keys and values (FU-542): Mini caches 48 logical layers
+    # of 24 physical. Every extra pass adds the loop's own full and sliding layers again.
+    loop_count = _int(key("loop.count")) or 1
+    loop_start, loop_end = _int(key("loop.start")), _int(key("loop.end"))
+    if (
+        loop_count > 1
+        and loop_start is not None
+        and loop_end is not None
+        and 0 <= loop_start < loop_end <= cached_layers
+        and attn_count == cached_layers
+    ):
+        span = loop_end - loop_start
+        if window and isinstance(swa_pattern, list) and len(swa_pattern) == num_layers:
+            loop_sliding = sum(1 for flag in swa_pattern[loop_start:loop_end] if flag)
+        else:
+            loop_sliding = round(span * sliding / attn_count) if attn_count else 0
+        full += (span - loop_sliding) * (loop_count - 1)
+        sliding += loop_sliding * (loop_count - 1)
+
     shared_count = _int(key("expert_shared_count")) or 0
     expert_ffn = _int(key("expert_feed_forward_length"))
     active_fraction = _moe_active_fraction(

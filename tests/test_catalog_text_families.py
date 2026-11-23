@@ -241,7 +241,29 @@ class NewTextFamiliesTests(unittest.TestCase):
         "ggml-org/Qwen3.6-35B-A3B-GGUF": ("qwen-3-6", "Qwen3.6-35B-A3B-Q4_K_M.gguf", 20.5),
         # FU-269: Q2_0 reads on stock llama.cpp (b12441), 7.63 GB file.
         "prism-ml/Ternary-Bonsai-2-27B-gguf": ("bonsai", "Ternary-Bonsai-2-27B-Q2_0.gguf", 7.6),
+        # FU-540: the upstream-llama.cpp copy of the quant, 16.61 GB at 800c946.
+        "unsloth/Inkling-2-Mini-GGUF": ("inkling-2", "Mainline_Support/Inkling-2-Mini-UD-Q4_K_M.gguf_file", 16.6),
     }
+
+    def test_inkling2_mini_row(self):
+        fam = self.by_id["inkling-2"]
+        self.assertEqual(fam["defaultVariantId"], "unsloth/Inkling-2-Mini-GGUF")
+        self.assertIn("vision", fam["capabilities"])
+        (row,) = fam["variants"]
+        self.assertIn("vision", row["capabilities"])
+        self.assertEqual(row["contextWindow"], "1M")
+        self.assertTrue(row["ggufFile"].startswith("Mainline_Support/"))
+
+    def test_inkling2_mini_fits_a_24gb_card_but_not_a_16gb_one(self):
+        from backend_service.helpers.fit import variant_fit
+        from backend_service.helpers.hardware_class import hardware_class
+
+        (row,) = self.by_id["inkling-2"]["variants"]
+        pc = {"platform": "Windows", "arch": "AMD64", "totalMemoryGb": 32.0}
+        self.assertNotEqual(variant_fit(row, "chat", hardware_class({**pc, "gpuVramTotalGb": 24.0}))["status"], "wont-fit")
+        self.assertEqual(variant_fit(row, "chat", hardware_class({**pc, "gpuVramTotalGb": 16.0}))["status"], "wont-fit")
+        mac_16 = hardware_class({"platform": "Darwin", "arch": "arm64", "totalMemoryGb": 16.0})
+        self.assertEqual(variant_fit(row, "chat", mac_16)["status"], "wont-fit")
 
     def test_cuda_chat_rows_are_pinned_and_sized(self):
         for repo, (family, gguf_file, size_gb) in self._CUDA_CHAT_ROWS.items():

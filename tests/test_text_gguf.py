@@ -120,6 +120,23 @@ class HelperTests(unittest.TestCase):
             _write(other / "mtp-Other-Q4_0.gguf", 1)
             self.assertEqual(text_gguf.resolve_spec_sidecar(str(m2)), ("draft-dflash", str(df)))
 
+    def test_inkling_downloads_its_mainline_quant_and_mmproj_but_no_drafter(self) -> None:
+        # File list of unsloth/Inkling-2-Mini-GGUF at 800c946 (FU-540), sizes in GB.
+        repo = "unsloth/Inkling-2-Mini-GGUF"
+        files = [
+            {"path": "Inkling-2-Mini-UD-Q4_K_M.gguf", "sizeBytes": 16610},
+            {"path": "Mainline_Support/Inkling-2-Mini-UD-Q4_K_M.gguf_file", "sizeBytes": 16611},
+            {"path": "Mainline_Support/Inkling-2-Mini-UD-Q8_K_XL.gguf_file", "sizeBytes": 22867},
+            {"path": "Mainline_Support/dspark-Inkling-2-Mini-Q8_0.gguf_file", "sizeBytes": 504},
+            {"path": "dspark-Inkling-2-Mini-Q8_0.gguf", "sizeBytes": 402},
+            {"path": "mmproj-BF16.gguf", "sizeBytes": 642},
+            {"path": "mmproj-F16.gguf", "sizeBytes": 639},
+            {"path": "mmproj-F32.gguf", "sizeBytes": 1273},
+        ]
+        patterns = text_gguf.text_repo_allow_patterns(repo, files)
+        self.assertEqual(patterns[:2], ["Mainline_Support/Inkling-2-Mini-UD-Q4_K_M.gguf_file", "mmproj-F16.gguf"])
+        self.assertEqual(text_gguf.matched_size_bytes(files, patterns), 16611 + 639)
+
     def test_one_mmproj_choice_falls_back(self) -> None:
         self.assertEqual(text_gguf._best_mmproj(["mmproj-F32.gguf", "mmproj-BF16.gguf"]), "mmproj-BF16.gguf")
         # Bonsai 2 ships a BF16 (0.93 GB) and a Q8_0 (0.63 GB, the one run on the 4090): the smaller one.
@@ -187,6 +204,25 @@ class ResolverTests(unittest.TestCase):
         _write(snap / "UD-Q4_K_M" / "GLM-5.1-UD-Q4_K_M-00002-of-00011.gguf", 6)
         _write(snap / "BF16" / "GLM-5.1-BF16-00001-of-00033.gguf", 50)
         self.assertEqual(_resolve_gguf_path(str(snap), None), str(first))
+
+    def test_renamed_gguf_pin_gets_a_gguf_alias_and_loads(self) -> None:
+        # FU-540: Inkling 2 Mini's upstream-llama.cpp files are published as ``*.gguf_file``; the app links a
+        # ``.gguf`` name beside the pinned one and loads that, never the root file in the other layout.
+        snap = self.root / "models--unsloth--Inkling-2-Mini-GGUF" / "snapshots" / "rev"
+        hub_file = _write(snap / "Mainline_Support" / "Inkling-2-Mini-UD-Q4_K_M.gguf_file", 16)
+        _write(snap / "Inkling-2-Mini-UD-Q8_K_XL.gguf", 29)  # another quant in the other layout
+        _write(snap / "mmproj-F16.gguf", 4)
+        resolved = _resolve_gguf_path(str(snap), None)
+        alias = snap / "Mainline_Support" / "Inkling-2-Mini-UD-Q4_K_M.gguf"
+        self.assertEqual(resolved, str(alias))
+        self.assertTrue(alias.is_file())
+        self.assertEqual(alias.stat().st_size, hub_file.stat().st_size)
+        # Idempotent: a second pass creates nothing.
+        self.assertEqual(text_gguf.ensure_gguf_aliases(snap), [])
+
+    def test_local_gguf_name(self) -> None:
+        self.assertEqual(text_gguf.local_gguf_name("a/B-Q4.gguf_file"), "a/B-Q4.gguf")
+        self.assertEqual(text_gguf.local_gguf_name("B-Q4.gguf"), "B-Q4.gguf")
 
     def test_pin_missing_on_disk_falls_back_to_largest(self) -> None:
         snap = self.root / "models--lmstudio-community--Qwen3.6-27B-GGUF" / "snapshots" / "rev"
@@ -296,7 +332,7 @@ class CatalogPinInvariantTests(unittest.TestCase):
         for variant in pinned:
             name = variant["ggufFile"]
             self.assertEqual(variant["format"], "GGUF", variant["id"])
-            self.assertTrue(name.endswith(".gguf"), variant["id"])
+            self.assertTrue(name.endswith((".gguf", text_gguf.RENAMED_GGUF_SUFFIX)), variant["id"])
             self.assertNotIn("mmproj", name.lower(), variant["id"])
             shard = re.search(r"-(\d{5})-of-\d{5}\.gguf$", name)
             if shard:

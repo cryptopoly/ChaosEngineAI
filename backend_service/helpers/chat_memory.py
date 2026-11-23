@@ -69,7 +69,12 @@ def local_variant_layout(repo: str, gguf_file: str | None) -> GgufLayout | None:
     if snapshot is None:
         return None
     if gguf_file:
+        from backend_service.helpers.text_gguf import local_gguf_name
+
         candidate = Path(snapshot) / gguf_file
+        alias = candidate.with_name(local_gguf_name(candidate.name))
+        if alias.is_file():
+            candidate = alias
         return gguf_layout(candidate) if candidate.is_file() else None
     found = gguf_file_for(snapshot)
     return gguf_layout(found) if found is not None else None

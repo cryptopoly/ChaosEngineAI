@@ -277,7 +277,7 @@ output). No model weights are bundled. The clips are shipped as the model wrote 
 - **Source:** <https://github.com/microsoft/playwright>
 - **Location:** `e2e/` sub-package only (own `package.json` and lockfile); the app's `package.json`, lockfile and
   release bundle do not include it. A headless Chromium is downloaded on demand by `npx playwright install chromium`
-  into the user cache, and is not redistributed. Security review: `docs/research/playwright-security.md`.
+  into the user cache, and is not redistributed. Security review: `research/playwright-security.md` in the private ProjectHub.
 
 ## Internationalization (FU-042)
 
@@ -587,7 +587,7 @@ Downloaded by the user from Voice Models, never bundled. Each is pinned to a ful
 
 ### Speech GPU add-on (Windows / Linux with an NVIDIA GPU, installed on demand into the voice venv)
 
-Verified on an RTX 4090 (docs/progress/rtx4090-progress.md). Each package and its licence:
+Verified on an RTX 4090 (`progress/docs-progress/rtx4090-progress.md` in the private ProjectHub). Each package and its licence:
 
 - `chatterbox-tts` 0.1.7 - MIT (installed without its pinned dependencies), from the upstream repository at commit
   `ab55923c` (the Multilingual V3 model is not in the PyPI release); it applies Resemble's PerTh watermark

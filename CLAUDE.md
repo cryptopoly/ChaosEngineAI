@@ -1,6 +1,6 @@
 # ChaosEngineAI — Project Guide
 
-**Project hub:** private, in ProjectHub, outside this repository (since 2026-11-18). Read the briefing given at session start (or run `hub context`) first: status, open decisions, work in progress. Log decisions with `hub decision add`, deferred work with `hub backlog add --type followup`, and add `hub status update` after each batch. The old `docs/hub/`, `FOLLOW_UPS.md`, `tools/hub_tracker.py` and `tools/build_hub.py` are frozen: do not edit or rebuild them.
+**Project hub:** private, in ProjectHub, outside this repository (since 2026-11-18). Read the briefing given at session start (or run `hub context`) first: status, open decisions, work in progress. Log decisions with `hub decision add`, deferred work with `hub backlog add --type followup`, and add `hub status update` after each batch. Progress logs, plans, research and review reports (the old `docs/hub/`, `docs/progress/`, `docs/plans/`, `docs/research/`) moved there too. `FOLLOW_UPS.md` is frozen: do not edit it.
 
 ## Editorial Rules
 

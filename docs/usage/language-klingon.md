@@ -30,7 +30,7 @@ Klingon speech model.
 Technical terms were built from Okrand's vocabulary with Klingon grammar
 where no word exists (a model is `yab`, a mind; a download is `lI'`, to
 transmit data here; a project is `Qu'`, a mission). Every coined term is
-listed in `docs/plans/klingon/glossary.md` with its source and a confidence
+listed in `progress/plans/klingon/glossary.md` in the private ProjectHub with its source and a confidence
 mark.
 
 ## Report a correction

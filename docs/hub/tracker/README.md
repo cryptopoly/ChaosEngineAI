@@ -24,4 +24,4 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 | [FU-581](open.md) | Wire names still carry the other apps' names | Next settings migration |
 | [FU-580](open.md) | "Highest rated" pick (benchmark score) for Chat Models and the Dashboard | Needs a score source before any badge |
 | [FU-564](open.md) | Mac-only upstreams left as they are; no release-constraints refresh needed from the 2026-1 | Next Mac session |
-| [FU-563](open.md) | stable-diffusion.cpp 532d2c1 -> 0d71f963 (master, 2026-11-22) | Next sd.cpp pass on the 4090 or the Mac (needs a CUDA Toolkit or the 700 MB portable CUDA archives, and two bu… |
+| [FU-563](open.md) | stable-diffusion.cpp 532d2c1 -> 0d71f963 (master, 2026-11-22): not bumped, CUDA sampling 1 | Next sd.cpp master (re-measure), or on D-131 |

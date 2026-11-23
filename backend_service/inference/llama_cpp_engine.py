@@ -387,18 +387,26 @@ def _resolve_mmproj_path(model_gguf_path: str | None) -> str | None:
     if not parent.is_dir():
         return None
 
+    # A model in a subfolder of a Hugging Face snapshot (Inkling 2 Mini's ``Mainline_Support/``, FU-540) may keep
+    # its projector at the snapshot root. The snapshot is one repo, so its root is still never a neighbour's.
+    folders = [parent]
+    if parent.parent.parent.name == "snapshots" and parent.parent.parent.parent.name.startswith("models--"):
+        folders.append(parent.parent)
     candidates: list[Path] = []
-    try:
-        for entry in parent.iterdir():
-            if (
-                entry.is_file()
-                and entry != main_path
-                and entry.suffix.lower() == ".gguf"
-                and "mmproj" in entry.name.lower()
-            ):
-                candidates.append(entry)
-    except OSError:
-        return None
+    for folder in folders:
+        try:
+            for entry in folder.iterdir():
+                if (
+                    entry.is_file()
+                    and entry != main_path
+                    and entry.suffix.lower() == ".gguf"
+                    and "mmproj" in entry.name.lower()
+                ):
+                    candidates.append(entry)
+        except OSError:
+            return None
+        if candidates:
+            break
 
     if not candidates:
         return None

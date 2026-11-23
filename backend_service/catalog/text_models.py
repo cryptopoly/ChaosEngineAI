@@ -3292,10 +3292,14 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "format": "GGUF",
                 "quantization": "UD-Q4_K_M",
                 "ggufFile": "Mainline_Support/Inkling-2-Mini-UD-Q4_K_M.gguf_file",
+                # FU-541: RTX 4090, llama.cpp b12649, 8,192 context, f16 KV, mmproj loaded, 300-token replies.
+                "measuredGpuGb": 18.0,
+                "measuredGpuTokS": 63.7,
                 "capabilities": ["reasoning", "coding", "agents", "tool-use", "vision"],
                 "note": (
-                    "Unsloth Dynamic Q4_K_M (16.6 GB) plus a 0.6 GB F16 mmproj for images. Fits a 24 GB card or a "
-                    "32 GB Mac. Apache 2.0."
+                    "Unsloth Dynamic Q4_K_M (16.6 GB) plus a 0.6 GB F16 mmproj for images. On an RTX 4090: about "
+                    "64 tok/s and 18 GB of VRAM at 8K context with images on; at 64K context it took about 22 GB "
+                    "without images, close to the card's limit. Not yet run on a Mac. Apache 2.0."
                 ),
                 "contextWindow": "1M",
                 "launchMode": "direct",

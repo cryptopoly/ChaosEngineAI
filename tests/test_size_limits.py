@@ -491,9 +491,13 @@ class VideoGateRouteHelperTests(unittest.TestCase):
         request = mock.MagicMock()
         request.app.state.chaosengine = state
         body = SimpleNamespace(width=width, height=height, numFrames=frames)
+        # The resident-model adjustment caps free memory at the host's real total, so pin the total too
+        # (a 31 GB WSL VM refused the "big machine" case).
+        total = SimpleNamespace(total=int(max(available_gb, 32.0) * 1024 ** 3))
         with mock.patch(
             "backend_service.helpers.memory_gate.snapshot_memory_signals", return_value=(available_gb, 20.0)
-        ), mock.patch("backend_service.helpers.memory_gate.cuda_free_vram_gb", return_value=None):
+        ), mock.patch("backend_service.helpers.memory_gate.cuda_free_vram_gb", return_value=None), \
+                mock.patch("psutil.virtual_memory", return_value=total):
             video_routes._video_memory_gate(request, variant, "video generation", body)
 
     def test_native_size_passes_on_a_modest_machine(self):

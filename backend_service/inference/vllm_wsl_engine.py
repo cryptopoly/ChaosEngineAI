@@ -551,6 +551,7 @@ class VllmWslEngine(BaseInferenceEngine):
         temperature: float,
         images: list[str] | None = None,
         tools: list[dict[str, Any]] | None = None,
+        thinking_mode: str | None = None,
         samplers: dict[str, Any] | None = None,
         reasoning_effort: str | None = None,
         json_schema: dict[str, Any] | None = None,

@@ -118,7 +118,7 @@ class RemoteOpenAIEngine(BaseInferenceEngine):
 
     def generate(self, *, prompt, history, system_prompt, max_tokens, temperature,
                  images=None, tools=None,
-                 samplers=None, reasoning_effort=None, json_schema=None) -> GenerationResult:
+                 thinking_mode=None, samplers=None, reasoning_effort=None, json_schema=None) -> GenerationResult:
         if self.loaded_model is None:
             raise RuntimeError("Remote model not configured.")
         started = time.perf_counter()

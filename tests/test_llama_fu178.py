@@ -242,6 +242,23 @@ class DraftAcceptanceTests(unittest.TestCase):
         self.assertEqual(result.dflashAcceptanceRate, 2.76)
         self.assertEqual(result.to_metrics()["dflashAcceptanceRate"], 2.76)
 
+    def test_generate_sends_the_thinking_switch_per_request(self):
+        # FU-608: the non-streaming route used to leave it out, so only the server-wide --reasoning applied.
+        reply = {"choices": [{"message": {"content": "x"}}], "usage": {"completion_tokens": 1}}
+        for mode, expected in (("off", False), ("auto", True)):
+            engine = self._engine("")
+            with mock.patch("backend_service.inference.llama_cpp_engine._http_json", return_value=reply) as http:
+                engine.generate(prompt="hi", history=[], system_prompt=None, max_tokens=4, temperature=0.0,
+                                thinking_mode=mode)
+            self.assertEqual(http.call_args.kwargs["payload"]["chat_template_kwargs"], {"enable_thinking": expected})
+
+    def test_generate_without_a_thinking_mode_leaves_the_template_alone(self):
+        engine = self._engine("")
+        reply = {"choices": [{"message": {"content": "x"}}], "usage": {"completion_tokens": 1}}
+        with mock.patch("backend_service.inference.llama_cpp_engine._http_json", return_value=reply) as http:
+            engine.generate(prompt="hi", history=[], system_prompt=None, max_tokens=4, temperature=0.0)
+        self.assertNotIn("chat_template_kwargs", http.call_args.kwargs["payload"])
+
     def test_plain_decode_reports_none(self):
         engine = self._engine("")
         reply = {"choices": [{"message": {"content": "x"}}], "usage": {"completion_tokens": 1},

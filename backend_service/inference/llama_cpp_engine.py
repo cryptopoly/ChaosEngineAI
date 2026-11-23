@@ -1136,6 +1136,7 @@ class LlamaCppEngine(BaseInferenceEngine):
         temperature: float,
         images: list[str] | None = None,
         tools: list[dict[str, Any]] | None = None,
+        thinking_mode: str | None = None,
         samplers: dict[str, Any] | None = None,
         reasoning_effort: str | None = None,
         json_schema: dict[str, Any] | None = None,
@@ -1171,6 +1172,7 @@ class LlamaCppEngine(BaseInferenceEngine):
             samplers=samplers,
             reasoning_effort=reasoning_effort,
             json_schema=json_schema,
+            thinking_mode=thinking_mode,
         )
         try:
             response = _http_json(

@@ -2428,3 +2428,67 @@ Built like `release.yml`: clean Python 3.12 `.venv` in the worktree (`-c release
 | Nunchaku image | not run: Nunchaku package not on this PC, wheel download needs the owner's OK (D-133) |
 
 Installer kept at `E:\tmp\fu399-installer\ChaosEngineAI_0.10.0_x64-setup.exe` (sha256 `3e0d177d...a407`) for the hands-on checks; build tree (2.3 GB), archive and unpacked runtime deleted. Not checked: installing it, the packaged window, uninstall, signing (D-99, owner).
+
+## 2026-11-23: final Windows gates on the `test/rtx4090` tip (agent branch `test/final-gates-2026-11-23`)
+
+Cut from `test/rtx4090` at `f96d37bb`. Backend from this worktree's code with the main checkout's venv (`/api/health` `workspaceRoot` = the worktree), port 8876, throwaway `HOME` / `USERPROFILE` `E:\tmp\e2e-final-home`, `HF_HUB_CACHE=E:\AI Models` (read only: nothing there was deleted or downloaded), API token set for backend and suite, GPU lock `E:\tmp\gpu.lock` held throughout. Set up through the app in the throwaway home: CUDA llama-server **b12649** via `POST /api/setup/install-llama-cuda` (CUDA 13.5 zips, both sha256-verified), the Kokoro voice pack via `POST /api/voice/install`, the lip-sync score add-on copied from `E:\tmp\lipsync\p3home` (found by the app on its own, no env override). Two environment steps, both found by the first full run: `CHAOSENGINE_SDCPP_BIN` = the pinned `532d2c1` CUDA `sd.exe` from FU-563 (a dev checkout stages no `sd`), and a user model directory `E:\AI Models` (the library does not follow a moved cache, FU-610). Reports in `E:\tmp\e2e-final-report`, logs (backend, suite, Playwright, upstreams, audit) in `E:\tmp\e2e-final-logs`.
+
+| Gate | Result | Evidence |
+|---|---|---|
+| `e2e_test_suite.py --smoke` | **PASS, 7 of 7** (330 s) after one suite fix | First run failed phase 8 (below); re-run `e2e-20261123-141441`. Smoke runs phases 0, 3 to 8 (the docs still say 0, 2 to 7). |
+| `e2e_test_suite.py` (full) | **PASS** after suite fixes and two environment steps | Final full run `e2e-20261123-133528` (813 s): 23 phases pass, 211, 215, 216 failed on suite issues; fixed and re-run (`e2e-20261123-135251`): 211 PASS, 215 PASS, 216 SKIP. Table below. |
+| Phase 22 with the sync-score add-on | **PASS** | Real 5.04 s LTX-2.3 nf4 lip-sync clip with a Kokoro line (101.6 s, GPU peak 17.2 GB, motion 0.98); the 2-take shot kept take 2 (seed 43, score 0.66, take 1 0.64) and both takes are scored. |
+| Playwright `--workers=1` | **17 failed, 250 passed, 1 skipped** (18.9 min); 3 fixed, 14 host-bound | Re-run of the 3 fixed specs: 10 of 10 pass. Remaining 14 are FU-256's Apple Silicon mocks, same as 2026-11-18: `27-benchmarks-conversion` 10, `06-busy-advice` 3, `21-slow-row-labels` 1. |
+| `check-upstreams.py` | PASS (report only) | 2 behind: llama.cpp b12649, newest with archives **b12651** (FU-613); sd.cpp `532d2c1`, newest `0d71f96` (not bumped on purpose, D-131 / FU-563). Everything else current (TensorFold 1.3.4, mflux 0.24.0, Transformers 5.24.0, MediaPipe 1.2.3, Playwright 1.65.1). |
+| `audit-dependencies.py` | PASS | 1006 packages; no blocking advisory; 11 not blocking (torch 2.11.0 low, katex low, crates cookie / glib moderate, 5 unmaintained crates); 111 behind, 27 by a major version. |
+
+### Full run, per phase (run `e2e-20261123-133528`, then the re-run for 211, 215, 216)
+
+| Phase | Result | Pass / fail / skip | Seconds | Notes |
+|---|---|---|---|---|
+| 0 Environment probe | PASS | 20 / 0 / 0 | 7.6 | |
+| 1 Chat | PASS | 9 / 0 / 19 | 46.1 | CUDA llama-server lane, GGUF, `/v1` stream tool calls, MTP speculative, baked-in MTP head (Qwen3.6-35B-A3B MTP, 181 tok/s), sidecar / ngram lane, q8_0 KV, MoE expert offload (gemma-4-26B, 8 of 30 layers on CPU), long-context preview. First run failed the baked-in MTP check: fixed in the suite (below). |
+| 2 Chat Compare | PASS | 1 / 0 / 0 | 9.5 | |
+| 3 HTML Challenge | PASS | 2 / 0 / 0 | 3.9 | |
+| 4 Image Studio | PASS | 13 / 0 / 3 | 153.1 | FLUX.2 Klein 4B diffusers 28 s; memory back to 4.0 GB after unload; FLUX 3 Klein (diffusers and sd.cpp Q8), Qwen-Image-2.1 Turbo sd.cpp, MOSS-Image rendered. |
+| 5 Video Studio | PASS | 11 / 0 / 3 | 133.1 | LTX-2.3 nf4 64 s; LTX-2.3 with sound 20.8 s; Kandinsky 6.0 Lite with sound 18.5 s. |
+| 6 Setup probes | PASS | 13 / 0 / 0 | 2.2 | |
+| 7 Diagnostics + cleanup | PASS | 9 / 0 / 0 | 15.3 | no orphan workers |
+| 8 Voice I/O | PASS | 17 / 0 / 5 | 14.5 | Kokoro pack; first run failed one check (suite fix below). |
+| 9 Agent bridge | PASS | 8 / 0 / 0 | 17.2 | first run failed: no `sd` binary (environment) |
+| 10 Storyboard | PASS | 9 / 0 / 0 | 1.6 | |
+| 11 Music | PASS | 7 / 0 / 2 | 0.6 | |
+| 14 Voice cloning | PASS | 2 / 0 / 3 | 0.2 | |
+| 15 Sound effects | PASS | 6 / 0 / 1 | 0.2 | |
+| 16 Storyboard v2 | PASS | 7 / 0 / 1 | 6.4 | |
+| 17 Agent bridge v2 | PASS | 9 / 0 / 0 | 0.4 | |
+| 18 Video tools | PASS | 4 / 0 / 0 | 0.1 | |
+| 19 Skills import | PASS | 6 / 0 / 0 | 0.3 | |
+| 20 Storyboard 0.10 | PASS | 22 / 0 / 0 | 111.8 | real draft (73.7 s), cancelled Redo clip, Redo still; first run failed 3 on the missing `sd` binary |
+| 22 Lip sync | PASS | 11 / 0 / 0 | 252.6 | see above; first run failed on the missing `sd` binary |
+| 211 Benchmarks and Conversion | PASS (re-run) | 4 / 0 / 8 | 13.8 | GGUF throughput Qwen3-VL-4B 204.6 tok/s; MLX parts skip |
+| 212 Fine-Tuning | PASS | 5 / 0 / 0 | 0.3 | |
+| 213 Prompts in Chat | PASS | 7 / 0 / 1 | 0.3 | |
+| 214 Server Activity | PASS | 3 / 0 / 2 | 0.1 | |
+| 215 GGUF routing | PASS (re-run) | 2 / 0 / 2 | 2.1 | a `.gguf` symlinked into a folder named `mlx` loads on llama.cpp and answers "Paris" |
+| 216 Routing hints | SKIP (re-run) | 0 / 0 / 3 | 0.1 | needs MLX |
+
+**Skips, by reason:** MLX / Apple Silicon only (phase 1 MLX lanes, fused attention, samplers, settings guard, prompt cache; mflux; ltx-2-mlx; MPS Wan; 211 perplexity, MMLU, cancel, conversion; 213 and 214 model parts; 215 and 216 MLX checks); not installed here: MTPLX, TensorFold (Python and the 1.x binary), the speech GPU and STT GPU add-ons (Qwen3-TTS, Chatterbox, VoxCPM2, Orpheus GPU, Nemotron ASR), voice cloning, the music pack and ACE-Step, the sounds pack and SA3 weights, LTX-2.5 (gated, 71 GB); not on disk: DFlash / DDTree MLX drafters, Kolibri and LFM3 MLX, Qwen3.8-27B with a `dflash-` sidecar, Nemotron 3.5 Bolt GGUF, Inkling 2 Mini, FLUX.1 schnell sd.cpp GGUF; by design: captions from speech (`E2E_CAPTIONS_STT=1`).
+
+### Failures and what was done
+
+| Failure | Cause | Status |
+|---|---|---|
+| Phase 8 "speak with each wave-2 model": `orpheus-3b-gguf` 400 "Preset and designed voices need ... the speech GPU add-on" | Suite: picked rows that are downloaded but not `supported` (the add-on is missing); the Qwen check beside it already required both | **Fixed** (`61308c4c`), skips with the reason |
+| Phase 1 "GGUF baked-in MTP head": ran `draft-dflash` with `Qwen3.8-27B-DFlash2-Q8_0.gguf` | Suite: picked the smallest file with a baked-in head, `lmstudio-community/Qwen3.8-27B-GGUF`, whose pinned DFlash 2 drafter wins by design (FU-178, `_speculative_args`) | **Fixed** (`1e5d08b4`): files a block drafter wins for are left out; now runs on Qwen3.6-35B-A3B MTP and passes |
+| Phases 9, 20 (3), 22: "stable-diffusion.cpp binary not staged" | Environment: a dev checkout has no `sd`; the first installed image model is an sd.cpp row | Pinned `sd.exe` set with `CHAOSENGINE_SDCPP_BIN`; all pass. Copy issues filed as FU-612 |
+| Phases 211, 215: "no local GGUF text model", then a load of `unsloth/gemma-4-12B-it-GGUF` refused | Product: the library ignores a moved cache (**FU-610**); then the smallest GGUF row is a repo that holds only a drafter (**FU-611**) | Suite picks skip drafter-only repos (`_holds_model_gguf`, `tests/test_e2e_gguf_pick.py`); product rows filed |
+| Phases 215, 216: MLX loads answer 500 on Windows | Suite: MLX library rows exist on disk but MLX is not usable | **Fixed**: skip with "MLX is not usable here", like phase 1 since 2026-11-18 |
+| Phase 216 chat: bare `Internal Server Error` | **Product, all platforms:** `/api/chat/generate` (and the stream route) auto-loads the named model without the error handling `/api/models/load` has, so a refused load reached the client with no reason | **Fixed** (`01dcaed9`, `state/generation.py` `_load_for_chat`); test `test_chat_that_cannot_load_its_model_says_why`; live: 500 with "MLX backend requested but unavailable ..." |
+| Playwright `12-sound-models` | Spec marked every sound row installed; on CUDA the catalog also lists Stable Audio 3 | **Fixed**: only the two Stable Audio Open rows |
+| Playwright `22-sound-steps` | Spec expected the Mac's measured time (about 3.4 min); the backend gives the RTX 4090's (27.6 s at 100 steps, 20.3 s at 50) | **Fixed**: accepts the CUDA figures; it also rewrites `docs/plans/sound-steps/sounds-options-steps-desktop.png` on every run (restored, not committed) |
+| Playwright `43-ui-review-a` first run | With nothing on disk Chat Models opens on the recommended rows (D-105 D), which have no disk-total header | **Fixed**: the spec opens "Show all" first |
+
+`pytest` (targeted): `test_backend_service.py`, `test_e2e_gguf_pick.py`, `test_e2e_engine_skip.py`, `test_e2e_rtx4090_checks.py` pass except `test_html_challenge_persists_manifest_and_html_files` (500 on delete), which fails the same way on the base commit (noted on 2026-11-19 and 2026-11-20). The full `pytest tests/`, vitest, `tsc`, `i18n:validate` and `cargo test` were not part of this gate.
+
+**Not proven here:** MLX, mflux, ltx-2-mlx (Mac); TensorFold 1.x on Windows (no Windows archive); the speech and STT GPU add-ons, music and sounds packs, voice cloning, LTX-2.5 (not installed or gated); the packaged app (this gate ran the dev backend); llama.cpp b12651. A stray `pip\cache` folder appeared in the worktree during the voice install (the launcher set `LOCALAPPDATA` to a folder that did not exist); deleted, not traced further.

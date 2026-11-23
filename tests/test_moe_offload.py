@@ -230,6 +230,32 @@ class EngineArgumentTests(unittest.TestCase):
         self.assertEqual(command[command.index("--load-mode") + 1], "none")
         self.assertEqual(engine.applied_moe_cpu_layers, 2)
 
+    def _auto_fit_command(self, *, auto, help_text=HELP_WITH_MOE, cuda=True, env=None, moe_cpu_layers=None, fit=True):
+        from backend_service.inference.base import BackendCapabilities
+
+        caps = mock.MagicMock(spec=BackendCapabilities)
+        caps.llamaServerPath = "llama-server"
+        caps.llamaServerTurboPath = None
+        engine = engine_mod.LlamaCppEngine(caps)
+        with mock.patch.object(engine_mod, "_llama_server_help_text", return_value=help_text.lower()),                 mock.patch.object(engine_mod, "_llama_server_cache_types", return_value=frozenset({"f16"})),                 mock.patch.object(engine_mod, "nvidia_shared_memory", return_value=False),                 mock.patch.object(engine_mod, "_discrete_cuda_host", return_value=cuda),                 mock.patch.object(engine_mod, "_auto_cpu_moe_layers", return_value=auto),                 mock.patch.dict("os.environ", env or {}, clear=False):
+            return engine._build_command(
+                path=self.gguf, runtime_target=None, cache_strategy="native", cache_bits=0, context_tokens=8192,
+                fit_enabled=fit, is_fallback=False, moe_cpu_layers=moe_cpu_layers,
+            )[0]
+
+    def test_auto_with_fit_on_reads_the_file_in_when_llama_cpp_will_offload_experts(self):
+        command = self._auto_fit_command(auto=3)
+        self.assertNotIn("--n-cpu-moe", command)
+        self.assertEqual(command[command.index("--load-mode") + 1], "none")
+
+    def test_auto_with_fit_on_keeps_mmap_when_the_model_fits_or_the_binary_lacks_the_flag(self):
+        self.assertNotIn("--load-mode", self._auto_fit_command(auto=None))
+        self.assertNotIn("--load-mode", self._auto_fit_command(auto=3, cuda=False))
+        self.assertNotIn("--load-mode", self._auto_fit_command(auto=3, help_text="--n-cpu-moe N"))
+        self.assertNotIn("--load-mode", self._auto_fit_command(auto=3, env={"CHAOSENGINE_LLAMA_MMAP": "1"}))
+        # An explicit zero keeps every expert on the card, so nothing is overridden.
+        self.assertNotIn("--load-mode", self._auto_fit_command(auto=3, moe_cpu_layers=0))
+
 
 class MemoryCheckTests(unittest.TestCase):
     def _verdict(self, *, free_gpu, free_ram):

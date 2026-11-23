@@ -252,6 +252,7 @@ class FakeRuntime:
         images=None,
         tools=None,
         engine=None,
+        thinking_mode=None,
         samplers=None,
         reasoning_effort=None,
         json_schema=None,
@@ -264,6 +265,7 @@ class FakeRuntime:
             "temperature": temperature,
             "images": images,
             "tools": tools,
+            "thinking_mode": thinking_mode,
             "samplers": samplers,
             "reasoning_effort": reasoning_effort,
             "json_schema": json_schema,
@@ -1102,6 +1104,18 @@ class ChaosEngineBackendTests(unittest.TestCase):
             "modelRef": "google/gemma-4-E4B-it", "source": "catalog", "backend": "mock", "contextTokens": 8192,
         }).json()["runtime"]["loadedModel"]
         self.assertEqual(ordinary["contextTokens"], 8192)
+
+    def test_non_streaming_generate_passes_the_thinking_mode_to_the_runtime(self):
+        # FU-608: /api/chat/generate used to drop thinkingMode before it reached the engine.
+        self.client.post(
+            "/api/models/load",
+            json={"modelRef": "google/gemma-4-E4B-it", "modelName": "Gemma 4 E4B Instruct", "source": "catalog", "backend": "mock"},
+        )
+        runtime = self.client.app.state.chaosengine.runtime
+        self.client.post("/api/chat/generate", json={"prompt": "Hi", "thinkingMode": "auto", "maxTokens": 16})
+        self.assertEqual(runtime.last_generate_kwargs["thinking_mode"], "auto")
+        self.client.post("/api/chat/generate", json={"prompt": "Hi", "thinkingMode": "off", "maxTokens": 16})
+        self.assertEqual(runtime.last_generate_kwargs["thinking_mode"], "off")
 
     def test_voice_turn_does_not_save_its_thinking_mode_to_the_thread(self):
         self.client.post(

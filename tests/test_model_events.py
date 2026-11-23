@@ -411,7 +411,11 @@ class EventRouteTests(unittest.TestCase):
         self.assertEqual(bare.get("/api/server/events").status_code, 401)
 
     def _first_chunks(self, path: str, count: int) -> list[str]:
-        route = next(r for r in self.app.routes if getattr(r, "path", None) == path)
+        # Read the route from the router module: FastAPI 0.165 keeps included routers as one entry in
+        # ``app.routes`` instead of flattening their routes (FU-603), so a lookup there fails on it.
+        from backend_service.routes import server as server_routes
+
+        route = next(r for r in server_routes.router.routes if getattr(r, "path", None) == path)
         request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(chaosengine=self.state)))
 
         async def collect():

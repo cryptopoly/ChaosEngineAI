@@ -281,6 +281,7 @@ def generate(state: ChaosEngineState, request: GenerateRequest) -> dict[str, Any
                 max_tokens=request.maxTokens,
                 temperature=request.temperature,
                 images=request.images,
+                thinking_mode=effective_thinking_mode,
                 samplers=_build_sampler_overrides(request),
                 reasoning_effort=request.reasoningEffort,
                 json_schema=request.jsonSchema,

@@ -282,17 +282,22 @@ class H3CommandLineTests(unittest.TestCase):
         self.addCleanup(tmp.cleanup)
         self.dir = Path(tmp.name)
         self.record = self.dir / "args.json"
-        fake = self.dir / "sd"
-        fake.write_text(
-            f"#!{sys.executable}\n"
+        script = (
             "import json, sys, pathlib\n"
             f"pathlib.Path({str(self.record)!r}).write_text(json.dumps(sys.argv[1:]))\n"
             "out = sys.argv[sys.argv.index('-o') + 1]\n"
             "print('step 1/20', flush=True)\n"
-            "pathlib.Path(out).write_bytes(b'webm')\n",
-            encoding="utf-8",
+            "pathlib.Path(out).write_bytes(b'webm')\n"
         )
-        fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
+        if os.name == "nt":
+            # Windows cannot run a shebang script: a .cmd wrapper calls the same Python body.
+            (self.dir / "sd_fake.py").write_text(script, encoding="utf-8")
+            fake = self.dir / "sd.cmd"
+            fake.write_text(f'@"{sys.executable}" "%~dp0sd_fake.py" %*\r\n', encoding="utf-8")
+        else:
+            fake = self.dir / "sd"
+            fake.write_text(f"#!{sys.executable}\n" + script, encoding="utf-8")
+            fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
         self.files = {}
         for flag, name in (("--diffusion-model", H3_DIT_FILE), ("--llm", H3_TEXT_ENCODER_FILE),
                            ("--vae", H3_VIDEO_VAE_FILE), ("--audio-vae", H3_AUDIO_VAE_FILE)):

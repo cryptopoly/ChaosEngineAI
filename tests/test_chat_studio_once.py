@@ -51,7 +51,7 @@ class BlockingGenerators(FakeGenerators):
 
 class OneApprovalTests(unittest.TestCase):
     def setUp(self):
-        tmp = tempfile.TemporaryDirectory()
+        tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)  # a job thread can still hold project.json on Windows
         self.addCleanup(tmp.cleanup)
         base = Path(tmp.name)
         (base / "src").mkdir()

@@ -306,7 +306,7 @@ class MakeSoundModelTests(_FullBox):
         props = SOUND_TOOLS[0]["inputSchema"]["properties"]
         self.assertEqual(props["seconds"]["maximum"], 380)
         self.assertIn("modelId", props)
-        self.assertIn("47 s", SOUND_TOOLS[0]["description"])
+        self.assertIn("47 s", props["modelId"]["description"])
 
     def test_a_long_sound_needs_the_full_model(self) -> None:
         is_error, text = self._call("make_sound", {"caption": "x", "seconds": 30})

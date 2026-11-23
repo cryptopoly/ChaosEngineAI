@@ -28,7 +28,7 @@ Commands assume the repo at `~/ChaosEngineAI`, the dev venv at `.venv`, and a ba
 | CUDA llama.cpp, TensorFold 1.2.7 Linux archive, SageAttention, `torch.compile`, E2E smoke | same | pass, numbers in the same section (llama.cpp about 12 % below Windows native; TensorFold sm_80/86 images run on sm_89). |
 | vLLM 0.33 lane, TriAttention (vLLM 0.18 venv), cache matrix | WSL2 Ubuntu 24.04, 2026-11-12/13 | pass after fixes; "W4 leftovers on Linux" and "Qwen3.8-27B + DFlash2" sections. |
 | WSL vLLM bridge (Windows backend driving vLLM 0.34 in WSL) | WSL2 Ubuntu-26.04, 2026-11-19/20 | load, chat, think split, GPU share, unload pass; DFlash over the bridge not run (does not fit 24 GB). |
-| Full pytest on the current tip, CPU torch, Python 3.14.4 | WSL2 Ubuntu-26.04, 2026-11-23 | see "WSL2 pass 2026-11-23" at the end of this page. |
+| Full pytest on the current tip, CPU torch, Python 3.14.4 | WSL2 Ubuntu-26.04, 2026-11-23 | see "WSL2 pass 2026-11-23" at the end of this page. Rerun the same day on `84315da2`: 0 failed, see "WSL2 rerun 2026-11-23". |
 
 WSL2 is not native Linux: host-to-device copies run at about half of PCIe 4 x16, anything that offloads to system RAM
 is slower than on Windows, there is no desktop session, no packaging and the driver is the Windows one. Every Linux row
@@ -134,3 +134,24 @@ was a literal `~/.chaosengine/vllm-venv/bin`, which bash's own lookup finds but 
 
 Left in the distro: `~/ce-wsl` (clone), `~/ce-venv` (about 3 GB), `~/ce-results`. Delete with
 `rm -rf ~/ce-wsl ~/ce-venv ~/ce-results` when no longer needed.
+
+## WSL2 rerun 2026-11-23 (`84315da2`, Ubuntu-26.04)
+
+Same method as the pass above: `~/ce-wsl` moved to `84315da2` (the tip of `test/rtx4090`, 69 commits after `c28b0994`,
+no change to `pyproject.toml`, `release-constraints.txt` or any requirements file, so `~/ce-venv` was reused
+untouched), Python 3.14.4, CPU torch 2.15, FastAPI 0.135.3 (the release pin), throwaway `HOME`,
+`pytest tests -q -p no:cacheprovider`.
+
+| Run | Result |
+|---|---|
+| Full `pytest tests/` | 6708 tests: **6628 passed, 0 failed**, 80 skipped (429 s) |
+
+The 9 failures of the earlier run on the pinned FastAPI are all gone (FU-601 and FU-602 fixed, the two test fixes,
+FU-603 is the pin itself); the skip count is the same 80 (MLX and `mlx-lm` rows 41, Windows-only rows, vLLM wheel
+not installed 5, `needs node` 4, macOS-only installer 3, ffmpeg 1, voice venv 1, the live WSL bridge check that needs
+a Windows host 2). Windows ran the same tip with no failure other than the intermittent
+`test_music_routes` unload test under load, which did not show here. Linux-specific findings: none (no path,
+permission, locale, symlink or process failure). `npm test` and `tsc` were still not run (no Linux Node, L-04).
+
+Left in the distro: `~/ce-wsl` (about 360 MB), `~/ce-venv` (about 2.1 GB), `~/ce-results` (about 2 MB, `full3.log`
+and `full3.xml` hold this run).

@@ -117,6 +117,12 @@ export interface StoryboardShot {
   endImage: string | null;
   /** Lip sync (D-103): the vocal clip (WAV or FLAC, under media/) the shot's clip follows. */
   vocalClip?: string | null;
+  /** FU-373: where in the vocal file the clip starts, in seconds. */
+  vocalStart?: number;
+  /** The vocal is sung: singing wording and, by default, 3 takes kept by the sync score (D-110). */
+  vocalSinging?: boolean;
+  /** 1 to 4 takes; null = 3 for a sung vocal, 1 for speech. */
+  vocalTakes?: number | null;
   seconds: number;
   seed: number | null;
   locked: boolean;
@@ -385,6 +391,9 @@ export interface StoryboardShotFields {
   speed?: number;
   transition?: StoryboardTransition;
   nativeSoundDb?: number;
+  vocalStart?: number;
+  vocalSinging?: boolean;
+  vocalTakes?: number | null;
 }
 
 export interface StoryboardAudioFields {

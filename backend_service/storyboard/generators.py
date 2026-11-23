@@ -132,6 +132,11 @@ def studio_generators(request: Any, batch_id: str, folder: Path) -> dict[str, Ca
             if still is None or shot.endImage:
                 raise RuntimeError("A lip-sync shot starts from a still and has no end frame.")
             fields["audioPath"] = str(media.inside(folder, shot.vocalClip))
+            fields["audioStartSeconds"] = shot.vocalStart  # FU-373
+            if shot.vocalSinging:
+                fields["lipSyncSinging"] = True
+            if shot.vocalTakes is not None:
+                fields["lipSyncTakes"] = shot.vocalTakes
         if shot.startFrom == "text":
             pass  # text-to-video by the shot's own choice: no picture goes in, on any model
         elif takes_start:

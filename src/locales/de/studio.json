@@ -1691,7 +1691,13 @@
       "vocalFile": "Gesangsdatei (WAV oder FLAC)",
       "vocalChange": "Gesang ändern",
       "vocalAttach": "Gesang anhängen",
-      "vocalRemove": "Gesang entfernen"
+      "vocalRemove": "Gesang entfernen",
+      "vocalStart": null,
+      "vocalSinging": null,
+      "vocalTakes": null,
+      "vocalTakesDefault": null,
+      "vocalTakesBest": null,
+      "vocalTakesHint": null
     },
     "empty": "Noch keine Einstellungen. Füge eine Einstellung hinzu und gib ihr einen Prompt oder importiere Material.",
     "estimate": {

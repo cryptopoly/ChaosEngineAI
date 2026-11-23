@@ -1691,7 +1691,13 @@
       "vocalFile": "Archivo de voz (WAV o FLAC)",
       "vocalChange": "Cambiar voz",
       "vocalAttach": "Adjuntar voz",
-      "vocalRemove": "Quitar voz"
+      "vocalRemove": "Quitar voz",
+      "vocalStart": null,
+      "vocalSinging": null,
+      "vocalTakes": null,
+      "vocalTakesDefault": null,
+      "vocalTakesBest": null,
+      "vocalTakesHint": null
     },
     "empty": "Aún no hay planos. Añade un plano y dale un prompt o importa material.",
     "estimate": {

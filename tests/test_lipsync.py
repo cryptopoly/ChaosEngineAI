@@ -607,6 +607,72 @@ class StoryboardVocalTests(StoryboardRouteCase):
         project.shots[0].vocalClip = "media/s1/vocal-1.wav"
         self.assertNotEqual(fingerprint(project, project.shots[0]), before)
 
+    def test_vocal_start_singing_and_takes_are_shot_fields(self) -> None:
+        c = self
+        pid, data = c.create(shots=1)
+        sid = data["project"]["shots"][0]["id"]
+        wav = _write_wav(c.src / "vocal.wav", 6.0)
+        data = c.op(pid, data["project"]["revision"], "set_vocal_clip", {"shotId": sid, "audio": str(wav)})
+        data = c.op(pid, data["project"]["revision"], "edit_shot",
+                    {"shotId": sid, "vocalStart": 1.6, "vocalSinging": True, "vocalTakes": 4})
+        shot = data["project"]["shots"][0]
+        self.assertEqual((shot["vocalStart"], shot["vocalSinging"], shot["vocalTakes"]), (1.6, True, 4))
+        c.op(pid, data["project"]["revision"], "edit_shot", {"shotId": sid, "vocalTakes": 5}, code=400)
+        data = c.op(pid, data["project"]["revision"], "edit_shot", {"shotId": sid, "vocalTakes": None})
+        self.assertIsNone(data["project"]["shots"][0]["vocalTakes"])
+        data = c.op(pid, data["project"]["revision"], "set_vocal_clip", {"shotId": sid})
+        self.assertEqual(data["project"]["shots"][0]["vocalStart"], 0.0)  # a cleared vocal starts from 0 again
+
+    def test_the_clip_request_carries_the_vocal_start_singing_and_takes(self) -> None:
+        from types import SimpleNamespace
+
+        from backend_service.storyboard import generators
+        from backend_service.storyboard.models import Project, Shot
+        from tests.storyboard_fixtures import png
+
+        folder = Path(self.src) / "proj"
+        (folder / "media" / "s1").mkdir(parents=True)
+        _write_wav(folder / "media" / "s1" / "vocal-1.wav", 6.0)
+        still = png(folder / "media" / "s1" / "still.png")
+        shot = Shot(id="s1", seconds=4.0, motionPrompt="a singer", vocalClip="media/s1/vocal-1.wav", vocalStart=12.5,
+                    vocalSinging=True, vocalTakes=2)
+        project = Project(id="0123456789abcdef", name="p", shots=[shot])
+        sent = {}
+
+        def locked(_request, body):
+            sent["body"] = body
+            return {"artifact": {"videoPath": "x.mp4", "numFrames": 97, "fps": 24}}
+
+        with mock.patch.object(generators, "_variant", return_value=_variant(CUDA_REPO)),                 mock.patch("backend_service.mcp_bridge.tools._recommended", return_value={}),                 mock.patch("backend_service.routes.video._generate_video_locked", side_effect=locked):
+            make_clip = generators.studio_generators(SimpleNamespace(), "b1", folder)["make_clip"]
+            make_clip(shot, project, still)
+        body = sent["body"]
+        self.assertEqual((body.audioStartSeconds, body.lipSyncSinging, body.lipSyncTakes), (12.5, True, 2))
+
+    def test_start_and_singing_change_the_fingerprint_but_takes_do_not(self) -> None:
+        from backend_service.storyboard.deps import fingerprint
+        from backend_service.storyboard.models import Project, Shot
+
+        project = Project(id="0123456789abcdef", name="p", shots=[Shot(id="s1", vocalClip="media/s1/vocal-1.wav")])
+        shot = project.shots[0]
+        base = fingerprint(project, shot)
+        shot.vocalTakes = 4
+        self.assertEqual(fingerprint(project, shot), base)
+        shot.vocalStart = 2.0
+        moved = fingerprint(project, shot)
+        self.assertNotEqual(moved, base)
+        shot.vocalSinging = True
+        self.assertNotEqual(fingerprint(project, shot), moved)
+
+    def test_a_sung_shot_is_priced_for_three_takes(self) -> None:
+        from backend_service.storyboard.estimate import _clip_seconds
+        from backend_service.storyboard.models import Shot
+
+        shot = Shot(id="s1", seconds=5.0, vocalClip="media/s1/vocal-1.wav", vocalSinging=True)
+        self.assertAlmostEqual(_clip_seconds(_variant(CUDA_REPO), shot, 768, 512, 24), 288.0)
+        shot.vocalTakes = 1
+        self.assertAlmostEqual(_clip_seconds(_variant(CUDA_REPO), shot, 768, 512, 24), 118.0)
+
     def test_a_lip_sync_shot_is_priced_from_the_lip_sync_figures(self) -> None:
         from backend_service.storyboard.estimate import _clip_seconds
         from backend_service.storyboard.models import Shot

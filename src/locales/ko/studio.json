@@ -1691,7 +1691,13 @@
       "vocalFile": "보컬 파일 (WAV 또는 FLAC)",
       "vocalChange": "보컬 변경",
       "vocalAttach": "보컬 첨부",
-      "vocalRemove": "보컬 제거"
+      "vocalRemove": "보컬 제거",
+      "vocalStart": null,
+      "vocalSinging": null,
+      "vocalTakes": null,
+      "vocalTakesDefault": null,
+      "vocalTakesBest": null,
+      "vocalTakesHint": null
     },
     "empty": "아직 샷이 없습니다. 샷을 추가한 뒤 프롬프트를 입력하거나 영상을 가져오세요.",
     "estimate": {

@@ -1691,7 +1691,13 @@
       "vocalFile": "Vocal file (WAV or FLAC)",
       "vocalChange": "Change vocal",
       "vocalAttach": "Attach vocal",
-      "vocalRemove": "Remove vocal"
+      "vocalRemove": "Remove vocal",
+      "vocalStart": "Start in the vocal (s)",
+      "vocalSinging": "Sung vocal",
+      "vocalTakes": "Takes",
+      "vocalTakesDefault": "Default ({count})",
+      "vocalTakesBest": "4 (best quality)",
+      "vocalTakesHint": "Sung vocals: use the vocal stem and start about 0.4 s before a phrase. Each take uses its own seed; the sync score keeps the best and the others stay in the Video Gallery."
     },
     "empty": "No shots yet. Add a shot, then give it a prompt or import footage.",
     "estimate": {

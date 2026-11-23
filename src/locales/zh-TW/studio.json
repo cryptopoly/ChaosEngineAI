@@ -1691,7 +1691,13 @@
       "vocalFile": "人聲檔案(WAV 或 FLAC)",
       "vocalChange": "更換人聲",
       "vocalAttach": "附加人聲",
-      "vocalRemove": "移除人聲"
+      "vocalRemove": "移除人聲",
+      "vocalStart": null,
+      "vocalSinging": null,
+      "vocalTakes": null,
+      "vocalTakesDefault": null,
+      "vocalTakesBest": null,
+      "vocalTakesHint": null
     },
     "empty": "還沒有鏡頭。新增一個鏡頭，然後寫提示詞或匯入素材。",
     "estimate": {

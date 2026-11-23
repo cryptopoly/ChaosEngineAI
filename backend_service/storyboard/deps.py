@@ -62,6 +62,10 @@ def fingerprint(project: Project, shot: Shot) -> str:
     }
     if shot.vocalClip:  # only set on lip-sync shots, so older takes keep their fingerprint
         basis["vocal"] = shot.vocalClip
+        if shot.vocalStart:
+            basis["vocalStart"] = shot.vocalStart
+        if shot.vocalSinging:  # the singing wording changes the prompt; the take count does not change a take
+            basis["vocalSinging"] = True
     take = shot.active()
     used = (take.settings or {}).get("style") if take is not None else None
     if used in ("pictures", "words"):  # only a take that used the style turns stale when the style changes

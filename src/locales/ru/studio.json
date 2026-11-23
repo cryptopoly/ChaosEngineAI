@@ -1691,7 +1691,13 @@
       "vocalFile": "Файл вокала (WAV или FLAC)",
       "vocalChange": "Заменить вокал",
       "vocalAttach": "Прикрепить вокал",
-      "vocalRemove": "Убрать вокал"
+      "vocalRemove": "Убрать вокал",
+      "vocalStart": null,
+      "vocalSinging": null,
+      "vocalTakes": null,
+      "vocalTakesDefault": null,
+      "vocalTakesBest": null,
+      "vocalTakesHint": null
     },
     "empty": "Шотов пока нет. Добавьте шот, затем задайте ему промпт или импортируйте материал.",
     "estimate": {

@@ -1691,7 +1691,13 @@
       "vocalFile": null,
       "vocalChange": null,
       "vocalAttach": null,
-      "vocalRemove": null
+      "vocalRemove": null,
+      "vocalStart": null,
+      "vocalSinging": null,
+      "vocalTakes": null,
+      "vocalTakesDefault": null,
+      "vocalTakesBest": null,
+      "vocalTakesHint": null
     },
     "empty": "wej 'ay' tu'lu'. 'ay' yIchel, ghIq QIn yInob pagh mIllogh vIH yIqem.",
     "estimate": {

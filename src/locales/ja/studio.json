@@ -1691,7 +1691,13 @@
       "vocalFile": "ボーカルファイル (WAV または FLAC)",
       "vocalChange": "ボーカルを変更",
       "vocalAttach": "ボーカルを添付",
-      "vocalRemove": "ボーカルを削除"
+      "vocalRemove": "ボーカルを削除",
+      "vocalStart": null,
+      "vocalSinging": null,
+      "vocalTakes": null,
+      "vocalTakesDefault": null,
+      "vocalTakesBest": null,
+      "vocalTakesHint": null
     },
     "empty": "まだショットがありません。ショットを追加して、プロンプトを入力するか素材をインポートしてください。",
     "estimate": {

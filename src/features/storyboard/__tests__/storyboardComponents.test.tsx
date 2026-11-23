@@ -231,5 +231,24 @@ describe("ShotEditorDrawer", () => {
     const withVocal = render("media/s_1/vocal-1.wav");
     expect(withVocal).toContain("Change vocal");
     expect(withVocal).toContain("Remove vocal");
+    expect(withVocal).toContain("Start in the vocal (s)");
+    expect(withVocal).toContain("Default (1)");
+    expect(render(null)).not.toContain("Start in the vocal");
+  });
+
+  it("offers the vocal start, the sung switch and 3 default takes for a sung vocal (FU-373, D-110)", () => {
+    const project = { id: "p_1", references: { characters: [], places: [] } } as unknown as StoryboardProject;
+    const html = renderToStaticMarkup(
+      <ShotEditorDrawer
+        project={project}
+        shot={{ ...shot(), vocalClip: "media/s_1/vocal-1.wav", vocalStart: 12.4, vocalSinging: true, vocalTakes: null }}
+        index={0} imageGallery={[]} videoGallery={[]} busy={false} batchRunning={false} op={async () => true}
+        onMake={noop} onClose={noop}
+      />,
+    );
+    expect(html).toContain('value="12.4"');
+    expect(html).toContain("Sung vocal");
+    expect(html).toContain("Default (3)");
+    expect(html).toContain("4 (best quality)");
   });
 });

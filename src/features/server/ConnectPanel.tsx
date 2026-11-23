@@ -33,7 +33,7 @@ export interface ConnectPanelProps {
 /** The snippets with the real key: what Copy puts on the clipboard. The page draws them masked until Reveal. */
 export function connectSnippets(localServerUrl: string, apiToken: string | null, connectModel: string) {
   const connectKey = apiToken ?? "<chaosengine-api-token>";
-  const ollamaBase = localServerUrl.replace(/\/v1\/?$/, "");
+  const hostBase = localServerUrl.replace(/\/v1\/?$/, "");
   const pythonSnippet = `from openai import OpenAI
 
 client = OpenAI(base_url="${localServerUrl}", api_key="${connectKey}")
@@ -61,7 +61,7 @@ console.log(resp.choices[0].message.content);`;
     }
   ]
 }`;
-  return { pythonSnippet, jsSnippet, continueSnippet, ollamaBase };
+  return { pythonSnippet, jsSnippet, continueSnippet, hostBase };
 }
 
 /** "Connect your app": one line with the base URL and Copy; opens to the snippets. Closed by default, remembered. */
@@ -78,7 +78,7 @@ export function ConnectPanel({ localServerUrl, apiToken, connectModel, onCopy }:
     });
   };
 
-  const { pythonSnippet, jsSnippet, continueSnippet, ollamaBase } = connectSnippets(localServerUrl, apiToken, connectModel);
+  const { pythonSnippet, jsSnippet, continueSnippet, hostBase } = connectSnippets(localServerUrl, apiToken, connectModel);
   const copyLabel = t("serverTab.copy", { defaultValue: "Copy" });
 
   return (
@@ -138,13 +138,13 @@ export function ConnectPanel({ localServerUrl, apiToken, connectModel, onCopy }:
           </div>
           <div className="server-command">
             <div className="server-command-header">
-              <strong>{t("serverTab.connect.ollamaApps", { defaultValue: "Ollama-compatible apps" })}</strong>
-              <button className="secondary-button" type="button" onClick={() => onCopy(ollamaBase)}>{copyLabel}</button>
+              <strong>{t("serverTab.connect.hostApps", { defaultValue: "Apps with a model server host setting" })}</strong>
+              <button className="secondary-button" type="button" onClick={() => onCopy(hostBase)}>{copyLabel}</button>
             </div>
             <p className="muted-text">
-              {t("serverTab.connect.ollamaHint", { defaultValue: "Set the app's Ollama host / base URL to the address below — native /api endpoints are served alongside /v1." })}
+              {t("serverTab.connect.hostHint", { defaultValue: "Enter the address below as the app's model server host / base URL. Native /api endpoints are served alongside /v1." })}
             </p>
-            <p className="mono-text">{ollamaBase}</p>
+            <p className="mono-text">{hostBase}</p>
           </div>
         </div>
       ) : null}

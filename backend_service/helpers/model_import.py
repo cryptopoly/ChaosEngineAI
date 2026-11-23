@@ -1,20 +1,21 @@
-"""Import existing Ollama / LM Studio models by reference (#4).
+"""Import models that other local-AI apps already store on disk, by reference (#4).
 
 The #1 switching cost for a local-AI app is re-downloading models you
-already have. This module discovers models in the Ollama blob store and
-LM Studio cache and registers them into ChaosEngineAI *by reference* — a
+already have. This module discovers models in two on-disk layouts (a
+digest-named blob store and a nested ``<publisher>/<repo>`` folder tree)
+and registers them into ChaosEngineAI *by reference* — a
 symlink into a managed ``<dataDir>/imported-models/`` directory, never a
 copy — so the existing library scan picks them up and they load like any
 other model.
 
-Ollama stores weights as digest-named blobs (``blobs/sha256-<hex>``, no
+The blob store keeps weights as digest-named blobs (``blobs/sha256-<hex>``, no
 extension) with an OCI-style manifest per model under
 ``manifests/<registry>/<ns>/<model>/<tag>``. We parse the manifest to
 find the ``application/vnd.ollama.image.model`` layer, resolve its blob,
 and symlink it with a ``.gguf`` extension so the GGUF-aware scanner sees
 it.
 
-LM Studio stores real ``.gguf`` files in a nested
+The folder tree keeps real ``.gguf`` files in a nested
 ``<publisher>/<repo>/<file>.gguf`` tree, so those are discovered directly.
 
 All discovery is read-only; ``import_candidate`` is the only mutating
@@ -30,8 +31,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-# Env overrides (mirror Ollama's own OLLAMA_MODELS) so power users with
-# relocated stores can still import.
+# Env overrides (the blob-store one mirrors that app's own variable) so power
+# users with relocated stores can still import.
 _ENV_OLLAMA_DIR = "CHAOSENGINE_OLLAMA_DIR"
 _ENV_OLLAMA_MODELS = "OLLAMA_MODELS"
 _ENV_LMSTUDIO_DIR = "CHAOSENGINE_LMSTUDIO_DIR"
@@ -45,7 +46,7 @@ _SLUG_RE = re.compile(r"[^a-zA-Z0-9._-]+")
 class ImportCandidate:
     name: str  # e.g. "llama3.2:latest" or "bartowski/Qwen3-8B-GGUF/file"
     repo: str  # name without tag — used as canonicalRepo on load
-    source: str  # "ollama" | "lmstudio"
+    source: str  # wire id of the store layout: blob store or nested folder tree
     path: str  # absolute path to the on-disk weights (blob or .gguf)
     size_bytes: int
     fmt: str = "GGUF"
@@ -68,7 +69,7 @@ class ImportCandidate:
 
 
 def default_ollama_models_dir() -> Path | None:
-    """Resolve the Ollama *models* dir (the one containing blobs/ + manifests/)."""
+    """Resolve the blob store's *models* dir (the one containing blobs/ + manifests/)."""
     override = os.environ.get(_ENV_OLLAMA_MODELS)
     if override:
         return Path(override).expanduser()
@@ -95,7 +96,7 @@ def default_lmstudio_dirs() -> list[Path]:
 
 
 # --------------------------------------------------------------------------
-# Ollama
+# Blob store (digest-named files)
 # --------------------------------------------------------------------------
 
 
@@ -112,7 +113,7 @@ def parse_ollama_manifest(raw: dict[str, Any]) -> tuple[str | None, int]:
         if layer.get("mediaType") != _OLLAMA_MODEL_MEDIA_TYPE:
             continue
         digest = str(layer.get("digest") or "")
-        # Ollama digests are ``sha256:<hex>``.
+        # Blob-store digests are ``sha256:<hex>``.
         hex_part = digest.split(":", 1)[1] if ":" in digest else digest
         if _SHA256_RE.match(hex_part):
             size = int(layer.get("size") or 0)
@@ -171,7 +172,7 @@ def scan_ollama(models_dir: Path | None) -> list[ImportCandidate]:
 
 
 # --------------------------------------------------------------------------
-# LM Studio
+# Nested folder tree (<publisher>/<repo>/<file>.gguf)
 # --------------------------------------------------------------------------
 
 
@@ -263,7 +264,7 @@ _HF_REPO_DIR_RE = re.compile(r"^models--(?P<owner>[^-].*?)--(?P<name>.+)$")
 
 
 def lmstudio_publisher_and_model(path: Path, repo: str | None = None) -> tuple[str, str]:
-    """``(publisher, model)`` folder names LM Studio expects for a GGUF.
+    """``(publisher, model)`` folder names the shared folder layout expects for a GGUF.
 
     Taken from ``repo`` (``owner/name``) when given, else from a
     ``models--owner--name`` folder in the file's path (the Hugging Face cache
@@ -281,7 +282,7 @@ def lmstudio_publisher_and_model(path: Path, repo: str | None = None) -> tuple[s
 
 
 def share_with_lmstudio(*, path: str, lmstudio_dir: Path, repo: str | None = None) -> dict[str, Any]:
-    """Link a GGUF into LM Studio's ``<publisher>/<model>/<file>.gguf`` layout.
+    """Link a GGUF into the shared folder's ``<publisher>/<model>/<file>.gguf`` layout.
 
     A hard link (same drive, no privilege, no extra space) with a symlink as
     the fallback. Never copies: a multi-GB copy would silently double the disk

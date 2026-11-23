@@ -390,12 +390,12 @@ def resolve_hf(request: Request, body: ResolveHfRequest) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Import existing Ollama / LM Studio models by reference (#4)
+# Import models other local-AI apps already store on disk, by reference (#4)
 # ---------------------------------------------------------------------------
 
 
 class ImportModelRequest(BaseModel):
-    source: str  # "ollama" | "lmstudio"
+    source: str  # wire id of the store layout: "ollama" (blob store) | "lmstudio" (folder tree)
     path: str
     name: str
     repo: str | None = None
@@ -403,7 +403,7 @@ class ImportModelRequest(BaseModel):
 
 @router.get("/api/models/import/scan")
 def import_scan() -> dict[str, Any]:
-    """Discover importable models in the Ollama blob store + LM Studio cache."""
+    """Discover importable models in the blob store and the nested folder tree."""
     from backend_service.helpers.model_import import scan_importable
 
     return scan_importable()
@@ -417,7 +417,7 @@ class ShareLmStudioRequest(BaseModel):
 
 @router.post("/api/models/share-lmstudio")
 def share_model_with_lmstudio(request: Request, body: ShareLmStudioRequest) -> dict[str, Any]:
-    """Make a GGUF visible to LM Studio by linking it into its models folder (no copy)."""
+    """Make a GGUF visible in the shared models folder by linking it there (no copy)."""
     from pathlib import Path
 
     from backend_service.helpers.model_import import default_lmstudio_dirs, share_with_lmstudio

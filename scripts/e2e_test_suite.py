@@ -424,7 +424,7 @@ def phase_0(cap: Capability) -> PhaseResult:
             return "fail", "; ".join(missing)[:300], {"missing": missing}
         return "pass", "", {"checkedFamilies": list(vision_families) + ["ornith-1 (text-only)"]}
 
-    # Competitor-parity quick wins (#1 RAG, #3 Ollama-compat, #4 import,
+    # Quick wins (#1 RAG, #3 native-API compat, #4 import,
     # #5 run-any-HF). Read-only liveness/shape smoke — no network, no
     # model load — so they belong in the fast Phase 0 surface.
     def _rag_status():
@@ -438,13 +438,13 @@ def phase_0(cap: Capability) -> PhaseResult:
             {"mode": mode, "binary": payload.get("binaryAvailable"), "model": payload.get("modelAvailable")},
         )
 
-    def _ollama_compat():
+    def _native_api_compat():
         rc, ver, err = _cli_json("call", "GET", "/api/version", timeout=15.0)
         if rc != 0 or not isinstance(ver, dict) or not ver.get("version"):
-            return "fail", f"ollama /api/version bad: {err[:120]}", {}
+            return "fail", f"native /api/version bad: {err[:120]}", {}
         rc2, tags, err2 = _cli_json("call", "GET", "/api/tags", timeout=15.0)
         if rc2 != 0 or not isinstance(tags, dict) or "models" not in tags:
-            return "fail", f"ollama /api/tags bad: {err2[:120]}", {}
+            return "fail", f"native /api/tags bad: {err2[:120]}", {}
         return "pass", "", {"version": ver.get("version"), "tagCount": len(tags.get("models") or [])}
 
     def _model_import_scan():
@@ -457,7 +457,7 @@ def phase_0(cap: Capability) -> PhaseResult:
         }
 
     def _model_share_guard():
-        # Share a GGUF into another app's models folder: refusals only, nothing is linked or created.
+        # Link a GGUF into the shared models folder: refusals only, nothing is linked or created.
         missing = {"path": str(Path.home() / ".chaosengine" / "e2e-no-such-model.gguf"),
                    "lmstudioDir": str(Path.home() / ".chaosengine" / "e2e-share-target")}
         rc, payload, err = _cli_json("call", "POST", "/api/models/share-lmstudio", "--body", json.dumps(missing),
@@ -644,7 +644,7 @@ def phase_0(cap: Capability) -> PhaseResult:
         ("catalog vision tags", _catalog_vision),
         ("tensorfold catalog vs registry (FU-093)", _catalog_tensorfold),
         ("rag status (#1)", _rag_status),
-        ("ollama-compat (#3)", _ollama_compat),
+        ("native-api-compat (#3)", _native_api_compat),
         ("model import scan (#4)", _model_import_scan),
         ("share a GGUF into another app's folder: refusals", _model_share_guard),
         ("run-from-hf guard (#5)", _resolve_hf_guard),

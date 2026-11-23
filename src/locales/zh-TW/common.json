@@ -299,8 +299,8 @@
       "continueDev": "Continue.dev（設定）",
       "openWebui": "Open WebUI",
       "openWebuiHint": "管理員 → 設定 → 連線 → OpenAI API。基礎網址：{base} — 請使用上方的 API 金鑰。",
-      "ollamaApps": "相容 Ollama 的應用程式",
-      "ollamaHint": "將應用程式的 Ollama 主機 / 基礎網址設定為下方的位址 — 原生 /api 端點會與 /v1 一同提供。"
+      "hostApps": "有模型伺服器主機設定的應用程式",
+      "hostHint": "將下方位址設定為應用程式的模型伺服器主機 / 基礎網址 — 原生 /api 端點會與 /v1 一同提供。"
     },
     "engineBusy": {
       "step": "第 {step} 步,共 {total} 步",
@@ -1472,9 +1472,9 @@
     "moveModels": "將現有模型移動到新路徑",
     "filesProgress": "{copied} / {total} 個檔案",
     "restartBackend": "重新啟動後端",
-    "lmstudioDir": "LM Studio 模型資料夾",
-    "lmstudioHint": "供「與 LM Studio 共用」使用,它會把 GGUF 連結到此處的 <publisher>/<model>/,而不會複製檔案。請將它與你的模型放在同一個磁碟機上。",
-    "saveLmstudioDir": "儲存資料夾"
+    "sharedDir": "共用模型資料夾",
+    "sharedHint": "供「連結到共用資料夾」使用,它會把 GGUF 連結到此處的 <publisher>/<model>/,而不會複製檔案。請將它與你的模型放在同一個磁碟機上。",
+    "saveSharedDir": "儲存資料夾"
   },
   "videoPlaceholderTab": {
     "engines": {

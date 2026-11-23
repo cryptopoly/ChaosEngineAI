@@ -299,8 +299,8 @@
       "continueDev": "Continue.dev (Konfiguration)",
       "openWebui": "Open WebUI",
       "openWebuiHint": "Admin → Einstellungen → Verbindungen → OpenAI API. Basis-URL: {base} — verwende den API-Schlüssel von oben.",
-      "ollamaApps": "Ollama-kompatible Apps",
-      "ollamaHint": "Setze den Ollama-Host bzw. die Basis-URL der App auf die Adresse unten — native /api-Endpunkte werden neben /v1 bereitgestellt."
+      "hostApps": "Apps mit Modellserver-Host-Einstellung",
+      "hostHint": "Trage die Adresse unten als Modellserver-Host bzw. Basis-URL der App ein — native /api-Endpunkte werden neben /v1 bereitgestellt."
     },
     "engineBusy": {
       "step": "Schritt {step} von {total}",
@@ -1472,9 +1472,9 @@
     "moveModels": "Vorhandene Modelle an den neuen Pfad verschieben",
     "filesProgress": "{copied} / {total} Dateien",
     "restartBackend": "Backend neu starten",
-    "lmstudioDir": "LM-Studio-Modellordner",
-    "lmstudioHint": "Wird von „Mit LM Studio teilen“ verwendet, das ein GGUF hier unter <publisher>/<model>/ verlinkt, ohne es zu kopieren. Lege ihn auf dasselbe Laufwerk wie deine Modelle.",
-    "saveLmstudioDir": "Ordner speichern"
+    "sharedDir": "Freigegebener Modellordner",
+    "sharedHint": "Wird von „Mit freigegebenem Ordner verknüpfen“ verwendet, das ein GGUF hier unter <publisher>/<model>/ verlinkt, ohne es zu kopieren. Lege ihn auf dasselbe Laufwerk wie deine Modelle.",
+    "saveSharedDir": "Ordner speichern"
   },
   "videoPlaceholderTab": {
     "engines": {

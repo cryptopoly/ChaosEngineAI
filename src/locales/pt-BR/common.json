@@ -299,8 +299,8 @@
       "continueDev": "Continue.dev (config)",
       "openWebui": "Open WebUI",
       "openWebuiHint": "Admin → Configurações → Conexões → OpenAI API. URL base: {base} — use a chave de API acima.",
-      "ollamaApps": "Apps compatíveis com Ollama",
-      "ollamaHint": "Defina o host / URL base do Ollama do app como o endereço abaixo — os endpoints nativos /api são servidos junto com /v1."
+      "hostApps": "Apps com configuração de host do servidor de modelos",
+      "hostHint": "Defina o endereço abaixo como host / URL base do servidor de modelos do app — os endpoints nativos /api são servidos junto com /v1."
     },
     "engineBusy": {
       "step": "passo {step} de {total}",
@@ -1472,9 +1472,9 @@
     "moveModels": "Mover modelos existentes para o novo caminho",
     "filesProgress": "{copied} / {total} arquivos",
     "restartBackend": "Reiniciar backend",
-    "lmstudioDir": "Pasta de modelos do LM Studio",
-    "lmstudioHint": "Usada por Compartilhar com o LM Studio, que vincula um GGUF a <publisher>/<model>/ aqui sem copiá-lo. Mantenha-a na mesma unidade dos seus modelos.",
-    "saveLmstudioDir": "Salvar pasta"
+    "sharedDir": "Pasta de modelos compartilhada",
+    "sharedHint": "Usada por Vincular à pasta compartilhada, que vincula um GGUF a <publisher>/<model>/ aqui sem copiá-lo. Mantenha-a na mesma unidade dos seus modelos.",
+    "saveSharedDir": "Salvar pasta"
   },
   "videoPlaceholderTab": {
     "engines": {

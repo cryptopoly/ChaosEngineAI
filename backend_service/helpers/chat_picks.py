@@ -53,6 +53,11 @@ def _speed(
     return (round(float(estimate), 1), "estimated") if estimate else (None, None)
 
 
+def _count(value: Any) -> int | None:
+    number = _positive(value)
+    return int(number) if number is not None else None
+
+
 def chat_picks(
     families: list[dict[str, Any]],
     hardware: HardwareClass,
@@ -60,8 +65,14 @@ def chat_picks(
     measured_speed_for: Callable[[dict[str, Any]], float | None] | None = None,
     bandwidth_gbps: Callable[[], float] | None = None,
     limit: int = PICK_LIMIT,
+    hf_stats: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
-    """Up to ``limit`` recommended chat rows, best first (empty when no row fits comfortably)."""
+    """Up to ``limit`` recommended chat rows, best first (empty when no row fits comfortably).
+
+    ``hf_stats`` is ``helpers.hf_stats.load_stats()``; each row then carries the Hub's ``likes`` and
+    ``downloads`` (last 30 days) with ``statsAsOf``, or ``None`` for each when there is no number for its repo."""
+    stats_repos = (hf_stats or {}).get("repos") or {}
+    stats_as_of = (hf_stats or {}).get("fetchedAt")
     cached: list[float] = []
 
     def bandwidth() -> float:
@@ -84,6 +95,7 @@ def chat_picks(
         if variant is None or fit.get("status") != "fits":
             continue
         tok_s, tok_s_basis = _speed(variant, hardware, measured_speed_for, bandwidth)
+        counters = stats_repos.get(str(variant.get("repo") or "")) or {}
         rows.append({
             "variantId": str(variant["id"]),
             "familyId": str(family.get("id") or variant.get("familyId") or ""),
@@ -99,6 +111,9 @@ def chat_picks(
             "fit": dict(fit),
             "tokS": tok_s,
             "tokSBasis": tok_s_basis,
+            "likes": _count(counters.get("likes")),
+            "downloads": _count(counters.get("downloads")),
+            "statsAsOf": stats_as_of if counters else None,
             "hardwareLabel": hardware.label,
             "_release": _release_key(variant),
         })
@@ -126,6 +141,7 @@ def apply_chat_picks(
     system_stats: dict[str, Any],
     *,
     measured_speed_for: Callable[[dict[str, Any]], float | None] | None = None,
+    use_hf_stats: bool = False,
 ) -> dict[str, Any]:
     """Attach ``chatPicks`` and ``bestFit`` to the Dashboard recommendation; the headroom becomes the pick's own.
 
@@ -137,7 +153,17 @@ def apply_chat_picks(
     try:
         from backend_service.helpers.hardware_class import hardware_class
 
-        picks = chat_picks(families, hardware_class(system_stats), measured_speed_for=measured_speed_for)
+        hf_stats = None
+        if use_hf_stats:
+            from backend_service.helpers import hf_stats as hf_stats_module
+
+            hf_stats = hf_stats_module.load_stats()
+        picks = chat_picks(
+            families, hardware_class(system_stats), measured_speed_for=measured_speed_for, hf_stats=hf_stats,
+        )
+        if use_hf_stats and picks:
+            # Never waited on: the numbers appear on a later load once the background fetch has written them.
+            hf_stats_module.refresh_in_background([str(pick["repo"]) for pick in picks if pick.get("repo")])
     except Exception:
         logger.warning("Could not pick the recommended chat models", exc_info=True)
         return recommendation

@@ -1645,7 +1645,7 @@ class ChaosEngineBackendTests(unittest.TestCase):
         self.assertIsNone(runtime_kwargs["json_schema"])
 
     # ------------------------------------------------------------------
-    # Ollama-compatible shim (#3) — reuses the OpenAI generation path.
+    # Native model-server API shim (#3) — reuses the OpenAI generation path.
     # ------------------------------------------------------------------
 
     def test_ollama_chat_non_stream_autoloads_and_shapes(self):

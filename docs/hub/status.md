@@ -9,6 +9,13 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-23 (D-105 A decided: other apps are not named; Chat Models picks; agent branch off `test/rtx4090`, not pushed)
+
+**Done:** no UI string, locale string, code comment, docstring, E2E message or test name names another desktop app any more: "Link to shared folder" and "Shared models folder" are translated in all 9 other locales, the Server tab's protocol label is "Apps with a model server host setting" (keys `hostApps` / `hostHint`), the folder placeholder is neutral (FU-492 done, FU-512 mostly done). Chat Models' recommended rows carry "Fastest", "Newest" and "Most popular" chips next to "Best fit"; popularity is Hugging Face 30-day downloads, cached daily with its date and never awaited (offline shows no chip).
+
+**Open for Claude:** FU-581 (wire names such as `lmstudioDir` and `/api/models/share-lmstudio` need a settings migration), FU-580 (a "Highest rated" chip needs a benchmark score source). Not verified: the chips and the background fetch in a running app; the full pytest and E2E suites.
+
+**Open for Dan:** nothing new; D-105 A is decided (rename).
 ## Update 2026-11-20 (D-105 B to E built, Mac sounds pack without Stable Audio 3; agent branch, not pushed)
 
 **Done:** the Dashboard names the catalogue's best-fit chat row (size, memory, speed, its own headroom) and opens on "Start here" for a new user; Chat Models opens on five recommended rows with nothing on disk; no performance preview without a model; "GPU memory" column title on a PC; measured 4090 figures on six rows (FU-456, FU-463 done, FU-457 part). The Mac (`mps`) sounds pack no longer installs or imports Stable Audio 3 (FU-493 item 1, simulated). Screenshots `docs/review/ui-ux-v0100-a/d105-build/`; tsc, vitest 2,005, i18n, touched pytest files.

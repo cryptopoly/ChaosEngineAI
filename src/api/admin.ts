@@ -211,7 +211,7 @@ export async function updateHfCachePath(path: string): Promise<UpdateStoragePath
   );
 }
 
-export async function updateLmStudioDir(path: string): Promise<{ lmstudioDir: string }> {
+export async function updateSharedModelsDir(path: string): Promise<{ lmstudioDir: string }> {
   return await postJson<{ lmstudioDir: string }>("/api/settings/lmstudio-dir", { path }, 20000);
 }
 

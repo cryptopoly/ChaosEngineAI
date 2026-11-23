@@ -194,7 +194,7 @@ class UpdateLmStudioDir(BaseModel):
 
 @router.post("/api/settings/lmstudio-dir")
 def update_lmstudio_dir(request: Request, body: UpdateLmStudioDir) -> dict[str, Any]:
-    """Save LM Studio's models folder (empty clears it). Created if missing."""
+    """Save the shared models folder (empty clears it). Created if missing."""
     from backend_service.helpers.settings import _save_settings
 
     state = request.app.state.chaosengine

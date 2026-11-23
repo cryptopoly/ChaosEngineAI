@@ -786,16 +786,20 @@
         "status": "Статус"
       },
       "share": {
-        "action": "Поделиться с LM Studio",
-        "done": "Доступно в LM Studio как {where}. Дополнительное место на диске не занято.",
-        "already": "Уже доступно в LM Studio ({where})."
+        "action": "Привязать к общей папке",
+        "done": "Привязано к общей папке моделей как {where}. Дополнительное место на диске не занято.",
+        "already": "Уже в общей папке моделей ({where})."
       },
       "recommended": {
         "subtitle": null,
         "subtitleBare": null,
         "intro": null,
         "best": null,
-        "showAll": null
+        "showAll": null,
+        "fastest": null,
+        "newest": null,
+        "popular": null,
+        "popularTitle": null
       }
     }
   }

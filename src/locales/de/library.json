@@ -786,16 +786,20 @@
         "status": "Status"
       },
       "share": {
-        "action": "Mit LM Studio teilen",
-        "done": "Mit LM Studio als {where} geteilt. Kein zusätzlicher Speicherplatz belegt.",
-        "already": "Bereits mit LM Studio geteilt ({where})."
+        "action": "Mit freigegebenem Ordner verknüpfen",
+        "done": "Als {where} im freigegebenen Modellordner verknüpft. Kein zusätzlicher Speicherplatz belegt.",
+        "already": "Bereits im freigegebenen Modellordner ({where})."
       },
       "recommended": {
         "subtitle": null,
         "subtitleBare": null,
         "intro": null,
         "best": null,
-        "showAll": null
+        "showAll": null,
+        "fastest": null,
+        "newest": null,
+        "popular": null,
+        "popularTitle": null
       }
     }
   }

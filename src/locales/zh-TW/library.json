@@ -786,16 +786,20 @@
         "status": "狀態"
       },
       "share": {
-        "action": "與 LM Studio 共用",
-        "done": "已以 {where} 與 LM Studio 共用。不佔用額外磁碟空間。",
-        "already": "已與 LM Studio 共用({where})。"
+        "action": "連結到共用資料夾",
+        "done": "已以 {where} 連結到共用模型資料夾。不佔用額外磁碟空間。",
+        "already": "已在共用模型資料夾中({where})。"
       },
       "recommended": {
         "subtitle": null,
         "subtitleBare": null,
         "intro": null,
         "best": null,
-        "showAll": null
+        "showAll": null,
+        "fastest": null,
+        "newest": null,
+        "popular": null,
+        "popularTitle": null
       }
     }
   }

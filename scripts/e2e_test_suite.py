@@ -3113,9 +3113,10 @@ def phase_8(cap: Capability) -> PhaseResult:
         rows = [r for r in models_payload.get("models", []) if r.get("family") in ("chatterbox-turbo", "voxcpm2", "chatterbox", "orpheus")]
         if not rows:
             return "skip", "no wave-2 speech rows listed in this build", {}
-        installed = [r for r in rows if r.get("installed")]
+        installed = [r for r in rows if r.get("installed") and r.get("supported")]
         if not installed:
-            return "skip", "no wave-2 speech model downloaded (Voice Models)", {}
+            # A downloaded row the lane cannot run (the speech GPU add-on missing) answers 400 by design.
+            return "skip", "no wave-2 speech model downloaded and supported here (Voice Models)", {}
         voice_for = {"chatterbox-turbo": "chatterbox-turbo", "chatterbox": "chatterbox", "orpheus": "orpheus:tara", "voxcpm2": "design"}
         spoken = {}
         import io

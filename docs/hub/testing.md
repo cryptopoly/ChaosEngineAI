@@ -34,6 +34,8 @@ cargo test --manifest-path src-tauri/Cargo.toml
 ./tools/run_tests.sh
 ```
 
+What is still to be tested on macOS and native Linux before the tag, with exact commands and a status per row: the [cross-platform test tracker](https://github.com/cryptopoly/ChaosEngineAI/blob/test/rtx4090/docs/release/cross-platform-test-tracker.md) (FU-604).
+
 The cross-strategy runner `scripts/cache-strategy-matrix.py` (`--quick` about 5 minutes) sweeps cache strategy by speculative method by model through a live backend.
 
 ## Launch and debug commands

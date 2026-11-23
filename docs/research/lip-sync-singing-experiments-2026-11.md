@@ -164,7 +164,7 @@ at phrase boundaries and keeping sung shots at 3-5 s.
 Strips: all 18 looked at (the 8 s ones show the open-mouth grimace through the gap; the mid-phrase ones the late
 start; hands come up to the face in one mid-phrase take).
 
-## Experiment 6: LipDub re-sync second pass (not run: gated)
+## Experiment 6: LipDub re-sync second pass (run 2026-11-23: no gain)
 
 `Lightricks/LTX-2.3-22b-IC-LoRA-LipDub` (model card title "LTX-2.3 22B IC-LoRA Dub-It", last change 2026-10-22):
 one file, `ltx-2.3-22b-ic-lora-dubit-0.9.safetensors`, 2.47 GB (the card still names it `...-lipdub-0.9`), an IC-LoRA
@@ -176,6 +176,13 @@ account holder to consent to marketing offers. The saved Hugging Face token gets
 the owner's call (I do not accept terms on the account's behalf). Once accepted, the test is one command per clip
 (the take from the main recipe as the reference video, the stem window as the audio) on the existing venv, about
 4-5 minutes per 5 s shot by analogy with route (a) (same 22B fp8 checkpoint and streamed offload). FU-385.
+
+**Result (2026-11-23, gate accepted by the owner).** The LoRA needs the distilled monolith checkpoint
+(`ltx-2.3-22b-distilled-fp8.safetensors`, 29.5 GB), which was fetched as well. Reference: the 5 s sung take
+`b_xl_vocal` (score 0.387, r 0.240). Dub-It, fp8-cast, CPU offload, 512x768, seed 42: 98 s wall, 8.3 GB above baseline
+on the GPU. Score against the same vocal stem 0.359 (r 0.230, balanced 0.489), not usable: no better than the
+reference, and the frames are near-identical. One clip and one seed, so it rules nothing out, but it does not justify
+wiring a second pass. Untried: another prompt, `--reference-strength`, a nearly-right take, speech.
 
 ## Experiment 3: denoise settings
 

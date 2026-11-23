@@ -721,11 +721,11 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-385 · LipDub (Dub-It) IC-LoRA re-sync pass: gated, not tested — When the owner accepts the gate on Hugging Face</summary>
+<summary>FU-385 · LipDub (Dub-It) IC-LoRA re-sync pass: tested once 2026-11-23, no gain, not wired — Done unless a second clip says otherwise</summary>
 
-**Status or trigger:** When the owner accepts the gate on Hugging Face
+**Status or trigger:** Done unless a second clip says otherwise
 
-**Notes:** `Lightricks/LTX-2.3-22b-IC-LoRA-LipDub` holds one file, `ltx-2.3-22b-ic-lora-dubit-0.9.safetensors` (2.47 GB, LTX-2 Community licence); the saved token gets HTTP 403 (gate `auto`, the click-through also asks for marketing consent, so it is the owner's call). Code is ready: `ltx_pipelines.dubit` is in the route (a) spike venv (`E:\tmp\lipsync\venv-ltx`, ltx-pipelines 1.6.2). Test: a take from the recommended recipe as reference, the stem window as audio, scored with `lip_sync_score`; expect about 4-5 min per 5 s shot (same 22B fp8 streamed offload as route a).
+**Notes:** Gate accepted by the owner. One clip, one seed: reference `b_xl_vocal.mp4` (5 s sung take, score 0.387, r 0.240, balanced 0.534) through `ltx_pipelines.dubit` with the Dub-It 0.9 LoRA (`Lightricks/LTX-2.3-22b-IC-LoRA-LipDub`, 2.47 GB, LTX-2 Community licence). The LoRA needs a distilled monolith checkpoint, so `Lightricks/LTX-2.3-fp8` `ltx-2.3-22b-distilled-fp8.safetensors` (29.5 GB) was also fetched into the HF cache. `--quantization fp8-cast --offload cpu`, 512x768, seed 42: 98 s wall (not the 4-5 min guessed), 8.3 GB over baseline on the GPU, 23 GB host RAM. Scored with `lip_sync_score` against the same vocal stem: score 0.359 (r 0.230, balanced 0.489), `usable` false, no better than the reference; the frames are near-identical, so the pass kept the picture and changed the mouth little. Not tried: another prompt or `--reference-strength`, a nearly-right take, speech. Run script `E:	mp\lipsync	ools\dubit_run.ps1`, weights in `E:	mp\lipsync\dubit`.
 
 </details>
 

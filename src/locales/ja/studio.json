@@ -560,7 +560,22 @@
       "engineMessage": "このモデルは Apple GPU 上の専用 MLX エンジン（ltx-2-mlx）で動作し、音声付きで生成します。"
     },
     "willLoadHint": "選択したモデルは、次回の生成時にメモリに読み込まれます。大きいバリアントは、初回の読み込みに1分ほどかかることがあります。",
-    "lipSyncPointer": null
+    "lipSync": {
+      "title": null,
+      "hint": null,
+      "remove": null,
+      "file": null,
+      "attach": null,
+      "start": null,
+      "singing": null,
+      "takes": null,
+      "takesDefault": null,
+      "takesBest": null,
+      "takesHint": null,
+      "length": null,
+      "needsStill": null,
+      "estimate": null
+    }
   },
   "imageGallery": {
     "subtitle": {

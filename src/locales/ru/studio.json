@@ -560,7 +560,22 @@
       "engineMessage": "Эта модель работает на собственном движке MLX (ltx-2-mlx) на GPU Apple, со звуком."
     },
     "willLoadHint": "Выбранная модель загрузится в память при следующей генерации. Первая загрузка больших вариантов может занять минуту.",
-    "lipSyncPointer": null
+    "lipSync": {
+      "title": null,
+      "hint": null,
+      "remove": null,
+      "file": null,
+      "attach": null,
+      "start": null,
+      "singing": null,
+      "takes": null,
+      "takesDefault": null,
+      "takesBest": null,
+      "takesHint": null,
+      "length": null,
+      "needsStill": null,
+      "estimate": null
+    }
   },
   "imageGallery": {
     "subtitle": {

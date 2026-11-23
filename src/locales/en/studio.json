@@ -560,7 +560,22 @@
       "engineMessage": "This model runs on its own MLX engine (ltx-2-mlx) on the Apple GPU, with sound."
     },
     "willLoadHint": "The selected model will be loaded into memory on the next generate. First load can take a minute for the larger variants.",
-    "lipSyncPointer": "Lip sync: this model can make a face in a still speak or sing a vocal. It runs from a shot in Projects: open the shot and add a file under \"Vocal for lip sync\"."
+    "lipSync": {
+      "title": "Vocal for lip sync",
+      "hint": "Optional: a WAV or FLAC the mouth follows. The clip starts from the start image, lasts {min} to {max} s and keeps this sound. A vocal stem follows best.",
+      "remove": "Remove vocal",
+      "file": "Vocal file (WAV or FLAC)",
+      "attach": "Use this vocal",
+      "start": "Start in the vocal (s)",
+      "singing": "Sung vocal",
+      "takes": "Takes",
+      "takesDefault": "Default ({count})",
+      "takesBest": "4 (best quality)",
+      "takesHint": "Each take uses its own seed; with more than one, the sync score keeps the best and the others stay in the Video Gallery. Sung vocals default to 3 takes, speech to 1.",
+      "length": "This clip is {seconds} s; lip sync needs {min} to {max} s. Change the clip length.",
+      "needsStill": "Lip sync starts from a start image: add one above.",
+      "estimate": "About {value} {unit} for {takes, plural, one {# take} other {# takes}} of a {seconds} s clip (measured on an RTX 4090)."
+    }
   },
   "imageGallery": {
     "subtitle": {

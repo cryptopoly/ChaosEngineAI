@@ -108,6 +108,8 @@ export function VideoStudioView({ ctx }: { ctx: AppTabContext }) {
       onVideoStartImageChange={videoState.setVideoStartImage}
       videoEndImage={videoState.videoEndImage}
       onVideoEndImageChange={videoState.setVideoEndImage}
+      videoLipSync={videoState.videoLipSync}
+      onVideoLipSyncChange={videoState.setVideoLipSync}
       imageGallery={imgState.imageOutputs}
       onVideoNegativePromptChange={videoState.setVideoNegativePrompt}
       videoUseRandomSeed={videoState.videoUseRandomSeed}

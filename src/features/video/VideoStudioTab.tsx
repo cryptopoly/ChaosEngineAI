@@ -77,6 +77,8 @@ import {
   onNumericChange,
 } from "./videoStudioConstants";
 import { modelsPageRequest, type TabRequest } from "../../constants/tabRedirects";
+import { LipSyncAudioPicker } from "./LipSyncAudioPicker";
+import type { LipSyncInput } from "./lipSyncLogic";
 
 export interface VideoStudioTabProps {
   videoCatalog: VideoModelFamily[];
@@ -113,6 +115,9 @@ export interface VideoStudioTabProps {
   onVideoStartImageChange: (next: InputImage | null) => void;
   videoEndImage: InputImage | null;
   onVideoEndImageChange: (next: InputImage | null) => void;
+  /** FU-372: the vocal for a lip-sync run, on rows with ``lipSync``. */
+  videoLipSync?: LipSyncInput;
+  onVideoLipSyncChange?: (next: LipSyncInput) => void;
   imageGallery: ImageOutputArtifact[];
   onVideoNegativePromptChange: (value: string) => void;
   videoUseRandomSeed: boolean;
@@ -229,6 +234,8 @@ export function VideoStudioTab({
   onVideoStartImageChange,
   videoEndImage,
   onVideoEndImageChange,
+  videoLipSync,
+  onVideoLipSyncChange,
   imageGallery,
   onVideoNegativePromptChange,
   videoUseRandomSeed,
@@ -980,14 +987,6 @@ export function VideoStudioTab({
             </div>
           ) : null}
 
-          {/* D-109: lip sync stays in Projects for v0.10.0; on a row that can do it, say where it is. */}
-          {selectedVideoVariant?.lipSync ? (
-            <p className="muted-text" role="note">
-              {t("videoStudio.lipSyncPointer", {
-                defaultValue: "Lip sync: this model can make a face in a still speak or sing a vocal. It runs from a shot in Projects: open the shot and add a file under \"Vocal for lip sync\".",
-              })}
-            </p>
-          ) : null}
 
           {selectedVideoVariant?.localStatusReason && !isDownloaded && !isDownloading ? (
             <p className="muted-text" style={{ color: "var(--warning, #f2c66d)" }}>
@@ -1036,6 +1035,21 @@ export function VideoStudioTab({
               max={1}
               onChange={(next) => onVideoStartImageChange(next[0] ?? null)}
               gallery={imageGallery}
+            />
+          ) : null}
+
+          {selectedVideoVariant?.lipSync && videoLipSync && onVideoLipSyncChange ? (
+            <LipSyncAudioPicker
+              block={selectedVideoVariant.lipSync}
+              value={videoLipSync}
+              onChange={onVideoLipSyncChange}
+              numFrames={videoNumFrames}
+              fps={videoFps}
+              width={videoWidth}
+              height={videoHeight}
+              hasStartImage={Boolean(videoStartImage)}
+              warm={videoRuntimeStatus.loadedModelRepo === selectedVideoVariant.repo}
+              disabled={videoBusy}
             />
           ) : null}
 

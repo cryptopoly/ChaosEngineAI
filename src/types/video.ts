@@ -28,8 +28,8 @@ export interface VideoModelVariant {
   acceptsEndImage?: boolean;
   /** True for a distilled model that runs its own fixed schedule (LTX-2 on MLX or diffusers): steps, guidance and negative prompt do not apply. */
   fixedSampler?: boolean;
-  /** Set on rows that can lip-sync a start still to a vocal; that runs from a shot's editor in Projects (D-109). */
-  lipSync?: { engine?: string; basis?: string } | null;
+  /** Set on rows that can lip-sync a start still to a vocal, with the measured figures the estimate uses (FU-372). */
+  lipSync?: import("../features/video/lipSyncLogic").LipSyncBlock | null;
   /** Few-step distilled rows (CausVid, lightx2v, LTX distilled): the steps and guidance the Studio starts from. */
   defaultSteps?: number | null;
   cfgOverride?: number | null;
@@ -223,6 +223,9 @@ export interface VideoOutputArtifact {
   projectId?: string | null;
   projectName?: string | null;
   shotId?: string | null;
+  /** Lip sync: the vocal the mouth follows, and every take when several were made (D-110). */
+  audioPath?: string | null;
+  lipSyncTakes?: Array<{ take: number; artifactId: string; seed: number; kept: boolean; seconds?: number; score?: { score: number; usable: boolean } | null }> | null;
 }
 
 export interface VideoGenerationPayload {
@@ -254,6 +257,12 @@ export interface VideoGenerationPayload {
   cacheStrategy?: VideoCacheStrategyId | null;
   /** Optional caching threshold override; null uses strategy default. */
   cacheRelL1Thresh?: number | null;
+  /** Lip sync (FU-372): a WAV or FLAC the mouth follows, from `audioStartSeconds`; needs a start image. */
+  audioPath?: string;
+  audioStartSeconds?: number;
+  lipSyncSinging?: boolean;
+  /** 1 to 4 takes; omitted = 3 for a sung vocal, 1 for speech (D-110). */
+  lipSyncTakes?: number;
 }
 
 export interface VideoGenerationResponse {

@@ -560,7 +560,22 @@
       "engineMessage": "此模型在 Apple GPU 上通过自己的 MLX 引擎（ltx-2-mlx）运行，并带有声音。"
     },
     "willLoadHint": "所选模型将在下次生成时载入内存。较大的版本首次载入可能需要一分钟。",
-    "lipSyncPointer": null
+    "lipSync": {
+      "title": null,
+      "hint": null,
+      "remove": null,
+      "file": null,
+      "attach": null,
+      "start": null,
+      "singing": null,
+      "takes": null,
+      "takesDefault": null,
+      "takesBest": null,
+      "takesHint": null,
+      "length": null,
+      "needsStill": null,
+      "estimate": null
+    }
   },
   "imageGallery": {
     "subtitle": {

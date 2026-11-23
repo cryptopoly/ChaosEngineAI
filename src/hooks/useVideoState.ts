@@ -1,4 +1,5 @@
 import { useDeferredValue, useEffect, useRef, useState } from "react";
+import { EMPTY_LIP_SYNC, lipSyncPayloadFields, type LipSyncInput } from "../features/video/lipSyncLogic";
 import {
   cancelVideoGeneration,
   deleteVideoOutput,
@@ -95,6 +96,8 @@ export function useVideoState(
   const [videoNegativePrompt, setVideoNegativePrompt] = useState(DEFAULT_VIDEO_NEGATIVE_PROMPT);
   const [videoStartImage, setVideoStartImage] = useState<InputImage | null>(null);
   const [videoEndImage, setVideoEndImage] = useState<InputImage | null>(null);
+  // FU-372: the vocal a lip-sync run follows (rows with ``lipSync``), its start, sung or spoken, and the takes.
+  const [videoLipSync, setVideoLipSync] = useState<LipSyncInput>(EMPTY_LIP_SYNC);
   const [videoSeedInput, setVideoSeedInput] = useState("");
   const [videoUseRandomSeed, setVideoUseRandomSeed] = useState(true);
   // Generation knobs the user can tweak in Studio. Defaults are populated
@@ -645,6 +648,7 @@ export function useVideoState(
       cacheStrategy: videoCacheStrategy === "none" ? null : videoCacheStrategy,
       cacheRelL1Thresh: videoCacheRelL1Thresh,
     };
+    Object.assign(payload, lipSyncPayloadFields(Boolean(selectedVideoVariant.lipSync), videoLipSync));
 
     // The pipeline is "loaded" when the runtime reports the same repo as
     // currently selected. Anything else means we're paying the load cost on
@@ -799,6 +803,8 @@ export function useVideoState(
     setVideoStartImage,
     videoEndImage,
     setVideoEndImage,
+    videoLipSync,
+    setVideoLipSync,
     setVideoNegativePrompt,
     videoSeedInput,
     setVideoSeedInput,

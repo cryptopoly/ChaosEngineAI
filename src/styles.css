@@ -13137,6 +13137,49 @@ button.licence-chip:focus-visible {
   flex: 1 1 160px;
   min-width: 0;
 }
+/* Lip sync vocal in the Video Studio and the shot editor (FU-372, FU-373) */
+.lip-sync-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  border-radius: 8px;
+  padding: 8px 10px;
+  min-width: 0;
+}
+.lip-sync-picker__file {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.lip-sync-picker__file code {
+  flex: 1 1 160px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lip-sync-picker__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+}
+.lip-sync-picker__row label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.lip-sync-picker__row .lip-sync-picker__check {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+.lip-sync-picker__row input[type="number"] {
+  width: 90px;
+}
 
 /* References and defaults */
 .references-panel,

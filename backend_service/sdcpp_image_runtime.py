@@ -41,6 +41,18 @@ _LAST_OUTPUT_LINES = 80
 _RUNTIME_LABEL = "stable-diffusion.cpp"
 
 
+def missing_binary_message() -> str:
+    """Why there is no ``sd`` to run, and how to get one on this machine (FU-612).
+
+    No folder names or slashes: the Storyboard error scrubber would cut them down to a stub.
+    """
+    build = "build-sdcpp.ps1" if os.name == "nt" else "build-sdcpp.sh"
+    return (
+        "stable-diffusion.cpp binary not staged. Run the "
+        f"{build} script in the scripts folder, or set CHAOSENGINE_SDCPP_BIN to an existing sd binary."
+    )
+
+
 # Repos sd.cpp's image lane supports natively. The Wan 2.1/2.2 video
 # repos live in ``sdcpp_video_runtime._SUPPORTED_REPOS``; this module
 # stays narrow to image-side families. Catalog variants with
@@ -151,11 +163,7 @@ class SdCppImageEngine:
         if binary is None:
             return {
                 "available": False,
-                "reason": (
-                    "stable-diffusion.cpp binary not staged. Run "
-                    "``./scripts/build-sdcpp.sh`` (or set "
-                    "CHAOSENGINE_SDCPP_BIN) to build and install."
-                ),
+                "reason": missing_binary_message(),
             }
         from backend_service.sdcpp_video_runtime import sd_binary_device, sd_device_name
 
@@ -189,10 +197,7 @@ class SdCppImageEngine:
     def generate(self, config: ImageGenerationConfig) -> list[GeneratedImage]:
         binary = _resolve_sd_binary()
         if binary is None:
-            raise RuntimeError(
-                "stable-diffusion.cpp binary not staged. "
-                "Run ``./scripts/build-sdcpp.sh`` first."
-            )
+            raise RuntimeError(missing_binary_message())
         if not _is_sdcpp_image_repo(config.repo):
             raise RuntimeError(
                 f"sd.cpp image lane does not support {config.repo}. "

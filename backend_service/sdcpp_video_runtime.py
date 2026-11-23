@@ -35,6 +35,7 @@ from pathlib import Path
 from typing import Any
 
 from backend_service.helpers.sdcpp_progress import parse_step
+from backend_service.sdcpp_image_runtime import missing_binary_message
 from backend_service.video_runtime import (
     GeneratedVideo,
     VideoGenerationConfig,
@@ -193,12 +194,7 @@ class SdCppVideoEngine:
                 realGenerationAvailable=False,
                 expectedDevice=None,
                 missingDependencies=["sd"],
-                message=(
-                    "stable-diffusion.cpp binary not staged. Run "
-                    "``./scripts/build-sdcpp.sh`` (or set "
-                    "CHAOSENGINE_SDCPP_BIN) to build and install. "
-                    "See FU-008 in FOLLOW_UPS.md."
-                ),
+                message=missing_binary_message(),
             )
         device = sd_binary_device(binary)
         return VideoRuntimeStatus(
@@ -231,10 +227,7 @@ class SdCppVideoEngine:
     def generate(self, config: VideoGenerationConfig) -> GeneratedVideo:
         binary = _resolve_sd_binary()
         if binary is None:
-            raise RuntimeError(
-                "stable-diffusion.cpp binary not staged. "
-                "Run ``./scripts/build-sdcpp.sh`` first."
-            )
+            raise RuntimeError(missing_binary_message())
         if not _is_sdcpp_video_repo(config.repo):
             raise RuntimeError(
                 f"sd.cpp does not support {config.repo}. "

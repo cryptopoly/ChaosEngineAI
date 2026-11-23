@@ -89,9 +89,9 @@ class WindowsAssetTests(unittest.TestCase):
                 self.assertRegex(llama_cuda._PINNED_SHA256.get(name, ""), r"^[0-9a-f]{64}$", name)
 
     def test_expected_sha256_prefers_the_pin_then_the_release(self) -> None:
-        name = "llama-b12649-bin-win-cuda-13.5-x64.zip"
+        name = "llama-b12651-bin-win-cuda-13.5-x64.zip"
         never = mock.Mock(side_effect=AssertionError("pin should win"))
-        self.assertEqual(llama_cuda.expected_sha256(name, "b12649", never), llama_cuda._PINNED_SHA256[name])
+        self.assertEqual(llama_cuda.expected_sha256(name, "b12651", never), llama_cuda._PINNED_SHA256[name])
         self.assertEqual(llama_cuda.expected_sha256("x.zip", "b99999", lambda _t: {"x.zip": "ab"}), "ab")
         self.assertIsNone(llama_cuda.expected_sha256("x.zip", "b99999", lambda _t: {}))
 

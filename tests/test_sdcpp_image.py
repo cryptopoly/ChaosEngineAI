@@ -776,3 +776,16 @@ def tearDownModule():
     from backend_service.progress import IMAGE_PROGRESS
 
     IMAGE_PROGRESS.finish()
+
+
+class MissingBinaryMessageTests(unittest.TestCase):
+    """FU-612: the message names the script for this OS and survives the Storyboard scrubber."""
+
+    def test_names_the_script_for_this_platform_without_a_path(self) -> None:
+        from backend_service.sdcpp_image_runtime import missing_binary_message
+        from backend_service.storyboard.media import scrub
+
+        text = missing_binary_message()
+        self.assertIn("build-sdcpp.ps1" if os.name == "nt" else "build-sdcpp.sh", text)
+        self.assertIn("CHAOSENGINE_SDCPP_BIN", text)
+        self.assertEqual(scrub(text), text)

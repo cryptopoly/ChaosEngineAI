@@ -10,18 +10,18 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 
 
 <details>
-<summary>FU-613 · llama.cpp b12651 is out — Next llama.cpp bump</summary>
+<summary>FU-613 · llama.cpp b12651 is out — Done 2026-11-23 on test/rtx4090: pinned b12651 (llama_cuda.py tag and the three Windows CUDA digests, stage-ru…</summary>
 
-**Status or trigger:** Next llama.cpp bump
+**Status or trigger:** **Done 2026-11-23 on `test/rtx4090`: pinned `b12651`** (`llama_cuda.py` tag and the three Windows CUDA digests, `stage-runtime.mjs`, `update-llama-cpp.sh`, `linux-gpu-check.sh`, CLAUDE.md row). b12650 is an Inkling parser/grammar fix, b12651 WebGPU ROLL only. Checked: installer into a throwaway home, both CUDA 13.5 zips sha256-verified, `llama-server --version` build 12651, Qwen3.6-35B-A3B Q4_K_M full GPU, chat reply `pong` at 41.6 tokens/s. Not run: Linux archives, the full E2E on b12651, the release bundle
 
 **Notes:** `check-upstreams.py` on 2026-11-23: pinned `b12649` (moved today), newest with prebuilt archives `b12651`. Not bumped in the final gate: a bump needs the CUDA archive digests and a GGUF run on the 4090 like b12649's (`install-llama-cuda` b12649 CUDA 13.5: both zips sha256-verified, every phase 1 GGUF check passed).
 
 </details>
 
 <details>
-<summary>FU-612 · sd.cpp missing-binary error names a shell script and loses its folder — Small copy pass</summary>
+<summary>FU-612 · sd.cpp missing-binary error names a shell script and loses its folder — Message fixed 2026-11-23 on test/rtx4090 (sdcpp_image_runtime.missing_binary_message(): names build-sdcpp.ps1…</summary>
 
-**Status or trigger:** Small copy pass
+**Status or trigger:** **Message fixed 2026-11-23 on `test/rtx4090`** (`sdcpp_image_runtime.missing_binary_message()`: names `build-sdcpp.ps1` on Windows and `build-sdcpp.sh` elsewhere, no slash, so the Storyboard scrubber leaves it whole; used by the image and video runtimes; test `MissingBinaryMessageTests`). **Still open:** the image library offers the sd.cpp rows as installed when no `sd` is found
 
 **Notes:** Found by the Windows final gate 2026-11-23 (dev checkout with no `sd` staged; the packaged Windows build stages `sd.exe`, FU-399): Images and Storyboard say "stable-diffusion.cpp binary not staged. Run ``./scripts/build-sdcpp.sh`` (or set CHAOSENGINE_SDCPP_BIN)" (`sdcpp_image_runtime.py`), a Bash script on Windows (the Windows build is `scripts/build-sdcpp.ps1`), and the Storyboard error scrubber (`storyboard/media.scrub`) turns it into "``.build-sdcpp.sh``". Also: the image library offers the sd.cpp rows as installed when no `sd` binary is found, so the first still of a Storyboard draft fails rather than picking a runnable model.
 

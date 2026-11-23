@@ -13180,6 +13180,16 @@ button.licence-chip:focus-visible {
 .lip-sync-picker__row input[type="number"] {
   width: 90px;
 }
+.lip-sync-picker__score {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.lip-sync-picker__score p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
 
 /* References and defaults */
 .references-panel,

@@ -574,7 +574,16 @@
       "takesHint": null,
       "length": null,
       "needsStill": null,
-      "estimate": null
+      "estimate": null,
+      "score": {
+        "installed": null,
+        "missing": null,
+        "install": null,
+        "phasePackages": null,
+        "phaseModel": null,
+        "phaseCheck": null,
+        "failed": null
+      }
     }
   },
   "imageGallery": {

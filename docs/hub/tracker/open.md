@@ -1,7 +1,7 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 273 rows with work, decisions or watch items still open, newest first.
+summary: 272 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
@@ -78,15 +78,6 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** Next sd.cpp pass on the 4090 or the Mac (needs a CUDA Toolkit or the 700 MB portable CUDA archives, and two builds)
 
 **Notes:** Not bumped on 2026-11-23. 11 commits, one large: DGL (a scripting language for pipelines, #2396) adds `src/dgl/*`, removes `src/pipeline/*` and rewrites the model docs with "Legacy CLI" sections. CLI flags in the `minimax_h3.md` legacy section are unchanged; reference videos may now be files (AVI, WebP, VP8 WebM). CMake: `SD_CUDA` unchanged, the MSVC parallel count now uses physical cores, WebP builds now also need `webpdemux`. Also MOSS-Image edit LoRAs, a LoRA tensor-count fix, H3 VAE speed-ups. The table requires a real Qwen-Image 2.1 sd.cpp image on the old and the new build; this PC has no CUDA Toolkit and no cached sd build. **To do:** build both commits (`scripts/build-sdcpp.ps1` with `SDCPP_REF`, `SDCPP_CUDA_ARCHITECTURES=89`), compare the `leejet/Qwen-Image-2.1-GGUF-q4k` image, re-read `_build_h3_cli_args` against the legacy CLI section, then move `SDCPP_REF` in `build-sdcpp.sh`, `update-sdcpp.sh`, `build-sdcpp.ps1` and `update-sdcpp.ps1`.
-
-</details>
-
-<details>
-<summary>FU-562 · Transformers 5.24.0 for the stt-gpu asr-site (pinned 5.23.0) — Next Windows session that has the voice venv with the stt-gpu add-on</summary>
-
-**Status or trigger:** Next Windows session that has the voice venv with the `stt-gpu` add-on
-
-**Notes:** Not bumped on 2026-11-23. The table says a bump needs the GPU dictation rows re-run, and this PC has no voice venv now (`E:\tmp\stt-home` is gone; rebuilding needs the 2.86 GB torch cu128 download and the dev venv has no torchaudio). Release notes read: 5.24.0 renames `past_key_values` / `cache_params` to `cache` (old names still accepted with a warning until 5.40 / 6.0; `voice_worker_asr.py` never passes either), adds Omnilingual ASR, Inkling 2 Mini, HY4-VL; its requirements are the same as 5.23's (tokenizers >=0.23.1,<0.24, safetensors >=0.8). **To do:** set `ASR_SITE_PACKAGES` and `_ASR_SITE_CHECK` / `asr_site_installed` to 5.24.0, reinstall the add-on, run each GPU row in `voice_stt_cuda.py` plus the forced aligner, and update the CLAUDE.md row.
 
 </details>
 

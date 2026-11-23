@@ -20,7 +20,7 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 
 **Done:** llama.cpp `b12441` -> `b12649` (new Windows CUDA digests; the new `--version` format is read; the CUDA 13.5 build ran a short chat on the 4090, FU-560). TensorFold native `1.2.9` -> `1.3.4` from the release notes and source (FU-561). `audit-dependencies.py`: PASS, nothing high or critical.
 
-**Open for Claude:** TensorFold 1.3.4 family rows on the Mac (FU-561); Transformers 5.24 for `asr-site` once a voice venv exists (FU-562); sd.cpp `0d71f963` needs two CUDA builds and a Qwen-Image 2.1 image (FU-563); Mac-only pins (FU-564).
+**Open for Claude:** TensorFold 1.3.4 family rows on the Mac (FU-561); sd.cpp `0d71f963` needs two CUDA builds and a Qwen-Image 2.1 image (FU-563); Mac-only pins (FU-564).
 
 **Open for Dan:** nothing to decide; push and merge the branch when ready.
 ## Update 2026-11-23 (WSL2 pass of the current tip, cross-platform tracker; agent branch, not pushed)

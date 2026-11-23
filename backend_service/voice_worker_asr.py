@@ -2,7 +2,7 @@
 
 Runs in the ASR worker (``voice_client.get_asr_worker``): the voice venv's Python and PyTorch (the speech-to-text GPU
 add-on, ``voice_env_asr``) with the add-on's own Transformers first on ``PYTHONPATH``, because the speech GPU
-add-on pins an older Transformers for Chatterbox. Transformers 5.23 carries every model here natively, so one loader
+add-on pins an older Transformers for Chatterbox. Transformers 5.24 carries every model here natively, so one loader
 serves five families:
 
 * ``qwen3-asr``: Qwen3-ASR 1.7B / 0.6B (the ``-hf`` conversions), an audio LLM with language detection.

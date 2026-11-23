@@ -116,7 +116,8 @@ def cache_preview(
         strategy="native" if bits <= 0 else strategy,
     )
     arch = _model_arch(request, model_path, model_repo)
-    return compute_cache_preview(
+    host = _chat_host(request, model_path, model_repo, arch)
+    preview = compute_cache_preview(
         bits=bits,
         fp16_layers=fp16_layers,
         num_layers=num_layers,
@@ -129,8 +130,34 @@ def cache_preview(
         arch=arch,
         weights_gb=weights_gb,
         measured_tok_s=measured,
-        **_chat_host(request, model_path, model_repo, arch),
+        **host,
     )
+    preview["moeOffload"] = _moe_offload_preview(host, float(preview.get("optimizedCacheGb") or 0.0))
+    return preview
+
+
+def _moe_offload_preview(host: dict[str, Any], cache_gb: float) -> dict[str, Any] | None:
+    """What the launch settings' expert offload control shows for a mixture-of-experts GGUF on a discrete NVIDIA
+    card (FU-550): the layer count and how many layers' experts would stay in system RAM to fit the card's free
+    memory now. None for a dense model, a Mac, or a file that cannot be read."""
+    from backend_service.helpers.memory_gate import cuda_free_vram_gb
+    from backend_service.helpers.moe_offload import GPU_MARGIN_GB, auto_cpu_layers, is_moe, split
+
+    layout = host.get("layout")
+    if not host.get("cuda") or not is_moe(layout):
+        return None
+    free_gpu = cuda_free_vram_gb()
+    auto = auto_cpu_layers(layout, cache_gb * 1024 ** 3, free_gpu - GPU_MARGIN_GB) if free_gpu is not None else None
+    parts = split(layout, cache_gb * 1024 ** 3, auto or 0)
+    return {
+        "blocks": parts["blocks"],
+        "moeLayers": parts["moeLayers"],
+        "expertGb": round(parts["expertGb"], 1),
+        "autoCpuLayers": auto,
+        "gpuGb": round(parts["gpuGb"], 1),
+        "ramGb": round(parts["ramGb"], 1),
+        "freeGpuGb": free_gpu,
+    }
 
 
 # A loaded model holds a little more than its files (runtime buffers, the
@@ -243,6 +270,16 @@ def _memory_verdict(
             needed_gb, host_gb = weights_gb * (1 + _LOAD_OVERHEAD) + cache_gb, 0.0
         available_gb = free_gpu_gb + reclaimable_gb
         verdict = verdict_for(needed_gb, available_gb)
+        offload = None
+        if verdict == "may_not_fit":
+            offload = _moe_offload_verdict(
+                layout, cache_gb, turbo, gpu_budget_gb=available_gb - _LOAD_HEADROOM_GB,
+                ram_budget_gb=free_gb + reclaimable_gb - _LOAD_HEADROOM_GB,
+            )
+        if offload is not None:
+            # A mixture of experts loads with some experts in system RAM (FU-550): slower, but it fits.
+            needed_gb, host_gb, verdict = offload["gpuGb"], offload["ramGb"], "tight"
+            result["moeOffload"] = offload
         result.update(memoryKind="gpu", freeGpuGb=round(free_gpu_gb, 1), hostGb=round(host_gb, 1))
         if verdict == "may_not_fit":
             result["message"] = (
@@ -271,3 +308,19 @@ def _memory_verdict(
             )
     result.update(verdict=verdict, neededGb=round(needed_gb, 1), availableGb=round(available_gb, 1))
     return result
+
+
+def _moe_offload_verdict(
+    layout: Any, cache_gb: float, turbo: bool, *, gpu_budget_gb: float, ram_budget_gb: float,
+) -> dict[str, Any] | None:
+    """The expert offload a mixture-of-experts GGUF needs to fit ``gpu_budget_gb``, when system RAM can hold the
+    moved experts; None otherwise (a dense model, or too little RAM)."""
+    from backend_service.helpers.moe_offload import auto_cpu_layers, split
+
+    layers = auto_cpu_layers(layout, cache_gb * 1024 ** 3, gpu_budget_gb, turbo=turbo) if layout is not None else None
+    if not layers:
+        return None
+    parts = split(layout, cache_gb * 1024 ** 3, layers, turbo=turbo)
+    if parts["ramGb"] > ram_budget_gb:
+        return None
+    return {key: (round(value, 1) if isinstance(value, float) else value) for key, value in parts.items()}

@@ -584,7 +584,10 @@ class CatalogPayloadTests(unittest.TestCase):
             by_id = {variant["id"]: variant for variant in family["variants"]}
             for variant in family["variants"]:
                 fit = variant["fit"]
-                self.assertEqual(set(fit), FIT_KEYS, f"{label} {variant['id']}")
+                # ``offload``: a mixture of experts that fits a discrete card with experts in system RAM (FU-550).
+                self.assertEqual(set(fit) - {"offload"}, FIT_KEYS, f"{label} {variant['id']}")
+                if "offload" in fit:
+                    self.assertEqual(fit["status"], "tight", f"{label} {variant['id']}")
                 self.assertIn(fit["status"], STATUSES)
                 self.assertIn(fit["basis"], {"measured", "estimated"})
                 self.assertTrue(fit["reason"])

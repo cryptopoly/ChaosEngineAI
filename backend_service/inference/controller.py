@@ -297,19 +297,23 @@ class RuntimeController:
         fit_model_in_memory: bool,
         context_tokens: int,
         speculative_decoding: bool = False,
+        moe_cpu_layers: int | None = None,
     ) -> str:
         target = runtime_target or path or model_ref or ""
+        key: dict[str, Any] = {
+            "target": target,
+            "cacheStrategy": cache_strategy,
+            "cacheBits": cache_bits,
+            "fp16Layers": fp16_layers,
+            "fusedAttention": fused_attention,
+            "fitModelInMemory": fit_model_in_memory,
+            "contextTokens": context_tokens,
+            "speculativeDecoding": speculative_decoding,
+        }
+        if moe_cpu_layers is not None:  # llama.cpp expert offload (FU-550); automatic keeps the old key
+            key["moeCpuLayers"] = moe_cpu_layers
         return json.dumps(
-            {
-                "target": target,
-                "cacheStrategy": cache_strategy,
-                "cacheBits": cache_bits,
-                "fp16Layers": fp16_layers,
-                "fusedAttention": fused_attention,
-                "fitModelInMemory": fit_model_in_memory,
-                "contextTokens": context_tokens,
-                "speculativeDecoding": speculative_decoding,
-            },
+            key,
             sort_keys=True,
             separators=(",", ":"),
         )
@@ -327,6 +331,7 @@ class RuntimeController:
             fit_model_in_memory=info.fitModelInMemory,
             context_tokens=info.contextTokens,
             speculative_decoding=info.speculativeDecoding,
+            moe_cpu_layers=info.requestedMoeCpuLayers,
         )
 
     @staticmethod
@@ -1069,6 +1074,7 @@ class RuntimeController:
             fit_model_in_memory=kwargs.get("fit_model_in_memory", True),
             context_tokens=kwargs.get("context_tokens", 8192),
             speculative_decoding=kwargs.get("speculative_decoding", False),
+            moe_cpu_layers=kwargs.get("moe_cpu_layers"),
         )
         self._latest_load_key = key
         waited = False
@@ -1133,6 +1139,7 @@ class RuntimeController:
         tree_budget: int = 0,
         keep_warm_previous: bool = True,
         progress_callback: Callable[[dict[str, Any]], None] | None = None,
+        moe_cpu_layers: int | None = None,
     ) -> LoadedModelInfo:
         _events.emit_resolving(self, model_ref=model_ref, model_name=model_name, cache_strategy=cache_strategy)
         self.refresh_capabilities()
@@ -1179,6 +1186,7 @@ class RuntimeController:
             fit_model_in_memory=fit_model_in_memory,
             context_tokens=context_tokens,
             speculative_decoding=speculative_decoding,
+            moe_cpu_layers=moe_cpu_layers,
         )
         if pool_key in self._warm_pool:
             cached_engine, cached_info = self._warm_pool.pop(pool_key)
@@ -1242,6 +1250,9 @@ class RuntimeController:
             tree_budget=tree_budget,
             progress_callback=_internal_progress,
         )
+        if isinstance(self.engine, LlamaCppEngine):
+            # Only the llama.cpp engine keeps mixture-of-experts weights in system RAM (FU-550).
+            _load_kwargs["moe_cpu_layers"] = moe_cpu_layers
         try:
             loaded = self.engine.load_model(**_load_kwargs)
         except RuntimeError as _startup_exc:

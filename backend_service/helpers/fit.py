@@ -15,7 +15,8 @@ The number compared against the machine is the memory the model needs once loade
   when it is on disk (``helpers.model_arch``); a model that is not downloaded is never looked up
   on the Hub from here (a catalog request must not wait on 100 network calls), so its cache comes
   from a parameter-count table. A row that states its own ``estimatedMemoryGb`` replaces the
-  weights-plus-runtime part.
+  weights-plus-runtime part. On a discrete NVIDIA card a mixture-of-experts model that does not fit is ``tight``
+  with an ``offload`` entry when it fits with some experts in system RAM (``helpers.moe_offload``, FU-550).
 * Music: the catalog's measured generation peak (``helpers.music_fit``).
 * Image and video: the catalog's runtime footprint for this hardware (``runtimeFootprintMpsGb`` on a
   Mac, ``runtimeFootprintCudaGb`` on an NVIDIA GPU, else ``runtimeFootprintGb``), falling back to the
@@ -263,6 +264,69 @@ def _chat_fit_numbers(
     )
 
 
+def _expert_offload_fit(
+    variant: dict[str, Any], arch: Any, layout: Any, context_tokens: int, hardware: HardwareClass,
+) -> tuple[float, str, dict[str, Any]] | None:
+    """``(GPU GB, reason, offload)`` for a mixture-of-experts GGUF that does not fit a discrete card but runs with
+    some experts in system RAM (llama.cpp ``--n-cpu-moe``, FU-550), or None when it is not one or RAM is too small.
+
+    The card is filled to the "tight" share; the rest of the experts go to RAM, which may take ``RAM_SHARE`` of the
+    machine's memory. A downloaded file is split from its tensor table, any other row from its size and active
+    share."""
+    from backend_service.helpers.moe_offload import (
+        ESTIMATE_OVERHEAD_GB,
+        RAM_SHARE,
+        auto_cpu_layers,
+        estimate_split,
+        is_moe,
+        split,
+    )
+
+    if layout is None and str(variant.get("format") or "").upper() != "GGUF" and not variant.get("ggufFile"):
+        return None  # only the llama.cpp engine offloads experts
+    budget = hardware.usable_gb * TIGHT_MAX_SHARE
+    weights = _chat_weights_gb(variant)
+    if weights is None:
+        return None
+    ctx = _chat_context(variant, context_tokens)
+    cache = _chat_cache_gb(variant, weights, arch, ctx)
+    offload: dict[str, Any] | None
+    if layout is not None:
+        if not is_moe(layout):
+            return None
+        layers = auto_cpu_layers(layout, cache * 1024 ** 3, budget)
+        offload = split(layout, cache * 1024 ** 3, layers) if layers else None
+    else:
+        if arch is not None and arch.active_fraction < 1.0:
+            active = arch.active_fraction
+        else:
+            active = _name_active_fraction(variant)
+        if active is None or active >= 1.0:
+            return None
+        offload = estimate_split(
+            need_gb=weights + cache + ESTIMATE_OVERHEAD_GB,
+            weights_gb=weights,
+            active_fraction=active,
+            gpu_budget_gb=budget,
+            num_layers=getattr(arch, "num_layers", None),
+        )
+    if offload is None or hardware.total_gb <= 0 or offload["ramGb"] > hardware.total_gb * RAM_SHARE:
+        return None
+    layers_text = (
+        f"the experts of {offload['cpuMoeLayers']} of {offload['blocks']} layers"
+        if offload.get("cpuMoeLayers") and offload.get("blocks")
+        else "part of the experts"
+    )
+    reason = (
+        f"Fits with expert offload: {layers_text} stay in system RAM ({offload['ramGb']:.1f} GB) and "
+        f"{offload['gpuGb']:.1f} GB goes on the GPU, with the cache at {_context_label(ctx)} context. "
+        "Replies are slower than with the whole model on the GPU (about a third to a half of the speed measured "
+        "on an RTX 4090)"
+    )
+    rounded = {key: (round(value, 1) if isinstance(value, float) else value) for key, value in offload.items()}
+    return offload["gpuGb"], reason, rounded
+
+
 def local_kv_architecture(repo: str) -> Any:
     """Attention layout of a downloaded repo from its own files, or None (never a network call)."""
     if not repo:
@@ -278,10 +342,14 @@ def local_kv_architecture(repo: str) -> Any:
 
 
 def _name_active_fraction(variant: dict[str, Any]) -> float | None:
-    """Active share of a mixture-of-experts model from its name (``...-26B-A4B-...``)."""
+    """Active share of a mixture-of-experts model from its name (``...-26B-A4B-...``), or from a row's own
+    ``activeParamsB`` when the name carries none."""
     params = _positive(variant.get("paramsB"))
     if not params:
         return None
+    active = _positive(variant.get("activeParamsB"))
+    if active:
+        return max(0.02, min(1.0, active / params))
     text = f"{variant.get('name') or ''} {variant.get('repo') or ''}".lower()
     match = _ACTIVE_PARAMS_RE.search(text)
     if not match:
@@ -441,9 +509,17 @@ def variant_fit(
         # A peak that was measured on this kind of machine did run, so it cannot be "won't fit";
         # it is as tight as it gets (Qwen-Image-2.1 peaks at 46-50 GB of 51.8).
         status = "tight"
-    if status != "fits" and hardware.kind == "cuda":
+    offload: dict[str, Any] | None = None
+    if kind == "chat" and status == "wont-fit" and hardware.kind == "cuda" and not hardware.unified:
+        # A mixture of experts runs with some experts in system RAM (FU-550): "tight", never recommended over a
+        # row that fits the card, and the badge says it fits with offload.
+        moe = _expert_offload_fit(variant, arch, layout, context_tokens, hardware)
+        if moe is not None:
+            need, reason, offload = moe
+            status = "tight"
+    if status != "fits" and hardware.kind == "cuda" and offload is None:
         reason += " (GPU memory only; offloading to system RAM would run far slower)"
-    return {
+    result = {
         "status": status,
         "needGb": round(need, 1),
         "usableGb": round(usable, 1),
@@ -451,6 +527,9 @@ def variant_fit(
         "reason": reason,
         "basis": basis,
     }
+    if offload is not None:
+        result["offload"] = offload
+    return result
 
 
 def best_fit_variant_id(

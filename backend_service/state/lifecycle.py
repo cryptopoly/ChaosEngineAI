@@ -269,7 +269,17 @@ def load_model(
             if same_loaded_model
             else []
         )
-        reload_required_changes = [change for change in profile_changes if change not in cache_profile_changes]
+        if same_loaded_model and state.runtime.loaded_model is not None:
+            loaded_moe = getattr(state.runtime.loaded_model, "requestedMoeCpuLayers", None)
+            if loaded_moe != request.moeCpuLayers:
+                def _moe_label(value: int | None) -> str:
+                    return "auto" if value is None else str(value)
+
+                profile_changes = [
+                    *profile_changes,
+                    f"expert offload {_moe_label(loaded_moe)} -> {_moe_label(request.moeCpuLayers)}",
+                ]
+        reload_required_changes =[change for change in profile_changes if change not in cache_profile_changes]
         can_apply_profile_without_reload = bool(
             same_loaded_model
             and cache_profile_changes
@@ -369,6 +379,8 @@ def load_model(
                 tree_budget=tree_budget,
                 keep_warm_previous=keep_warm_previous and not exclusive_memory_load,
                 progress_callback=_on_load_progress,
+                # Only when set: automatic is the runtime's default (FU-550).
+                **({"moe_cpu_layers": request.moeCpuLayers} if request.moeCpuLayers is not None else {}),
             )
     except Exception:
         with state._lock:

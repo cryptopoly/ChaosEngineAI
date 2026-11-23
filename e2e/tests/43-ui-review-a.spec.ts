@@ -60,6 +60,11 @@ test("first run: no Ready badge, the picker names the empty library, the Models 
   await expect(picker.locator(".model-select-empty")).not.toContainText("match your search");
   await page.keyboard.press("Escape");
   await openTab(page, "Chat", "Models");
+  // With nothing on disk the page opens on the recommended rows (D-105 D) when the host has picks; the header
+  // with the disk total is on the full list behind "Show all".
+  await expect(page.locator(".chat-models-page").first()).toBeVisible();
+  const showAll = page.getByRole("button", { name: /Show all \d+ models/ }).first();
+  if (await showAll.isVisible()) await showAll.click();
   const header = page.locator(".chat-models-page").first();
   await expect(header).toContainText("0 GB on disk");
   await expect(header).not.toContainText("Unknown on disk");

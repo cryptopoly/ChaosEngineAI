@@ -15,7 +15,9 @@ async function bothInstalled(page: Page) {
     const body = await response.json();
     for (const family of body.families) {
       if (family.kind !== "sound") continue;
+      // Only the two Stable Audio Open rows: on CUDA the catalog also lists Stable Audio 3, which stays not installed.
       for (const variant of family.variants) {
+        if (variant.id !== SMALL && variant.id !== FULL) continue;
         Object.assign(variant, { availableLocally: true, weightsSource: "checkpoints", packInstalled: true, textEncoderReady: true });
       }
     }

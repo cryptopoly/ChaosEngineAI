@@ -137,6 +137,8 @@ def studio_generators(request: Any, batch_id: str, folder: Path) -> dict[str, Ca
                 fields["lipSyncSinging"] = True
             if shot.vocalTakes is not None:
                 fields["lipSyncTakes"] = shot.vocalTakes
+            if shot.trimOut is not None and frames / fps > shot.trimOut + 1e-6:  # FU-609: the film cuts this off
+                fields["lipSyncTailSeconds"] = round(min(8.0, frames / fps - shot.trimOut), 3)
         if shot.startFrom == "text":
             pass  # text-to-video by the shot's own choice: no picture goes in, on any model
         elif takes_start:

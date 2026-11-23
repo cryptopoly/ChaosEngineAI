@@ -21,6 +21,9 @@ a 100-4000 Hz band-pass. Numbers reported (FU-334, measured in ``docs/research/l
   usable first, then by ``score``. With the old half-weight turn penalty the score alone picked a profile take more
   often as N grew (best-of-4 usable 0.78); the gate fixed it (0.98). With the full turn penalty both pick alike on
   the sung test set; the gate stays as a guard.
+- ``shown`` (FU-609): a sung shot is made with room after its phrase that the film cuts off again. Those frames count
+  for ``r`` and chance (their silence is what lets the score tell singing from mouthing), but not for the mouth or
+  head penalties (``closed_while_voiced``, ``open_while_silent``, ``turned_away``): a grin or a turn there is never seen.
 
 The maths (``score_series``) is plain numpy and scipy. Reading a video needs ``cv2`` and ``mediapipe``, which the app's
 venv does not carry; they are imported only in ``mouth_series`` and come from the sync-score add-on's folder
@@ -122,7 +125,7 @@ def _lagged(mouth: Any, env: Any, lag: int) -> float:
 
 
 def score_series(mouth: Any, env: Any, *, yaw: Any = None, max_lag: int = MAX_LAG,
-                 open_threshold: float = OPEN_THRESHOLD, seed: int = 0) -> SyncScore:
+                 open_threshold: float = OPEN_THRESHOLD, seed: int = 0, shown: int | None = None) -> SyncScore:
     """Score a mouth-opening series (NaN where no face was found) against a voice envelope of the same length.
 
     ``yaw`` (optional, same length) is the head-turn measure from ``mouth_series``; frames turned away (or with no
@@ -151,7 +154,9 @@ def score_series(mouth: Any, env: Any, *, yaw: Any = None, max_lag: int = MAX_LA
     voiced = env > VOICED_FRACTION * ref if ref > 0 else np.zeros(n, dtype=bool)
     face = ~np.isnan(mouth)
     opened = np.nan_to_num(mouth, nan=0.0) > open_threshold
-    v, s = voiced & face, ~voiced & face
+    seen = np.zeros(n, dtype=bool)
+    seen[: n if shown is None else max(1, min(n, int(shown)))] = True
+    v, s = voiced & face & seen, ~voiced & face & seen
     closed_v = float((v & ~opened).sum() / v.sum()) if v.sum() else 0.0
     open_s = float((s & opened).sum() / s.sum()) if s.sum() else 0.0
     balanced = 0.5 * ((1.0 - closed_v) + (1.0 - open_s))
@@ -162,9 +167,9 @@ def score_series(mouth: Any, env: Any, *, yaw: Any = None, max_lag: int = MAX_LA
     motion = min(1.0, max(0.0, moving / (2 * open_threshold)))
     if yaw is not None:
         yaw = np.asarray(yaw, dtype=np.float64)
-        turned = float(((np.abs(np.nan_to_num(yaw, nan=9.0)) > TURNED_YAW)).mean()) if n else 0.0
+        turned = float(((np.abs(np.nan_to_num(yaw, nan=9.0)) > TURNED_YAW))[seen].mean()) if n else 0.0
     else:
-        turned = float((~face).mean()) if n else 0.0
+        turned = float((~face)[seen].mean()) if n else 0.0
     return SyncScore(
         frames=int(n),
         face_frames=int(face.sum()),
@@ -240,14 +245,15 @@ def mouth_series(video: Path, model: Path) -> tuple[Any, float, list[Any], Any]:
     return smooth(values), fps, frames, np.asarray(yaws)
 
 
-def score_files(video: Path, audio: Path, model: Path) -> tuple[SyncScore, dict[str, Any]]:
-    """Score ``video`` against the voice in ``audio`` (trimmed or zero-padded to the video's length)."""
+def score_files(video: Path, audio: Path, model: Path, shown: int | None = None) -> tuple[SyncScore, dict[str, Any]]:
+    """Score ``video`` against the voice in ``audio`` (trimmed or zero-padded to the video's length); ``shown`` as in
+    ``score_series``."""
     import soundfile as sf  # noqa: PLC0415
 
     mouth, fps, _frames, yaw = mouth_series(video, model)
     samples, rate = sf.read(str(audio), always_2d=True, dtype="float64")
     env = envelope(samples, rate, len(mouth), fps)
-    result = score_series(mouth, env, yaw=yaw)
+    result = score_series(mouth, env, yaw=yaw, shown=shown)
     return result, {"mouth": [None if v != v else round(float(v), 4) for v in mouth],
                     "yaw": [None if v != v else round(float(v), 3) for v in yaw],
                     "env": [round(float(v), 5) for v in env], "fps": fps}
@@ -263,12 +269,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--model", type=Path, required=True, help="MediaPipe face_landmarker.task")
     parser.add_argument("--json", type=Path)
     parser.add_argument("--site", type=Path, help="a folder holding mediapipe and cv2 (the sync-score add-on)")
+    parser.add_argument("--shown-frames", type=int, help="frames the film shows; the rest count for r only (FU-609)")
     args = parser.parse_args(argv)
     if args.site:
         import sys  # noqa: PLC0415
 
         sys.path.insert(0, str(args.site))
-    result, series = score_files(args.video, args.audio, args.model)
+    result, series = score_files(args.video, args.audio, args.model, args.shown_frames)
     print(json.dumps(result.as_dict(), indent=1))
     if args.json:
         args.json.write_text(json.dumps({**result.as_dict(), **series}, indent=1), encoding="utf-8")

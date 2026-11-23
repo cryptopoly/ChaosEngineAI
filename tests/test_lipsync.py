@@ -502,6 +502,65 @@ class RouteTests(unittest.TestCase):
         self.assertEqual((response.status_code, response.json()["detail"]), (409, "cancelled"))
         self.assertEqual(run.call_count, 1)
 
+    def _scored_takes(self, wav: Path, **overrides):
+        """Two scored takes with the run and the score stubbed: (response, frames made, score calls)."""
+        from backend_service import lipsync_takes
+        from backend_service.lip_sync_score import SyncScore
+
+        made: list[int] = []
+        calls: list[tuple] = []
+
+        def fake_run(**kw):
+            made.append(kw["frames"])
+            _write_mp4(_ffmpeg(), kw["output"], kw["frames"], kw["fps"])
+            return {"width": kw["width"], "height": kw["height"], "timings": {}, "runtimeLabel": "x"}
+
+        def fake_score(*args):
+            calls.append(args)
+            return SyncScore(frames=1, face_frames=1, voiced_frames=1, r=0.5, r_lag0=0.4, lag=0, chance_p95=0.3,
+                             chance_mean=0.1, beats_chance=True, closed_while_voiced=0.1, open_while_silent=0.3,
+                             balanced=0.8, motion=1.0, turned_away=0.0, score=0.6, mouth_mean=0.03), None
+
+        with mock.patch.object(lip, "_run_cuda", side_effect=fake_run), \
+                mock.patch.object(lipsync_takes, "scorer", return_value=("python", Path("face.task"))), \
+                mock.patch.object(lipsync_takes, "score", side_effect=fake_score):
+            response = self.post(audioPath=str(wav), lipSyncTakes=2, **overrides)
+        self.assertEqual(response.status_code, 200, response.text)
+        return response, made, calls
+
+    @unittest.skipUnless(_ffmpeg(), "no ffmpeg on this machine")
+    def test_a_vocal_ending_on_a_syllable_gets_room_that_is_cut_off_again(self) -> None:
+        # FU-609: the vocal sounds to the shot's last frame, so the model and the score get 0.67 s of silence after it
+        # (121 + 16 frames) and the finished clip is cut back to the 121 frames asked for.
+        from backend_service.storyboard.media import probe_seconds
+
+        sung = _write_wav(self.folder / "sung.wav", 8.0)
+        response, made, calls = self._scored_takes(sung)
+        self.assertEqual(made, [137, 137])
+        art = response.json()["artifact"]
+        self.assertEqual((art["numFrames"], art["clipDurationSeconds"]), (121, 5.042))
+        self.assertAlmostEqual(probe_seconds(Path(art["videoPath"])), 121 / 24, places=1)
+        self.assertIn("0.67 s of silence after it; that room is cut off the clip", art["runtimeNote"])
+        for _found, video, audio, shown in calls:  # the whole window is scored, the asked frames are what counts
+            self.assertEqual(shown, 121)
+            self.assertTrue(str(audio).endswith("vocal-room.wav"))
+            self.assertTrue(str(video).endswith(".mp4"))
+
+    @unittest.skipUnless(_ffmpeg(), "no ffmpeg on this machine")
+    def test_a_vocal_with_silence_at_its_end_gets_no_room(self) -> None:
+        response, made, calls = self._scored_takes(self.wav)  # 3.7 s of voice in a 5.04 s shot
+        self.assertEqual(made, [121, 121])
+        self.assertEqual([c[3] for c in calls], [None, None])
+        self.assertNotIn("room", response.json()["artifact"]["runtimeNote"])
+
+    @unittest.skipUnless(_ffmpeg(), "no ffmpeg on this machine")
+    def test_a_tail_the_film_cuts_off_is_scored_but_not_counted(self) -> None:
+        # Song to shots: the shot carries 0.5 s of room the film trims; it is made, and scored for r only.
+        response, made, calls = self._scored_takes(self.wav, lipSyncTailSeconds=0.5)
+        self.assertEqual(made, [121, 121])
+        self.assertEqual([c[3] for c in calls], [109, 109])
+        self.assertEqual(response.json()["artifact"]["numFrames"], 121)
+
     def test_more_than_four_takes_is_refused(self) -> None:
         self.assertEqual(self.post(lipSyncTakes=5).status_code, 422)
 
@@ -648,6 +707,13 @@ class StoryboardVocalTests(StoryboardRouteCase):
             make_clip(shot, project, still)
         body = sent["body"]
         self.assertEqual((body.audioStartSeconds, body.lipSyncSinging, body.lipSyncTakes), (12.5, True, 2))
+        self.assertEqual(body.lipSyncTailSeconds, 0.0)  # no out point: nothing is cut off
+        shot.seconds, shot.trimIn, shot.trimOut = 4.9, 0.4, 4.4  # song to shots: 0.5 s of room the film cuts off
+        with mock.patch.object(generators, "_variant", return_value=_variant(CUDA_REPO)), \
+                mock.patch("backend_service.mcp_bridge.tools._recommended", return_value={}), \
+                mock.patch("backend_service.routes.video._generate_video_locked", side_effect=locked):
+            generators.studio_generators(SimpleNamespace(), "b1", folder)["make_clip"](shot, project, still)
+        self.assertAlmostEqual(sent["body"].lipSyncTailSeconds, round(121 / 24 - 4.4, 3))
 
     def test_start_and_singing_change_the_fingerprint_but_takes_do_not(self) -> None:
         from backend_service.storyboard.deps import fingerprint

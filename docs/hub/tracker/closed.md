@@ -1,7 +1,7 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 135 shipped, obsoleted or dropped rows, newest first.
+summary: 136 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
@@ -15,6 +15,15 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** **Shipped 2026-11-23 (branch `fix/windows-loose-ends`).**
 
 **Notes:** `LlamaCppEngine.generate` now takes `thinking_mode` and sends it as `enable_thinking` like the streaming route; `RuntimeController.generate` and `state/generation.py` pass it through (every other engine accepts and ignores it, as before: MLX, MTPLX, vLLM and the remote engine have no per-request switch on the non-streaming call, TensorFold keeps thinking off there on purpose). The agent loop's `generate_fn` still sends none. Tests: `test_llama_fu178.py` (payload on and off, unset leaves the template alone), `test_backend_service.py` (route reaches the runtime).
+
+</details>
+
+<details>
+<summary>FU-607 · Snap song-to-shots cuts to phrase starts — Built 2026-11-23 (feat/sung-shot-window, not merged).</summary>
+
+**Status or trigger:** **Built 2026-11-23** (`feat/sung-shot-window`, not merged).
+
+**Notes:** "Give each shot its vocal" with a stem (`song_vocals.plan_vocals`): a phrase start is a voiced 50 ms frame after at least 0.3 s of silence (the same voiced measure as before, now on exact 50 ms marks); each cut between two adjacent sung shots (plain cut, unlocked, real speed) moves to the nearest phrase start within 1.5 s when both shots stay in 3-5 s (or within their own length when they were outside it) and both stay at least 20 % voiced. The film's total length is unchanged; the summary carries `snapped`. A cut next to a shot without singing, or with no stem, stays. Tests `tests/test_storyboard_song_vocals.py` (`PhraseTests`, route test), E2E phase 22 "cuts move to phrase starts". Not done: snapping inside the cut plan itself (the cut plan has no stem).
 
 </details>
 

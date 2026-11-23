@@ -59,7 +59,7 @@ These may be compiled from source and shipped alongside ChaosEngineAI.
 #### CUDA runtime DLLs beside `sd.exe` (Windows CUDA builds)
 
 A Windows CUDA build of `sd` (`scripts/build-sdcpp.ps1`) loads `cudart64_*.dll`, `cublas64_*.dll` and
-`cublasLt64_*.dll` (about 790 MB for CUDA 12.8) from its own folder, and `scripts/stage-runtime.mjs` copies whichever
+`cublasLt64_*.dll` (about 790 MB for CUDA 12.8, about 555 MB for the CUDA 13 `_13` set) from its own folder, and `scripts/stage-runtime.mjs` copies whichever
 sit beside it into the installer. These are **NVIDIA proprietary, not permissive**: they are redistributed under the
 NVIDIA CUDA Toolkit End User License Agreement (<https://docs.nvidia.com/cuda/eula/>), which lists them as
 redistributable if shipped with the application, the EULA is kept with them and the licensee does not claim them as

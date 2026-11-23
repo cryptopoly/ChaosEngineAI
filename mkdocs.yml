@@ -140,8 +140,6 @@ extra:
 # testing doc has been imported under docs/testing/e2e-testing.md.
 exclude_docs: |
   E2E_TESTING.md
-  image-discover-next-level.md
-  image-generation-mvp.md
   provenance-audit.md
 
 strict: true

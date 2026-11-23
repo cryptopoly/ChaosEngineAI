@@ -4,7 +4,7 @@ import { defineConfig } from "@playwright/test";
 
 // Local-only E2E: Vite dev server on 8909, backend on 8910, throwaway HOME so
 // the run never touches ~/.chaosengine, dummy token, headless sandboxed Chromium.
-// See docs/research/playwright-security.md for the conditions this follows.
+// See research/playwright-security.md in the private ProjectHub for the conditions this follows.
 // E2E_WEB_PORT / E2E_API_PORT let a second run (another worktree) use other ports.
 const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? 8909);
 const API_PORT = Number(process.env.E2E_API_PORT ?? 8910);

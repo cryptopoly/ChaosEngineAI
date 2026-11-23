@@ -73,7 +73,7 @@ For reference (FU-009 entry, 2026-05-04 mlx-video path): T5 encode 14.1s + trans
 
 ## V-speed additions (2026-11-07, branch `feat/speed-warm-workers`)
 
-Captured on the owner's MacBook Pro M4 Max (40-core GPU, 64 GB), macOS 27.3, mflux 0.24.0, ltx-2-mlx 0.18.0, nothing else heavy running. Details and raw runs: [docs/hub/progress/v-speed.md](docs/hub/progress/v-speed.md).
+Captured on the owner's MacBook Pro M4 Max (40-core GPU, 64 GB), macOS 27.3, mflux 0.24.0, ltx-2-mlx 0.18.0, nothing else heavy running. Details and raw runs: `progress/v-speed.md` in the private ProjectHub.
 
 Every image and video label now reports the C1 split (`load_seconds`, `encode_seconds`, `denoise_seconds`, `decode_seconds`) next to `gen_seconds`. The engine labels run one cold CLI job, then three warm-worker jobs; `gen_seconds` is the **median of the warm runs** (the gated number) and `cold_seconds` is kept for context. `same_output_as_cold` must stay `true` (the warm worker is bit-identical for the same seed).
 

@@ -1,6 +1,6 @@
 # ChaosEngineAI — Project Guide
 
-**Project hub:** read `docs/hub/status.md` first (where we are, what is open for Claude and for the owner), then `docs/hub/decisions.md`. Build it with `python3 tools/hub_tracker.py && python3 tools/build_hub.py` and open `docs/site/index.html`. The FU rows live in `FOLLOW_UPS.md` (grep it, don't read it whole); the hub reads it (FU-131).
+**Project hub:** private, in ProjectHub, outside this repository (since 2026-11-18). Read the briefing given at session start (or run `hub context`) first: status, open decisions, work in progress. Log decisions with `hub decision add`, deferred work with `hub backlog add --type followup`, and add `hub status update` after each batch. Progress logs, plans, research and review reports (the old `docs/hub/`, `docs/progress/`, `docs/plans/`, `docs/research/`) moved there too. `FOLLOW_UPS.md` is frozen: do not edit it.
 
 ## Editorial Rules
 
@@ -137,10 +137,10 @@ Check for updates to external repos we build from or depend on:
 
 ## Follow-Ups Tracker
 
-The FU-### rows live in [FOLLOW_UPS.md](FOLLOW_UPS.md) (moved out of this file on 2026-11-06, D-22).
-Do not read it whole; grep for the row you need (`grep -n "FU-123" FOLLOW_UPS.md`).
-Add a row there when you defer work, edit it when you ship, then run
-`python3 tools/hub_tracker.py && python3 tools/build_hub.py`.
+Follow-ups are backlog items in ProjectHub since 2026-11-18: FU-123 is now B0123
+(`hub backlog show B0123`). Add one with `hub backlog add "Title" --type followup` when you defer work,
+and close it with `hub backlog set B0123 --status done --note "..."` when you ship.
+[FOLLOW_UPS.md](FOLLOW_UPS.md) is frozen and kept only for history.
 
 ---
 

@@ -52,4 +52,4 @@ The first cut used the macOS `say` voice; the app's own Kokoro voice replaced it
 ## Next step this points at
 
 A thin MCP server or skill over `/api/images`, `/api/video` and `/api/voice`, so any user's agent gets typed tools
-and the memory rules above built in. See `docs/hub/ideas.md` and FU-126 in `CLAUDE.md`.
+and the memory rules above built in. See the ideas and FU-126 entries in the private ProjectHub.

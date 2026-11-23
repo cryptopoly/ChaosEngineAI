@@ -2,7 +2,7 @@
 
 ChaosEngineAI makes songs with vocals and lyrics, or instrumentals, 10 seconds to 10 minutes long, on this
 computer. This page covers the backend. For the Models, Studio and Library screens, see
-[Music](../usage/music.md). Measurements are from the P0 spike (`docs/plans/music-spike.md`) and the P1 check
+[Music](../usage/music.md). Measurements are from the P0 spike (`progress/plans/music-spike.md` in the private ProjectHub) and the P1 check
 on an M4 Max with 64 GB.
 
 ## What you need

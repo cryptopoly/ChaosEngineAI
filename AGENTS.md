@@ -94,6 +94,7 @@ One line per tool: what it does and the arguments that matter. `*` marks a requi
 - `list_cloned_voices`: cloned voices the person made in the app, with ids. Needs the `clone` scope.
 - `make_music`: a song or `instrumental`; `caption`* (style), `lyrics`, `seconds` 10 to 600, `bpm`, `key`, `seed`, `variations` 1, 2 or 4.
   FLAC into the Music Library.
+- `make_lipsync_shot`: a lip-sync clip of 3 to 8 s from a start still and a vocal clip; `prompt`*, `start_image`*, `audio`* (WAV or FLAC, a vocal stem follows best), `singing` (true for sung vocals), `audio_start`, `seconds`, `seed`, `model`. Returns a job id; use `wait_for_job`. About 1 to 2 minutes per 5 s shot on an RTX 4090; for singing start 0.4 s before a phrase and keep shots to 3 to 5 s.
 - `make_sound`: a sound effect or loop, 1 to 11 s (up to 47 s with the 1.0 model `modelId`); `caption`* in English, `loop`. Not songs or speech.
   Needs a gated Stable Audio Open model.
 - `transcribe`: speech to text for a file on the app's machine (`path`*, `language`). Local paths only, no `upload:` handles.

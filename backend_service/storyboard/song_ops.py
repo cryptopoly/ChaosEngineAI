@@ -64,6 +64,7 @@ class ShotVocal(_Args):
     audio: str = Field(min_length=1, max_length=4096)  # the slice made by ``song_vocals`` (a temporary WAV)
     lead: float = Field(ge=0, le=1)
     length: float = Field(gt=0, le=60)
+    tail: float = Field(0.0, ge=0, le=1)  # room after the phrase (FU-609): scored, then cut off by `trimOut`
     singing: bool = True
 
 
@@ -133,7 +134,8 @@ def clear_song(p: Project, folder: Path, a: ClearSong) -> None:
 
 
 def set_shot_vocals(p: Project, folder: Path, a: SetShotVocals) -> None:
-    """Attach each slice as the shot's vocal; the shot grows by its lead-in, cut off again by ``trimIn``."""
+    """Attach each slice as the shot's vocal; the shot grows by its lead-in and the room after its phrase, cut off
+    again by ``trimIn`` and ``trimOut``, so the film keeps the shot's length."""
     stamp = int(time.time() * 1000)
     for item in a.items:
         shot = _shot(p, item.shotId)
@@ -141,7 +143,7 @@ def set_shot_vocals(p: Project, folder: Path, a: SetShotVocals) -> None:
         shot.vocalClip = rel
         shot.vocalStart = 0.0
         shot.vocalSinging = item.singing
-        shot.seconds = round(item.lead + item.length, 3)
+        shot.seconds = round(item.lead + item.length + item.tail, 3)
         shot.trimIn = item.lead
         shot.trimOut = round(item.lead + item.length, 3)
 

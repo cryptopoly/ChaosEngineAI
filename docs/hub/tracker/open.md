@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 271 rows with work, decisions or watch items still open, newest first.
+summary: 272 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-609 · Keep a little silence after the phrase in a sung lip-sync shot — Next lip-sync quality pass (with FU-607)</summary>
+
+**Status or trigger:** Next lip-sync quality pass (with FU-607)
+
+**Notes:** Found 2026-11-23: a 4.04 s cut of the ballad window that ends on the last syllable (80 of 97 frames voiced) had 0 of 11 takes beat chance across 3 prompt forms and 5 seeds, and the research's usable 5 s takes (phrase + 0.7 s silence) become unusable scored on their first 97 frames: the model mouths through and the score cannot confirm sync on a window that is almost all voice. Song to shots (and the hint) should end a sung shot 0.3-0.7 s after its phrase within the 3-5 s bound; measure with the add-on on the three research lines.
+
+</details>
 
 <details>
 <summary>FU-608 · /api/chat/generate ignores thinkingMode — Next llama.cpp engine pass</summary>
@@ -732,9 +741,9 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 <details>
 <summary>FU-381 · Three takes per sung shot, kept by lip_sync_score.pick_best — Built 2026-11-23 (feat/lipsync-phase2, not merged)</summary>
 
-**Status or trigger:** Built 2026-11-23 (`feat/lipsync-phase2`, not merged); open: ship the score (D-132)
+**Status or trigger:** Built 2026-11-23 (`feat/lipsync-phase2`, not merged); score add-on built 2026-11-23 (`feat/lipsync-score-addon`, not merged)
 
-**Notes:** `lipsync_takes.py`: `lipSyncTakes` (1-4; default 3 sung, 1 speech) on the request, `takes` on `make_lipsync_shot`, a seed per take, Cancel between takes, "Take N of M" progress, estimate = cold take + warm takes + 10 s score each; the score runs as `python -I lip_sync_score.py` from `CHAOSENGINE_LIPSYNC_SCORE_PYTHON` (or the backend's Python if it has MediaPipe and OpenCV) with `CHAOSENGINE_LIPSYNC_FACE_MODEL`; without them the takes run unscored, take 1 is used and the note says why. Other takes are saved as Video Gallery clips (`lipSyncTakes` on the kept artifact). Real 4090 run through `POST /api/video/generate` (throwaway backend, 2026-11-23): a 4.04 s sung shot (the ballad stem window, close-up still, singing switch, default 3 takes) took 222.8 s: take 1 cold 112 s (load 38 s, denoise 52 s), takes 2 and 3 warm 55-56 s each with the score included; progress read "Take 2 of 3: Denoising against the vocal"; scores 0.38 / 0.30 / 0.29, none usable (r 0.12 / 0.09 / 0.05, under chance), take 1 kept; strip looked at: frontal, mouth shut for the first second, then sings and smiles open at the end; the other two takes are Video Gallery clips. Open: MediaPipe + face model are not in the release runtime (D-132; licence notice then); other takes as Storyboard takes (FU-606).
+**Notes:** `lipsync_takes.py`: `lipSyncTakes` (1-4; default 3 sung, 1 speech) on the request, `takes` on `make_lipsync_shot`, a seed per take, Cancel between takes, "Take N of M" progress, estimate = cold take + warm takes + 10 s score each; the score runs as `python -I lip_sync_score.py` from `CHAOSENGINE_LIPSYNC_SCORE_PYTHON` (or the backend's Python if it has MediaPipe and OpenCV) with `CHAOSENGINE_LIPSYNC_FACE_MODEL`; without them the takes run unscored, take 1 is used and the note says why. Other takes are saved as Video Gallery clips (`lipSyncTakes` on the kept artifact). Real 4090 run through `POST /api/video/generate` (throwaway backend, 2026-11-23): a 4.04 s sung shot (the ballad stem window, close-up still, singing switch, default 3 takes) took 222.8 s: take 1 cold 112 s (load 38 s, denoise 52 s), takes 2 and 3 warm 55-56 s each with the score included; progress read "Take 2 of 3: Denoising against the vocal"; scores 0.38 / 0.30 / 0.29, none usable (r 0.12 / 0.09 / 0.05, under chance), take 1 kept; strip looked at: frontal, mouth shut for the first second, then sings and smiles open at the end; the other two takes are Video Gallery clips. **Score add-on (D-132, built):** `lipsync_score_addon.py` installs 12 pinned wheels (MediaPipe 1.2.3, opencv-python-headless 5.1.0.95, matplotlib 3.11.2 and small deps) `--no-deps --target` into `~/.chaosengine/addons/lipsync-score/site` and the face model (float16 v1, SHA-256 pinned) beside it; `POST /api/setup/install-lipsync-score`, `GET /api/setup/lipsync-score/status`; the Video Studio's lip-sync panel shows "Install sync scoring (about 90 MB)" and says plainly that takes are not scored until then; the scorer uses the add-on before the backend's own Python, env overrides still win. Real install into a throwaway home on the 4090 (warm pip cache): 28 s, 268 MB on disk, model hash matched; with no env overrides the app's scorer scored a research take to the research's numbers (0.5353) while the backend's Python has no MediaPipe; the same 4 s sung shot re-run through the app with the add-on: 212 s, scores 0.38 / 0.30 / 0.29 again (identical), none usable. Why none is usable: the window, not the app path (the research harness gives identical scores; 0 of 11 takes over 3 prompts and 5 seeds beat chance on this 4 s cut; the research's usable 5 s ballad takes become unusable scored on their first 97 frames; see the research doc's 2026-11-23 follow-up), FU-609. Open: other takes as Storyboard takes (FU-606); the add-on on a Mac and Linux (not run).
 
 </details>
 

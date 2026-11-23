@@ -8,13 +8,14 @@ summary: Every FU row from FOLLOW_UPS.md, split into open and closed.
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here.
 
-- [Open and live follow-ups](open.md): **271** rows.
+- [Open and live follow-ups](open.md): **272** rows.
 - [Closed follow-ups](closed.md): **134** rows.
 
 ## Newest ten
 
 | Row | Item | Status |
 |---|---|---|
+| [FU-609](open.md) | Keep a little silence after the phrase in a sung lip-sync shot | Next lip-sync quality pass (with FU-607) |
 | [FU-608](open.md) | /api/chat/generate ignores thinkingMode | Next llama.cpp engine pass |
 | [FU-607](open.md) | Snap song-to-shots cuts to phrase starts | Next lip-sync quality pass |
 | [FU-606](open.md) | Other lip-sync takes as Storyboard takes | When sung shots are made in batches |
@@ -24,4 +25,3 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 | [FU-602](closed.md) | moss-image has no size-limit row (all platforms) | Fixed 2026-11-23 (shorter make_sound and make_lipsync_shot descriptions, example, audio maxLength, golden refr… |
 | [FU-601](closed.md) | Agent bridge contract tests fail on the test/rtx4090 tip (all platforms) | Fixed 2026-11-23 (shorter make_sound and make_lipsync_shot descriptions, example, audio maxLength, golden refr… |
 | [FU-600](open.md) | Stable Audio 3 on the Mac (D-130) | Next Mac session, before test/rtx4090 merges |
-| [FU-581](open.md) | Wire names still carry the other apps' names | Next settings migration |

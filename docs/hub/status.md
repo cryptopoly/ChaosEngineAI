@@ -9,6 +9,14 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-23 (sync-scoring add-on, D-132 built; branch `feat/lipsync-score-addon`, pushed, not merged)
+
+**Done:** "Install sync scoring" in the Video Studio's lip-sync panel (about 90 MB: MediaPipe, OpenCV, the face model with a pinned SHA-256) installs into `~/.chaosengine/addons/lipsync-score`; until then the panel says takes are not scored and take 1 is used. Installed for real into a throwaway home on the 4090: scoring then works with no env overrides (a research take scored to the same 0.5353). The 4 s sung shot re-run with 3 takes: 0.38 / 0.30 / 0.29 again, none usable. Cause: the window, not the app path (the research harness gives identical scores; no prompt form or seed made this 4 s cut beat chance; it ends on the last syllable, FU-609).
+
+**Open for Claude:** FU-609 (end sung shots with a little silence), FU-607, FU-606. Not verified: the install on a Mac or Linux, the panel in a running app, phase 22 against a live backend.
+
+**Open for Dan:** nothing new; D-132 is built as decided.
+
 ## Update 2026-11-23 (lip-sync phase 2, D-110; branch `feat/lipsync-phase2`, pushed, not merged)
 
 **Done:** lip-sync takes: 3 for a sung vocal, 1 for speech, 4 best quality, each with its own seed, kept by the sync score, on the API (`lipSyncTakes`), `make_lipsync_shot` (`takes`), the Video Studio and the Storyboard; progress says "Take 2 of 3", Cancel stops between takes, estimates multiply (FU-381). Video Studio vocal picker (FU-372), per-shot vocal start, sung switch and takes (FU-373), song to lip-sync shots with a 0.4 s lead-in (FU-371, FU-380). One real 4 s sung shot with 3 takes on the 4090: 222.8 s, scores 0.38 / 0.30 / 0.29, take 1 kept (none usable on this ballad window).

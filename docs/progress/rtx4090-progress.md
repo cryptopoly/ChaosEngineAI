@@ -2399,3 +2399,16 @@ What improves singing sync on LTX-2.3 audio to video, measured on 3 sung ACE-Ste
 **Changed.** `lip_sync_score.py` (`usable`, `pick_best`; turn penalty), its tests (`tests/test_lip_sync_score.py`, 17 pass), `lipSyncSinging` prompt switch (`lipsync_runtime.py`, `mcp_bridge/lipsync_tool.py`, `tests/test_lipsync.py`), FU-380 to FU-386, D-110. Scripts and clips: `E:\tmp\lipsync\sing\` (harness, jobs, scores, strips), InfiniteTalk venv and weights `C:\tmp\lipsync-it\`.
 
 **Not verified.** Listening (I cannot hear audio); more lines, faces and seeds; LipDub; InfiniteTalk at a meaningful step count; the recipe inside the app's own worker and Storyboard; Mac.
+
+## 2026-11-23: stable-diffusion.cpp 532d2c1 vs 0d71f96 on the 4090 (FU-563, D-131; agent branch)
+
+Built both with `scripts/build-sdcpp.ps1` (CUDA Toolkit 13.5, VS 2022 Build Tools with their bundled CMake and Ninja via vcvars64, `SDCPP_CUDA_ARCHITECTURES=89`) into `E:\tmp\sdcpp-532d2c1` and `E:\tmp\sdcpp-0d71f96` (sources `E:\tmp\sdcpp-src-*`, logs `E:\tmp\sdcpp-build-*.log`). Image: the `leejet/Qwen-Image-2.1-GGUF-q4k` row's arguments, fox prompt, 1024x1024, 40 steps, seed 42, models from `E:\AI Models`, under `E:\tmp\gpu.lock`. Outputs and logs in `E:\tmp\sdcpp-cmp`.
+
+| Build | Runs | Steady rate | Sampling | Wall | Peak VRAM | Output |
+| --- | --- | --- | --- | --- | --- | --- |
+| `532d2c1` (pin) | 3 | 2.41 to 2.44 it/s | 17.6 s | 21 s | 15.4 GB | fox, sign reads "ChaosEngine" |
+| `0d71f96` | 5 (`--fa`, `--flash-attn on`, no flag) | 1.96 to 1.99 it/s | 21.1 to 21.7 s | 24 to 25 s | 15.4 GB | bit-identical to the pin |
+
+**Result:** not bumped. Same picture, about 18 % slower per step on CUDA whatever the flash-attention flag. The flag and metadata findings are in FU-563; the choice is D-131.
+
+**Not verified:** the Mac (Metal) speed of `0d71f96`; any video or H3 run; the app's Images tab end to end (CLI only, same arguments).

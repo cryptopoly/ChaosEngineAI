@@ -155,3 +155,11 @@ permission, locale, symlink or process failure). `npm test` and `tsc` were still
 
 Left in the distro: `~/ce-wsl` (about 360 MB), `~/ce-venv` (about 2.1 GB), `~/ce-results` (about 2 MB, `full3.log`
 and `full3.xml` hold this run).
+
+## WSL2 rerun 2026-11-23, second (`2d746618`, Ubuntu-26.04)
+
+`~/ce-wsl` moved to `2d746618` (FU-610 to FU-613: moved Hugging Face cache, drafter-only repos, the sd.cpp message,
+llama.cpp b12651; no change to `pyproject.toml` or `release-constraints.txt`, so `~/ce-venv` was reused). Throwaway
+`HOME`, `pytest tests -q -p no:cacheprovider`: **exit 0, no failed and no errored test** (the quiet run hides the
+pass count; the earlier run on `84315da2` had 6628 passed, 80 skipped). Not run under WSL2: the E2E suite on this tip,
+`npm test`, `tsc`, native Linux.

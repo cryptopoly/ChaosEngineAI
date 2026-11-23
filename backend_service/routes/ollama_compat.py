@@ -1,21 +1,22 @@
-"""Ollama-compatible API shim (#3).
+"""Native model-server API shim (#3).
 
-A large slice of the local-AI tool ecosystem (Open WebUI, Continue.dev,
-Raycast, n8n, Obsidian plugins, …) ships an "Ollama" connection preset
-that speaks Ollama's *native* HTTP shape, not OpenAI's ``/v1``. This
-module serves the native endpoints on the same backend so those tools
-work against ChaosEngineAI with zero code on their side — point the
-app's Ollama host at our base URL.
+A large slice of the local-AI tool ecosystem (web chat UIs, editor
+extensions, automation tools, note-taking plugins, …) can connect to a
+model server that speaks a *native* HTTP shape (``/api/chat``,
+``/api/generate``, ``/api/tags``), not OpenAI's ``/v1``. This module
+serves those native endpoints on the same backend so those tools work
+against ChaosEngineAI with zero code on their side — point the app's
+model server host at our base URL.
 
-Implementation strategy: translate each Ollama request into the existing
+Implementation strategy: translate each native request into the existing
 ``OpenAIChatCompletionRequest`` / ``OpenAIEmbeddingsRequest`` and reuse
 ``state.openai_chat_completion`` / ``state.openai_embeddings`` so all of
 the auto-load, engine-resolution, sampler, tool, and JSON-schema logic is
-inherited unchanged. The only Ollama-specific work is wire-format
+inherited unchanged. The only native-API-specific work is wire-format
 translation:
 
 * OpenAI streams **SSE** (``data: {json}\\n\\n`` … ``data: [DONE]``).
-* Ollama streams **NDJSON** (one JSON object per line, terminated by an
+* The native API streams **NDJSON** (one JSON object per line, terminated by an
   object with ``"done": true``).
 
 Because we *produce* the SSE in ``state/openai_compat.py``, parsing it
@@ -46,14 +47,14 @@ router = APIRouter()
 
 
 # --------------------------------------------------------------------------
-# Request bodies (only the fields we consume; Ollama clients send more).
+# Request bodies (only the fields we consume; native-API clients send more).
 # --------------------------------------------------------------------------
 
 
 class OllamaChatRequest(BaseModel):
     model: str | None = None
     messages: list[dict[str, Any]] = []
-    stream: bool = True  # Ollama defaults to streaming
+    stream: bool = True  # the native API defaults to streaming
     options: dict[str, Any] | None = None
     tools: list[dict[str, Any]] | None = None
     format: Any = None  # "json" or a JSON-schema object
@@ -97,7 +98,7 @@ def _now_rfc3339() -> str:
 
 
 def _format_to_response_format(fmt: Any) -> dict[str, Any] | None:
-    """Map Ollama's ``format`` onto OpenAI's ``response_format`` envelope.
+    """Map the native API's ``format`` onto OpenAI's ``response_format`` envelope.
 
     ``"json"`` → a permissive object schema; a dict → used verbatim as the
     JSON schema. Both light up the existing constrained-decode path.
@@ -118,7 +119,7 @@ def _build_openai_request(
     tools: list[dict[str, Any]] | None,
     fmt: Any,
 ) -> OpenAIChatCompletionRequest:
-    """Translate an Ollama chat body into an OpenAIChatCompletionRequest.
+    """Translate a native-API chat body into an OpenAIChatCompletionRequest.
 
     Only options that are present are forwarded; everything else falls
     through to the request model's defaults so we never override a runtime
@@ -133,7 +134,7 @@ def _build_openai_request(
     if "temperature" in opts and opts["temperature"] is not None:
         kwargs["temperature"] = float(opts["temperature"])
     if "num_predict" in opts and opts["num_predict"] is not None:
-        # Ollama's -1/-2 mean "unbounded"; the OpenAI model requires a
+        # The native API's -1/-2 mean "unbounded"; the OpenAI model requires a
         # positive int, so only forward sensible positive caps.
         try:
             n = int(opts["num_predict"])
@@ -178,7 +179,7 @@ async def _iter_sse_events(body_iterator) -> Any:
 
 
 def _ollama_stream(openai_response: StreamingResponse, *, model: str, mode: str) -> StreamingResponse:
-    """Wrap an OpenAI SSE StreamingResponse as Ollama NDJSON.
+    """Wrap an OpenAI SSE StreamingResponse as native-API NDJSON.
 
     ``mode`` is ``"chat"`` (emit ``message.content`` deltas) or
     ``"generate"`` (emit ``response`` deltas).
@@ -252,7 +253,7 @@ def ollama_version() -> dict[str, Any]:
 
 @router.get("/api/tags")
 def ollama_tags(request: Request) -> dict[str, Any]:
-    """List available models in Ollama's ``/api/tags`` shape."""
+    """List available models in the native ``/api/tags`` shape."""
     state = request.app.state.chaosengine
     models = state.openai_models().get("data", [])
     now = _now_rfc3339()
@@ -306,7 +307,7 @@ def ollama_chat(request: Request, body: OllamaChatRequest):
     model_label = body.model or "chaosengine"
     if isinstance(result, StreamingResponse):
         return _ollama_stream(result, model=model_label, mode="chat")
-    # Non-streaming dict → single Ollama chat object.
+    # Non-streaming dict → single native chat object.
     choice = (result.get("choices") or [{}])[0]
     msg = choice.get("message") or {}
     usage = result.get("usage") or {}

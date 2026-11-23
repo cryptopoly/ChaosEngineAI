@@ -299,8 +299,8 @@
       "continueDev": "Continue.dev（設定）",
       "openWebui": "Open WebUI",
       "openWebuiHint": "管理者 → 設定 → 接続 → OpenAI API。ベース URL: {base} — 上の API キーを使用してください。",
-      "ollamaApps": "Ollama 互換アプリ",
-      "ollamaHint": "アプリの Ollama ホスト / ベース URL を下のアドレスに設定してください。ネイティブの /api エンドポイントも /v1 と並行して提供されます。"
+      "hostApps": "モデルサーバーのホスト設定があるアプリ",
+      "hostHint": "下のアドレスを、アプリのモデルサーバーのホスト / ベース URL に設定してください。ネイティブの /api エンドポイントも /v1 と並行して提供されます。"
     },
     "engineBusy": {
       "step": "ステップ {step} / {total}",
@@ -1472,9 +1472,9 @@
     "moveModels": "既存のモデルを新しいパスに移動",
     "filesProgress": "{copied} / {total} ファイル",
     "restartBackend": "バックエンドを再起動",
-    "lmstudioDir": "LM Studio のモデルフォルダー",
-    "lmstudioHint": "「LM Studio と共有」で使用します。GGUF をコピーせずに、ここの <publisher>/<model>/ にリンクします。モデルと同じドライブに置いてください。",
-    "saveLmstudioDir": "フォルダーを保存"
+    "sharedDir": "共有モデルフォルダー",
+    "sharedHint": "「共有フォルダーにリンク」で使用します。GGUF をコピーせずに、ここの <publisher>/<model>/ にリンクします。モデルと同じドライブに置いてください。",
+    "saveSharedDir": "フォルダーを保存"
   },
   "videoPlaceholderTab": {
     "engines": {

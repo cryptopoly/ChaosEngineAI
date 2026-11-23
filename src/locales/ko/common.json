@@ -299,8 +299,8 @@
       "continueDev": "Continue.dev (설정)",
       "openWebui": "Open WebUI",
       "openWebuiHint": "관리자 → 설정 → 연결 → OpenAI API. 기본 URL: {base} — 위의 API 키를 사용하세요.",
-      "ollamaApps": "Ollama 호환 앱",
-      "ollamaHint": "앱의 Ollama 호스트 / 기본 URL을 아래 주소로 설정하세요. 기본 /api 엔드포인트가 /v1과 함께 제공됩니다."
+      "hostApps": "모델 서버 호스트 설정이 있는 앱",
+      "hostHint": "아래 주소를 앱의 모델 서버 호스트 / 기본 URL로 설정하세요. 기본 /api 엔드포인트가 /v1과 함께 제공됩니다."
     },
     "engineBusy": {
       "step": "{total}단계 중 {step}단계",
@@ -1472,9 +1472,9 @@
     "moveModels": "기존 모델을 새 경로로 이동",
     "filesProgress": "{copied} / {total}개 파일",
     "restartBackend": "백엔드 다시 시작",
-    "lmstudioDir": "LM Studio 모델 폴더",
-    "lmstudioHint": "LM Studio와 공유에서 사용하며, GGUF를 복사하지 않고 이곳의 <publisher>/<model>/에 링크합니다. 모델과 같은 드라이브에 두세요.",
-    "saveLmstudioDir": "폴더 저장"
+    "sharedDir": "공유 모델 폴더",
+    "sharedHint": "공유 폴더에 링크에서 사용하며, GGUF를 복사하지 않고 이곳의 <publisher>/<model>/에 링크합니다. 모델과 같은 드라이브에 두세요.",
+    "saveSharedDir": "폴더 저장"
   },
   "videoPlaceholderTab": {
     "engines": {

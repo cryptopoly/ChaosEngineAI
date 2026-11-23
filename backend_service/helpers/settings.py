@@ -223,7 +223,7 @@ def _default_settings(default_port: int, data_dir: Path) -> dict[str, Any]:
         "allowRemoteConnections": False,
         # Default on — the API token is auto-generated and passed to the
         # frontend via /api/auth/session, so the built-in UI works out of
-        # the box. Users who connect external clients (OpenWebUI, scripts,
+        # the box. Users who connect external clients (web UIs, scripts,
         # another desktop app) can flip this off from the Server tab.
         "requireApiAuth": True,
         "autoStartServer": False,
@@ -243,8 +243,8 @@ def _default_settings(default_port: int, data_dir: Path) -> dict[str, Any]:
         # drive. Moving existing models between locations is handled by
         # the ``/api/settings/storage/move`` endpoint.
         "hfCachePath": "",
-        # LM Studio's models folder, the target of "Share with LM Studio".
-        # Empty = look for LM Studio's default folders.
+        # The shared models folder, the target of "Link to shared folder".
+        # Empty = look for the default shared folders.
         "lmstudioDir": "",
         # Phase 3.3: advanced-mode logprobs flag. Off by default.
         "advancedLogprobs": False,

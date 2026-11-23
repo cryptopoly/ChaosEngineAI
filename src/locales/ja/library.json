@@ -786,16 +786,20 @@
         "status": "ステータス"
       },
       "share": {
-        "action": "LM Studio と共有",
-        "done": "{where} として LM Studio と共有しました。追加のディスク容量は使用していません。",
-        "already": "すでに LM Studio と共有済みです ({where})。"
+        "action": "共有フォルダーにリンク",
+        "done": "共有モデルフォルダーに {where} としてリンクしました。追加のディスク容量は使用していません。",
+        "already": "すでに共有モデルフォルダーにあります ({where})。"
       },
       "recommended": {
         "subtitle": null,
         "subtitleBare": null,
         "intro": null,
         "best": null,
-        "showAll": null
+        "showAll": null,
+        "fastest": null,
+        "newest": null,
+        "popular": null,
+        "popularTitle": null
       }
     }
   }

@@ -299,8 +299,8 @@
       "continueDev": "Continue.dev (config)",
       "openWebui": "web UI",
       "openWebuiHint": "Admin → Settings → Connections → OpenAI API. Base URL: {base}; Dung API key yIlo'.",
-      "ollamaApps": "/api lo'bogh app",
-      "ollamaHint": "app host / base URL bIng Daq yIlan; /v1 retlhDaq /api Hal je jab."
+      "hostApps": "/api lo'bogh app",
+      "hostHint": "app host / base URL bIng Daq yIlan; /v1 retlhDaq /api Hal je jab."
     },
     "engineBusy": {
       "step": null,
@@ -1472,9 +1472,9 @@
     "moveModels": "He chu'Daq yab tu'lu'bogh tIvIHmoH",
     "filesProgress": "{copied} / {total} nav",
     "restartBackend": "qoD pat yItaghqa'",
-    "lmstudioDir": null,
-    "lmstudioHint": null,
-    "saveLmstudioDir": null
+    "sharedDir": null,
+    "sharedHint": null,
+    "saveSharedDir": null
   },
   "videoPlaceholderTab": {
     "engines": {

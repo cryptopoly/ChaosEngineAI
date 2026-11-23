@@ -1,13 +1,31 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 254 rows with work, decisions or watch items still open, newest first.
+summary: 256 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-581 · Wire names still carry the other apps' names — Next settings migration</summary>
+
+**Status or trigger:** Next settings migration
+
+**Notes:** `lmstudioDir` (settings file and storage snapshot), `POST /api/models/share-lmstudio`, `POST /api/settings/lmstudio-dir`, the import scan keys `ollama` / `lmstudio` and the `source` ids, env vars `CHAOSENGINE_OLLAMA_DIR`, `CHAOSENGINE_LMSTUDIO_DIR`, `OLLAMA_MODELS`, the module `routes/ollama_compat.py` and its `Ollama*` classes, the default folder literals (`~/.ollama`, `~/.lmstudio`) and the blob-store media type. None is shown to a user. Renaming needs a settings migration (read the old key, write the new) and an E2E update; the folder and media-type literals must stay because they are the other apps' on-disk formats.
+
+</details>
+
+<details>
+<summary>FU-580 · "Highest rated" pick (benchmark score) for Chat Models and the Dashboard — Needs a score source before any badge</summary>
+
+**Status or trigger:** Needs a score source before any badge
+
+**Notes:** Chat Models' recommended rows carry "Fastest" (`tokS`), "Newest" (`releaseDate`) and "Most popular" (Hugging Face 30-day downloads) chips (`pickBadges` in `ChatRecommendedList.tsx`; stats in `backend_service/helpers/hf_stats.py`, cached in `<dataDir>/hf-stats.json` with their date, refreshed by a background thread at most daily for the pick repos, never awaited, absent offline so the chip is simply not shown). Not built: a "Highest rated" chip. The catalogue holds no score (`popularityLabel` is an editorial string), so it needs a benchmark score per family, either measured here (Benchmarks tab) or taken from a published leaderboard with its source named. No invented ratings. Also not built: popularity on the Dashboard card and in the full list sort (likes are already on the pick as `likes`).
+
+</details>
 
 <details>
 <summary>FU-534 · Local paths in music refusals reach agents — Next agent bridge pass</summary>
@@ -73,9 +91,9 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-512 · Competing desktop AI app names remain in code, comments and docs — Owner decision on the two features</summary>
+<summary>FU-512 · Competing desktop AI app names remain in code, comments and docs — Mostly done (2026-11-23, D-105 A: rename; FU-492)</summary>
 
-**Status or trigger:** Owner decision on the two features
+**Status or trigger:** **Mostly done (2026-11-23, D-105 A: rename; FU-492).** Left: wire names (FU-581), `docs/research/m4max-generation-times.md` and `docs/plans/demo-path.md` (internal research and plans). Was: owner decision on the two features
 
 **Notes:** Scan 2026-11-20 (`git grep` for the CLAUDE.md Editorial Rules names; the Hugging Face namespace `lmstudio-community` is allowed). User-visible: Settings model-storage "LM Studio models folder" and Library "Share with LM Studio" (`src/locales/*/common.json`, `library.json`, `ModelStoragePanel.tsx`, `ChatModelsPage.tsx`, `ImportModelsPanel.tsx`, `backend_service/routes/storage.py`), "Ollama-compatible apps" (`ConnectPanel.tsx`, `ollama_compat.py`). Not user-visible: `backend_service/helpers/model_import.py`, `routes/models.py`, `helpers/settings.py`, `scripts/e2e_test_suite.py`, `docs/research/m4max-generation-times.md`, `docs/plans/demo-path.md`, `docs/image-generation-mvp.md`. Another agent handles the user-visible copy; the rest needs a decision on whether importing from those folders stays a feature.
 
@@ -127,11 +145,11 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-492 · Other app names left in UI strings after the share rewording — Next translation pass</summary>
+<summary>FU-492 · Other app names left in UI strings after the share rewording — Done (2026-11-23, D-105 A: avoid naming other apps)</summary>
 
-**Status or trigger:** Next translation pass; D-12 for the Server tab label
+**Status or trigger:** **Done (2026-11-23, D-105 A: avoid naming other apps)**
 
-**Notes:** The "Share with ..." button, its done / already messages, the folder label and hint, and three backend error details were reworded in English ("Link to shared folder", "Shared models folder", 2026-11-20). Still naming the app: the same five keys in the 9 other shipping locales (re-translate from the new English), `serverTab.connect.ollamaApps` / `ollamaHint` in every locale (protocol label, D-12 open), the API names `lmstudioDir` and `/api/models/share-lmstudio`, code comments and identifiers.
+**Notes:** The "Link to shared folder" strings (`library:models.chat.share.*`, `common:modelStoragePanel.sharedDir` / `sharedHint`) are re-translated from the new English in the 9 other shipping locales; `serverTab.connect.ollamaApps` / `ollamaHint` became `hostApps` / `hostHint` ("Apps with a model server host setting") in every locale; the folder placeholder is `~/shared-models`; the frontend client functions are `linkToSharedFolder` / `updateSharedModelsDir`; code comments, docstrings, E2E messages and test names no longer name the apps. Wire names stay (FU-581).
 
 </details>
 

@@ -786,16 +786,20 @@
         "status": "Estado"
       },
       "share": {
-        "action": "Compartir con LM Studio",
-        "done": "Compartido con LM Studio como {where}. No se usa espacio extra en disco.",
-        "already": "Ya compartido con LM Studio ({where})."
+        "action": "Enlazar a la carpeta compartida",
+        "done": "Enlazado en la carpeta de modelos compartida como {where}. No se usa espacio extra en disco.",
+        "already": "Ya está en la carpeta de modelos compartida ({where})."
       },
       "recommended": {
         "subtitle": null,
         "subtitleBare": null,
         "intro": null,
         "best": null,
-        "showAll": null
+        "showAll": null,
+        "fastest": null,
+        "newest": null,
+        "popular": null,
+        "popularTitle": null
       }
     }
   }

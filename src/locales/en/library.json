@@ -795,7 +795,11 @@
         "subtitleBare": "Recommended for this computer",
         "intro": "No chat model is downloaded yet. These fit this computer best: download one, then open Chat. The first is the Dashboard's pick.",
         "best": "Best fit",
-        "showAll": "Show all {count} models and filters"
+        "showAll": "Show all {count} models and filters",
+        "fastest": "Fastest",
+        "newest": "Newest",
+        "popular": "Most popular",
+        "popularTitle": "{count} downloads in the last 30 days on Hugging Face (as of {date})"
       }
     }
   }

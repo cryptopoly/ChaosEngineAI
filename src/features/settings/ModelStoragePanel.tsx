@@ -7,7 +7,7 @@ import {
   getStorageSettings,
   startModelMove,
   updateHfCachePath,
-  updateLmStudioDir,
+  updateSharedModelsDir,
   type ModelMoveJobState,
   type StorageSettingsSnapshot,
 } from "../../api";
@@ -102,12 +102,12 @@ export function ModelStoragePanel({
   const [lmDraft, setLmDraft] = useState<string | null>(null);
   const [lmSaving, setLmSaving] = useState(false);
 
-  async function handleSaveLmStudioDir() {
+  async function handleSaveSharedDir() {
     if (lmSaving || lmDraft === null) return;
     setLmSaving(true);
     setError(null);
     try {
-      await updateLmStudioDir(lmDraft.trim());
+      await updateSharedModelsDir(lmDraft.trim());
       setLmDraft(null);
       await refresh();
     } catch (err) {
@@ -369,10 +369,10 @@ export function ModelStoragePanel({
           ) : null}
 
           <div className="field-label-row" style={{ marginTop: 14 }}>
-            <label className="field-label">{t("modelStoragePanel.lmstudioDir", { defaultValue: "Shared models folder" })}</label>
+            <label className="field-label">{t("modelStoragePanel.sharedDir", { defaultValue: "Shared models folder" })}</label>
           </div>
           <p className="help-text" style={{ margin: "0 0 6px" }}>
-            {t("modelStoragePanel.lmstudioHint", {
+            {t("modelStoragePanel.sharedHint", {
               defaultValue: "Used by Link to shared folder, which links a GGUF into <publisher>/<model>/ here without copying it. Keep it on the same drive as your models.",
             })}
           </p>
@@ -380,7 +380,7 @@ export function ModelStoragePanel({
             <input
               className="text-input directory-add-path mono-text"
               type="text"
-              placeholder="~/.lmstudio/models"
+              placeholder="~/shared-models"
               value={lmDraft ?? snapshot.lmstudioDir ?? ""}
               onChange={(event) => setLmDraft(event.target.value)}
               disabled={lmSaving}
@@ -399,12 +399,12 @@ export function ModelStoragePanel({
             <button
               className="primary-button"
               type="button"
-              onClick={() => void handleSaveLmStudioDir()}
+              onClick={() => void handleSaveSharedDir()}
               disabled={lmSaving || lmDraft === null}
             >
               {lmSaving
                 ? t("modelStoragePanel.saving", { defaultValue: "Saving..." })
-                : t("modelStoragePanel.saveLmstudioDir", { defaultValue: "Save folder" })}
+                : t("modelStoragePanel.saveSharedDir", { defaultValue: "Save folder" })}
             </button>
           </div>
 

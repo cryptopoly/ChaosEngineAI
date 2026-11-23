@@ -9,7 +9,7 @@ Add a first-class local image-generation workflow to ChaosEngineAI that feels li
 - generate images from a prompt without touching Python environments or external workflow tools
 - keep outputs, prompts, seeds, and settings inside the app
 
-The key product principle is simplicity over maximal flexibility. This should not feel like ComfyUI-in-a-window. It should feel like "Discover, Download, Generate".
+The key product principle is simplicity over maximal flexibility. This should not feel like a node-graph editor in a window. It should feel like "Discover, Download, Generate".
 
 ## Why This Fits ChaosEngineAI
 
@@ -36,7 +36,7 @@ What is missing today is an image-generation runtime and image-specific data mod
 ### Non-goals for MVP
 
 - Node-graph workflow editing
-- Full ComfyUI compatibility
+- Compatibility with node-graph workflow files
 - LoRA training
 - Video generation
 - Inpainting, ControlNet, and multi-stage upscaler pipelines
@@ -463,7 +463,7 @@ But build it as a focused, curated local image studio, not as a general-purpose 
 
 If we keep the first version opinionated, this could become one of the strongest parts of ChaosEngineAI:
 
-- easier than ComfyUI
+- easier than a node-graph editor
 - more local/private than hosted apps
 - more polished than most self-hosted image frontends
 - naturally aligned with the app's existing discover/download/run model

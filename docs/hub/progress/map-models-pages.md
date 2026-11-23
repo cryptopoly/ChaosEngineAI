@@ -337,7 +337,7 @@ Goal: cover all six tabs with the fewest parts. Per-area differences go through 
 - **R24 CSS scroll containers.** `.workspace-content-frame:has(.image-discover-stack)` (`styles.css:7178`), `:has(.image-discover-page)` (7196), `:has(.discover-page)` (435) make the page scroll. The new shell needs one of these classes or its own rule. `.media-model-table` is an 8-column grid with `min-width: 1000px` rows (7576-7603); chat uses `.discover-variant-table` and `.library-full-table`. Class names with `image-discover-` are shared by video tabs.
 - **R25 LongLive.** `onRefreshLongLiveStatus` must still run on the merged Video page whenever a LongLive row can render; its CUDA gate hides it on Mac.
 - **R26 Tracked-latest de-dup** (`useImageState.ts:241-248`) and the `trackedOnly` disabled CTA (FU-061) must survive. Image Models uses `imageCatalog` (not "with latest") so tracked rows show provider as subtitle; Discover shows `note`. Pick one subtitle.
-- **R27 Editorial rule.** `ImportModelsPanel` labels stores by folder and does not name other apps in UI strings; API fields `ollama`/`lmstudio` exist in code (`ImportModelsPanel.tsx:63-64`). Do not add UI strings that name them.
+- **R27 Editorial rule.** `ImportModelsPanel` labels stores by folder and does not name other apps in UI strings; API fields `ollama`/`lmstudio` exist in code as wire names (FU-581). Do not add UI strings, comments or docs that name them (D-105 A, 2026-11-23).
 
 ---
 

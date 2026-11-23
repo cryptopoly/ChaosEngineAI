@@ -13,7 +13,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { shareWithLmStudio, type DownloadStatus } from "../../api";
+import { linkToSharedFolder, type DownloadStatus } from "../../api";
 import type { ChatPick, HubFileListResponse, HubModel, LibraryItem, ModelFamily, ModelVariant } from "../../types";
 import { CAPABILITY_META } from "../../constants";
 import { IconActionButton } from "../../components/ModelActionIcons";
@@ -355,10 +355,10 @@ export function ChatModelsPage({
   const [showAllModels, setShowAllModels] = useState(firstRunListDismissed);
   const [shareNotice, setShareNotice] = useState<{ ok: boolean; text: string } | null>(null);
 
-  const handleShareWithLmStudio = useCallback(
+  const handleLinkToSharedFolder = useCallback(
     async (path: string, repo?: string) => {
       try {
-        const result = await shareWithLmStudio({ path, repo });
+        const result = await linkToSharedFolder({ path, repo });
         const where = `${result.shared.publisher}/${result.shared.model}`;
         setShareNotice({
           ok: true,
@@ -700,7 +700,7 @@ export function ChatModelsPage({
                 icon="share"
                 label={t("models.chat.share.action", { defaultValue: "Link to shared folder" })}
                 title={t("models.chat.share.action", { defaultValue: "Link to shared folder" })}
-                onClick={() => void handleShareWithLmStudio(item.path, entry.repo ?? undefined)}
+                onClick={() => void handleLinkToSharedFolder(item.path, entry.repo ?? undefined)}
               />
             ) : null}
             {item ? (

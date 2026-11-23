@@ -20,7 +20,7 @@ Technical enthusiasts and developers with a Mac (M-series, 16 to 128 GB) or a CU
 
 | In scope now | Later (see [ideas](ideas.md)) |
 |---|---|
-| Chat with MLX, llama.cpp and vLLM engines; image and video studios; voice (speech to text, text to speech, calls); model library and downloads; OpenAI and Ollama-compatible server; 10 locales | Local agents that build things through the app, image-to-video, one Models page per area, CUDA-side accelerators, more video models |
+| Chat with MLX, llama.cpp and vLLM engines; image and video studios; voice (speech to text, text to speech, calls); model library and downloads; OpenAI-compatible server with a native model-server API; 10 locales | Local agents that build things through the app, image-to-video, one Models page per area, CUDA-side accelerators, more video models |
 
 ## Constraints
 

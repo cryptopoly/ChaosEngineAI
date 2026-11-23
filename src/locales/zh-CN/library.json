@@ -786,16 +786,20 @@
         "status": "状态"
       },
       "share": {
-        "action": "与 LM Studio 共享",
-        "done": "已作为 {where} 与 LM Studio 共享。未占用额外磁盘空间。",
-        "already": "已与 LM Studio 共享（{where}）。"
+        "action": "链接到共享文件夹",
+        "done": "已作为 {where} 链接到共享模型文件夹。未占用额外磁盘空间。",
+        "already": "已在共享模型文件夹中（{where}）。"
       },
       "recommended": {
         "subtitle": null,
         "subtitleBare": null,
         "intro": null,
         "best": null,
-        "showAll": null
+        "showAll": null,
+        "fastest": null,
+        "newest": null,
+        "popular": null,
+        "popularTitle": null
       }
     }
   }

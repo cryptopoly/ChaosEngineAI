@@ -245,13 +245,13 @@ export async function scanImportableModels(): Promise<ImportScanResult> {
   return await fetchJson<ImportScanResult>("/api/models/import/scan", 20000);
 }
 
-export interface ShareLmStudioResult {
+export interface SharedFolderLinkResult {
   shared: { path: string; alreadyShared: boolean; publisher: string; model: string; linkType: string };
   lmstudioDir: string;
 }
 
-export async function shareWithLmStudio(payload: { path: string; repo?: string }): Promise<ShareLmStudioResult> {
-  return await postJson<ShareLmStudioResult>("/api/models/share-lmstudio", payload, 30000);
+export async function linkToSharedFolder(payload: { path: string; repo?: string }): Promise<SharedFolderLinkResult> {
+  return await postJson<SharedFolderLinkResult>("/api/models/share-lmstudio", payload, 30000);
 }
 
 export async function importModel(payload: {

@@ -786,16 +786,20 @@
         "status": "상태"
       },
       "share": {
-        "action": "LM Studio와 공유",
-        "done": "{where}(으)로 LM Studio와 공유했습니다. 추가 디스크 공간은 사용하지 않습니다.",
-        "already": "이미 LM Studio와 공유되어 있습니다({where})."
+        "action": "공유 폴더에 링크",
+        "done": "공유 모델 폴더에 {where}(으)로 링크했습니다. 추가 디스크 공간은 사용하지 않습니다.",
+        "already": "이미 공유 모델 폴더에 있습니다({where})."
       },
       "recommended": {
         "subtitle": null,
         "subtitleBare": null,
         "intro": null,
         "best": null,
-        "showAll": null
+        "showAll": null,
+        "fastest": null,
+        "newest": null,
+        "popular": null,
+        "popularTitle": null
       }
     }
   }

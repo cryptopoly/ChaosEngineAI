@@ -1,4 +1,4 @@
-"""Tests for Ollama / LM Studio model import (#4).
+"""Tests for importing models other apps store on disk (#4).
 
 Pure scanners + symlink import run against a fixture tree in a tempdir;
 the two routes run through a TestClient with the store dirs (env) and the
@@ -64,7 +64,7 @@ def _build_lmstudio_store(root: Path) -> Path:
     return models
 
 
-class OllamaManifestParseTests(unittest.TestCase):
+class BlobManifestParseTests(unittest.TestCase):
     def test_parses_model_layer(self):
         hex_part, size = mi.parse_ollama_manifest(
             {"layers": [{"mediaType": "application/vnd.ollama.image.model", "digest": f"sha256:{HEX}", "size": 99}]}
@@ -259,7 +259,7 @@ class ImportRouteTests(unittest.TestCase):
 
 
 class ShareRouteTests(unittest.TestCase):
-    """Share with LM Studio over HTTP, using the saved ``lmstudioDir`` setting (runs on Windows too)."""
+    """Link to the shared models folder over HTTP, using the saved ``lmstudioDir`` setting (runs on Windows too)."""
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

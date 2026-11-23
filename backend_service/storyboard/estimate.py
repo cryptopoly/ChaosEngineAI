@@ -61,8 +61,9 @@ def _clip_seconds(variant: dict[str, Any], shot: Shot, width: int, height: int, 
     frames = _clip_frames(variant, shot, fps)
     if shot.vocalClip:
         from backend_service.lipsync_runtime import estimate_seconds
+        from backend_service.lipsync_takes import take_count
 
-        return estimate_seconds(variant, width, height, frames)
+        return estimate_seconds(variant, width, height, frames, take_count(shot.vocalTakes, shot.vocalSinging))
     return variant_seconds(variant, "video", width, height, frames)
 
 

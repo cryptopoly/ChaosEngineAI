@@ -532,3 +532,6 @@ class VideoGenerationRequest(BaseModel):
     # The vocal is sung: the runtime appends singing wording to the prompt (``lipsync_runtime.singing_prompt``,
     # measured to stop takes that listen with a shut mouth). Off for speech.
     lipSyncSinging: bool = False
+    # Takes of a lip-sync shot, each with its own seed; the sync score keeps one (D-110). None: 3 for a sung vocal,
+    # 1 for speech; 4 is the best-quality setting.
+    lipSyncTakes: int | None = Field(default=None, ge=1, le=4)

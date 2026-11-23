@@ -741,7 +741,7 @@
           "type": "string"
         },
         "fields": {
-          "description": "title, stillPrompt, motionPrompt, startFrom (generate|upload|previous-shot|text), seconds, seed (leave unset on shots with referenceImages: the reference's seed returns a copy of it), trimIn, trimOut, speed, transition{type,seconds}, nativeSoundDb, index.",
+          "description": "title, stillPrompt, motionPrompt, startFrom (generate|upload|previous-shot|text), seconds, seed (leave unset on shots with referenceImages: the reference's seed returns a copy of it), trimIn, trimOut, speed, transition{type,seconds}, nativeSoundDb, index, vocalStart, vocalSinging, vocalTakes.",
           "type": "object"
         },
         "order": {
@@ -954,7 +954,7 @@
       "readOnlyHint": false,
       "title": "Storyboard song and cut plan"
     },
-    "description": "Edit: the song a music video is cut to. attach(library_id or path), get, edit(lyrics, sections, bpm, title), remove, cut_plan(seconds; shots on its beats; apply: true replaces shots, one undo), lyric_captions(timing).",
+    "description": "Edit: the song a music video is cut to. attach(library_id or path), get, edit(lyrics, sections, bpm, title), remove, cut_plan(seconds; apply replaces shots), lyric_captions(timing), vocals(lip-sync slices).",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -965,7 +965,8 @@
             "edit",
             "remove",
             "cut_plan",
-            "lyric_captions"
+            "lyric_captions",
+            "vocals"
           ],
           "type": "string"
         },
@@ -1004,7 +1005,7 @@
           "type": "number"
         },
         "path": {
-          "description": "attach: upload: handle or a file in the app's output folders.",
+          "description": "attach, vocals: upload: handle or a file in the app's output folders. vocals without path slices the song itself (a stem follows better).",
           "type": "string"
         },
         "project_id": {
@@ -1416,7 +1417,7 @@
       "readOnlyHint": false,
       "title": "Make lip-sync shot"
     },
-    "description": "Make: start a lip-sync video job (returns a job id): a start still and a vocal clip become a 3 to 8 s clip whose mouth follows the audio. Needs an LTX-2.3 model with lipSync in list_models. Singing: use the vocal stem, set singing, make three takes.",
+    "description": "Make: start a lip-sync video job (returns a job id): a start still and a vocal clip become a 3 to 8 s clip whose mouth follows the audio. Needs an LTX-2.3 model with lipSync in list_models. Singing: use the vocal stem and set singing.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -1467,12 +1468,18 @@
           "type": "integer"
         },
         "singing": {
-          "description": "The vocal is sung: adds singing wording to the prompt (stops takes that listen with a shut mouth). Also: use a vocal stem, start 0.4 s before a phrase, keep 3 to 5 s, a frontal still, keep the best of three takes. Leave off for speech.",
+          "description": "The vocal is sung: adds singing wording to the prompt (stops takes that listen with a shut mouth). Also: use a vocal stem, start 0.4 s before a phrase, keep 3 to 5 s, a frontal still. Leave off for speech.",
           "type": "boolean"
         },
         "start_image": {
           "description": "Path or upload: handle of the still the clip starts from (a face, frontal works best).",
           "type": "string"
+        },
+        "takes": {
+          "description": "Takes, each with its own seed; the sync score keeps the best. Default 3 when singing, else 1; 4 for best quality.",
+          "maximum": 4,
+          "minimum": 1,
+          "type": "integer"
         },
         "width": {
           "maximum": 1280,

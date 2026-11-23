@@ -36,7 +36,7 @@ EXAMPLES = {
     "transcribe": {"path": "/tmp/a.wav"},
     "make_music": {"caption": "calm piano", "instrumental": True, "seconds": 30},
     "make_sound": {"caption": "door creaking", "seconds": 4, "loop": False},
-    "make_lipsync_shot": {"prompt": "a singer, close-up", "start_image": "upload:abc", "audio": "upload:def", "singing": True, "seconds": 4},
+    "make_lipsync_shot": {"prompt": "a singer, close-up", "start_image": "upload:abc", "audio": "upload:def", "singing": True, "seconds": 4, "takes": 3},
     "job_status": {"job_id": "job-1"},
     "wait_for_job": {"job_id": "job-1", "timeout_seconds": 5},
     "cancel_job": {"job_id": "job-1"},

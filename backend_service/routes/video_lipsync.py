@@ -98,7 +98,13 @@ def generate_lipsync_locked(request: Request, body: Any, variant: dict[str, Any]
             raise HTTPException(status_code=409, detail="cancelled") from None
         state.add_log("video", "error", f"Lip sync failed for {variant['name']}: {type(exc).__name__}: {exc}")
         raise HTTPException(status_code=500, detail=f"Lip sync failed for {variant['name']}: {exc}") from exc
+    others = fields.pop("otherTakes", None) or []
+    for other in others:  # the takes the score did not keep stay one click away in the Video Gallery (D-110)
+        _save_video_artifact({**{k: v for k, v in fields.items() if k != "lipSyncTakes"}, **other})
     artifact = _save_video_artifact(fields)
+    if others:
+        state.add_log("video", "info", f"Lip sync made {len(others) + 1} takes; kept {artifact.get('artifactId')} "
+                                       f"(seed {artifact.get('seed')}).")
     state.add_log("video", "info", f"Lip-synced clip made with {variant['name']} in {artifact.get('durationSeconds')} s.")
     state.add_activity("Lip-sync clip generated", f"{variant['name']} · {artifact.get('numFrames')}f")
     runtime = {"activeEngine": "lipsync-" + engine, "loadedModelRepo": lipsync_runtime.loaded_repo()}

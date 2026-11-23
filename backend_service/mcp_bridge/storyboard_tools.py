@@ -82,7 +82,7 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
             "shot_id": {"type": "string"}, "take_id": {"type": "string"},
             "fields": {**_FIELDS, "description": "title, stillPrompt, motionPrompt, startFrom (generate|upload|previous-shot|text), "
                        "seconds, seed (leave unset on shots with referenceImages: the reference's seed returns a copy of it), trimIn, trimOut, "
-                       "speed, transition{type,seconds}, nativeSoundDb, index."},
+                       "speed, transition{type,seconds}, nativeSoundDb, index, vocalStart, vocalSinging, vocalTakes."},
             "order": {"type": "array", "items": {"type": "string"}, "maxItems": 500},
             "path": {"type": "string", "description": "upload: handle, or a file in the app's output folders (import, end_image, vocal)."},
         }, ["action", "project_id", "revision"]),
@@ -130,12 +130,13 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
     {
         "name": "storyboard_song",
         "description": "Edit: the song a music video is cut to. attach(library_id or path), get, edit(lyrics, sections, bpm, "
-        "title), remove, cut_plan(seconds; shots on its beats; apply: true replaces shots, one undo), lyric_captions(timing).",
+        "title), remove, cut_plan(seconds; apply replaces shots), lyric_captions(timing), vocals(lip-sync slices).",
         "inputSchema": _obj({
-            "action": {"type": "string", "enum": ["attach", "get", "edit", "remove", "cut_plan", "lyric_captions"]},
+            "action": {"type": "string", "enum": ["attach", "get", "edit", "remove", "cut_plan", "lyric_captions", "vocals"]},
             "project_id": _PID, "revision": _REV,
             "library_id": {"type": "string", "maxLength": 40, "description": "attach: a Music library track id."},
-            "path": {"type": "string", "description": "attach: upload: handle or a file in the app's output folders."},
+            "path": {"type": "string", "description": "attach, vocals: upload: handle or a file in the app's output folders. "
+                     "vocals without path slices the song itself (a stem follows better)."},
             "title": {"type": "string", "maxLength": 200},
             "lyrics": {"type": "array", "maxItems": 500, "items": {"type": "string", "maxLength": 200},
                        "description": "edit: one caption line each."},
@@ -633,6 +634,10 @@ def storyboard_song(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         return _summary(_op(args, "edit_song", _song_edit(args)))
     if action == "remove":
         return _summary(_op(args, "clear_song", {}))
+    if action == "vocals":  # FU-371: each shot gets its slice of the vocal, sung, with a 0.4 s lead-in
+        stem = _agent_source(args["path"]) if args.get("path") else None
+        project, vocals = _run(lambda: storyboard_long.song_vocals(pid, rev, stem))
+        return _summary(project, {"vocals": vocals})
     timing, language = str(args.get("timing") or "auto"), str(args.get("language") or "")
 
     def run() -> tuple[dict[str, Any], list[str]]:

@@ -217,6 +217,11 @@ class Shot(_Model):
     # Lip sync (D-103): a vocal clip (WAV or FLAC) the clip's mouth follows; the clip is made by an LTX-2.3 lip-sync run
     # from the shot's still, 3 to 8 s, and carries this audio as its sound.
     vocalClip: RelPath | None = None
+    # FU-373: where in the vocal file the clip starts (``audioStartSeconds``); FU-380 / D-110: a sung vocal gets the
+    # singing wording and, by default, 3 takes kept by the sync score (``vocalTakes`` None = that default).
+    vocalStart: float = Field(0.0, ge=0, le=3600)
+    vocalSinging: bool = False
+    vocalTakes: int | None = Field(None, ge=1, le=4)
     seconds: float = Field(4.0, ge=0.5, le=60)
     seed: int | None = Field(None, ge=0, le=2**31 - 1)
     locked: bool = False

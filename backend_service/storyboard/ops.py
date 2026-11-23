@@ -67,6 +67,9 @@ class ShotFields(_Args):
     speed: float | None = Field(None, ge=0.25, le=4.0)
     transition: Transition | None = None
     nativeSoundDb: float | None = Field(None, ge=-60, le=12)
+    vocalStart: float | None = Field(None, ge=0, le=3600)  # lip sync: where in the vocal the clip starts (FU-373)
+    vocalSinging: bool | None = None
+    vocalTakes: int | None = Field(None, ge=1, le=4)
 
 
 class AddShot(ShotFields):
@@ -457,6 +460,7 @@ def set_vocal_clip(p: Project, folder: Path, a: SetVocalClip) -> None:
     shot = _shot(p, a.shotId)
     if not a.audio:
         shot.vocalClip = None
+        shot.vocalStart = 0.0
         return
     from backend_service.lipsync_runtime import AUDIO_EXTENSIONS
 

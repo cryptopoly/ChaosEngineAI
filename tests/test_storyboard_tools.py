@@ -360,6 +360,31 @@ class StoryboardToolTests(unittest.TestCase):
         self.assertIn("Unknown batch", self.call("storyboard_batch", {"action": "status", "project_id": pid, "batch_id": "b_nope0000"},
                                                  error=True))
 
+    def test_agent_gives_the_shots_their_vocal_slices(self):
+        from backend_service.storyboard import song as song_module
+        from backend_service.storyboard.ffmpeg_bin import ffmpeg_exe
+
+        try:
+            ffmpeg_exe()
+        except RuntimeError as exc:
+            self.skipTest(str(exc))
+        info = self.project(shots=2)
+        pid = info["projectId"]
+        found = {"seconds": 12.0, "bpm": None, "beats": [], "rough": True, "note": "rough", "sections": []}
+        from tests.test_storyboard_song import song_samples, write_wav
+
+        real = write_wav(self.src / "song.wav", song_samples(seconds=12.0, split=6.0))
+        with mock.patch.object(song_module, "analyse", return_value=found):
+            info = self.call("storyboard_song", {"action": "attach", "project_id": pid, "revision": info["revision"],
+                                                 "path": str(real)})
+        outside = self.base / "elsewhere.wav"
+        fake_wav(outside)
+        self.assertIn("output folders", self.call("storyboard_song", {"action": "vocals", "project_id": pid,
+                                                                       "revision": info["revision"], "path": str(outside)},
+                                                  error=True))
+        out = self.call("storyboard_song", {"action": "vocals", "project_id": pid, "revision": info["revision"]})
+        self.assertEqual((out["vocals"]["source"], out["vocals"]["attached"]), ("song", 2))
+
     def test_agent_attaches_a_song_and_cuts_to_it(self):
         from backend_service.storyboard import song as song_module
 

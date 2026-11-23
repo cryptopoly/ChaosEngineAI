@@ -14,6 +14,7 @@ import { CutPlanReview } from "./CutPlanReview";
 import { SongAttach } from "./SongAttach";
 import { SongLyrics } from "./SongLyrics";
 import { SongRuler } from "./SongRuler";
+import { SUNG_SHOT_MAX_SECONDS, SUNG_SHOT_MIN_SECONDS, SongVocals } from "./SongVocals";
 import { totalSeconds } from "../planLogic";
 import { clock, relabel } from "./songLogic";
 import "./song.css";
@@ -41,11 +42,11 @@ export function SongPanel({ story, project }: { story: UseStoryboardResult; proj
     }
   }
 
-  async function cut() {
+  async function cut(options: { minShotSeconds?: number; maxShotSeconds?: number } = {}) {
     setWorking("cut");
     setProblem(null);
     try {
-      setPlan(await proposeStoryboardCutPlan(project.id, {}));
+      setPlan(await proposeStoryboardCutPlan(project.id, options));
       requestAnimationFrame(() => review.current?.querySelector<HTMLElement>("#cut-plan-title")?.focus());
     } catch (err) {
       setProblem(err instanceof Error ? err.message : String(err));
@@ -129,6 +130,11 @@ export function SongPanel({ story, project }: { story: UseStoryboardResult; proj
           <div ref={review}>
             {plan ? <CutPlanReview plan={plan} project={project} busy={story.busy} onUse={() => void use()} onDiscard={() => setPlan(null)} /> : null}
           </div>
+          <SongVocals
+            story={story}
+            disabled={busy}
+            onCutForSinging={() => void cut({ minShotSeconds: SUNG_SHOT_MIN_SECONDS, maxShotSeconds: SUNG_SHOT_MAX_SECONDS })}
+          />
           <SongLyrics
             story={story}
             song={song}

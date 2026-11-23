@@ -560,7 +560,22 @@
       "engineMessage": "このモデルは Apple GPU 上の専用 MLX エンジン（ltx-2-mlx）で動作し、音声付きで生成します。"
     },
     "willLoadHint": "選択したモデルは、次回の生成時にメモリに読み込まれます。大きいバリアントは、初回の読み込みに1分ほどかかることがあります。",
-    "lipSyncPointer": null
+    "lipSync": {
+      "title": null,
+      "hint": null,
+      "remove": null,
+      "file": null,
+      "attach": null,
+      "start": null,
+      "singing": null,
+      "takes": null,
+      "takesDefault": null,
+      "takesBest": null,
+      "takesHint": null,
+      "length": null,
+      "needsStill": null,
+      "estimate": null
+    }
   },
   "imageGallery": {
     "subtitle": {
@@ -1676,7 +1691,13 @@
       "vocalFile": "ボーカルファイル (WAV または FLAC)",
       "vocalChange": "ボーカルを変更",
       "vocalAttach": "ボーカルを添付",
-      "vocalRemove": "ボーカルを削除"
+      "vocalRemove": "ボーカルを削除",
+      "vocalStart": null,
+      "vocalSinging": null,
+      "vocalTakes": null,
+      "vocalTakesDefault": null,
+      "vocalTakesBest": null,
+      "vocalTakesHint": null
     },
     "empty": "まだショットがありません。ショットを追加して、プロンプトを入力するか素材をインポートしてください。",
     "estimate": {
@@ -2217,7 +2238,18 @@
       "timingWorking": "歌詞のタイミングを合わせています…",
       "title": "曲",
       "untitled": "無題",
-      "longerThanFilm": "曲は {song} です。ショットの合計は {film} です。映画が {film} になるまで、{film} 以降の歌詞は表示されません。"
+      "longerThanFilm": "曲は {song} です。ショットの合計は {film} です。映画が {film} になるまで、{film} 以降の歌詞は表示されません。",
+      "vocals": {
+        "title": null,
+        "hint": null,
+        "cut": null,
+        "stemRemove": null,
+        "stem": null,
+        "stemUse": null,
+        "working": null,
+        "attach": null,
+        "done": null
+      }
     },
     "unsaved": {
       "title": "テキストは保存されませんでした",

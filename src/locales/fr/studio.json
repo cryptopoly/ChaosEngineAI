@@ -560,7 +560,22 @@
       "engineMessage": "Ce modèle fonctionne sur son propre moteur MLX (ltx-2-mlx) sur le GPU Apple, avec le son."
     },
     "willLoadHint": "Le modèle sélectionné sera chargé en mémoire à la prochaine génération. Le premier chargement peut prendre une minute pour les plus grandes variantes.",
-    "lipSyncPointer": null
+    "lipSync": {
+      "title": null,
+      "hint": null,
+      "remove": null,
+      "file": null,
+      "attach": null,
+      "start": null,
+      "singing": null,
+      "takes": null,
+      "takesDefault": null,
+      "takesBest": null,
+      "takesHint": null,
+      "length": null,
+      "needsStill": null,
+      "estimate": null
+    }
   },
   "imageGallery": {
     "subtitle": {
@@ -1676,7 +1691,13 @@
       "vocalFile": "Fichier vocal (WAV ou FLAC)",
       "vocalChange": "Changer la voix",
       "vocalAttach": "Joindre une voix",
-      "vocalRemove": "Retirer la voix"
+      "vocalRemove": "Retirer la voix",
+      "vocalStart": null,
+      "vocalSinging": null,
+      "vocalTakes": null,
+      "vocalTakesDefault": null,
+      "vocalTakesBest": null,
+      "vocalTakesHint": null
     },
     "empty": "Pas encore de plans. Ajoutez un plan, puis donnez-lui un prompt ou importez des images.",
     "estimate": {
@@ -2217,7 +2238,18 @@
       "timingWorking": "Calage des paroles…",
       "title": "Chanson",
       "untitled": "Sans titre",
-      "longerThanFilm": "La chanson dure {song} ; les plans totalisent {film}. Les lignes après {film} ne s'affichent pas tant que le film n'a pas cette durée."
+      "longerThanFilm": "La chanson dure {song} ; les plans totalisent {film}. Les lignes après {film} ne s'affichent pas tant que le film n'a pas cette durée.",
+      "vocals": {
+        "title": null,
+        "hint": null,
+        "cut": null,
+        "stemRemove": null,
+        "stem": null,
+        "stemUse": null,
+        "working": null,
+        "attach": null,
+        "done": null
+      }
     },
     "unsaved": {
       "title": "Votre texte n'a pas été enregistré",

@@ -12,6 +12,7 @@ import type {
   StoryboardBatchStatus,
   StoryboardCutPlan,
   StoryboardSongAnalysis,
+  StoryboardSongVocals,
   StoryboardBatchWhat,
   StoryboardExportPreset,
   StoryboardListRow,
@@ -230,6 +231,14 @@ export async function proposeStoryboardCutPlan(
   body: { maxShotSeconds?: number; minShotSeconds?: number; keepPrompts?: boolean } = {},
 ): Promise<StoryboardCutPlan> {
   return await request("POST", `${base(projectId)}/cut-plan`, body);
+}
+
+/** Song to lip-sync shots (FU-371): each shot gets its slice of the vocal stem (or the song), sung, 0.4 s lead-in. */
+export async function attachStoryboardSongVocals(
+  projectId: string,
+  body: { revision: number; stemPath?: string },
+): Promise<StoryboardProjectPayload & { vocals: StoryboardSongVocals }> {
+  return await request("POST", `${base(projectId)}/song/vocals`, body, 300000);
 }
 
 /** Whether lyric captions can be timed by speech-to-text on this machine. */

@@ -560,7 +560,22 @@
       "engineMessage": "MLX jonta' le'Daj (ltx-2-mlx) lo' yabvam Apple GPUDaq, wab je."
     },
     "willLoadHint": "veb bIchenmoHDI' qawHaqDaq wIvlu'ta'bogh yab chu'lu'. yab tInvaD wa' tup nI'laH chu'ghach wa'DIch.",
-    "lipSyncPointer": null
+    "lipSync": {
+      "title": null,
+      "hint": null,
+      "remove": null,
+      "file": null,
+      "attach": null,
+      "start": null,
+      "singing": null,
+      "takes": null,
+      "takesDefault": null,
+      "takesBest": null,
+      "takesHint": null,
+      "length": null,
+      "needsStill": null,
+      "estimate": null
+    }
   },
   "imageGallery": {
     "subtitle": {
@@ -1676,7 +1691,13 @@
       "vocalFile": null,
       "vocalChange": null,
       "vocalAttach": null,
-      "vocalRemove": null
+      "vocalRemove": null,
+      "vocalStart": null,
+      "vocalSinging": null,
+      "vocalTakes": null,
+      "vocalTakesDefault": null,
+      "vocalTakesBest": null,
+      "vocalTakesHint": null
     },
     "empty": "wej 'ay' tu'lu'. 'ay' yIchel, ghIq QIn yInob pagh mIllogh vIH yIqem.",
     "estimate": {
@@ -2217,7 +2238,18 @@
       "timingWorking": null,
       "title": null,
       "untitled": null,
-      "longerThanFilm": null
+      "longerThanFilm": null,
+      "vocals": {
+        "title": null,
+        "hint": null,
+        "cut": null,
+        "stemRemove": null,
+        "stem": null,
+        "stemUse": null,
+        "working": null,
+        "attach": null,
+        "done": null
+      }
     },
     "unsaved": {
       "title": null,

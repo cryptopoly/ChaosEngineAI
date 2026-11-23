@@ -560,7 +560,22 @@
       "engineMessage": "Эта модель работает на собственном движке MLX (ltx-2-mlx) на GPU Apple, со звуком."
     },
     "willLoadHint": "Выбранная модель загрузится в память при следующей генерации. Первая загрузка больших вариантов может занять минуту.",
-    "lipSyncPointer": null
+    "lipSync": {
+      "title": null,
+      "hint": null,
+      "remove": null,
+      "file": null,
+      "attach": null,
+      "start": null,
+      "singing": null,
+      "takes": null,
+      "takesDefault": null,
+      "takesBest": null,
+      "takesHint": null,
+      "length": null,
+      "needsStill": null,
+      "estimate": null
+    }
   },
   "imageGallery": {
     "subtitle": {
@@ -1676,7 +1691,13 @@
       "vocalFile": "Файл вокала (WAV или FLAC)",
       "vocalChange": "Заменить вокал",
       "vocalAttach": "Прикрепить вокал",
-      "vocalRemove": "Убрать вокал"
+      "vocalRemove": "Убрать вокал",
+      "vocalStart": null,
+      "vocalSinging": null,
+      "vocalTakes": null,
+      "vocalTakesDefault": null,
+      "vocalTakesBest": null,
+      "vocalTakesHint": null
     },
     "empty": "Шотов пока нет. Добавьте шот, затем задайте ему промпт или импортируйте материал.",
     "estimate": {
@@ -2217,7 +2238,18 @@
       "timingWorking": "Расстановка текста по времени…",
       "title": "Песня",
       "untitled": "Без названия",
-      "longerThanFilm": "Песня длится {song}; кадры в сумме дают {film}. Строки после {film} не показываются, пока фильм не станет такой длины."
+      "longerThanFilm": "Песня длится {song}; кадры в сумме дают {film}. Строки после {film} не показываются, пока фильм не станет такой длины.",
+      "vocals": {
+        "title": null,
+        "hint": null,
+        "cut": null,
+        "stemRemove": null,
+        "stem": null,
+        "stemUse": null,
+        "working": null,
+        "attach": null,
+        "done": null
+      }
     },
     "unsaved": {
       "title": "Ваш текст не сохранён",

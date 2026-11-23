@@ -9,6 +9,14 @@ summary: Read this first in every session.
 
 Newest dated update first. Each update has the same sections: Done, Open for Claude, Open for Dan.
 
+## Update 2026-11-23 (lip-sync phase 2, D-110; branch `feat/lipsync-phase2`, pushed, not merged)
+
+**Done:** lip-sync takes: 3 for a sung vocal, 1 for speech, 4 best quality, each with its own seed, kept by the sync score, on the API (`lipSyncTakes`), `make_lipsync_shot` (`takes`), the Video Studio and the Storyboard; progress says "Take 2 of 3", Cancel stops between takes, estimates multiply (FU-381). Video Studio vocal picker (FU-372), per-shot vocal start, sung switch and takes (FU-373), song to lip-sync shots with a 0.4 s lead-in (FU-371, FU-380). One real 4 s sung shot with 3 takes on the 4090: 222.8 s, scores 0.38 / 0.30 / 0.29, take 1 kept (none usable on this ballad window).
+
+**Open for Claude:** FU-606 (other takes as Storyboard takes), FU-607 (phrase-start cuts). Not verified: the new UI in a running app; the E2E phase 22 additions against a live backend.
+
+**Open for Dan:** D-132 (ship MediaPipe and the face model, as an add-on, so release builds score the takes; until then takes run unscored and take 1 is used).
+
 ## Update 2026-11-23 (D-105 A decided: other apps are not named; Chat Models picks; agent branch off `test/rtx4090`, not pushed)
 
 **Done:** no UI string, locale string, code comment, docstring, E2E message or test name names another desktop app any more: "Link to shared folder" and "Shared models folder" are translated in all 9 other locales, the Server tab's protocol label is "Apps with a model server host setting" (keys `hostApps` / `hostHint`), the folder placeholder is neutral (FU-492 done, FU-512 mostly done). Chat Models' recommended rows carry "Fastest", "Newest" and "Most popular" chips next to "Best fit"; popularity is Hugging Face 30-day downloads, cached daily with its date and never awaited (offline shows no chip).

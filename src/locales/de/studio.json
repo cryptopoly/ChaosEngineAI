@@ -560,7 +560,22 @@
       "engineMessage": "Dieses Modell läuft mit einer eigenen MLX-Engine (ltx-2-mlx) auf der Apple-GPU, mit Ton."
     },
     "willLoadHint": "Das ausgewählte Modell wird beim nächsten Erzeugen in den Speicher geladen. Das erste Laden kann bei größeren Varianten eine Minute dauern.",
-    "lipSyncPointer": null
+    "lipSync": {
+      "title": null,
+      "hint": null,
+      "remove": null,
+      "file": null,
+      "attach": null,
+      "start": null,
+      "singing": null,
+      "takes": null,
+      "takesDefault": null,
+      "takesBest": null,
+      "takesHint": null,
+      "length": null,
+      "needsStill": null,
+      "estimate": null
+    }
   },
   "imageGallery": {
     "subtitle": {
@@ -1676,7 +1691,13 @@
       "vocalFile": "Gesangsdatei (WAV oder FLAC)",
       "vocalChange": "Gesang ändern",
       "vocalAttach": "Gesang anhängen",
-      "vocalRemove": "Gesang entfernen"
+      "vocalRemove": "Gesang entfernen",
+      "vocalStart": null,
+      "vocalSinging": null,
+      "vocalTakes": null,
+      "vocalTakesDefault": null,
+      "vocalTakesBest": null,
+      "vocalTakesHint": null
     },
     "empty": "Noch keine Einstellungen. Füge eine Einstellung hinzu und gib ihr einen Prompt oder importiere Material.",
     "estimate": {
@@ -2217,7 +2238,18 @@
       "timingWorking": "Liedtext wird zeitlich gesetzt …",
       "title": "Song",
       "untitled": "Ohne Titel",
-      "longerThanFilm": "Der Song dauert {song}; die Shots ergeben zusammen {film}. Zeilen nach {film} werden erst angezeigt, wenn der Film so lang ist."
+      "longerThanFilm": "Der Song dauert {song}; die Shots ergeben zusammen {film}. Zeilen nach {film} werden erst angezeigt, wenn der Film so lang ist.",
+      "vocals": {
+        "title": null,
+        "hint": null,
+        "cut": null,
+        "stemRemove": null,
+        "stem": null,
+        "stemUse": null,
+        "working": null,
+        "attach": null,
+        "done": null
+      }
     },
     "unsaved": {
       "title": "Dein Text wurde nicht gespeichert",

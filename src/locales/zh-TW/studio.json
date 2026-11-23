@@ -560,7 +560,22 @@
       "engineMessage": "此模型在 Apple GPU 上透過自己的 MLX 引擎（ltx-2-mlx）執行，並帶有聲音。"
     },
     "willLoadHint": "所選模型將在下次產生時載入記憶體。較大的版本首次載入可能需要一分鐘。",
-    "lipSyncPointer": null
+    "lipSync": {
+      "title": null,
+      "hint": null,
+      "remove": null,
+      "file": null,
+      "attach": null,
+      "start": null,
+      "singing": null,
+      "takes": null,
+      "takesDefault": null,
+      "takesBest": null,
+      "takesHint": null,
+      "length": null,
+      "needsStill": null,
+      "estimate": null
+    }
   },
   "imageGallery": {
     "subtitle": {
@@ -1676,7 +1691,13 @@
       "vocalFile": "人聲檔案(WAV 或 FLAC)",
       "vocalChange": "更換人聲",
       "vocalAttach": "附加人聲",
-      "vocalRemove": "移除人聲"
+      "vocalRemove": "移除人聲",
+      "vocalStart": null,
+      "vocalSinging": null,
+      "vocalTakes": null,
+      "vocalTakesDefault": null,
+      "vocalTakesBest": null,
+      "vocalTakesHint": null
     },
     "empty": "還沒有鏡頭。新增一個鏡頭，然後寫提示詞或匯入素材。",
     "estimate": {
@@ -2217,7 +2238,18 @@
       "timingWorking": "正在為歌詞計時…",
       "title": "歌曲",
       "untitled": "未命名",
-      "longerThanFilm": "歌曲長 {song};鏡頭合計 {film}。在影片長度達到 {film} 之前,超出 {film} 的歌詞行不會顯示。"
+      "longerThanFilm": "歌曲長 {song};鏡頭合計 {film}。在影片長度達到 {film} 之前,超出 {film} 的歌詞行不會顯示。",
+      "vocals": {
+        "title": null,
+        "hint": null,
+        "cut": null,
+        "stemRemove": null,
+        "stem": null,
+        "stemUse": null,
+        "working": null,
+        "attach": null,
+        "done": null
+      }
     },
     "unsaved": {
       "title": "您的文字未儲存",

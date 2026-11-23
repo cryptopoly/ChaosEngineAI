@@ -46,6 +46,13 @@ class CutPlanRequest(_Body):
     lengthSeconds: float | None = Field(None, ge=1, le=3600)  # cut only the song's first seconds (a short ad)
 
 
+class SongVocalsRequest(_Body):
+    revision: int
+    stemPath: str | None = Field(None, min_length=1, max_length=4096)  # the song's vocal stem; None slices the song
+    singing: bool = True
+    leadIn: float = Field(0.4, ge=0, le=1)
+
+
 class LyricCaptionsRequest(_Body):
     revision: int
     timing: Literal["auto", "sections", "speech"] = "auto"
@@ -119,6 +126,45 @@ def cut_plan(request: Request, project_id: str, max_shot_seconds: float | None =
             "videoModel": (variant or {}).get("name")}
 
 
+def song_vocals(project_id: str, revision: int, stem_path: str | None, singing: bool = True,
+                lead_in: float = 0.4) -> tuple[Any, dict[str, Any]]:
+    """Song to lip-sync shots (FU-371): slice the vocal stem (or the song) at the shots and attach each slice in one
+    op. Returns (project, summary). The slices are cut before the project lock is taken."""
+    import tempfile
+    from pathlib import Path
+
+    from backend_service import lipsync_runtime
+    from backend_service.storyboard import media, song
+    from backend_service.storyboard import song_vocals as sv
+    from backend_service.storyboard.ops import run_op
+
+    store = _shared().get_store()
+    project = store.load(project_id)
+    if project.song is None:
+        raise ValueError("This project has no song. Attach one first (Song > Attach).")
+    if stem_path:
+        source = song.check_source(stem_path)
+        voiced = sv.voiced_frames(song.decode(source), song.SAMPLE_RATE)
+    else:
+        source, voiced = media.inside(store.folder(project_id), project.song.path), None
+    plan = sv.plan_vocals(project, voiced, lead_in)
+    summary = {"source": "stem" if stem_path else "song", "attached": len(plan["items"]), "skipped": plan["skipped"]}
+    if not plan["items"]:
+        return project, summary
+    with tempfile.TemporaryDirectory(prefix="chaosengine-vocals-") as tmp:
+        items = []
+        for item in plan["items"]:
+            dst = Path(tmp) / f"{item['shotId']}.wav"
+            try:
+                lipsync_runtime.prepare_audio(source, dst, item["songStart"], item["lead"] + item["length"])
+            except lipsync_runtime.LipSyncError as exc:
+                raise ValueError(str(exc)) from exc
+            items.append({"shotId": item["shotId"], "audio": str(dst), "lead": item["lead"], "length": item["length"],
+                          "singing": singing})
+        project = run_op(store, project_id, revision, "set_shot_vocals", {"items": items})
+    return project, summary
+
+
 # ---- routes ----
 @router.post("/api/storyboard/projects/{project_id}/batches/{batch_id}/pause")
 def pause_batch(project_id: str, batch_id: str) -> dict[str, Any]:
@@ -153,6 +199,14 @@ def propose_cut_plan(request: Request, project_id: str, body: CutPlanRequest) ->
     shared = _shared()
     return shared._guard(cut_plan, request, project_id, body.maxShotSeconds, body.minShotSeconds, body.keepPrompts,
                          body.lengthSeconds)
+
+
+@router.post("/api/storyboard/projects/{project_id}/song/vocals")
+def attach_song_vocals(project_id: str, body: SongVocalsRequest) -> dict[str, Any]:
+    """Give each shot its slice of the song's vocal for lip sync (a stem if given), sung, with a 0.4 s lead-in."""
+    shared = _shared()
+    project, summary = shared._guard(song_vocals, project_id, body.revision, body.stemPath, body.singing, body.leadIn)
+    return {**shared._payload(project), "vocals": summary}
 
 
 @router.get("/api/storyboard/lyrics/speech")

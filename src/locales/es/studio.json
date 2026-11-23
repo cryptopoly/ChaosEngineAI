@@ -560,7 +560,22 @@
       "engineMessage": "Este modelo funciona con su propio motor MLX (ltx-2-mlx) en la GPU de Apple, con sonido."
     },
     "willLoadHint": "El modelo seleccionado se cargará en memoria en la próxima generación. La primera carga puede tardar un minuto en las variantes más grandes.",
-    "lipSyncPointer": null
+    "lipSync": {
+      "title": null,
+      "hint": null,
+      "remove": null,
+      "file": null,
+      "attach": null,
+      "start": null,
+      "singing": null,
+      "takes": null,
+      "takesDefault": null,
+      "takesBest": null,
+      "takesHint": null,
+      "length": null,
+      "needsStill": null,
+      "estimate": null
+    }
   },
   "imageGallery": {
     "subtitle": {
@@ -1676,7 +1691,13 @@
       "vocalFile": "Archivo de voz (WAV o FLAC)",
       "vocalChange": "Cambiar voz",
       "vocalAttach": "Adjuntar voz",
-      "vocalRemove": "Quitar voz"
+      "vocalRemove": "Quitar voz",
+      "vocalStart": null,
+      "vocalSinging": null,
+      "vocalTakes": null,
+      "vocalTakesDefault": null,
+      "vocalTakesBest": null,
+      "vocalTakesHint": null
     },
     "empty": "Aún no hay planos. Añade un plano y dale un prompt o importa material.",
     "estimate": {
@@ -2217,7 +2238,18 @@
       "timingWorking": "Sincronizando la letra…",
       "title": "Canción",
       "untitled": "Sin título",
-      "longerThanFilm": "La canción dura {song}; los planos suman {film}. Las líneas posteriores a {film} no se muestran hasta que la película tenga esa duración."
+      "longerThanFilm": "La canción dura {song}; los planos suman {film}. Las líneas posteriores a {film} no se muestran hasta que la película tenga esa duración.",
+      "vocals": {
+        "title": null,
+        "hint": null,
+        "cut": null,
+        "stemRemove": null,
+        "stem": null,
+        "stemUse": null,
+        "working": null,
+        "attach": null,
+        "done": null
+      }
     },
     "unsaved": {
       "title": "Tu texto no se guardó",

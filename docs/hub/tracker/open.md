@@ -1,13 +1,121 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 254 rows with work, decisions or watch items still open, newest first.
+summary: 266 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-551 · HyperQwen head-to-head on the 4090; prompt drafting — Next speculative-decoding pass</summary>
+
+**Status or trigger:** Next speculative-decoding pass
+
+**Notes:** `syv-ai/HyperQwen` (Apache-2.0) is a vLLM 0.33.0 patch series for Qwen3.8-27B (MTP + DFlash2 + prompt drafting, int8 kernels tuned for sm86); Linux Docker, Windows only through WSL2, no Mac. Claims on an RTX 3090: 127 tok/s single stream, 381 when quoting a 25K prompt, 1,035 total at 64 concurrent. Ours on the 4090: 49.6 plain, 132 to 206 with TensorFold drafting. Run its single mode in WSL2 Docker on our perf-baseline prompts against TensorFold native and llama.cpp DFlash2. If prompt drafting wins on code and agent work, try `ngram-mod` beside `draft-dflash2` in llama.cpp. Do not bundle it (D-123).
+
+</details>
+
+<details>
+<summary>FU-550 · MoE expert offload in the llama.cpp engine (big MoE on a 24 GB GPU + system RAM) — Next llama.cpp engine pass</summary>
+
+**Status or trigger:** Next llama.cpp engine pass; before featuring Qwen3.8-Flash-Next on Windows
+
+**Notes:** The "Strata" item (most likely the MIT engine at `github.com/Niko1221/Strata`, D-122) runs the 125B Qwen3.8-Flash-Next on 12 GB VRAM + 64 GB RAM by keeping hot experts on the GPU. `backend_service` has no `--n-cpu-moe` / `-ot` (grep 2026-11-23), so our Qwen3.8-Flash-Next GGUF row needs 111 GB or more of GPU or unified memory. Work: choose `--n-cpu-moe N` in `inference/llama_cpp_engine.py` from free VRAM, count VRAM + RAM in the fit gate for MoE rows, and add an upstream-loadable 2-bit / IQ2 row (about 66 to 68 GB; check that the ISTA-DASLab packs load in mainline, otherwise use `unsloth` UD-IQ2 / Q2_K_XL). The 4090 PC has 64 GB RAM. Unit tests for the argument choice and the fit sum; E2E phase 1 check that skips under 64 GB. Effort M (2 to 3 days). Helps every large MoE row.
+
+</details>
+
+<details>
+<summary>FU-549 · SenseNova-Loop-9B AWQ on the vLLM lane (Linux) — When vLLM PR #64832 merges</summary>
+
+**Status or trigger:** When vLLM PR #64832 merges
+
+**Notes:** Official AWQ 4-bit (about 4.9 GB) with an MTP draft; vLLM needs the SenseNova branch today. SGLang is PR #47281.
+
+</details>
+
+<details>
+<summary>FU-548 · SenseNova-Loop-9B on MLX — After FU-547, or when an MLX port of the final model appears</summary>
+
+**Status or trigger:** After FU-547, or when an MLX port of the final model appears
+
+**Notes:** Only community ports of the Preview exist (`netprojects/SenseNova-Loop-9B-Preview-MLX-4bit` / `-8bit`); a blog says stock mlx-lm loads them, not verified and doubtful given mHC. Test in the MLX worker before adding a row.
+
+</details>
+
+<details>
+<summary>FU-547 · SenseNova-Loop-9B rows (llama.cpp GGUF, all platforms) — When llama.cpp PR #32588 (sensenova_loop, opened 2026-11-19) merges and a tag with prebuilt archives carries i…</summary>
+
+**Status or trigger:** When llama.cpp PR #32588 (`sensenova_loop`, opened 2026-11-19) merges and a tag with prebuilt archives carries it
+
+**Notes:** SenseTime, released 2026-11-17, Apache-2.0. 9B looped (32 physical / 56 logical layers), mHC, text + image, 512K context. Official GGUFs `sensenova/SenseNova-Loop-9B-GGUF` (Q4_K_M 5.82, Q5_K_M 6.67, Q8_0 9.8 GB) were made with the fork `OpenSenseNova/llama.cpp@24ea7bb`; check that they load upstream, or use a reconverted repo. Family `sensenova-loop` with three rows. The PR has no new CUDA or Metal kernels; users report 17 to 23 tok/s on an RTX 5060 Ti. Do not ship the fork (D-121). Measure on the 4090 and the M4 Max; catalogue + fit tests (FU-542); E2E phase 1 check that skips when absent. Effort S.
+
+</details>
+
+<details>
+<summary>FU-546 · Inkling 2 Mini official NVFP4/MXFP8 on the vLLM lane (Linux, Blackwell) — When a Blackwell box (DGX Spark, RTX 50) is available for testing</summary>
+
+**Status or trigger:** When a Blackwell box (DGX Spark, RTX 50) is available for testing
+
+**Notes:** The card lists vLLM, SGLang and one DGX Spark. The 4090 (Ada) has no FP4 tensor cores, so this is a Linux / Blackwell row only; check the WSL bridge too.
+
+</details>
+
+<details>
+<summary>FU-545 · Inkling 2 on MLX — When mlx-lm or mlx-vlm add inkling2</summary>
+
+**Status or trigger:** When mlx-lm or mlx-vlm add `inkling2`
+
+**Notes:** No MLX conversion or mlx-lm model exists for Inkling 2 (checked 2026-11-23). Until then the Mac path is Metal llama.cpp (FU-540).
+
+</details>
+
+<details>
+<summary>FU-544 · First-generation Inkling and Inkling-Small — When llama.cpp PR #25731 (draft) merges</summary>
+
+**Status or trigger:** When llama.cpp PR #25731 (draft) merges
+
+**Notes:** 975B / 266B MoE, Apache-2.0, 2026-07. Upstream llama.cpp cannot load the `inkling` arch. `mlx-community/Inkling-mlx-2bit` / `Inkling-Small-mlx-2bit` exist; whether stock mlx-lm loads them is unclear. Low priority: Inkling 2 replaces them.
+
+</details>
+
+<details>
+<summary>FU-543 · Inkling 2 Small row gated by fit, untested — Next catalogue pass after FU-540</summary>
+
+**Status or trigger:** Next catalogue pass after FU-540
+
+**Notes:** 594B MoE, 17B active, Apache-2.0, weights 2026-11-12. One row `unsloth/Inkling-2-Small-GGUF` UD-IQ2_XXS (190.6 GB) gated to 256 GB or larger unified memory (or big-RAM PCs once FU-550 lands), marked untested. The official NVFP4 / MXFP8 checkpoints need 500 GB or more of data-centre VRAM and get no row.
+
+</details>
+
+<details>
+<summary>FU-542 · Memory estimate for looped models (KV per logical layer) — With FU-540 or FU-547</summary>
+
+**Status or trigger:** With FU-540 or FU-547
+
+**Notes:** `helpers/model_arch.py` `architecture_from_gguf_metadata` sizes KV from `{arch}.block_count`. Looped models keep KV for every logical layer (Inkling 2 Mini 48 of 24 physical, SenseNova-Loop-9B 56 of 32), so the fit badge may undercount by about 2x. Read the loop metadata the GGUF carries and add a test with looped metadata. SenseNova's card gives about 10 GiB at 64K context with 8-bit KV as a check value.
+
+</details>
+
+<details>
+<summary>FU-541 · Inkling 2 Mini: owner messaging and first-run check — Before Inkling is mentioned in release notes</summary>
+
+**Status or trigger:** Before Inkling is mentioned in release notes
+
+**Notes:** No publisher speed figure exists for any Inkling variant. Measure tok/s on the 4090 and the M4 Max with FU-540 and put only our numbers in notes and the site.
+
+</details>
+
+<details>
+<summary>FU-540 · Inkling 2 Mini catalogue rows (llama.cpp GGUF, all platforms) — After the llama.cpp bump to b12549 or newer (FU-510)</summary>
+
+**Status or trigger:** After the llama.cpp bump to b12549 or newer (FU-510)
+
+**Notes:** Research 2026-11-23 ([docs/research/new-models-inkling-sensenova-strata-hyperqwen-2026-11.md](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/docs/research/new-models-inkling-sensenova-strata-hyperqwen-2026-11.md)). Thinking Machines, released 2026-11-20, Apache-2.0 (plus their acceptable use policy). 26.4B MoE, 3.4B active, middle 12 of 24 layers looped 3 times, text + image, 1M context. Bundled b12441 has the `inkling2` arch (PR #32217, b12406); b12549 fixes its attention mask (PR #32429). New family `inkling-2` in `catalog/text_models.py`: `unsloth/Inkling-2-Mini-GGUF` UD-Q4_K_M (16.6 GB, default; 4090 and 32 GB Macs), UD-Q3_K_XL (13.6 GB), UD-Q8_K_XL (22.9 GB, 48 GB Macs); files from the repo's `Mainline_Support` folder, mmproj if present. Not verified: that upstream runs the looped layers and vision. Needs a 4090 and an M4 Max run, catalogue + fit tests, and an E2E phase 1 check that skips when absent. Effort S to M (about 1 day).
+
+</details>
 
 <details>
 <summary>FU-534 · Local paths in music refusals reach agents — Next agent bridge pass</summary>

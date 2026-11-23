@@ -8,14 +8,14 @@ summary: Every FU row from FOLLOW_UPS.md, split into open and closed.
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here.
 
-- [Open and live follow-ups](open.md): **271** rows.
-- [Closed follow-ups](closed.md): **134** rows.
+- [Open and live follow-ups](open.md): **270** rows.
+- [Closed follow-ups](closed.md): **135** rows.
 
 ## Newest ten
 
 | Row | Item | Status |
 |---|---|---|
-| [FU-608](open.md) | /api/chat/generate ignores thinkingMode | Next llama.cpp engine pass |
+| [FU-608](closed.md) | /api/chat/generate ignores thinkingMode | Shipped 2026-11-23 (branch fix/windows-loose-ends). |
 | [FU-607](open.md) | Snap song-to-shots cuts to phrase starts | Next lip-sync quality pass |
 | [FU-606](open.md) | Other lip-sync takes as Storyboard takes | When sung shots are made in batches |
 | [FU-605](open.md) | Per-row GGUF pins: several quants of one repo in the text catalog | Next catalogue pass |

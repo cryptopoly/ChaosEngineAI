@@ -1,13 +1,22 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 134 shipped, obsoleted or dropped rows, newest first.
+summary: 135 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Shipped, obsoleted or dropped rows (struck through, or marked shipped with no open points left). Kept as the history of why things are the way they are.
 
+
+<details>
+<summary>FU-608 · /api/chat/generate ignores thinkingMode — Shipped 2026-11-23 (branch fix/windows-loose-ends).</summary>
+
+**Status or trigger:** **Shipped 2026-11-23 (branch `fix/windows-loose-ends`).**
+
+**Notes:** `LlamaCppEngine.generate` now takes `thinking_mode` and sends it as `enable_thinking` like the streaming route; `RuntimeController.generate` and `state/generation.py` pass it through (every other engine accepts and ignores it, as before: MLX, MTPLX, vLLM and the remote engine have no per-request switch on the non-streaming call, TensorFold keeps thinking off there on purpose). The agent loop's `generate_fn` still sends none. Tests: `test_llama_fu178.py` (payload on and off, unset leaves the template alone), `test_backend_service.py` (route reaches the runtime).
+
+</details>
 
 <details>
 <summary>FU-602 · moss-image has no size-limit row (all platforms) — Fixed 2026-11-23 (shorter make_sound and make_lipsync_shot descriptions, example, audio maxLength, golden refr…</summary>

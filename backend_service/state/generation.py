@@ -46,6 +46,22 @@ if TYPE_CHECKING:
 
 
 
+def _load_for_chat(state: Any, request: LoadModelRequest) -> None:
+    """Load the model a chat message names; a load that fails answers with its reason, as ``/api/models/load`` does.
+
+    Without this a refused load (MLX on Windows, a folder without weights) reached the client as a bare
+    "Internal Server Error" with no reason.
+    """
+    try:
+        state.load_model(request)
+    except (HTTPException, RequestNotUsable):
+        raise
+    except Exception as exc:
+        detail = str(exc) or "Unknown error during model loading."
+        state.add_log("runtime", "error", f"Load failed for {request.modelRef}: {detail}")
+        raise HTTPException(status_code=500, detail=detail) from exc
+
+
 def _apply_canonical_hint(state: Any, hint: str | None) -> None:
     """Record a client's repo hint on the loaded model only when the model's own path agrees (L-16)."""
     loaded = state.runtime.loaded_model
@@ -136,7 +152,8 @@ def generate(state: ChaosEngineState, request: GenerateRequest) -> dict[str, Any
         )
 
         if effective_model_ref and should_reload_model:
-            state.load_model(
+            _load_for_chat(
+                state,
                 LoadModelRequest(
                     modelRef=effective_model_ref,
                     modelName=effective_model_name,
@@ -441,7 +458,7 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
             tree_budget=desired_tree_budget,
         )
         if effective_model_ref and should_reload:
-            state.load_model(LoadModelRequest(
+            _load_for_chat(state, LoadModelRequest(
                 modelRef=effective_model_ref, modelName=effective_model_name,
                 canonicalRepo=effective_canonical_repo,
                 source=effective_source, backend=effective_backend, path=effective_path,

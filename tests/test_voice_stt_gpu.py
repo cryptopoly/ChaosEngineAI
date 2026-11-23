@@ -356,7 +356,7 @@ class InstallTests(unittest.TestCase):
         site = commands[1]
         self.assertIn("--no-deps", site)
         self.assertEqual(site[site.index("--target") + 1], str(voice_env_asr.asr_site_dir()))
-        self.assertIn("transformers==5.23.0", site)
+        self.assertIn("transformers==5.24.0", site)
         self.assertTrue(all("==" in spec for spec in voice_env_asr.ASR_SITE_PACKAGES))
         self.assertEqual(commands[2][:2], ["py", "-I"])
         self.assertIn("asr ok", commands[2][3])
@@ -380,7 +380,7 @@ class InstallTests(unittest.TestCase):
             self.assertFalse(voice_env_asr.stt_gpu_installed())
             site = Path(tmp) / "asr-site"
             (site / "transformers").mkdir(parents=True)
-            (site / "transformers-5.23.0.dist-info").mkdir()
+            (site / "transformers-5.24.0.dist-info").mkdir()
             self.assertTrue(voice_env_asr.stt_gpu_installed())
 
     def test_untick_keeps_torch_while_the_other_gpu_add_on_needs_it(self) -> None:
@@ -545,7 +545,7 @@ class WorkerHelperTests(unittest.TestCase):
             self.assertNotIn("words", reply["segments"][0])
 
     def test_unknown_family_is_refused(self) -> None:
-        fake = mock.Mock(__version__="5.23.0")
+        fake = mock.Mock(__version__="5.24.0")
         with mock.patch.dict(sys.modules, {"transformers": fake}):
             with self.assertRaisesRegex(ValueError, "Unknown speech-to-text model family"):
                 voice_worker_asr._auto_class("nope")

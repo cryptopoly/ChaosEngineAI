@@ -1,6 +1,6 @@
 """Speech-to-text models on an NVIDIA GPU (Windows and Linux): the ``transformers-asr`` backend.
 
-They run through Transformers 5.23 in the ASR worker (``voice_worker_asr``) once the speech-to-text GPU add-on
+They run through Transformers 5.24 in the ASR worker (``voice_worker_asr``) once the speech-to-text GPU add-on
 (``stt-gpu``, ``voice_env_asr``) is installed. Each row names the files it needs, so a download skips the NeMo
 archive, the GGUF and the pictures that share the repo; ``minVramGb`` and ``minComputeCap`` are checked against this
 computer's GPU by ``voice_gpu`` before a request runs. Repos, licences and file sizes checked through the Hub API on

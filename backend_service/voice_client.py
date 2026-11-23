@@ -319,7 +319,7 @@ _ASR_WORKER: VoiceWorker | None = None
 
 
 def get_asr_worker() -> VoiceWorker:
-    """The worker that runs speech-to-text on the GPU through Transformers 5.23 (``voice_env_asr``): the main worker's
+    """The worker that runs speech-to-text on the GPU through Transformers 5.24 (``voice_env_asr``): the main worker's
     Python with the add-on's Transformers first on the path."""
     global _ASR_WORKER
     from backend_service import voice_env_asr  # noqa: PLC0415

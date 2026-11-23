@@ -23,6 +23,13 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 **Open for Claude:** TensorFold 1.3.4 family rows on the Mac (FU-561); Transformers 5.24 for `asr-site` once a voice venv exists (FU-562); sd.cpp `0d71f963` needs two CUDA builds and a Qwen-Image 2.1 image (FU-563); Mac-only pins (FU-564).
 
 **Open for Dan:** nothing to decide; push and merge the branch when ready.
+## Update 2026-11-23 (WSL2 pass of the current tip, cross-platform tracker; agent branch, not pushed)
+
+**Done:** full pytest of `test/rtx4090` inside WSL2 Ubuntu-26.04 (Python 3.14, CPU torch): 6494 passed, 18 failed; 6503 passed, 9 failed after fixes. No Linux-specific code bug; the 9 left also fail on Windows (FU-601 agent-bridge contract, FU-602 `moss-image` size row). Fixed: the WSL vLLM bridge put a literal `~` on PATH (FU-533, live test), two host-bound test sets (Python version, host RAM). vLLM 0.34 smoke in WSL passed. New [cross-platform test tracker](https://github.com/cryptopoly/ChaosEngineAI/blob/test/rtx4090/docs/release/cross-platform-test-tracker.md): 32 Mac and 27 native Linux rows with commands (FU-604).
+
+**Open for Claude:** FU-600 (Stable Audio 3 on the Mac, D-130), FU-601, FU-602, FU-603; the tracker's Mac and Linux rows. Not run: npm test and tsc on Linux (no Node in the distro).
+
+**Open for Dan:** nothing new; D-130 recorded as you decided (SA3 should run on the Mac, with a proven check).
 
 ## Update 2026-11-20 (D-105 B to E built, Mac sounds pack without Stable Audio 3; agent branch, not pushed)
 

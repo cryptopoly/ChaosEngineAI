@@ -210,7 +210,10 @@ class VllmWslEngineCommandTests(unittest.TestCase):
         # because the inherited $PATH on WSL contains Windows paths
         # with spaces (``/mnt/c/Program Files/...``) which would
         # otherwise word-split.
-        self.assertIn('export PATH="~/.chaosengine/vllm-venv/bin:$PATH"', inner)
+        # ``$HOME``, not ``~``: bash does not expand ``~`` inside double quotes, and a child's execvp does not
+        # expand a literal ``~`` PATH entry (FU-533).
+        self.assertIn('export PATH="$HOME/.chaosengine/vllm-venv/bin:$PATH"', inner)
+        self.assertNotIn('PATH="~', inner)
 
         # The vLLM OpenAI server invocation.
         self.assertIn("~/.chaosengine/vllm-venv/bin/python", inner)
@@ -267,6 +270,19 @@ class WslShellInjectionTests(unittest.TestCase):
         probe = [*command[:4], f"echo {shlex.quote(self.HOSTILE)}"]
         out = subprocess.run(probe, capture_output=True, text=True, timeout=60).stdout
         self.assertEqual(out.strip(), self.HOSTILE)
+
+    @unittest.skipUnless(sys.platform == "win32" and os.environ.get("CHAOSENGINE_TEST_WSL") == "1",
+                         "live WSL check: set CHAOSENGINE_TEST_WSL=1 on a Windows host with a distro")
+    def test_live_wsl_child_processes_see_the_venv_bin_as_an_absolute_path(self):
+        # FU-533: a literal ``~`` PATH entry is invisible to a child's execvp (vLLM's ninja call).
+        import subprocess
+
+        inner = VllmWslEngine(_make_caps())._build_wsl_command(model_arg="m", port=8000, max_model_len=4096)[4]
+        export = inner.split(" && ", 1)[0]
+        probe = ["wsl", "--exec", "bash", "-c",
+                 export + " && python3 -c 'import os; print(os.environ[\"PATH\"].split(\":\")[0])'"]
+        first = subprocess.run(probe, capture_output=True, text=True, timeout=60).stdout.strip()
+        self.assertTrue(first.startswith("/") and first.endswith("/.chaosengine/vllm-venv/bin"), first)
 
 
 class VllmWslEngineLifecycleTests(unittest.TestCase):

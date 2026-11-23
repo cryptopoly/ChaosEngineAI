@@ -720,7 +720,7 @@
       "readOnlyHint": false,
       "title": "Storyboard shot"
     },
-    "description": "Edit: shots. add(fields), edit(shot_id, fields), remove, reorder(order), lock, unlock, pick_take(take_id), redo (marks for the next generate), import(path of a clip or still), end_image(path; none clears; LTX-2).",
+    "description": "Edit: shots. add(fields), edit(shot_id, fields), remove, reorder(order), lock, unlock, pick_take(take_id), redo (mark for next run), import(clip or still), end_image(LTX-2), vocal(WAV/FLAC to lip-sync); path or none.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -735,7 +735,8 @@
             "pick_take",
             "redo",
             "import",
-            "end_image"
+            "end_image",
+            "vocal"
           ],
           "type": "string"
         },
@@ -751,7 +752,7 @@
           "type": "array"
         },
         "path": {
-          "description": "upload: handle, or a file in the app's output folders (import, end_image).",
+          "description": "upload: handle, or a file in the app's output folders (import, end_image, vocal).",
           "type": "string"
         },
         "project_id": {
@@ -1348,7 +1349,7 @@
       "readOnlyHint": false,
       "title": "Make sound effect"
     },
-    "description": "Make: start a sound-effect job (returns a job id): footsteps, doors, ambience, a loop. 1 to 11 s, or up to 47 s with the slower 1.0 model (modelId). English prompt, FLAC in the Music Library. Not songs or speech. Needs a gated Stable Audio Open model.",
+    "description": "Make: start a sound-effect job (returns a job id): footsteps, doors, ambience, a loop. 1 to 11 s by default, longer with the 1.0 or Stable Audio 3 models (modelId). English prompt, FLAC in the Music Library. Not songs with vocals or speech.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -1363,7 +1364,7 @@
           "type": "boolean"
         },
         "modelId": {
-          "description": "Sound model: 'stabilityai/stable-audio-open-small' (default, up to 11 s) or 'stabilityai/stable-audio-open-1.0' (up to 47 s, slower).",
+          "description": "Sound model: 'stabilityai/stable-audio-open-small' (default, up to 11 s), 'stabilityai/stable-audio-open-1.0' (up to 47 s, slower), or on an NVIDIA GPU 'stabilityai/stable-audio-3-small-sfx' (up to 120 s), '-small-music' (instrumentals, 120 s) or '-medium' (380 s).",
           "maxLength": 128,
           "type": "string"
         },
@@ -1377,8 +1378,8 @@
           "type": "string"
         },
         "seconds": {
-          "description": "Length; the chosen model's own maximum applies (11 s Small, 47 s 1.0).",
-          "maximum": 47,
+          "description": "Length; the chosen model's own maximum applies (11 s Small, 47 s 1.0, 120 s or 380 s Stable Audio 3).",
+          "maximum": 380,
           "minimum": 1,
           "type": "number"
         },
@@ -1406,6 +1407,87 @@
       "type": "object"
     },
     "name": "make_sound"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Make lip-sync shot"
+    },
+    "description": "Make: start a lip-sync video job (returns a job id): a start still and a vocal clip become a 3 to 8 s clip whose mouth follows the audio. Needs an LTX-2.3 model with lipSync in list_models. Singing: use the vocal stem, set singing, make three takes.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "audio": {
+          "description": "upload: handle, or a file in the app's output folders: the vocal clip (WAV or FLAC; mono is fine). A vocal stem follows best; the full mix works less well.",
+          "maxLength": 1024,
+          "type": "string"
+        },
+        "audio_start": {
+          "description": "Where in the audio the shot starts, in seconds (default 0).",
+          "maximum": 3600,
+          "minimum": 0,
+          "type": "number"
+        },
+        "height": {
+          "maximum": 1280,
+          "minimum": 256,
+          "type": "integer"
+        },
+        "model": {
+          "description": "Model id from list_models with lipSync. Default: the installed one.",
+          "type": "string"
+        },
+        "project_id": {
+          "description": "Optional. Storyboard project this output belongs to; the gallery and library group it there.",
+          "type": "string"
+        },
+        "project_name": {
+          "description": "Optional label for project_id when the project is not in the Storyboard.",
+          "maxLength": 120,
+          "type": "string"
+        },
+        "prompt": {
+          "description": "The shot: who sings or speaks, framing, light. Keep the camera still.",
+          "maxLength": 4000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "seconds": {
+          "description": "Shot length; default: the audio from audio_start, held to 3 to 8 s. Frames follow 8k+1 at 24 fps.",
+          "maximum": 8,
+          "minimum": 3,
+          "type": "number"
+        },
+        "seed": {
+          "maximum": 2147483647,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "singing": {
+          "description": "The vocal is sung: adds singing wording to the prompt (stops takes that listen with a shut mouth). Also: use a vocal stem, start 0.4 s before a phrase, keep 3 to 5 s, a frontal still, keep the best of three takes. Leave off for speech.",
+          "type": "boolean"
+        },
+        "start_image": {
+          "description": "Path or upload: handle of the still the clip starts from (a face, frontal works best).",
+          "type": "string"
+        },
+        "width": {
+          "maximum": 1280,
+          "minimum": 256,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "prompt",
+        "start_image",
+        "audio"
+      ],
+      "type": "object"
+    },
+    "name": "make_lipsync_shot"
   },
   {
     "annotations": {

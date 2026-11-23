@@ -1,13 +1,40 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 271 rows with work, decisions or watch items still open, newest first.
+summary: 274 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-604 · Run the cross-platform tracker on the Mac and on native Ubuntu — Before the v0.10.0 tag</summary>
+
+**Status or trigger:** Before the v0.10.0 tag
+
+**Notes:** `docs/release/cross-platform-test-tracker.md`: 32 Mac rows (M-01 to M-32) and 27 native Linux rows (L-01 to L-27), each with command, expected result, owner and status. Update the status column in place; failures get their own FU row. WSL2 covered L-03 and parts of L-06 to L-10, L-16, L-25 only.
+
+</details>
+
+<details>
+<summary>FU-603 · Dev installs without the release pins: FastAPI 0.165 and Python 3.14 — When the dev setup docs are next touched</summary>
+
+**Status or trigger:** When the dev setup docs are next touched
+
+**Notes:** WSL2 pass 2026-11-23 (Ubuntu 26.04 ships Python 3.14; an unpinned `pip install` took FastAPI 0.165, Starlette 1.10, torch 2.15). FastAPI 0.165 keeps included routers as `_IncludedRouter`, so `test_model_events.py` `_first_chunks` (which looks the route up in `app.routes`) fails with StopIteration; with FastAPI 0.135.3 (the release pin) both tests pass. Fix the helper to call the route function directly, or document `-c release-constraints.txt` for dev venvs. Python 3.14 also warns `'return' in a 'finally' block` (PEP 765) at `backend_service/keep_going/swap_run.py` lines 68 and 71; harmless today, worth rewriting before 3.14 is a target (FU-049). Six music install tests that hit the real interpreter version are fixed (they patch `_python_supported` now).
+
+</details>
+
+<details>
+<summary>FU-600 · Stable Audio 3 on the Mac (D-130) — Next Mac session, before test/rtx4090 merges</summary>
+
+**Status or trigger:** Next Mac session, before `test/rtx4090` merges
+
+**Notes:** Owner decided 2026-11-23 that SA3 should run on Apple Silicon. Today the `mps` sounds lane skips it (`music_sound_env._with_sa3()` is `lane() == "cuda"`, marker `sa3: null`, worker asks for `stable_audio_3` only off macOS, FU-493) and the three SA3 rows in `catalog/music_models.py` are `platforms: ["cuda"]`. Build: install SA3 on `mps` too, verify-import `stable_audio_3.loading_utils` and `T5GemmaEncoderModel` there (assert MPS, not CUDA), add `apple-silicon` and measured Mac `estimates` to the rows, update `test_music_sound.py`. Prove it with row M-16 of `docs/release/cross-platform-test-tracker.md` (install, marker, a real sound per row, Stable Audio Open Small still working). If the install or import fails on MPS, fix it and record the error here; do not hide SA3 again. Supersedes the "Mac never installs SA3" part of FU-493 item 1; FU-279 is the measuring half.
+
+</details>
 
 <details>
 <summary>FU-581 · Wire names still carry the other apps' names — Next settings migration</summary>
@@ -190,9 +217,9 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-533 · WSL bridge PATH prefix and the setup steps' wsl -- — Next WSL bridge change</summary>
+<summary>FU-533 · WSL bridge PATH prefix and the setup steps' wsl -- — PATH part done 2026-11-23 (agent branch): the prefix is $HOME/.chaosengine/vllm-venv/bin, live test test_live_…</summary>
 
-**Status or trigger:** Next WSL bridge change
+**Status or trigger:** **PATH part done 2026-11-23 (agent branch): the prefix is `$HOME/.chaosengine/vllm-venv/bin`, live test `test_live_wsl_child_processes_see_the_venv_bin_as_an_absolute_path` behind `CHAOSENGINE_TEST_WSL=1` (a child saw `~/.chaosengine/...` before). Open: `_run_wsl_step`.**
 
 **Notes:** Security review 2026-11-20. Under `wsl --` the `export PATH="~/.chaosengine/vllm-venv/bin:$PATH"` prefix was lost in the default shell's parse; the bridge now runs `wsl --exec` (the injection fix) and keeps it, but with a literal `~` that a child's `execvp` does not expand: use `$HOME`. `routes/setup/vllm_wsl.py` `_run_wsl_step` still uses `wsl --` with constant commands only; move it to `--exec` and recheck the probes' quoting on a WSL host.
 

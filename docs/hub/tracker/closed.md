@@ -1,13 +1,31 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 125 shipped, obsoleted or dropped rows, newest first.
+summary: 127 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Shipped, obsoleted or dropped rows (struck through, or marked shipped with no open points left). Kept as the history of why things are the way they are.
 
+
+<details>
+<summary>FU-602 · moss-image has no size-limit row (all platforms) — Fixed 2026-11-23 (shorter make_sound and make_lipsync_shot descriptions, example, audio maxLength, golden refr…</summary>
+
+**Status or trigger:** **Fixed 2026-11-23** (shorter `make_sound` and `make_lipsync_shot` descriptions, example, `audio` maxLength, golden refreshed; `moss-image` and `kandinsky-6` size rows, both marked unverified). Next image catalogue change
+
+**Notes:** `test_size_limits::CatalogAuditTests::test_every_family_has_a_row_in_the_table` fails on Windows and WSL: add a `moss-image` row to `IMAGE_FAMILY_LIMITS` (max side, max pixels, native side from the MOSS-Image model card).
+
+</details>
+
+<details>
+<summary>FU-601 · Agent bridge contract tests fail on the test/rtx4090 tip (all platforms) — Fixed 2026-11-23 (shorter make_sound and make_lipsync_shot descriptions, example, audio maxLength, golden refr…</summary>
+
+**Status or trigger:** **Fixed 2026-11-23** (shorter `make_sound` and `make_lipsync_shot` descriptions, example, `audio` maxLength, golden refreshed; `moss-image` and `kandinsky-6` size rows, both marked unverified). Next agent-bridge change, before the merge
+
+**Notes:** Found by the WSL2 pass 2026-11-23 and reproduced on Windows: `test_agent_guide::test_every_real_tool_is_in_the_guide` (`make_lipsync_shot` missing from AGENTS.md Tools) and 7 in `test_mcp_contract.py` (`make_lipsync_shot` has no example, scope or `maxLength` on `audio`; `make_sound` description 311 characters against the 260 cap; golden tools list stale, regenerate with `UPDATE_MCP_GOLDEN=1` once the tool is final). Not a platform bug.
+
+</details>
 
 <details>
 <summary>FU-511 · TensorFold native is behind: pinned 1.2.9, newest 1.3.1 — Pin moved 2026-11-23 to 1.3.4 (branch chore/bump-upstreams-2026-11-23, not pushed)</summary>

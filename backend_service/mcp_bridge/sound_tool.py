@@ -18,9 +18,8 @@ from backend_service.mcp_bridge.tools import ToolError, _PROJECT_PROPS, _obj, _s
 SOUND_TOOLS: list[dict[str, Any]] = [
     {
         "name": "make_sound",
-        "description": "Make: start a sound-effect job (returns a job id): footsteps, doors, ambience, a loop. 1 to 11 s, or up to "
-        "47 s with the slower 1.0 model, or up to 380 s with Stable Audio 3 on an NVIDIA GPU (modelId). English prompt, FLAC in "
-        "the Music Library. Not songs with vocals or speech. Needs a gated Stable Audio model.",
+        "description": "Make: start a sound-effect job (returns a job id): footsteps, doors, ambience, a loop. 1 to 11 s by default, longer with the "
+        "1.0 or Stable Audio 3 models (modelId). English prompt, FLAC in the Music Library. Not songs with vocals or speech.",
         "inputSchema": _obj(
             {
                 "caption": {"type": "string", "minLength": 1, "maxLength": 300, "description": "The sound: 'heavy wooden door creaking open, close mic'."},

@@ -260,6 +260,10 @@ class InstallJobTests(_EnvBox):
         host = mock.patch.object(music_env, "lane", return_value="mlx")  # never this machine's own lane
         host.start()
         self.addCleanup(host.stop)
+        # Nor the test interpreter's version: on Python 3.13+ every install stopped at the version check.
+        python = mock.patch.object(music_env, "_python_supported", lambda *a: True)
+        python.start()
+        self.addCleanup(python.stop)
 
     def _wait(self) -> dict:
         deadline = time.monotonic() + 10

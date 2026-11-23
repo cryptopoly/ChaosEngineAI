@@ -73,6 +73,9 @@ IMAGE_FAMILY_LIMITS: dict[str, SizeRow] = {
     "flux-2": _FLUX2,
     # FLUX 3 Image Klein: the card names no resolution but the 1024x1024 benchmark. 4096 is unverified.
     "flux-3": SizeRow(DEFAULT_MAX_SIDE, None, 1024),
+    # MOSS-Image SFT: the card shows 1024 px; the RTX 4090 run peaked at 23 GB at that size. No maximum is stated, so
+    # this is unverified: the SDXL-class edge with twice the 1 MP area.
+    "moss-image": SizeRow(2048, 2 * 1024 * 1024, 1024),
 }
 
 # Variant id -> limits, for rows whose model differs from the rest of the family.
@@ -130,6 +133,9 @@ VIDEO_FAMILY_LIMITS: dict[str, SizeRow] = {
     # MiniMax H3 (HF card: "the shorter side is set to 768 pixels by default", 24 fps; the sd.cpp doc example is
     # 864x480; sd.cpp aligns sides up to 32). Not run by the maintainers: the cap is 768p at 16:9.
     "minimax-h3": SizeRow(1344, 1344 * 768, 864),
+    # Kandinsky 6.0 Lite (5 s distilled): the catalogue row recommends 864x480. No maximum is stated, so this is
+    # unverified: the 720p class used by the other open video families here.
+    "kandinsky-6": SizeRow(1280, 1280 * 720, 864),
 }
 
 # Frame rate a family is trained or documented for, from its model card. A family not listed has no stated

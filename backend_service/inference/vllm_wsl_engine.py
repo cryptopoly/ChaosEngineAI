@@ -260,6 +260,9 @@ class VllmWslEngine(BaseInferenceEngine):
         spaces / quotes can't break the bash parse.
         """
         bin_path = f"{_WSL_VLLM_VENV_PATH}/bin"
+        # Inside double quotes bash leaves ``~`` alone, so the PATH entry must name ``$HOME``: a literal ``~`` entry
+        # is found by bash's own lookup but not by a child's ``execvp`` (vLLM's ninja call), FU-533.
+        path_bin = "$HOME" + bin_path[1:]
         # PATH assignment is double-quoted — WSL2 interopts the Windows
         # PATH into bash, and that PATH contains paths with spaces
         # (e.g. ``/mnt/c/Program Files/NVIDIA...``). Without the quotes
@@ -307,7 +310,7 @@ class VllmWslEngine(BaseInferenceEngine):
                 "--max-num-seqs 8 "
             )
         inner = (
-            f'export PATH="{bin_path}:$PATH" && '
+            f'export PATH="{path_bin}:$PATH" && '
             'export VLLM_USE_FLASHINFER_SAMPLER=0 && '
             f"{bin_path}/python -m vllm.entrypoints.openai.api_server "
             f"--model {shlex.quote(model_arg)} "

@@ -2412,3 +2412,19 @@ Built both with `scripts/build-sdcpp.ps1` (CUDA Toolkit 13.5, VS 2022 Build Tool
 **Result:** not bumped. Same picture, about 18 % slower per step on CUDA whatever the flash-attention flag. The flag and metadata findings are in FU-563; the choice is D-131.
 
 **Not verified:** the Mac (Metal) speed of `0d71f96`; any video or H3 run; the app's Images tab end to end (CLI only, same arguments).
+
+## 2026-11-23: Windows bundle with the CUDA sd.exe (FU-399, agent branch `chore/fu-399-windows-bundle`)
+
+Built like `release.yml`: clean Python 3.12 `.venv` in the worktree (`-c release-constraints.txt`, CI package list), `npm ci`, `npx tauri build --bundles nsis`, `CHAOSENGINE_SDCPP_BIN_DIR=E:\tmp\sdcpp-532d2c1\bin` (pinned `532d2c1`, CUDA 13). Staging log: prebuilt llama.cpp b12649 Vulkan downloaded; `sd.exe staged ... with CUDA runtime cublas64_13.dll, cublasLt64_13.dll, cudart64_13.dll`.
+
+| Check | Result |
+|---|---|
+| Manifest | `llamaServer` `bin/llama-server.exe`, `llamaCli` set, `sdCpp` `bin/sd.exe`, `llamaServerTurbo` null, `warnings` `[]` |
+| Setup installers in the archive | `install-mflux.sh`, `install-ltx2-mlx.sh`, `install-mtplx.sh`, `install-tensorfold.sh`, `chaosengine-cli` |
+| Sizes | `sd.exe` 106 MB, `cublasLt64_13` 499 MB, `cublas64_13` 55 MB, `cudart64_13` 0.6 MB; runtime archive 575 MiB; installer 582 MiB (about 137 MB before `sd`); limit 1.9 GB: pass |
+| Time | Rust release build 2 min, staging + archive about 1.5 min, NSIS about 3 min |
+| NSIS step | First pass panicked (`nsis/mod.rs:85`, unwrap on None) with `USERPROFILE` redirected to a scratch folder; `tauri bundle --bundles nsis` with the real profile and the already staged archive passed |
+| Packaged sd.exe, real image | archive unpacked to scratch, its own `python.exe` with the Tauri embedded env (`CHAOSENGINE_SDCPP_BIN` = unpacked `bin/sd.exe`, throwaway home, no torch); `unsloth/Qwen-Image-2.1-Turbo-GGUF-q4km` 1024 px seed 7 via `/api/images/generate`: 200, device `cuda`, 14.5 s cold, 8.0 s warm, card peak 15.4 GiB (14.1 above idle); image looked at |
+| Nunchaku image | not run: Nunchaku package not on this PC, wheel download needs the owner's OK (D-133) |
+
+Installer kept at `E:\tmp\fu399-installer\ChaosEngineAI_0.10.0_x64-setup.exe` (sha256 `3e0d177d...a407`) for the hands-on checks; build tree (2.3 GB), archive and unpacked runtime deleted. Not checked: installing it, the packaged window, uninstall, signing (D-99, owner).

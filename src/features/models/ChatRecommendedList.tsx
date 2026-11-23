@@ -32,6 +32,36 @@ export interface ChatRecommendedListProps {
   onOpenModelSelector: (action: ChatLaunchAction, preselectedKey?: string) => void;
 }
 
+export type PickBadge = "fastest" | "newest" | "popular";
+
+/** Simple picks over the shown rows: the one clearly fastest, newest and most downloaded. Needs at least two
+ *  rows with a value and a strict leader, so a tie or a single row earns no badge. Release dates are
+ *  `YYYY-MM` (or longer); only the month is compared. */
+export function pickBadges(picks: ChatPick[]): Map<string, PickBadge[]> {
+  const out = new Map<string, PickBadge[]>();
+  const award = (badge: PickBadge, scored: Array<{ id: string; score: number }>) => {
+    if (scored.length < 2) return;
+    const sorted = [...scored].sort((a, b) => b.score - a.score);
+    if (sorted[0].score > sorted[1].score) out.set(sorted[0].id, [...(out.get(sorted[0].id) ?? []), badge]);
+  };
+  award(
+    "fastest",
+    picks.flatMap((p) => (p.tokS && p.tokS > 0 ? [{ id: p.variantId, score: p.tokS }] : [])),
+  );
+  award(
+    "newest",
+    picks.flatMap((p) => {
+      const match = /^(\d{4})-(\d{2})/.exec(p.releaseDate ?? "");
+      return match ? [{ id: p.variantId, score: Number(match[1]) * 12 + Number(match[2]) }] : [];
+    }),
+  );
+  award(
+    "popular",
+    picks.flatMap((p) => (p.downloads && p.downloads > 0 ? [{ id: p.variantId, score: p.downloads }] : [])),
+  );
+  return out;
+}
+
 export function ChatRecommendedList({
   rows,
   resolveStatus,
@@ -52,6 +82,13 @@ export function ChatRecommendedList({
       {t("models.chat.recommended.showAll", { defaultValue: "Show all {count} models and filters", count: totalCount })}
     </button>
   );
+  const badges = pickBadges(rows.map(({ pick }) => pick));
+  const popularTitle = (pick: ChatPick) =>
+    t("models.chat.recommended.popularTitle", {
+      defaultValue: "{count} downloads in the last 30 days on Hugging Face (as of {date})",
+      count: pick.downloads ?? 0,
+      date: (pick.statsAsOf ?? "").slice(0, 10),
+    });
   return (
     <div className="models-page chat-models-page chat-recommended">
       <Panel
@@ -87,6 +124,20 @@ export function ChatRecommendedList({
                   {index === 0 ? (
                     <span className="badge accent">{t("models.chat.recommended.best", { defaultValue: "Best fit" })}</span>
                   ) : null}
+                  {(badges.get(pick.variantId) ?? []).map((badge) => (
+                    <span
+                      key={badge}
+                      className="badge"
+                      data-testid={`chat-recommended-${badge}`}
+                      title={badge === "popular" ? popularTitle(pick) : undefined}
+                    >
+                      {badge === "fastest"
+                        ? t("models.chat.recommended.fastest", { defaultValue: "Fastest" })
+                        : badge === "newest"
+                          ? t("models.chat.recommended.newest", { defaultValue: "Newest" })
+                          : t("models.chat.recommended.popular", { defaultValue: "Most popular" })}
+                    </span>
+                  ))}
                   <FitBadge fit={entry.fit} />
                 </div>
                 <p className="muted-text">{pickSummary(pick, gpu, tDashboard)}</p>

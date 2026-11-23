@@ -167,6 +167,11 @@ export interface ChatPick {
    * comparable card, else the bandwidth estimate. */
   tokS: number | null;
   tokSBasis: "measured" | "rtx4090" | "estimated" | null;
+  /** Hugging Face likes and last-30-day downloads of the repo, from a cached daily fetch; null offline or
+   * before the first fetch. ``statsAsOf`` is the ISO time of that fetch. */
+  likes?: number | null;
+  downloads?: number | null;
+  statsAsOf?: string | null;
   /** "NVIDIA GPU, 24 GB VRAM", "Apple Silicon, 64 GB unified memory"... */
   hardwareLabel?: string | null;
 }

@@ -4,6 +4,7 @@ import type { ChatPick } from "../../../types";
 import type { ModelFit } from "../../../types/models";
 import { makeChatFamily, makeChatVariant, makeLibraryItem } from "../../../components/models/__tests__/chatFixtures";
 import { ChatModelsPage, type ChatModelsPageProps } from "../ChatModelsPage";
+import { pickBadges } from "../ChatRecommendedList";
 
 // D-105 D / FU-457: with no chat model on disk Chat Models opens on the recommended rows, not on filters.
 
@@ -116,5 +117,52 @@ describe("Chat Models first run", () => {
     const mac = render({ recommendedPicks: [], hostSystem: { platform: "Darwin", arch: "arm64", gpuVramTotalGb: null } });
     expect(mac).not.toContain(">GPU memory");
     expect(mac).toContain(">RAM");
+  });
+});
+
+describe("Simple picks", () => {
+  it("marks the clearly fastest row on the list", () => {
+    const markup = render();
+    expect(markup.match(/data-testid="chat-recommended-fastest"/g)).toHaveLength(1);
+    expect(markup.indexOf("Other 9B GGUF")).toBeLessThan(markup.indexOf('data-testid="chat-recommended-fastest"'));
+    expect(markup).not.toContain('data-testid="chat-recommended-newest"');
+  });
+
+  it("awards Fastest and Newest to a strict leader only", () => {
+    const base = PICKS[0];
+    const a = { ...base, variantId: "a", tokS: 50, releaseDate: "2026-03" };
+    const b = { ...base, variantId: "b", tokS: 80, releaseDate: "2026-01" };
+    const c = { ...base, variantId: "c", tokS: 80, releaseDate: "2025-12-24" };
+    const badges = pickBadges([a, b, c]);
+    expect(badges.get("a")).toEqual(["newest"]);
+    expect(badges.has("b")).toBe(false);
+    expect(badges.has("c")).toBe(false);
+  });
+
+  it("awards Most popular to the strictly most downloaded row, and nothing offline", () => {
+    const base = PICKS[0];
+    const a = { ...base, variantId: "a", downloads: 1200, statsAsOf: "2026-11-23T04:00:00+00:00" };
+    const b = { ...base, variantId: "b", downloads: 90000, statsAsOf: "2026-11-23T04:00:00+00:00" };
+    expect(pickBadges([a, b]).get("b")).toEqual(["popular"]);
+    expect(pickBadges([a, { ...b, downloads: 1200 }]).size).toBe(0);
+    expect(pickBadges([a, { ...b, downloads: null }]).size).toBe(0);
+    expect(pickBadges([{ ...a, downloads: undefined }, { ...b, downloads: undefined }]).size).toBe(0);
+  });
+
+  it("shows the Most popular chip with its source and date on the list", () => {
+    const popular = [
+      { ...PICKS[0], downloads: 90000, statsAsOf: "2026-11-23T04:00:00+00:00" },
+      { ...PICKS[1], downloads: 1200, statsAsOf: "2026-11-23T04:00:00+00:00" },
+    ];
+    const markup = render({ recommendedPicks: popular });
+    expect(markup).toContain("Most popular");
+    expect(markup).toContain("in the last 30 days on Hugging Face (as of 2026-11-23)");
+    expect(render()).not.toContain("Most popular");
+  });
+
+  it("awards nothing for a single row or missing data", () => {
+    const base = PICKS[0];
+    expect(pickBadges([{ ...base, tokS: 90, releaseDate: "2026-03" }]).size).toBe(0);
+    expect(pickBadges([{ ...base, variantId: "x", tokS: null, releaseDate: null }, { ...base, variantId: "y", tokS: null, releaseDate: "" }]).size).toBe(0);
   });
 });

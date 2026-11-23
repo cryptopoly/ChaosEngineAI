@@ -279,6 +279,7 @@ def workspace(state: ChaosEngineState) -> dict[str, Any]:
 
     recommendation = apply_chat_picks(
         _best_fit_recommendation(system_stats), featured_models, system_stats, measured_speed_for=speed_lookup,
+        use_hf_stats=True,
     )
     launch_preferences = state._launch_preferences()
     return {

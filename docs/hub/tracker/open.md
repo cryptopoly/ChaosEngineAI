@@ -1,7 +1,7 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 274 rows with work, decisions or watch items still open, newest first.
+summary: 273 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
@@ -69,15 +69,6 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** Next sd.cpp pass on the 4090 or the Mac (needs a CUDA Toolkit or the 700 MB portable CUDA archives, and two builds)
 
 **Notes:** Not bumped on 2026-11-23. 11 commits, one large: DGL (a scripting language for pipelines, #2396) adds `src/dgl/*`, removes `src/pipeline/*` and rewrites the model docs with "Legacy CLI" sections. CLI flags in the `minimax_h3.md` legacy section are unchanged; reference videos may now be files (AVI, WebP, VP8 WebM). CMake: `SD_CUDA` unchanged, the MSVC parallel count now uses physical cores, WebP builds now also need `webpdemux`. Also MOSS-Image edit LoRAs, a LoRA tensor-count fix, H3 VAE speed-ups. The table requires a real Qwen-Image 2.1 sd.cpp image on the old and the new build; this PC has no CUDA Toolkit and no cached sd build. **To do:** build both commits (`scripts/build-sdcpp.ps1` with `SDCPP_REF`, `SDCPP_CUDA_ARCHITECTURES=89`), compare the `leejet/Qwen-Image-2.1-GGUF-q4k` image, re-read `_build_h3_cli_args` against the legacy CLI section, then move `SDCPP_REF` in `build-sdcpp.sh`, `update-sdcpp.sh`, `build-sdcpp.ps1` and `update-sdcpp.ps1`.
-
-</details>
-
-<details>
-<summary>FU-562 · Transformers 5.24.0 for the stt-gpu asr-site (was 5.23.0) — Done</summary>
-
-**Status or trigger:** Done
-
-**Notes:** Bumped on 2026-11-23 after a re-run on the RTX 4090. Throwaway voice venv (`E:\tmp\stt-home`, PyTorch 2.9.1 cu128, since deleted) with the 5.23.0 and the 5.24.0 `asr-site` side by side; both pass the add-on's import check (the auto classes and `torch.cuda.is_available()`). 5.24.0's requirements are the same as 5.23.0's (tokenizers >=0.23.1,<0.24, safetensors >=0.8, regex >=2025.10.22, huggingface-hub >=1.31,<3), so tokenizers 0.23.3, safetensors 0.8.0, regex 2026.11.19 and accelerate 1.16.0 stay. Each row ran through the real voice worker subprocess (`voice_worker.py` -> `voice_worker_asr.py`, pinned snapshots from `E:\AI Models`) on two Kokoro speech clips (3.7 s and 5.0 s): Qwen3-ASR 1.7B and 0.6B and Granite Speech 5.0 2B with the forced aligner, Parakeet TDT v3 plain and with native words, Nemotron 3.5 ASR plain, native words and aligner words. Every case gave the same transcript, the same words and the same word times (to the 10 ms the reply rounds to) on 5.23.0 and 5.24.0, the same peak GPU memory, and the same warnings (only the `max_length` generation note). Not run: Nemotron 3.5 Transcribe 30B-A4B (67.5 GB, needs an 80 GB card, not downloaded), longer than 30 s recordings (window cuts), non-English speech, and the add-on install through the app's own route (the venv was built by hand with the same commands).
 
 </details>
 

@@ -1,7 +1,7 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 127 shipped, obsoleted or dropped rows, newest first.
+summary: 128 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
@@ -24,6 +24,15 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** **Fixed 2026-11-23** (shorter `make_sound` and `make_lipsync_shot` descriptions, example, `audio` maxLength, golden refreshed; `moss-image` and `kandinsky-6` size rows, both marked unverified). Next agent-bridge change, before the merge
 
 **Notes:** Found by the WSL2 pass 2026-11-23 and reproduced on Windows: `test_agent_guide::test_every_real_tool_is_in_the_guide` (`make_lipsync_shot` missing from AGENTS.md Tools) and 7 in `test_mcp_contract.py` (`make_lipsync_shot` has no example, scope or `maxLength` on `audio`; `make_sound` description 311 characters against the 260 cap; golden tools list stale, regenerate with `UPDATE_MCP_GOLDEN=1` once the tool is final). Not a platform bug.
+
+</details>
+
+<details>
+<summary>FU-562 · Transformers 5.24.0 for the stt-gpu asr-site (was 5.23.0) — Shipped 2026-11-23.</summary>
+
+**Status or trigger:** **Shipped 2026-11-23.**
+
+**Notes:** Bumped on 2026-11-23 after a re-run on the RTX 4090. Throwaway voice venv (`E:\tmp\stt-home`, PyTorch 2.9.1 cu128, since deleted) with the 5.23.0 and the 5.24.0 `asr-site` side by side; both pass the add-on's import check (the auto classes and `torch.cuda.is_available()`). 5.24.0's requirements are the same as 5.23.0's (tokenizers >=0.23.1,<0.24, safetensors >=0.8, regex >=2025.10.22, huggingface-hub >=1.31,<3), so tokenizers 0.23.3, safetensors 0.8.0, regex 2026.11.19 and accelerate 1.16.0 stay. Each row ran through the real voice worker subprocess (`voice_worker.py` -> `voice_worker_asr.py`, pinned snapshots from `E:\AI Models`) on two Kokoro speech clips (3.7 s and 5.0 s): Qwen3-ASR 1.7B and 0.6B and Granite Speech 5.0 2B with the forced aligner, Parakeet TDT v3 plain and with native words, Nemotron 3.5 ASR plain, native words and aligner words. Every case gave the same transcript, the same words and the same word times (to the 10 ms the reply rounds to) on 5.23.0 and 5.24.0, the same peak GPU memory, and the same warnings (only the `max_length` generation note). Not run: Nemotron 3.5 Transcribe 30B-A4B (67.5 GB, needs an 80 GB card, not downloaded), longer than 30 s recordings (window cuts), non-English speech, and the add-on install through the app's own route (the venv was built by hand with the same commands).
 
 </details>
 

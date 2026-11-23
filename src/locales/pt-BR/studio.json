@@ -2238,7 +2238,18 @@
       "timingWorking": "Cronometrando a letra…",
       "title": "Música",
       "untitled": "Sem título",
-      "longerThanFilm": "A música tem {song}; os planos somam {film}. As linhas após {film} não aparecem até o filme ter esse tamanho."
+      "longerThanFilm": "A música tem {song}; os planos somam {film}. As linhas após {film} não aparecem até o filme ter esse tamanho.",
+      "vocals": {
+        "title": null,
+        "hint": null,
+        "cut": null,
+        "stemRemove": null,
+        "stem": null,
+        "stemUse": null,
+        "working": null,
+        "attach": null,
+        "done": null
+      }
     },
     "unsaved": {
       "title": "Seu texto não foi salvo",

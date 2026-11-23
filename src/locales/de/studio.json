@@ -2238,7 +2238,18 @@
       "timingWorking": "Liedtext wird zeitlich gesetzt …",
       "title": "Song",
       "untitled": "Ohne Titel",
-      "longerThanFilm": "Der Song dauert {song}; die Shots ergeben zusammen {film}. Zeilen nach {film} werden erst angezeigt, wenn der Film so lang ist."
+      "longerThanFilm": "Der Song dauert {song}; die Shots ergeben zusammen {film}. Zeilen nach {film} werden erst angezeigt, wenn der Film so lang ist.",
+      "vocals": {
+        "title": null,
+        "hint": null,
+        "cut": null,
+        "stemRemove": null,
+        "stem": null,
+        "stemUse": null,
+        "working": null,
+        "attach": null,
+        "done": null
+      }
     },
     "unsaved": {
       "title": "Dein Text wurde nicht gespeichert",

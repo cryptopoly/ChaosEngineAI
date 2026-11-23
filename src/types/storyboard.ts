@@ -501,6 +501,13 @@ export interface StoryboardSongAnalysis {
   note: string;
 }
 
+/** What `POST .../song/vocals` did (FU-371): shots that got their slice of the vocal, and why the others did not. */
+export interface StoryboardSongVocals {
+  source: "stem" | "song";
+  attached: number;
+  skipped: { shotId: string; number: number; reason: string }[];
+}
+
 export interface StoryboardPlanChanges {
   edits: ({ shotId: string } & Partial<Omit<StoryboardPlannedShot, "referenceImages">>)[];
   add: (StoryboardPlannedShot & { after: string | null })[];

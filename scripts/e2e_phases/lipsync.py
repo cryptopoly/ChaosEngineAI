@@ -8,6 +8,11 @@ Mouth-to-audio sync itself is not scored here (that needs a face landmarker the 
 Two more contract checks need no model: the ``make_lipsync_shot`` agent tool is listed and refuses a missing still in
 words (Agent access is switched on for the call and put back), and a Storyboard shot takes a WAV vocal through
 ``set_vocal_clip``, refuses a text file and clears it (a throwaway project, deleted afterwards).
+
+Phase 2 (D-110, FU-371 to FU-373): more than 4 takes is refused; a shot keeps its vocal start, sung switch and take
+count; "song to shots" gives each shot of a throwaway project its slice of a synthetic song with the 0.4 s lead-in
+(no model); and with the real model a second shot runs 2 takes and checks that one is kept and the other is a
+gallery clip (the sync score needs MediaPipe, so the takes may come back unscored; the note then says so).
 """
 
 from __future__ import annotations
@@ -110,7 +115,87 @@ def run(cap: Any, suite: Any):
         motion = _frame_motion(Path(art["videoPath"]))
         if motion is not None and motion < 0.5:
             return "fail", f"the picture barely changes (mean frame difference {motion:.2f})", {}
+        state["still"], state["line"] = still, str(folder / "line.wav")
         return "pass", "", {"timings": art.get("timings"), "frameMotion": motion}
+
+    def takes_refused_over_four():
+        code, data = api("POST", "/api/video/generate", {
+            "modelId": CUDA_REPO, "prompt": "x", "numFrames": 121, "startImagePath": "nope.png", "audioPath": "nope.wav",
+            "lipSyncTakes": 5})
+        return ("pass", "", {"http": code}) if code == 422 else ("fail", f"HTTP {code}, wanted 422: {str(data)[:200]}", {})
+
+    def real_takes():
+        if not state.get("still"):
+            return "skip", "no real lip-sync shot was made above", {}
+        code, res = api("POST", "/api/video/generate", {
+            "modelId": CUDA_REPO, "prompt": "A woman talks to the camera, natural head movement, static camera.",
+            "width": 768, "height": 512, "numFrames": 121, "fps": 24, "seed": 42, "lipSyncTakes": 2,
+            "startImagePath": state["still"], "audioPath": state["line"]}, timeout=3600.0)
+        if code == 503:
+            return "skip", f"memory gate: {res.get('detail') if isinstance(res, dict) else res}", {}
+        if code != 200:
+            return "fail", f"HTTP {code}: {str(res)[:300]}", {}
+        art = res["artifact"]
+        takes = art.get("lipSyncTakes") or []
+        kept = [t for t in takes if t.get("kept")]
+        gallery = {o.get("artifactId") for o in res.get("outputs") or []}
+        others = [t["artifactId"] for t in takes if not t.get("kept")]
+        if len(takes) != 2 or len(kept) != 1 or not all(o in gallery for o in others):
+            return "fail", f"takes {takes!r}; other takes in the gallery: {[o in gallery for o in others]}", {}
+        return "pass", "", {"takes": [(t["seed"], (t.get("score") or {}).get("score"), t["kept"]) for t in takes],
+                            "note": str(art.get("runtimeNote"))[-200:]}
+
+    def song_to_shots():
+        # FU-371: a throwaway project with two 4 s shots and a synthetic 12 s song; each shot gets its vocal slice.
+        import math
+        import struct
+        import wave
+
+        code, made = api("POST", "/api/storyboard/projects", {"name": "E2E song to lip-sync shots"})
+        if code == 404:
+            return "skip", "storyboard not present in this build", {}
+        if code != 200:
+            return "fail", f"create project: HTTP {code}", {}
+        pid, rev = made["project"]["id"], made["project"]["revision"]
+        folder = Path(tempfile.mkdtemp(prefix="e2e-song-vocals-"))
+        try:
+            for _ in range(2):
+                code, body = api("POST", f"/api/storyboard/projects/{pid}/ops",
+                                 {"revision": rev, "op": "add_shot", "args": {"seconds": 4, "trimOut": 4}})
+                if code != 200:
+                    return "fail", f"add_shot: HTTP {code}", {}
+                rev = body["project"]["revision"]
+            song = folder / "song.wav"
+            with wave.open(str(song), "wb") as out:
+                out.setnchannels(1)
+                out.setsampwidth(2)
+                out.setframerate(16000)
+                out.writeframes(b"".join(struct.pack("<h", int(8000 * math.sin(2 * math.pi * 220 * i / 16000)))
+                                         for i in range(16000 * 12)))
+            code, body = api("POST", f"/api/storyboard/projects/{pid}/song", {"revision": rev, "path": str(song)}, timeout=300)
+            if code != 200:
+                return "fail", f"attach song: HTTP {code} {str(body)[:200]}", {}
+            rev = body["project"]["revision"]
+            code, body = api("POST", f"/api/storyboard/projects/{pid}/song/vocals", {"revision": rev}, timeout=300)
+            if code != 200:
+                return "fail", f"song/vocals: HTTP {code} {str(body)[:200]}", {}
+            rev = body["project"]["revision"]
+            shots = body["project"]["shots"]
+            got = [(s.get("trimIn"), bool(s.get("vocalClip")), s.get("vocalSinging")) for s in shots]
+            if got != [(0.0, True, True), (0.4, True, True)] or body["vocals"]["attached"] != 2:
+                return "fail", f"shots {got}, vocals {body.get('vocals')}", {}
+            code, body = api("POST", f"/api/storyboard/projects/{pid}/ops", {"revision": rev, "op": "edit_shot", "args": {
+                "shotId": shots[1]["id"], "vocalStart": 0.2, "vocalTakes": 4}})
+            shot = (body or {}).get("project", {}).get("shots", [{}, {}])[1] if code == 200 else {}
+            if code != 200 or (shot.get("vocalStart"), shot.get("vocalTakes")) != (0.2, 4):
+                return "fail", f"edit_shot vocal fields: HTTP {code} {shot}", {}
+            rev = body["project"]["revision"]
+            return "pass", "", {"timelineTotal": body["timeline"]["total"]}
+        finally:
+            api("DELETE", f"/api/storyboard/projects/{pid}?revision={rev}")
+            for item in folder.iterdir():
+                item.unlink(missing_ok=True)
+            folder.rmdir()
 
     def agent_tool():
         # make_lipsync_shot on the agent bridge: listed, and a missing still is refused in words before any job starts.
@@ -187,7 +272,10 @@ def run(cap: Any, suite: Any):
         ("audioPath on a row that cannot lip-sync is refused", refuses_a_row_without_lip_sync),
         ("make_lipsync_shot is on the agent bridge and refuses a missing still in words", agent_tool),
         ("a Storyboard shot takes a WAV vocal, refuses a text file and clears it", vocal_clip_op),
+        ("more than 4 lip-sync takes is refused", takes_refused_over_four),
+        ("song to shots: each shot gets its vocal slice with a 0.4 s lead-in, and keeps its vocal fields", song_to_shots),
         ("a Kokoro line and a still make a 5 s lip-sync clip with the line as its sound", real_shot),
+        ("2 takes of that shot: one kept, the other in the Video Gallery", real_takes),
     ]:
         phase.checks.append(suite._check(name, fn))
     fails = [c for c in phase.checks if c.status == "fail"]

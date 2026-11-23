@@ -199,3 +199,17 @@ button.song-ruler__label:focus-visible {
 .song-lyrics__done p {
   margin: 0;
 }
+/* Song to lip-sync shots (FU-371) */
+.song-vocals {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.song-vocals h4 {
+  margin: 0;
+}
+.song-vocals ul {
+  margin: 0;
+  padding-left: 18px;
+}

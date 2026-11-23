@@ -2238,7 +2238,18 @@
       "timingWorking": "Расстановка текста по времени…",
       "title": "Песня",
       "untitled": "Без названия",
-      "longerThanFilm": "Песня длится {song}; кадры в сумме дают {film}. Строки после {film} не показываются, пока фильм не станет такой длины."
+      "longerThanFilm": "Песня длится {song}; кадры в сумме дают {film}. Строки после {film} не показываются, пока фильм не станет такой длины.",
+      "vocals": {
+        "title": null,
+        "hint": null,
+        "cut": null,
+        "stemRemove": null,
+        "stem": null,
+        "stemUse": null,
+        "working": null,
+        "attach": null,
+        "done": null
+      }
     },
     "unsaved": {
       "title": "Ваш текст не сохранён",

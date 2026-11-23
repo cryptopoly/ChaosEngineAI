@@ -954,7 +954,7 @@
       "readOnlyHint": false,
       "title": "Storyboard song and cut plan"
     },
-    "description": "Edit: the song a music video is cut to. attach(library_id or path), get, edit(lyrics, sections, bpm, title), remove, cut_plan(seconds; shots on its beats; apply: true replaces shots, one undo), lyric_captions(timing).",
+    "description": "Edit: the song a music video is cut to. attach(library_id or path), get, edit(lyrics, sections, bpm, title), remove, cut_plan(seconds; shots on beats; apply replaces shots), lyric_captions(timing), vocals(path: vocal stem; lip-sync slice per shot).",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -965,7 +965,8 @@
             "edit",
             "remove",
             "cut_plan",
-            "lyric_captions"
+            "lyric_captions",
+            "vocals"
           ],
           "type": "string"
         },
@@ -1004,7 +1005,7 @@
           "type": "number"
         },
         "path": {
-          "description": "attach: upload: handle or a file in the app's output folders.",
+          "description": "attach, vocals: upload: handle or a file in the app's output folders. vocals without path slices the song itself (a stem follows better).",
           "type": "string"
         },
         "project_id": {

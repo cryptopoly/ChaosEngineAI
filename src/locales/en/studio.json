@@ -2238,7 +2238,18 @@
       "timingWorking": "Timing the lyrics…",
       "title": "Song",
       "untitled": "Untitled",
-      "longerThanFilm": "The song runs {song}; the shots add up to {film}. Lines after {film} do not show until the film is that long."
+      "longerThanFilm": "The song runs {song}; the shots add up to {film}. Lines after {film} do not show until the film is that long.",
+      "vocals": {
+        "title": "Lip-sync the song",
+        "hint": "1. Cut the song into sung shots of {min} to {max} s. 2. Give each shot its part of the vocal: it starts 0.4 s before the shot, is marked sung and makes 3 takes. A vocal stem (the voice alone) follows best; without one the song itself is used.",
+        "cut": "Cut for singing ({min} to {max} s shots)",
+        "stemRemove": "Use the song instead",
+        "stem": "Vocal stem (optional, WAV or FLAC)",
+        "stemUse": "Use this stem",
+        "working": "Cutting the vocal…",
+        "attach": "Give each shot its vocal",
+        "done": "{attached, plural, =0 {No shot got a vocal} one {# shot got its vocal} other {# shots got their vocal}} from the {source, select, stem {stem} other {song}}."
+      }
     },
     "unsaved": {
       "title": "Your text was not saved",

@@ -2238,7 +2238,18 @@
       "timingWorking": null,
       "title": null,
       "untitled": null,
-      "longerThanFilm": null
+      "longerThanFilm": null,
+      "vocals": {
+        "title": null,
+        "hint": null,
+        "cut": null,
+        "stemRemove": null,
+        "stem": null,
+        "stemUse": null,
+        "working": null,
+        "attach": null,
+        "done": null
+      }
     },
     "unsaved": {
       "title": null,

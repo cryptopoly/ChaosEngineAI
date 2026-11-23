@@ -2238,7 +2238,18 @@
       "timingWorking": "歌詞のタイミングを合わせています…",
       "title": "曲",
       "untitled": "無題",
-      "longerThanFilm": "曲は {song} です。ショットの合計は {film} です。映画が {film} になるまで、{film} 以降の歌詞は表示されません。"
+      "longerThanFilm": "曲は {song} です。ショットの合計は {film} です。映画が {film} になるまで、{film} 以降の歌詞は表示されません。",
+      "vocals": {
+        "title": null,
+        "hint": null,
+        "cut": null,
+        "stemRemove": null,
+        "stem": null,
+        "stemUse": null,
+        "working": null,
+        "attach": null,
+        "done": null
+      }
     },
     "unsaved": {
       "title": "テキストは保存されませんでした",

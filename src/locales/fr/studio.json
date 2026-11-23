@@ -2238,7 +2238,18 @@
       "timingWorking": "Calage des paroles…",
       "title": "Chanson",
       "untitled": "Sans titre",
-      "longerThanFilm": "La chanson dure {song} ; les plans totalisent {film}. Les lignes après {film} ne s'affichent pas tant que le film n'a pas cette durée."
+      "longerThanFilm": "La chanson dure {song} ; les plans totalisent {film}. Les lignes après {film} ne s'affichent pas tant que le film n'a pas cette durée.",
+      "vocals": {
+        "title": null,
+        "hint": null,
+        "cut": null,
+        "stemRemove": null,
+        "stem": null,
+        "stemUse": null,
+        "working": null,
+        "attach": null,
+        "done": null
+      }
     },
     "unsaved": {
       "title": "Votre texte n'a pas été enregistré",

@@ -2238,7 +2238,18 @@
       "timingWorking": "Sincronizando la letra…",
       "title": "Canción",
       "untitled": "Sin título",
-      "longerThanFilm": "La canción dura {song}; los planos suman {film}. Las líneas posteriores a {film} no se muestran hasta que la película tenga esa duración."
+      "longerThanFilm": "La canción dura {song}; los planos suman {film}. Las líneas posteriores a {film} no se muestran hasta que la película tenga esa duración.",
+      "vocals": {
+        "title": null,
+        "hint": null,
+        "cut": null,
+        "stemRemove": null,
+        "stem": null,
+        "stemUse": null,
+        "working": null,
+        "attach": null,
+        "done": null
+      }
     },
     "unsaved": {
       "title": "Tu texto no se guardó",

@@ -2238,7 +2238,18 @@
       "timingWorking": "正在為歌詞計時…",
       "title": "歌曲",
       "untitled": "未命名",
-      "longerThanFilm": "歌曲長 {song};鏡頭合計 {film}。在影片長度達到 {film} 之前,超出 {film} 的歌詞行不會顯示。"
+      "longerThanFilm": "歌曲長 {song};鏡頭合計 {film}。在影片長度達到 {film} 之前,超出 {film} 的歌詞行不會顯示。",
+      "vocals": {
+        "title": null,
+        "hint": null,
+        "cut": null,
+        "stemRemove": null,
+        "stem": null,
+        "stemUse": null,
+        "working": null,
+        "attach": null,
+        "done": null
+      }
     },
     "unsaved": {
       "title": "您的文字未儲存",

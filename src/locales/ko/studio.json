@@ -2238,7 +2238,18 @@
       "timingWorking": "가사 타이밍을 맞추는 중…",
       "title": "노래",
       "untitled": "제목 없음",
-      "longerThanFilm": "노래 길이는 {song}이고, 컷의 합계는 {film}입니다. 영상이 {film}이 되기 전까지 {film} 이후의 가사는 표시되지 않습니다."
+      "longerThanFilm": "노래 길이는 {song}이고, 컷의 합계는 {film}입니다. 영상이 {film}이 되기 전까지 {film} 이후의 가사는 표시되지 않습니다.",
+      "vocals": {
+        "title": null,
+        "hint": null,
+        "cut": null,
+        "stemRemove": null,
+        "stem": null,
+        "stemUse": null,
+        "working": null,
+        "attach": null,
+        "done": null
+      }
     },
     "unsaved": {
       "title": "입력한 텍스트가 저장되지 않았습니다",

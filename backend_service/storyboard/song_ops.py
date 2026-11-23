@@ -22,13 +22,14 @@ from backend_service.storyboard.models import (
     MAX_SONG_SECONDS,
     AudioClip,
     AudioSource,
+    Id,
     Line,
     Project,
     Song,
     SongSection,
     new_id,
 )
-from backend_service.storyboard.ops import OpError, _Args, _import, _seconds
+from backend_service.storyboard.ops import OpError, _Args, _import, _seconds, _shot
 
 Beat = Annotated[float, Field(ge=0, le=MAX_SONG_SECONDS)]
 
@@ -56,6 +57,20 @@ class EditSong(_Args):
 
 class ClearSong(_Args):
     removeClip: bool = True
+
+
+class ShotVocal(_Args):
+    shotId: Id
+    audio: str = Field(min_length=1, max_length=4096)  # the slice made by ``song_vocals`` (a temporary WAV)
+    lead: float = Field(ge=0, le=1)
+    length: float = Field(gt=0, le=60)
+    singing: bool = True
+
+
+class SetShotVocals(_Args):
+    """Song to lip-sync shots (FU-371): each shot's slice of the vocal, in one op (one Undo)."""
+
+    items: list[ShotVocal] = Field(min_length=1, max_length=500)
 
 
 def _need_song(p: Project) -> Song:
@@ -117,10 +132,25 @@ def clear_song(p: Project, folder: Path, a: ClearSong) -> None:
     p.song = None
 
 
+def set_shot_vocals(p: Project, folder: Path, a: SetShotVocals) -> None:
+    """Attach each slice as the shot's vocal; the shot grows by its lead-in, cut off again by ``trimIn``."""
+    stamp = int(time.time() * 1000)
+    for item in a.items:
+        shot = _shot(p, item.shotId)
+        rel, _digest, _src = _import(folder, item.audio, {"audio"}, f"media/{shot.id}/vocal-{stamp}")
+        shot.vocalClip = rel
+        shot.vocalStart = 0.0
+        shot.vocalSinging = item.singing
+        shot.seconds = round(item.lead + item.length, 3)
+        shot.trimIn = item.lead
+        shot.trimOut = round(item.lead + item.length, 3)
+
+
 # name -> (argument model, change function, reversible); merged into ops.OPS
 SONG_OPS = {
     "set_song": (SetSong, set_song, True),
     "edit_song": (EditSong, edit_song, True),
     "clear_song": (ClearSong, clear_song, True),
+    "set_shot_vocals": (SetShotVocals, set_shot_vocals, True),
 }
 SONG_FILE_ARGS = {"set_song": (("path", {"audio"}),)}

@@ -3,6 +3,7 @@ import type { LaunchPreferences, LoadModelActionResult, WorkspaceData } from "..
 import type { TabRequest } from "../constants";
 import { syncRuntime } from "../utils";
 import type { LoadModelPayload } from "./context";
+import { moeCpuLayersForLoad } from "../components/MoeOffloadField";
 
 type Dispatch<T> = (value: T | ((current: T) => T)) => void;
 
@@ -60,6 +61,7 @@ export async function performLoadModel(
       speculativeDecoding: sanitizedSpeculative.speculativeDecoding,
       treeBudget: sanitizedSpeculative.treeBudget,
       kvBudget: payload.kvBudget ?? launchSettings.kvBudget,
+      moeCpuLayers: moeCpuLayersForLoad(launchSettings, payload.modelRef),
     };
 
     let loadSucceeded = false;

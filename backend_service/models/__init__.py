@@ -23,6 +23,8 @@ class LoadModelRequest(BaseModel):
     speculativeDecoding: bool = False
     treeBudget: int = Field(default=0, ge=0, le=64)
     adapterPath: str | None = None
+    # llama.cpp only (FU-550): leading layers whose mixture-of-experts weights stay in system RAM; None = automatic.
+    moeCpuLayers: int | None = Field(default=None, ge=0, le=512)
 
 
 class ModelDirectoryRequest(BaseModel):

@@ -699,7 +699,8 @@
       "tight": "Впритык",
       "unknown": "Не для этого компьютера",
       "needsAccess": null,
-      "wontFit": "Не поместится"
+      "wontFit": "Не поместится",
+      "fitsOffload": null
     },
     "image": {
       "emptyAttention": "Ни одна модель изображений не требует внимания.",

@@ -248,5 +248,16 @@
     "runInTerminal": "ターミナルで実行し、その後 ChaosEngineAI を再起動してください。",
     "updating": "アップデート中...",
     "updateAvailable": "アップデートあり"
+  },
+  "moeOffload": {
+    "label": null,
+    "auto": null,
+    "autoShort": null,
+    "autoWithCount": null,
+    "none": null,
+    "layers": null,
+    "hint": null,
+    "aboutTitle": null,
+    "body": null
   }
 }

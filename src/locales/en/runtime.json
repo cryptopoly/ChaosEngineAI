@@ -248,5 +248,16 @@
     "runInTerminal": "Run in your terminal, then restart ChaosEngineAI.",
     "updating": "Updating...",
     "updateAvailable": "Update available"
+  },
+  "moeOffload": {
+    "label": "Experts in system RAM",
+    "auto": "Automatic",
+    "autoShort": "Auto",
+    "autoWithCount": "Automatic (about {count} of {total} layers)",
+    "none": "None, all on the GPU",
+    "layers": "{count} of {total} layers",
+    "hint": "A mixture-of-experts model uses a few experts per token, so their weights can wait in system RAM and run on the CPU while the rest stays on the GPU. More layers in RAM use less GPU memory and reply more slowly. Automatic now: about {gpu} GB on the GPU, {ram} GB in system RAM.",
+    "aboutTitle": "About experts in system RAM",
+    "body": "Automatic keeps everything on the GPU when it fits. When it does not, and Fit in memory is on, the engine moves experts to system RAM one layer at a time until the model fits; with Fit in memory off, ChaosEngineAI picks the count from the GPU's free memory. Measured on an RTX 4090 with a 35B model that reads 3B parameters per token: 150 tokens per second with every expert on the GPU, about 85 with half the layers in RAM, about 52 with all of them in RAM."
   }
 }

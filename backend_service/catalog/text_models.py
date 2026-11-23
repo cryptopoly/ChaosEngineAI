@@ -409,6 +409,37 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 "releaseDate": "2026-08",
             },
             {
+                # FU-550: the 2-bit build for a 24 GB card + 64 GB of RAM, with expert offload. Checked on the Hub
+                # 2026-11-23 (commit ed59f92): Q2_0 shards 37.6 + 28.8 GB, the second is the per-layer n-gram
+                # embedding table, which llama.cpp keeps in system RAM anyway; Q2_0 is a mainline type (b12649's
+                # quantizer lists it). activeParamsB from the base config.json: 10 of 512 routed experts
+                # (moe_intermediate 640, hidden 2560, 48 layers) = 2.4B, plus the shared expert, attention and
+                # head, about 4B. Untested: not downloaded or run here.
+                "id": "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF-q2-0",
+                "name": "Qwen3.8 Flash Next GGUF Q2_0 (GSQ-RCO)",
+                "repo": "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF",
+                "link": "https://huggingface.co/ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF",
+                "paramsB": 125.0,
+                "activeParamsB": 4.0,
+                "sizeGb": 66.4,
+                "format": "GGUF",
+                "quantization": "Q2_0",
+                "ggufFile": "Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf",
+                "capabilities": ["reasoning", "coding", "agents", "tool-use"],
+                "note": (
+                    "2-bit build with a precision chosen per tensor (ISTA-DASLab GSQ-RCO, 96 % of the base "
+                    "model's task average by the publisher's measurements). On a 24 GB NVIDIA card with 64 GB of "
+                    "RAM it should load with the experts of most layers in system RAM (expert offload); not yet "
+                    "run on that machine. A Mac needs about 76 GB for it (128 GB or more). Inherits the base "
+                    "model's licence."
+                ),
+                "contextWindow": "262K",
+                "launchMode": "direct",
+                "backend": "llama.cpp",
+                # No releaseDate on purpose: an untested row must not become the family's "best fit" on a big
+                # Mac, where its 125B paramsB would outrank the measured 27B rows.
+            },
+            {
                 "id": "mlx-community/Qwen3.8-27B-8bit",
                 "name": "Qwen3.8 27B MLX 8-bit",
                 "repo": "mlx-community/Qwen3.8-27B-8bit",

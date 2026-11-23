@@ -699,7 +699,8 @@
       "tight": "紧张",
       "unknown": "不适合本机",
       "needsAccess": null,
-      "wontFit": "放不下"
+      "wontFit": "放不下",
+      "fitsOffload": null
     },
     "image": {
       "emptyAttention": "没有需要关注的图像模型。",

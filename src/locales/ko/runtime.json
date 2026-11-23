@@ -248,5 +248,16 @@
     "runInTerminal": "터미널에서 실행한 다음 ChaosEngineAI를 다시 시작하세요.",
     "updating": "업데이트 중...",
     "updateAvailable": "업데이트 가능"
+  },
+  "moeOffload": {
+    "label": null,
+    "auto": null,
+    "autoShort": null,
+    "autoWithCount": null,
+    "none": null,
+    "layers": null,
+    "hint": null,
+    "aboutTitle": null,
+    "body": null
   }
 }

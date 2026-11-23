@@ -699,7 +699,8 @@
       "tight": "Juste",
       "unknown": "Pas pour cette machine",
       "needsAccess": null,
-      "wontFit": "Ne tient pas"
+      "wontFit": "Ne tient pas",
+      "fitsOffload": null
     },
     "image": {
       "emptyAttention": "Aucun modèle d'image ne demande d'attention.",

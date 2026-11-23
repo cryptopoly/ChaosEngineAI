@@ -248,5 +248,16 @@
     "runInTerminal": "Im Terminal ausführen und dann ChaosEngineAI neu starten.",
     "updating": "Wird aktualisiert...",
     "updateAvailable": "Update verfügbar"
+  },
+  "moeOffload": {
+    "label": null,
+    "auto": null,
+    "autoShort": null,
+    "autoWithCount": null,
+    "none": null,
+    "layers": null,
+    "hint": null,
+    "aboutTitle": null,
+    "body": null
   }
 }

@@ -42,4 +42,17 @@ export interface PreviewMetrics {
   bandwidthGbps?: number;
   bandwidthLabel?: string;
   bandwidthKnown?: boolean;
+  /** A mixture-of-experts GGUF on a discrete NVIDIA card (FU-550): its layer count and how many layers' experts
+   * would stay in system RAM to fit the card's free memory now (``autoCpuLayers``, null when that cannot be read). */
+  moeOffload?: MoeOffloadPreview | null;
+}
+
+export interface MoeOffloadPreview {
+  blocks: number;
+  moeLayers: number;
+  expertGb: number;
+  autoCpuLayers: number | null;
+  gpuGb: number;
+  ramGb: number;
+  freeGpuGb: number | null;
 }

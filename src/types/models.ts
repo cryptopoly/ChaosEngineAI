@@ -15,6 +15,15 @@ export interface ModelFit {
   headroomPct: number | null;
   reason: string;
   basis: "measured" | "estimated";
+  /** A mixture of experts that fits a discrete card with some experts in system RAM (FU-550). */
+  offload?: {
+    cpuMoeLayers: number | null;
+    moeLayers: number | null;
+    blocks: number | null;
+    gpuGb: number;
+    ramGb: number;
+    expertGb: number;
+  };
 }
 
 export interface ModelVariant {
@@ -113,4 +122,9 @@ export interface LaunchPreferences {
    * 2048 matches the upstream default + the spike-validated value
    * on Qwen2.5-0.5B (2.6× speedup, identical output). */
   kvBudget: number;
+  /** llama.cpp only (FU-550): leading layers whose mixture-of-experts weights stay in system RAM.
+   * ``null`` / absent: automatic. Not saved with the launch preferences: it belongs to one model. */
+  moeCpuLayers?: number | null;
+  /** The model ``moeCpuLayers`` was chosen for; any other model loads with automatic. */
+  moeCpuLayersFor?: string | null;
 }

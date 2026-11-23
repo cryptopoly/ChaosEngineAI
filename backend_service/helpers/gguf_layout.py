@@ -10,6 +10,10 @@ Both match this split to the MiB. The compute buffer is dominated by the output 
 
 Only the header is read (no tensor data); sizes come from the gaps between tensor offsets, so no table of
 quantisation block sizes is needed. Split files (``-00001-of-0000N``) are summed.
+
+A mixture-of-experts file also gets the size of its routed expert tensors per block (``expert_bytes_by_layer``),
+named the way llama.cpp's ``--n-cpu-moe`` matches them (``blk.N.ffn_{up,down,gate,gate_up}_{,ch}exps``); shared
+experts (``_shexp``) and the router stay on the GPU. ``helpers.moe_offload`` uses it (FU-550).
 """
 from __future__ import annotations
 
@@ -28,6 +32,8 @@ _LOGIT_BYTES = 4
 # Measured compute buffers were 1.0x and 1.1x the logits size; the rest is the attention scratch.
 _COMPUTE_MARGIN = 1.1
 _SPLIT_RE = re.compile(r"-(\d{5})-of-(\d{5})\.gguf$", re.IGNORECASE)
+# llama.cpp's own pattern for the tensors ``--n-cpu-moe`` / ``--cpu-moe`` keep in system memory.
+_EXPERT_TENSOR_RE = re.compile(r"^blk\.(\d+)\.ffn_(?:up|down|gate|gate_up)_(?:ch)?exps\.")
 
 
 @dataclass(frozen=True)
@@ -37,6 +43,12 @@ class GgufLayout:
     host_bytes: int
     vocab: int
     tied_output: bool
+    # Routed expert bytes per block index (0 for a dense block); empty for a dense model.
+    expert_bytes_by_layer: tuple[int, ...] = ()
+
+    @property
+    def expert_bytes(self) -> int:
+        return sum(self.expert_bytes_by_layer)
 
     def compute_buffer_bytes(self) -> int:
         """llama.cpp's GPU compute buffer, about the logits of one 512-token micro-batch."""
@@ -133,7 +145,16 @@ def _layout_cached(path_str: str, _mtime: float) -> GgufLayout | None:
     gpu = total - host + (sizes.get("token_embd.weight", 0) if tied else 0)
     embd_dims = dims.get("token_embd.weight") or []
     vocab = int(embd_dims[1]) if len(embd_dims) >= 2 else 0
-    return GgufLayout(total_bytes=total, gpu_bytes=gpu, host_bytes=host, vocab=vocab, tied_output=tied)
+    experts: dict[int, int] = {}
+    for name, size in sizes.items():
+        match = _EXPERT_TENSOR_RE.match(name)
+        if match:
+            block = int(match.group(1))
+            experts[block] = experts.get(block, 0) + size
+    by_layer = tuple(experts.get(i, 0) for i in range(max(experts) + 1)) if experts else ()
+    return GgufLayout(
+        total_bytes=total, gpu_bytes=gpu, host_bytes=host, vocab=vocab, tied_output=tied, expert_bytes_by_layer=by_layer,
+    )
 
 
 def gguf_layout(path: str | Path) -> GgufLayout | None:

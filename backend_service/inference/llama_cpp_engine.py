@@ -515,6 +515,94 @@ def _speculative_args(
     return [], f"{sidecar_note} {fallback}" if sidecar_note else fallback
 
 
+def _discrete_cuda_host() -> bool:
+    try:
+        from backend_service.helpers.hardware_class import host_hardware_class
+
+        hardware = host_hardware_class()
+    except Exception:  # noqa: BLE001 - an unreadable host is "not a discrete card"
+        return False
+    return hardware.kind == "cuda" and not hardware.unified
+
+
+def _auto_cpu_moe_layers(gguf: str, context_tokens: int, cache_flags: list[str]) -> int | None:
+    """Blocks whose experts must stay in system RAM for this GGUF to fit the card's free memory now, or None when
+    nothing has to move (a dense model, it fits, or the card cannot be read)."""
+    from backend_service.helpers.chat_memory import LLAMA_CACHE_BITS
+    from backend_service.helpers.gguf_layout import gguf_layout
+    from backend_service.helpers.memory_gate import cuda_free_vram_gb
+    from backend_service.helpers.model_arch import read_kv_architecture
+    from backend_service.helpers.moe_offload import GPU_MARGIN_GB, auto_cpu_layers, is_moe
+
+    layout = gguf_layout(gguf)
+    if not is_moe(layout):
+        return None
+    free_gb = cuda_free_vram_gb()
+    if free_gb is None:
+        return None
+    arch = read_kv_architecture(gguf)
+    cache_type = cache_flags[cache_flags.index("--cache-type-k") + 1] if "--cache-type-k" in cache_flags[:-1] else "f16"
+    cache_bytes = arch.cache_bytes(context_tokens) * LLAMA_CACHE_BITS.get(cache_type, 16.0) / 16.0 if arch else 0.0
+    layers = auto_cpu_layers(layout, cache_bytes, free_gb - GPU_MARGIN_GB)
+    if layers is None:
+        # Even every expert in RAM leaves too much on the card: move them all and let llama.cpp report the rest.
+        return len(layout.expert_bytes_by_layer) if layout is not None else None
+    return layers or None
+
+
+def _expert_offload_args(
+    binary: str,
+    *,
+    requested: int | None,
+    fit_enabled: bool,
+    gguf: str | None,
+    context_tokens: int,
+    cache_flags: list[str],
+) -> tuple[list[str], int | None, str | None]:
+    """Mixture-of-experts expert offload (FU-550): ``(arguments, blocks moved, note)``.
+
+    ``requested`` is the number of leading blocks whose routed experts stay in system RAM: 0 keeps them all on the
+    GPU, None is automatic. Automatic with fit-in-memory on leaves the choice to llama.cpp's own ``--fit``, which
+    moves experts to system memory one block at a time when the model does not fit (read from b12649's log on the
+    RTX 4090). With fit-in-memory off nothing else adjusts the load, so the app picks the count from the card's
+    free memory and the file's tensor table. Gated on the binary listing ``--n-cpu-moe`` in ``--help``, like the
+    cache types.
+    """
+    if requested == 0:
+        return [], None, None
+    if requested is None:
+        if fit_enabled or gguf is None or not _discrete_cuda_host():
+            return [], None, None
+        requested = _auto_cpu_moe_layers(gguf, context_tokens, cache_flags)
+        if not requested:
+            return [], None, None
+    if not _llama_server_supports(binary, "--n-cpu-moe"):
+        return [], None, (
+            "This llama-server cannot keep mixture-of-experts weights in system RAM (no --n-cpu-moe); "
+            "the expert offload setting was ignored."
+        )
+    blocks: int | None = None
+    if gguf is not None:
+        from backend_service.helpers.gguf_layout import gguf_layout
+        from backend_service.helpers.moe_offload import block_count, is_moe
+
+        layout = gguf_layout(gguf)
+        if layout is not None and not is_moe(layout):
+            return [], None, "This is not a mixture-of-experts model, so the expert offload setting was ignored."
+        if layout is not None:
+            blocks = block_count(layout)
+    if blocks is not None and requested >= blocks and _llama_server_supports(binary, "--cpu-moe"):
+        args, moved = ["--cpu-moe"], blocks
+    else:
+        args, moved = ["--n-cpu-moe", str(requested)], (min(requested, blocks) if blocks is not None else requested)
+    of_blocks = f" of {blocks}" if blocks is not None else ""
+    note = (
+        f"The experts of {moved}{of_blocks} layers stay in system RAM and run on the CPU, so the model fits the GPU; "
+        "replies are slower than with every expert on the GPU."
+    )
+    return args, moved, note
+
+
 def _gguf_startup_fallback_note(strategy_name: str) -> str:
     return (
         f"GGUF startup failed with {strategy_name} cache, so ChaosEngineAI retried "
@@ -578,6 +666,8 @@ class LlamaCppEngine(BaseInferenceEngine):
         self.port: int | None = None
         self.log_path: Path | None = None
         self.log_handle: Any = None
+        self.applied_moe_cpu_layers: int | None = None
+        self.moe_offload_note: str | None = None
 
     def _server_url(self, path: str) -> str:
         if self.port is None:
@@ -652,12 +742,15 @@ class LlamaCppEngine(BaseInferenceEngine):
         fused_attention: bool = False,
         canonical_repo: str | None = None,
         model_ref: str = "",
+        moe_cpu_layers: int | None = None,
     ) -> tuple[list[str], str | None, bool, str | None]:
         """Build the llama-server command line.
 
         Returns ``(command, runtime_note, fell_back_to_native, mmproj_path)`` where
         *fell_back_to_native* is ``True`` when pre-validation detected
-        unsupported cache types and silently switched to f16.
+        unsupported cache types and silently switched to f16. The number of
+        blocks whose experts stay in system RAM is left on
+        ``self.applied_moe_cpu_layers`` (None when none do).
         """
         from cache_compression import registry as _strategy_registry
         strategy = _strategy_registry.get(cache_strategy) or _strategy_registry.default()
@@ -766,6 +859,25 @@ class LlamaCppEngine(BaseInferenceEngine):
         else:
             raise RuntimeError("GGUF loading requires a local model path or a Hugging Face GGUF repository.")
 
+        offload_args, self.applied_moe_cpu_layers, self.moe_offload_note = _expert_offload_args(
+            binary,
+            requested=moe_cpu_layers,
+            fit_enabled=fit_enabled,
+            gguf=resolved_gguf,
+            context_tokens=context_tokens,
+            cache_flags=cache_flags,
+        )
+        if offload_args:
+            command.extend(offload_args)
+            # llama.cpp warns that CPU tensor overrides under mmap are slow: reading the file in loaded in 6.6 s
+            # instead of 12.6 s and decoded at 84 tok/s instead of 72 to 83 (Qwen3.6-35B-A3B, 20 blocks, 4090).
+            if (
+                "--load-mode" not in command
+                and os.environ.get("CHAOSENGINE_LLAMA_MMAP") != "1"
+                and _llama_server_supports(binary, "--load-mode")
+            ):
+                command.extend(["--load-mode", "none"])
+
         # Vision wiring: if a sibling mmproj file is present, pass it
         # via `--mmproj` so llama-server enables image input. Capture
         # the path so the caller can flip `LoadedModelInfo.visionEnabled`
@@ -832,6 +944,7 @@ class LlamaCppEngine(BaseInferenceEngine):
         speculative_decoding: bool = False,
         tree_budget: int = 0,
         progress_callback: Callable[[dict[str, Any]], None] | None = None,
+        moe_cpu_layers: int | None = None,
     ) -> LoadedModelInfo:
         if not self.capabilities.ggufAvailable:
             raise RuntimeError("llama.cpp support is unavailable on this machine.")
@@ -897,6 +1010,7 @@ class LlamaCppEngine(BaseInferenceEngine):
                 fused_attention=fused_attention,
                 canonical_repo=canonical_repo,
                 model_ref=model_ref,
+                moe_cpu_layers=moe_cpu_layers,
             )
 
             self.last_command = list(command)  # read by the Activity view's detail row (D-88)
@@ -964,6 +1078,8 @@ class LlamaCppEngine(BaseInferenceEngine):
                 runtime_note,
                 "llama.cpp currently ignores the FP16 layers setting for compressed KV cache types.",
             )
+        if self.moe_offload_note:
+            runtime_note = _append_runtime_note(runtime_note, self.moe_offload_note)
 
         self.loaded_model = LoadedModelInfo(
             ref=model_ref,
@@ -986,6 +1102,8 @@ class LlamaCppEngine(BaseInferenceEngine):
             # Drafter sidecar, baked-in MTP or ngram-mod: whatever
             # _speculative_args emitted is what the server is running.
             speculativeDecoding="--spec-type" in command,
+            moeCpuLayers=self.applied_moe_cpu_layers,
+            requestedMoeCpuLayers=moe_cpu_layers,
         )
         return self.loaded_model
 

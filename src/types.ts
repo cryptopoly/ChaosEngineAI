@@ -144,6 +144,8 @@ export interface LoadModelPayload {
   /** FU-002: TriAttention MLX kv_budget. Backend defaults to 2048
    * when omitted; only consulted when ``cacheStrategy === "triattention"``. */
   kvBudget?: number;
+  /** llama.cpp only (FU-550): leading layers whose mixture-of-experts weights stay in system RAM; null = automatic. */
+  moeCpuLayers?: number | null;
 }
 
 

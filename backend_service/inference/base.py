@@ -225,6 +225,10 @@ class LoadedModelInfo:
     # DDTree cannot verify, and the app compares its launch settings
     # against what it asked for, not what ran.
     requestedTreeBudget: int | None = None
+    # llama.cpp mixture-of-experts expert offload (FU-550): the leading blocks whose experts the app asked to keep
+    # in system RAM (None: none, or llama.cpp's own fit chose), and what the load asked for (None: automatic).
+    moeCpuLayers: int | None = None
+    requestedMoeCpuLayers: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         # Phase 2.11: include resolved capabilities so the frontend can
@@ -264,6 +268,8 @@ class LoadedModelInfo:
             "treeBudget": self.treeBudget,
             "requestedTreeBudget": self.requestedTreeBudget,
             "visionEnabled": self.visionEnabled,
+            "moeCpuLayers": self.moeCpuLayers,
+            "requestedMoeCpuLayers": self.requestedMoeCpuLayers,
             "capabilities": capabilities,
         }
 

@@ -699,7 +699,8 @@
       "tight": "勉強",
       "unknown": "不適合本機",
       "needsAccess": null,
-      "wontFit": "放不下"
+      "wontFit": "放不下",
+      "fitsOffload": null
     },
     "image": {
       "emptyAttention": "沒有需要留意的影像模型。",

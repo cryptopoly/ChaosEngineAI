@@ -1,7 +1,7 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 274 rows with work, decisions or watch items still open, newest first.
+summary: 271 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
@@ -249,33 +249,6 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** **Mostly done (2026-11-23, D-105 A: rename; FU-492).** Left: wire names (FU-581), `docs/research/m4max-generation-times.md` and `docs/plans/demo-path.md` (internal research and plans). Was: owner decision on the two features
 
 **Notes:** Scan 2026-11-20 (`git grep` for the CLAUDE.md Editorial Rules names; the Hugging Face namespace `lmstudio-community` is allowed). User-visible: Settings model-storage "LM Studio models folder" and Library "Share with LM Studio" (`src/locales/*/common.json`, `library.json`, `ModelStoragePanel.tsx`, `ChatModelsPage.tsx`, `ImportModelsPanel.tsx`, `backend_service/routes/storage.py`), "Ollama-compatible apps" (`ConnectPanel.tsx`, `ollama_compat.py`). Not user-visible: `backend_service/helpers/model_import.py`, `routes/models.py`, `helpers/settings.py`, `scripts/e2e_test_suite.py`, `docs/research/m4max-generation-times.md`, `docs/plans/demo-path.md`, `docs/image-generation-mvp.md`. Another agent handles the user-visible copy; the rest needs a decision on whether importing from those folders stays a feature.
-
-</details>
-
-<details>
-<summary>FU-512 · Competing desktop AI app names remain in code, comments and docs — Owner decision on the two features</summary>
-
-**Status or trigger:** Owner decision on the two features
-
-**Notes:** Scan 2026-11-20 (`git grep` for the CLAUDE.md Editorial Rules names; the Hugging Face namespace `lmstudio-community` is allowed). User-visible: Settings model-storage "LM Studio models folder" and Library "Share with LM Studio" (`src/locales/*/common.json`, `library.json`, `ModelStoragePanel.tsx`, `ChatModelsPage.tsx`, `ImportModelsPanel.tsx`, `backend_service/routes/storage.py`), "Ollama-compatible apps" (`ConnectPanel.tsx`, `ollama_compat.py`). Not user-visible: `backend_service/helpers/model_import.py`, `routes/models.py`, `helpers/settings.py`, `scripts/e2e_test_suite.py`, `docs/research/m4max-generation-times.md`, `docs/plans/demo-path.md`, `docs/image-generation-mvp.md`. Another agent handles the user-visible copy; the rest needs a decision on whether importing from those folders stays a feature.
-
-</details>
-
-<details>
-<summary>FU-511 · TensorFold native is behind: pinned 1.2.9, newest 1.3.1 — Before the tag, or write down why not</summary>
-
-**Status or trigger:** Before the tag, or write down why not
-
-**Notes:** `check-upstreams.py` 2026-11-20. A bump changes `NATIVE_VERSION` in `_tensorfold_native.py` and needs `capabilities --json` compared with the family rows in `_tensorfold.py` (FU-168). Not bumped by the hygiene pass.
-
-</details>
-
-<details>
-<summary>FU-510 · llama.cpp is behind: pinned b12441, newest tag with prebuilt archives b12576 — Before the v0.10.0 tag, or write down why not</summary>
-
-**Status or trigger:** Before the v0.10.0 tag, or write down why not
-
-**Notes:** `check-upstreams.py` 2026-11-20. A bump moves `LLAMA_CPP_REF` in `scripts/update-llama-cpp.sh` and `LLAMA_CPP_TAG` in `scripts/stage-runtime.mjs`, changes the Windows CUDA digests, and needs the chat rows re-run on the 4090 (the 4090 speed table was measured on b12441). Not bumped by the hygiene pass.
 
 </details>
 

@@ -130,8 +130,7 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
     {
         "name": "storyboard_song",
         "description": "Edit: the song a music video is cut to. attach(library_id or path), get, edit(lyrics, sections, bpm, "
-        "title), remove, cut_plan(seconds; shots on beats; apply replaces shots), lyric_captions(timing), "
-        "vocals(path: vocal stem; lip-sync slice per shot).",
+        "title), remove, cut_plan(seconds; apply replaces shots), lyric_captions(timing), vocals(lip-sync slices).",
         "inputSchema": _obj({
             "action": {"type": "string", "enum": ["attach", "get", "edit", "remove", "cut_plan", "lyric_captions", "vocals"]},
             "project_id": _PID, "revision": _REV,

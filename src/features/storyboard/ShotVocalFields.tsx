@@ -105,7 +105,7 @@ export function ShotVocalFields({ project, shot, disabled, op }: ShotVocalFields
           <p className="muted-text">
             {t("board.editor.vocalTakesHint", {
               defaultValue:
-                "Sung vocals: use the vocal stem and start about 0.4 s before a phrase. Each take uses its own seed; the sync score keeps the best and the others stay in the Video Gallery.",
+                "Sung vocals: use the vocal stem, a close-up frontal still with the mouth closed, and start about 0.4 s before a phrase. Each take uses its own seed; the sync score keeps the best and the others stay in the Video Gallery.",
             })}
           </p>
           <div className="shot-editor__actions">

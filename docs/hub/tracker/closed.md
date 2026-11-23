@@ -1,7 +1,7 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 127 shipped, obsoleted or dropped rows, newest first.
+summary: 129 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
@@ -24,6 +24,24 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** **Fixed 2026-11-23** (shorter `make_sound` and `make_lipsync_shot` descriptions, example, `audio` maxLength, golden refreshed; `moss-image` and `kandinsky-6` size rows, both marked unverified). Next agent-bridge change, before the merge
 
 **Notes:** Found by the WSL2 pass 2026-11-23 and reproduced on Windows: `test_agent_guide::test_every_real_tool_is_in_the_guide` (`make_lipsync_shot` missing from AGENTS.md Tools) and 7 in `test_mcp_contract.py` (`make_lipsync_shot` has no example, scope or `maxLength` on `audio`; `make_sound` description 311 characters against the 260 cap; golden tools list stale, regenerate with `UPDATE_MCP_GOLDEN=1` once the tool is final). Not a platform bug.
+
+</details>
+
+<details>
+<summary>FU-542 · Memory estimate for looped models (KV per logical layer) — Shipped 2026-11-23 (branch feat/fu-540-inkling2).</summary>
+
+**Status or trigger:** **Shipped 2026-11-23 (branch `feat/fu-540-inkling2`).**
+
+**Notes:** `architecture_from_gguf_metadata` reads `{arch}.loop.count/start/end` and adds the loop's own global and sliding layers once per extra pass. Inkling 2 Mini: 8 global + 40 sliding of 48 logical, which matches llama.cpp b12649's own KV report exactly (`8 layers` non-SWA, `40 layers` SWA). Test with the real header values in `tests/test_model_arch.py`. Not done: SenseNova-Loop-9B's GGUF keys are unknown until PR #32588 merges; check them with FU-547. The estimate does not include llama.cpp's compute buffer, which grows with context (6.4 GiB at 64K for Mini).
+
+</details>
+
+<details>
+<summary>FU-540 · Inkling 2 Mini catalogue rows (llama.cpp GGUF, all platforms) — Shipped 2026-11-23 (branch feat/fu-540-inkling2), one row of three.</summary>
+
+**Status or trigger:** **Shipped 2026-11-23 (branch `feat/fu-540-inkling2`), one row of three.**
+
+**Notes:** Family `inkling-2` in `catalog/text_models.py`, row `unsloth/Inkling-2-Mini-GGUF` UD-Q4_K_M pinned to `Mainline_Support/Inkling-2-Mini-UD-Q4_K_M.gguf_file` (checked against the Hub at `800c946`; `audit-catalog-repos.py` passes). The `Mainline_Support` files use the `inkling2_loop` layout upstream llama.cpp reads from b12611 and are published with a `.gguf_file` extension; `text_gguf.ensure_gguf_aliases` links a `.gguf` name beside the pinned file after download and before load. The F16 mmproj downloads with it and is found at the snapshot root (`_resolve_mmproj_path` now also looks there for a model in a snapshot subfolder). The root `dspark-` drafter is skipped (older format, upstream rejects it; the upstream-format drafter needs unmerged PR #32218). Q3_K_XL and Q8_K_XL are not listed: the text catalog pins one file per repo (FU-605). Tests: catalogue, fit, alias, mmproj, download patterns; E2E phase 1 check `GGUF Inkling 2 Mini, looped layers + mmproj (FU-540)` passed on the 4090 (skips when absent).
 
 </details>
 

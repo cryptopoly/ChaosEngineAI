@@ -32,6 +32,53 @@ def pinned_gguf_file(repo_id: str | None) -> str | None:
     return None
 
 
+# Some repos publish a second GGUF layout under another extension so tools
+# that list the repo do not mix the two (Unsloth's Inkling 2 Mini keeps the
+# upstream-llama.cpp files in ``Mainline_Support/`` as ``*.gguf_file``). The
+# pin names the Hub file; on disk the app adds a ``.gguf`` link beside it.
+RENAMED_GGUF_SUFFIX = ".gguf_file"
+
+
+def local_gguf_name(name: str) -> str:
+    """The ``.gguf`` name a pinned Hub file has on disk (``x.gguf_file`` -> ``x.gguf``)."""
+    if name.lower().endswith(RENAMED_GGUF_SUFFIX):
+        return name[: -len("_file")]
+    return name
+
+
+def ensure_gguf_aliases(directory: Path) -> list[Path]:
+    """Give every ``*.gguf_file`` under ``directory`` a ``.gguf`` link beside it.
+
+    Every GGUF code path (loader, fit, discovery) looks for ``*.gguf``. In a
+    Hugging Face snapshot the file is itself a symlink to a blob, so the alias
+    is a symlink to the same blob and costs no disk; a plain file (a cache
+    without symlinks) gets a hard link. Returns the aliases created.
+    """
+    import os  # noqa: PLC0415
+
+    created: list[Path] = []
+    try:
+        sources = [p for p in directory.rglob(f"*{RENAMED_GGUF_SUFFIX}") if p.is_file()]
+    except OSError:
+        return created
+    for source in sources:
+        alias = source.with_name(local_gguf_name(source.name))
+        if os.path.lexists(alias):
+            continue
+        try:
+            if source.is_symlink():
+                try:
+                    os.symlink(os.readlink(source), alias)
+                except OSError:  # no symlink right (Windows without developer mode)
+                    os.link(source.resolve(), alias)
+            else:
+                os.link(source, alias)
+            created.append(alias)
+        except OSError:
+            continue
+    return created
+
+
 def gguf_file_pattern(gguf_file: str) -> str:
     """Glob matching every shard of a (possibly split) GGUF file."""
     match = _SHARD_RE.search(gguf_file)
@@ -178,6 +225,9 @@ def _best_sidecar(names: list[str], prefix: str, model_name: str) -> str | None:
 # two per round 204.3. The DFlash drafter pays on the dense 27B (FU-178), not on this 3B-active MoE.
 SIDECAR_KINDS_SKIPPED: dict[str, frozenset[str]] = {
     "ggml-org/Qwen3.6-35B-A3B-GGUF": frozenset({"dflash-"}),
+    # Inkling 2 Mini's root ``dspark-`` drafter is in an older format that upstream llama.cpp rejects, and the
+    # upstream-format drafter needs an unmerged llama.cpp pull request (FU-540).
+    "unsloth/Inkling-2-Mini-GGUF": frozenset({"dspark-"}),
 }
 _SIDECAR_SUBDIR = "MTP"
 _MMPROJ_PREFERENCE = ("f16", "q8_0", "bf16")
@@ -287,7 +337,7 @@ def pick_model_gguf(directory: Path, model_files: list[Path]) -> Path:
     """
     pinned = pinned_gguf_file(repo_id_from_path(directory))
     if pinned:
-        pattern = gguf_file_pattern(Path(pinned).name)
+        pattern = gguf_file_pattern(local_gguf_name(Path(pinned).name))
         matches = sorted(f for f in model_files if fnmatch.fnmatch(f.name, pattern))
         if matches:
             return matches[0]

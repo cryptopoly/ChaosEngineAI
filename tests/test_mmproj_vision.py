@@ -68,6 +68,23 @@ class ResolveMmprojPathTests(unittest.TestCase):
             big.write_bytes(b"\x00" * 50)
             self.assertEqual(_resolve_mmproj_path(str(main)), str(big))
 
+    def test_snapshot_subfolder_model_finds_the_root_projector(self):
+        # FU-540: Inkling 2 Mini's model sits in Mainline_Support/, its mmproj at the snapshot root.
+        with TemporaryDirectory() as tmp:
+            snap = Path(tmp) / "models--unsloth--Inkling-2-Mini-GGUF" / "snapshots" / "rev"
+            (snap / "Mainline_Support").mkdir(parents=True)
+            main = snap / "Mainline_Support" / "Inkling-2-Mini-UD-Q4_K_M.gguf"
+            main.write_bytes(b"\x00")
+            mmproj = snap / "mmproj-F16.gguf"
+            mmproj.write_bytes(b"\x00")
+            self.assertEqual(_resolve_mmproj_path(str(main)), str(mmproj))
+            # A subfolder outside a Hugging Face snapshot still does not look up.
+            other = Path(tmp) / "org" / "repo" / "sub"
+            other.mkdir(parents=True)
+            (other.parent / "mmproj.gguf").write_bytes(b"\x00")
+            (other / "m.gguf").write_bytes(b"\x00")
+            self.assertIsNone(_resolve_mmproj_path(str(other / "m.gguf")))
+
     def test_does_not_cross_into_neighbouring_model_directory(self):
         # Regression: a flat layout like
         # `~/AI_Models/<org>/<repo>/file.gguf` puts unrelated models

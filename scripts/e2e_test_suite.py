@@ -518,6 +518,8 @@ def phase_0(cap: Capability) -> PhaseResult:
             "nemotron-3-5-bolt": 2, "granite-switch-4-1": 2,
             # 2026-11-19: the 4090 chat rows (Gemma 4 QAT GGUF 12B and 26B-A4B, a Q8_0 26B, Qwen3.6 MTP UD-IQ4_XS).
             "gemma-4": 14, "qwen-3-6": 13,
+            # 2026-11-23: Inkling 2 Mini UD-Q4_K_M (FU-540).
+            "inkling-2": 1,
         }
         missing = []
         for fid, min_variants in expected.items():
@@ -1289,6 +1291,35 @@ def phase_1(cap: Capability) -> PhaseResult:
             return "skip", f"drafter not on disk or not paired: {note[:160]}", detail
         return "pass", "", detail
 
+    # 1e4b. Inkling 2 Mini (FU-540): a looped MoE read by upstream llama.cpp only from the repo's
+    # ``Mainline_Support/*.gguf_file`` copy, which the app links to a ``.gguf`` name. Loads the snapshot
+    # folder so the pin and the link are exercised, and needs the mmproj wired when it is on disk.
+    # Skips when the model is not in the Hugging Face cache (16.6 GB; never downloaded here).
+    def _inkling2_mini():
+        if not cap.gguf_available:
+            return "skip", "GGUF backend not available", {}
+        repo = "unsloth/Inkling-2-Mini-GGUF"
+        snapshots = _hf_cache_root() / "models--unsloth--Inkling-2-Mini-GGUF" / "snapshots"
+        pin = "Mainline_Support/Inkling-2-Mini-UD-Q4_K_M"
+        try:
+            snapshot = next(
+                d for d in snapshots.iterdir()
+                if (d / f"{pin}.gguf_file").is_file() or (d / f"{pin}.gguf").is_file()
+            )
+        except (OSError, StopIteration):
+            return "skip", "Inkling 2 Mini UD-Q4_K_M not in the Hugging Face cache", {}
+        status, reason, detail = _load_unload_prompt(
+            repo, path=str(snapshot), backend="gguf", canonical_repo=repo,
+            cache_strategy="native", context=8192, max_tokens=48,
+            prompt="Reply with one short sentence: what is the capital of France?",
+            load_timeout=900.0,
+        )
+        if status != "pass":
+            return status, reason, detail
+        if any(snapshot.glob("*mmproj*.gguf")) and not detail.get("visionEnabled"):
+            return "fail", "mmproj on disk but vision was not enabled", detail
+        return "pass", f"{detail.get('tokS')} tok/s", detail
+
     # 1e5. Qwen3.8-27B with the DFlash 2 drafter (``dflash-`` sidecar beside the
     # GGUF, read from the file's metadata by llama.cpp). Skips when the model or
     # its sidecar is not on disk, or when the card cannot hold both (the load
@@ -1545,6 +1576,7 @@ def phase_1(cap: Capability) -> PhaseResult:
         ("GGUF baked-in MTP head + draft acceptance", _gguf_mtp_baked_acceptance),
         ("GGUF native q8_0 KV cache", _gguf_native_q8_kv),
         ("GGUF Nemotron 3.5 Bolt + pinned DFlash drafter", _bolt_drafter),
+        ("GGUF Inkling 2 Mini, looped layers + mmproj (FU-540)", _inkling2_mini),
         ("long context cache-preview", _long_context_preview),
         ("fused attention flag", _fused_attention),
         ("modern samplers (DRY+XTC)", _modern_samplers),

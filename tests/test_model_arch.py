@@ -133,6 +133,32 @@ class GgufTests(unittest.TestCase):
         })
         self.assertEqual((arch.full_layers, arch.sliding_layers), (2, 10))
 
+    # The header of unsloth/Inkling-2-Mini-GGUF Mainline_Support/Inkling-2-Mini-UD-Q4_K_M.gguf_file (FU-542):
+    # 24 physical layers, layers 6 to 17 run three times, every sixth layer global, 1,024-token window.
+    INKLING2_LOOP = {
+        "general.architecture": "inkling2_loop", "inkling2_loop.block_count": 24,
+        "inkling2_loop.embedding_length": 2304, "inkling2_loop.attention.head_count": [24] * 24,
+        "inkling2_loop.attention.head_count_kv": [8] * 24, "inkling2_loop.attention.key_length": 128,
+        "inkling2_loop.attention.value_length": 128, "inkling2_loop.attention.sliding_window": 1024,
+        "inkling2_loop.attention.sliding_window_pattern": ([1] * 5 + [0]) * 4,
+        "inkling2_loop.expert_count": 128, "inkling2_loop.expert_used_count": 8,
+        "inkling2_loop.expert_feed_forward_length": 1152,
+        "inkling2_loop.loop.count": 3, "inkling2_loop.loop.start": 6, "inkling2_loop.loop.end": 18,
+    }
+
+    def test_looped_layers_keep_kv_per_pass(self):
+        arch = architecture_from_gguf_metadata(self.INKLING2_LOOP)
+        # 4 global + 20 sliding physical; the loop (2 global + 10 sliding) runs twice more: 8 + 40 = 48 logical.
+        self.assertEqual((arch.full_layers, arch.sliding_layers), (8, 40))
+        self.assertEqual(arch.num_layers, 24)
+        per_token_layer = 8 * (128 + 128) * 2
+        self.assertEqual(arch.cache_bytes(K32), per_token_layer * (8 * K32 + 40 * 1024))
+
+    def test_loop_without_count_is_plain(self):
+        meta = {k: v for k, v in self.INKLING2_LOOP.items() if ".loop." not in k}
+        arch = architecture_from_gguf_metadata(meta)
+        self.assertEqual((arch.full_layers, arch.sliding_layers), (4, 20))
+
     def test_not_a_gguf(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "x.gguf"

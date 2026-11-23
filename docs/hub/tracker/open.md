@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 274 rows with work, decisions or watch items still open, newest first.
+summary: 273 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-605 · Per-row GGUF pins: several quants of one repo in the text catalog — Next catalogue pass</summary>
+
+**Status or trigger:** Next catalogue pass
+
+**Notes:** `text_gguf.pinned_gguf_file` and downloads are keyed by repo, so a repo can have one text row (`test_one_row_per_repo_in_text_catalog`). Inkling 2 Mini's UD-Q3_K_XL (13.6 GB, 16 GB cards) and UD-Q8_K_XL (22.9 GB, 48 GB Macs) from the same `unsloth/Inkling-2-Mini-GGUF` repo wait for downloads keyed by row (FU-540).
+
+</details>
 
 <details>
 <summary>FU-604 · Run the cross-platform tracker on the Mac and on native Ubuntu — Before the v0.10.0 tag</summary>
@@ -181,29 +190,11 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-542 · Memory estimate for looped models (KV per logical layer) — With FU-540 or FU-547</summary>
-
-**Status or trigger:** With FU-540 or FU-547
-
-**Notes:** `helpers/model_arch.py` `architecture_from_gguf_metadata` sizes KV from `{arch}.block_count`. Looped models keep KV for every logical layer (Inkling 2 Mini 48 of 24 physical, SenseNova-Loop-9B 56 of 32), so the fit badge may undercount by about 2x. Read the loop metadata the GGUF carries and add a test with looped metadata. SenseNova's card gives about 10 GiB at 64K context with 8-bit KV as a check value.
-
-</details>
-
-<details>
 <summary>FU-541 · Inkling 2 Mini: owner messaging and first-run check — Before Inkling is mentioned in release notes</summary>
 
 **Status or trigger:** Before Inkling is mentioned in release notes
 
-**Notes:** No publisher speed figure exists for any Inkling variant. Measure tok/s on the 4090 and the M4 Max with FU-540 and put only our numbers in notes and the site.
-
-</details>
-
-<details>
-<summary>FU-540 · Inkling 2 Mini catalogue rows (llama.cpp GGUF, all platforms) — After the llama.cpp bump to b12549 or newer (FU-510)</summary>
-
-**Status or trigger:** After the llama.cpp bump to b12549 or newer (FU-510)
-
-**Notes:** Research 2026-11-23 ([docs/research/new-models-inkling-sensenova-strata-hyperqwen-2026-11.md](https://github.com/cryptopoly/ChaosEngineAI/blob/staging/docs/research/new-models-inkling-sensenova-strata-hyperqwen-2026-11.md)). Thinking Machines, released 2026-11-20, Apache-2.0 (plus their acceptable use policy). 26.4B MoE, 3.4B active, middle 12 of 24 layers looped 3 times, text + image, 1M context. Bundled b12441 has the `inkling2` arch (PR #32217, b12406); b12549 fixes its attention mask (PR #32429). New family `inkling-2` in `catalog/text_models.py`: `unsloth/Inkling-2-Mini-GGUF` UD-Q4_K_M (16.6 GB, default; 4090 and 32 GB Macs), UD-Q3_K_XL (13.6 GB), UD-Q8_K_XL (22.9 GB, 48 GB Macs); files from the repo's `Mainline_Support` folder, mmproj if present. Not verified: that upstream runs the looped layers and vision. Needs a 4090 and an M4 Max run, catalogue + fit tests, and an E2E phase 1 check that skips when absent. Effort S to M (about 1 day).
+**Notes:** **Windows done 2026-11-23:** RTX 4090, llama.cpp b12649, UD-Q4_K_M with the F16 mmproj, 8,192 context, f16 KV, flash attention on: 63.7 tok/s (three warm 300-token replies, short prompt), load 6.6 s, 18.0 GiB of VRAM above idle; at 65,536 context without mmproj 22.3 GiB (KV 2.0 GiB for 8 global layers, 240 MiB for 40 sliding, compute buffer 6.4 GiB). Text replies coherent; image prompt answered correctly directly and through the app's `/v1` route (a green triangle, a red circle above a blue bar). llama.cpp reports `n_layer = 48`, so the looped layers run. **Left:** the M4 Max run (Metal llama.cpp, same row), then use only our numbers in notes and the site. Logs: `E:\tmp\inkling-run\`.
 
 </details>
 

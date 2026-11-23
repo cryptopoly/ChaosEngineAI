@@ -1320,6 +1320,64 @@ def phase_1(cap: Capability) -> PhaseResult:
             return "fail", "mmproj on disk but vision was not enabled", detail
         return "pass", f"{detail.get('tokS')} tok/s", detail
 
+    # 1e4c. Mixture-of-experts expert offload (FU-550): the smallest cached MoE GGUF loads with the experts of
+    # its first 8 layers kept in system RAM (``moeCpuLayers`` -> ``--n-cpu-moe 8``). The load must report the
+    # blocks it moved and the note, and the model must still answer correctly. Skips without a MoE GGUF on disk
+    # or with a llama-server that has no ``--n-cpu-moe``.
+    def _gguf_moe_expert_offload():
+        if not cap.gguf_available:
+            return "skip", "GGUF backend not available", {}
+
+        def is_moe(path: str) -> bool:
+            # The same header key the app's tensor-table reader keys off: ``<arch>.expert_count``.
+            try:
+                with open(path, "rb") as fh:
+                    return b".expert_count" in fh.read(4 * 1024 * 1024)
+            except OSError:
+                return False
+
+        moes = [
+            (ref, p) for (ref, p) in cap.local_gguf_files
+            if not Path(p).name.lower().startswith(("mtp-", "dflash-", "mmproj")) and is_moe(p)
+        ]
+        if not moes:
+            return "skip", "no mixture-of-experts GGUF in the model folders", {}
+        ref, gguf_path = min(moes, key=lambda item: Path(item[1]).stat().st_size)
+        body = json.dumps({
+            "modelRef": ref, "modelName": Path(gguf_path).stem, "source": "library", "backend": "gguf",
+            "path": gguf_path, "cacheStrategy": "native", "contextTokens": 4096, "moeCpuLayers": 8,
+        })
+        rc, result, err = _cli_json("call", "POST", "/api/models/load", "--body", body, "--timeout", "1800", timeout=1860.0)
+        loaded = ((result or {}).get("runtime") or {}).get("loadedModel") if isinstance(result, dict) else None
+        if rc != 0 or not isinstance(loaded, dict):
+            _cli("unload", timeout=60.0)
+            return "fail", f"load rc={rc}: {(err or str(result))[:200]}", {}
+        note = str(loaded.get("runtimeNote") or "")
+        detail = {"model": Path(gguf_path).name, "moeCpuLayers": loaded.get("moeCpuLayers"), "runtimeNote": note}
+        if "--n-cpu-moe" in note:
+            _cli("unload", timeout=60.0)
+            return "skip", "this llama-server has no --n-cpu-moe", detail
+        if not loaded.get("moeCpuLayers") or "system RAM" not in note:
+            _cli("unload", timeout=60.0)
+            return "fail", f"asked for 8 layers in system RAM, got {loaded.get('moeCpuLayers')!r}: {note[:160]}", detail
+        chat = json.dumps({
+            "model": ref, "max_tokens": 16, "temperature": 0,
+            "messages": [{"role": "user", "content": "What is the capital of France? Answer with the city name only."}],
+        })
+        rc, reply, err = _cli_json("call", "POST", "/v1/chat/completions", "--body", chat, "--timeout", "300", timeout=360.0)
+        rc2, gen, _ = _cli_json("prompt", "Count from 1 to 20.", "--max-tokens", "48", "--metrics", "--quiet", "--timeout", "300")
+        _cli("unload", timeout=60.0)
+        try:
+            answer = str(reply["choices"][0]["message"]["content"] or "")
+        except (KeyError, IndexError, TypeError):
+            return "fail", f"/v1/chat/completions rc={rc}: {(err or str(reply))[:160]}", detail
+        detail.update(answer=answer[:80], tokS=(gen or {}).get("tokS") if isinstance(gen, dict) else None)
+        if "paris" not in answer.lower():
+            return "fail", f"wrong answer with experts in RAM: {answer[:80]!r}", detail
+        if rc2 != 0 or not detail["tokS"]:
+            return "fail", "no tok/s from the offloaded model", detail
+        return "pass", f"{detail['moeCpuLayers']} layers in RAM, {detail['tokS']} tok/s", detail
+
     # 1e5. Qwen3.8-27B with the DFlash 2 drafter (``dflash-`` sidecar beside the
     # GGUF, read from the file's metadata by llama.cpp). Skips when the model or
     # its sidecar is not on disk, or when the card cannot hold both (the load
@@ -1577,6 +1635,7 @@ def phase_1(cap: Capability) -> PhaseResult:
         ("GGUF native q8_0 KV cache", _gguf_native_q8_kv),
         ("GGUF Nemotron 3.5 Bolt + pinned DFlash drafter", _bolt_drafter),
         ("GGUF Inkling 2 Mini, looped layers + mmproj (FU-540)", _inkling2_mini),
+        ("GGUF mixture-of-experts expert offload to system RAM (FU-550)", _gguf_moe_expert_offload),
         ("long context cache-preview", _long_context_preview),
         ("fused attention flag", _fused_attention),
         ("modern samplers (DRY+XTC)", _modern_samplers),

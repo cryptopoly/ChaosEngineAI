@@ -1,13 +1,31 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 123 shipped, obsoleted or dropped rows, newest first.
+summary: 125 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Shipped, obsoleted or dropped rows (struck through, or marked shipped with no open points left). Kept as the history of why things are the way they are.
 
+
+<details>
+<summary>FU-511 · TensorFold native is behind: pinned 1.2.9, newest 1.3.1 — Pin moved 2026-11-23 to 1.3.4 (branch chore/bump-upstreams-2026-11-23, not pushed)</summary>
+
+**Status or trigger:** **Pin moved 2026-11-23 to `1.3.4` (branch `chore/bump-upstreams-2026-11-23`, not pushed); the family check is still open as FU-561.**
+
+**Notes:** `check-upstreams.py` 2026-11-20. A bump changes `NATIVE_VERSION` in `_tensorfold_native.py` and needs `capabilities --json` compared with the family rows in `_tensorfold.py` (FU-168). Not bumped by the hygiene pass.
+
+</details>
+
+<details>
+<summary>FU-510 · llama.cpp is behind: pinned b12441, newest tag with prebuilt archives b12576 — Shipped 2026-11-23 (branch chore/bump-upstreams-2026-11-23, not pushed): pinned b12649, see FU-560.</summary>
+
+**Status or trigger:** **Shipped 2026-11-23 (branch `chore/bump-upstreams-2026-11-23`, not pushed): pinned `b12649`, see FU-560.**
+
+**Notes:** `check-upstreams.py` 2026-11-20. A bump moves `LLAMA_CPP_REF` in `scripts/update-llama-cpp.sh` and `LLAMA_CPP_TAG` in `scripts/stage-runtime.mjs`, changes the Windows CUDA digests, and needs the chat rows re-run on the 4090 (the 4090 speed table was measured on b12441). Not bumped by the hygiene pass.
+
+</details>
 
 <details>
 <summary>FU-491 · The download resume wrapper could break every Hub download on another huggingface_hub — Shipped 2026-11-20 (Mac regression review).</summary>

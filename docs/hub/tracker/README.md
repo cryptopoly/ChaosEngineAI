@@ -24,4 +24,4 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 | [FU-580](open.md) | "Highest rated" pick (benchmark score) for Chat Models and the Dashboard | Needs a score source before any badge |
 | [FU-564](open.md) | Mac-only upstreams left as they are; no release-constraints refresh needed from the 2026-1 | Next Mac session |
 | [FU-563](open.md) | stable-diffusion.cpp 532d2c1 -> 0d71f963 (master, 2026-11-22) | Next sd.cpp pass on the 4090 or the Mac (needs a CUDA Toolkit or the 700 MB portable CUDA archives, and two bu… |
-| [FU-562](open.md) | Transformers 5.24.0 for the stt-gpu asr-site (pinned 5.23.0) | Next Windows session that has the voice venv with the stt-gpu add-on |
+| [FU-562](open.md) | Transformers 5.24.0 for the stt-gpu asr-site (was 5.23.0) | Done |

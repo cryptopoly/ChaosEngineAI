@@ -73,11 +73,11 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-562 · Transformers 5.24.0 for the stt-gpu asr-site (pinned 5.23.0) — Next Windows session that has the voice venv with the stt-gpu add-on</summary>
+<summary>FU-562 · Transformers 5.24.0 for the stt-gpu asr-site (was 5.23.0) — Done</summary>
 
-**Status or trigger:** Next Windows session that has the voice venv with the `stt-gpu` add-on
+**Status or trigger:** Done
 
-**Notes:** Not bumped on 2026-11-23. The table says a bump needs the GPU dictation rows re-run, and this PC has no voice venv now (`E:\tmp\stt-home` is gone; rebuilding needs the 2.86 GB torch cu128 download and the dev venv has no torchaudio). Release notes read: 5.24.0 renames `past_key_values` / `cache_params` to `cache` (old names still accepted with a warning until 5.40 / 6.0; `voice_worker_asr.py` never passes either), adds Omnilingual ASR, Inkling 2 Mini, HY4-VL; its requirements are the same as 5.23's (tokenizers >=0.23.1,<0.24, safetensors >=0.8). **To do:** set `ASR_SITE_PACKAGES` and `_ASR_SITE_CHECK` / `asr_site_installed` to 5.24.0, reinstall the add-on, run each GPU row in `voice_stt_cuda.py` plus the forced aligner, and update the CLAUDE.md row.
+**Notes:** Bumped on 2026-11-23 after a re-run on the RTX 4090. Throwaway voice venv (`E:\tmp\stt-home`, PyTorch 2.9.1 cu128, since deleted) with the 5.23.0 and the 5.24.0 `asr-site` side by side; both pass the add-on's import check (the auto classes and `torch.cuda.is_available()`). 5.24.0's requirements are the same as 5.23.0's (tokenizers >=0.23.1,<0.24, safetensors >=0.8, regex >=2025.10.22, huggingface-hub >=1.31,<3), so tokenizers 0.23.3, safetensors 0.8.0, regex 2026.11.19 and accelerate 1.16.0 stay. Each row ran through the real voice worker subprocess (`voice_worker.py` -> `voice_worker_asr.py`, pinned snapshots from `E:\AI Models`) on two Kokoro speech clips (3.7 s and 5.0 s): Qwen3-ASR 1.7B and 0.6B and Granite Speech 5.0 2B with the forced aligner, Parakeet TDT v3 plain and with native words, Nemotron 3.5 ASR plain, native words and aligner words. Every case gave the same transcript, the same words and the same word times (to the 10 ms the reply rounds to) on 5.23.0 and 5.24.0, the same peak GPU memory, and the same warnings (only the `max_length` generation note). Not run: Nemotron 3.5 Transcribe 30B-A4B (67.5 GB, needs an 80 GB card, not downloaded), longer than 30 s recordings (window cuts), non-English speech, and the add-on install through the app's own route (the venv was built by hand with the same commands).
 
 </details>
 

@@ -163,3 +163,12 @@ llama.cpp b12651; no change to `pyproject.toml` or `release-constraints.txt`, so
 `HOME`, `pytest tests -q -p no:cacheprovider`: **exit 0, no failed and no errored test** (the quiet run hides the
 pass count; the earlier run on `84315da2` had 6628 passed, 80 skipped). Not run under WSL2: the E2E suite on this tip,
 `npm test`, `tsc`, native Linux.
+
+## Windows full E2E on the tip, 2026-11-23 (`8cc3a9b8`, RTX 4090, b12651)
+
+Dev backend on port 8876, `python scripts/e2e_test_suite.py`, 783 s: 23 phases pass, 1 skip (216, needs MLX), 2 fail on
+the first run, both from the test home and not from the product. Phase 215 failed because the E2E home only had the
+b12649 CUDA llama build and the tip pins b12651 (copied the verified build in, restarted the backend, 215 passes,
+4 checks). Phase 0 failed on the `gpu-status` check: the first call after a cold backend start imports torch and took
+over the CLI's 10 s limit; by hand it answers in 0.2 s and a rerun of phase 0 passes (20 checks). Checks over the run:
+195 pass, 63 skip, 2 fail (the two above). Reports in `E:\tmp\e2e-tip-report`. Not covered: MLX phases, native Linux.

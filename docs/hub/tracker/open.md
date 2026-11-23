@@ -1,13 +1,31 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 272 rows with work, decisions or watch items still open, newest first.
+summary: 270 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-607 · Snap song-to-shots cuts to phrase starts — Next lip-sync quality pass</summary>
+
+**Status or trigger:** Next lip-sync quality pass
+
+**Notes:** Song to shots cuts at the cut plan's beats; the research recipe starts a sung shot 0.4 s before a phrase. With a stem, move each cut to the nearest phrase start (voice activity) within the 3-5 s bounds.
+
+</details>
+
+<details>
+<summary>FU-606 · Other lip-sync takes as Storyboard takes — When sung shots are made in batches</summary>
+
+**Status or trigger:** When sung shots are made in batches
+
+**Notes:** The takes the sync score did not keep are Video Gallery clips; a Storyboard shot keeps only the kept one. Add them to the shot's takes (not active) so the takes strip offers them one click away.
+
+</details>
 
 <details>
 <summary>FU-605 · Per-row GGUF pins: several quants of one repo in the text catalog — Next catalogue pass</summary>
@@ -703,47 +721,11 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 </details>
 
 <details>
-<summary>FU-381 · Three takes per sung shot, kept by lip_sync_score.pick_best — With FU-380</summary>
+<summary>FU-381 · Three takes per sung shot, kept by lip_sync_score.pick_best — Built 2026-11-23 (feat/lipsync-phase2, not merged)</summary>
 
-**Status or trigger:** With FU-380
+**Status or trigger:** Built 2026-11-23 (`feat/lipsync-phase2`, not merged); open: ship the score (D-132)
 
-**Notes:** Usable take rate 0.72 with one take, 0.87 / 0.93 / 0.98 with 2 / 3 / 4 (hardest line 0.33 -> 0.93). Needs `mediapipe` (Apache-2.0) and the `face_landmarker.task` model (Apache-2.0) in the GPU runtime, licence notice, about 7.5 s CPU per 5 s take; show the other takes one click away; speech keeps 1 take.
-
-</details>
-
-<details>
-<summary>FU-380 · Sung-shot recipe defaults from the singing experiments — With FU-330 / FU-371</summary>
-
-**Status or trigger:** With FU-330 / FU-371
-
-**Notes:** Measured (`docs/research/lip-sync-singing-experiments-2026-11.md`): vocal stem as the audio (mix 0.37 vs stem 0.44), shot cut at a phrase with a 0.4 s lead-in and 3-5 s long (mid-phrase start 0.37, 8 s 0.45), close-up still, the explicit singing wording on (the `lipSyncSinging` switch exists, off by default; turn it on for sung shots), denoise defaults unchanged. Supersedes the open questions in FU-331.
-
-</details>
-
-<details>
-<summary>FU-373 · Vocal start offset per Storyboard shot — With FU-371</summary>
-
-**Status or trigger:** With FU-371
-
-**Notes:** `audioStartSeconds` exists on the request, but `Shot` has no field for it, so a Storyboard shot always uses its vocal file from 0 s.
-
-</details>
-
-<details>
-<summary>FU-372 · Attach a vocal in the Video Studio — When lip sync is used outside the Storyboard</summary>
-
-**Status or trigger:** When lip sync is used outside the Storyboard
-
-**Notes:** The API (`audioPath`) and the agent tool take it; only the Storyboard Shot drawer has a field for it. A Video Studio audio picker, shown for rows with `lipSync`, would show the 3 to 8 s rule and the estimate.
-
-</details>
-
-<details>
-<summary>FU-371 · Phase 2: cut a song into lip-sync shots in the Storyboard — Owner's go after phase 1 (D-98)</summary>
-
-**Status or trigger:** Owner's go after phase 1 (D-98)
-
-**Notes:** Not started on purpose. Phase 1 takes one vocal per shot (`Shot.vocalClip`, the whole file from 0 s). Phase 2: slice the song's vocal (stem or mix, FU-331) at the cut plan's shot boundaries with a 0.3-0.5 s pre-roll, attach each slice, two takes per sung shot, rank with FU-334. Phase 1 hint for the pre-roll: a Kokoro line that starts at 0 s and fills the shot scored r 0.27 against chance 0.36-0.40 though the strip shows the mouth talking and shutting after the line; the spike's clip with a 0.4 s lead-in scored 0.50 (chance 0.16).
+**Notes:** `lipsync_takes.py`: `lipSyncTakes` (1-4; default 3 sung, 1 speech) on the request, `takes` on `make_lipsync_shot`, a seed per take, Cancel between takes, "Take N of M" progress, estimate = cold take + warm takes + 10 s score each; the score runs as `python -I lip_sync_score.py` from `CHAOSENGINE_LIPSYNC_SCORE_PYTHON` (or the backend's Python if it has MediaPipe and OpenCV) with `CHAOSENGINE_LIPSYNC_FACE_MODEL`; without them the takes run unscored, take 1 is used and the note says why. Other takes are saved as Video Gallery clips (`lipSyncTakes` on the kept artifact). Real 4090 run through `POST /api/video/generate` (throwaway backend, 2026-11-23): a 4.04 s sung shot (the ballad stem window, close-up still, singing switch, default 3 takes) took 222.8 s: take 1 cold 112 s (load 38 s, denoise 52 s), takes 2 and 3 warm 55-56 s each with the score included; progress read "Take 2 of 3: Denoising against the vocal"; scores 0.38 / 0.30 / 0.29, none usable (r 0.12 / 0.09 / 0.05, under chance), take 1 kept; strip looked at: frontal, mouth shut for the first second, then sings and smiles open at the end; the other two takes are Video Gallery clips. Open: MediaPipe + face model are not in the release runtime (D-132; licence notice then); other takes as Storyboard takes (FU-606).
 
 </details>
 

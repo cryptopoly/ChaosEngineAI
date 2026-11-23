@@ -1,7 +1,7 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 130 shipped, obsoleted or dropped rows, newest first.
+summary: 134 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
@@ -96,6 +96,42 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** **Done 2026-11-20**
 
 **Notes:** Found by the coverage audit (`docs/review/test-coverage-2026-11-20.md`): phase 7 "Chat quality tiers" fails with `black-forest-labs/FLUX.1-schnell-nunchaku-int4 draft: time 0` once the Nunchaku row is installed, because `tiers_table` rounds a draft under half a second to 0 and the check reads 0 as no estimate. The plan card would also say "0 s". Recommend: round a positive time up to at least 1 s in `backend_service/tools/studio_tiers.py` (and `_price_settings`), so the card says "about 1 s" and the check passes; the price route gave 0 s at 512x512 for the same model.
+
+</details>
+
+<details>
+<summary>FU-380 · Sung-shot recipe defaults from the singing experiments — Applied 2026-11-23 (feat/lipsync-phase2, not merged).</summary>
+
+**Status or trigger:** **Applied 2026-11-23** (`feat/lipsync-phase2`, not merged).
+
+**Notes:** Song to shots prefers a stem, cuts 3-5 s shots with a 0.4 s lead-in and turns the singing switch on; the hints name the stem, a close-up frontal still with the mouth closed and the lead-in; denoise defaults unchanged. Phrase-boundary snapping is FU-607.
+
+</details>
+
+<details>
+<summary>FU-373 · Vocal start offset per Storyboard shot — Built 2026-11-23 (feat/lipsync-phase2, not merged).</summary>
+
+**Status or trigger:** **Built 2026-11-23** (`feat/lipsync-phase2`, not merged).
+
+**Notes:** `Shot.vocalStart` (plus `vocalSinging`, `vocalTakes`) through `edit_shot`, sent as `audioStartSeconds` / `lipSyncSinging` / `lipSyncTakes`; start and singing change the shot's fingerprint, the take count does not; cleared with the vocal. Shot editor fields in `ShotVocalFields.tsx`.
+
+</details>
+
+<details>
+<summary>FU-372 · Attach a vocal in the Video Studio — Built 2026-11-23 (feat/lipsync-phase2, not merged</summary>
+
+**Status or trigger:** **Built 2026-11-23** (`feat/lipsync-phase2`, not merged; supersedes D-109).
+
+**Notes:** `LipSyncAudioPicker` on rows with `lipSync`: WAV/FLAC path, start in the vocal, sung switch, takes (default 3 sung / 1 speech, 4 best quality), the 3 to 8 s rule against the current clip length, a missing start image, and the estimate multiplied by the takes from the row's measured figures (`lipSyncLogic.ts`, mirrors the backend). Not looked at in the running app (unit-rendered only).
+
+</details>
+
+<details>
+<summary>FU-371 · Phase 2: cut a song into lip-sync shots in the Storyboard — Built 2026-11-23 (feat/lipsync-phase2, not merged).</summary>
+
+**Status or trigger:** **Built 2026-11-23** (`feat/lipsync-phase2`, not merged).
+
+**Notes:** Song panel "Lip-sync the song": "Cut for singing" asks the cut plan for 3 to 5 s shots; "Give each shot its vocal" (`POST .../song/vocals`, `song_vocals.py`, op `set_shot_vocals`, one Undo) slices the vocal stem when one is given (else the song) at each shot's song time from its mixer clip, with a 0.4 s lead-in (less at the song's start): the shot grows by the lead-in and `trimIn` cuts it off again, so the film keeps its length and the mouth stays on the music; each slice is marked sung (3 takes). With a stem, shots under 20 % voiced are skipped; shots outside 3 to 8 s, at another speed, locked or past the song are named. Agent: `storyboard_song` action `vocals`. Tests `tests/test_storyboard_song_vocals.py`, E2E phase 22. Not done: snapping cuts to phrase starts (FU-607); no stem separation in the app (the user brings the stem).
 
 </details>
 

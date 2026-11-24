@@ -119,6 +119,16 @@ def _row(family: dict[str, Any], variant: dict[str, Any], kind: str) -> dict[str
     return row
 
 
+def _engine_runnable(variant: dict[str, Any]) -> bool:
+    """False for a stable-diffusion.cpp row when no ``sd`` binary is staged (FU-612): the weights are on disk, but the
+    run would fail, so Automatic and the agent must not pick it. The Models tab still shows the weights as installed."""
+    if str(variant.get("engine") or "").lower() != "sdcpp":
+        return True
+    from backend_service.sdcpp_image_runtime import _resolve_sd_binary
+
+    return _resolve_sd_binary() is not None
+
+
 def installed_models(state: Any, kind: str) -> list[dict[str, Any]]:
     if kind not in KINDS:
         raise ValueError(f"Unknown model kind '{kind}'.")
@@ -137,6 +147,7 @@ def installed_models(state: Any, kind: str) -> list[dict[str, Any]]:
             for family in _families(state, kind)
             for variant in family.get("variants") or []
             if variant.get("availableLocally")
+            and _engine_runnable(variant)
             and _text_to_media(variant, kind)
             and (variant.get("fit") or {}).get("status") != "wont-fit"
         ]

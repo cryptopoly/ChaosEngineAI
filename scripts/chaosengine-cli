@@ -1039,7 +1039,7 @@ def cmd_diagnostics_reextract(args: argparse.Namespace) -> int:
 
 
 def cmd_gpu_status(args: argparse.Namespace) -> int:
-    _ok(_hit_get(args, "/api/system/gpu-status", timeout=10.0))
+    _ok(_hit_get(args, "/api/system/gpu-status", timeout=60.0))
     return 0
 
 

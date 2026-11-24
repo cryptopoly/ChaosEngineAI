@@ -249,6 +249,21 @@ class McpBridgeTests(unittest.TestCase):
         self.assertTrue(rows["dgrauet/ltx-2.5-mlx-q4"]["acceptsImageInput"])
         self.assertFalse(rows["Lightricks/LTX-Video"]["acceptsImageInput"])
 
+    def test_installed_image_models_skip_sdcpp_rows_without_the_sd_binary(self):
+        """FU-612: weights on disk are not enough for an sd.cpp row; with no `sd` Automatic must pick a runnable one."""
+        from backend_service.mcp_bridge import models as bridge_models
+
+        base = {"availableLocally": True, "fit": {"status": "fits"}, "taskSupport": ["txt2img"]}
+        variants = [{**base, "id": "a/sdcpp-row", "repo": "a/sdcpp-row", "name": "Sd", "engine": "sdcpp"},
+                    {**base, "id": "b/diffusers-row", "repo": "b/diffusers-row", "name": "Df"}]
+        with mock.patch.object(bridge_models, "_families", return_value=[{"name": "F", "variants": variants}]):
+            with mock.patch("backend_service.sdcpp_image_runtime._resolve_sd_binary", return_value=None):
+                missing = [r["id"] for r in bridge_models.installed_models(object(), "image")]
+            with mock.patch("backend_service.sdcpp_image_runtime._resolve_sd_binary", return_value=Path("sd.exe")):
+                present = [r["id"] for r in bridge_models.installed_models(object(), "image")]
+        self.assertEqual(missing, ["b/diffusers-row"])
+        self.assertEqual(present, ["a/sdcpp-row", "b/diffusers-row"])
+
     def test_cancel_queued_job(self):
         from backend_service.helpers.job_queue import HEAVY_JOBS
 

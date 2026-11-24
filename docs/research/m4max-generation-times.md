@@ -18,8 +18,8 @@ ACE-Step XL, the bf16 LTX rows) fit without memory pressure.
 
 | Modality | Verdict | One-line why |
 |---|---|---|
-| **Image** | **In line** with the fastest Mac runtimes | We run mflux (the reference MLX implementation) directly. Per-step times match scaled community numbers. The Mac-native app (Draw Things, Metal FlashAttention) may be up to about 20 to 50 % faster per step on some models (its own claim, not verified on an M4 Max). An RTX 4090 is 5 to 15x faster for the same model, and that gap is the hardware. |
-| **Video, LTX (default path)** | **In line**, maybe slightly ahead | ltx-2-mlx q4 distilled: 4 s at 768x512 in about 128 to 138 s. The only M4 Max ComfyUI-MLX figure is 88 s for 2 s at 704x480. An RTX 5090 does a 720p 4 s clip in about 25 s, roughly 10x faster. |
+| **Image** | **In line** with the fastest Mac runtimes | We run mflux (the reference MLX implementation) directly. Per-step times match scaled community numbers. A Mac-native image app (with Metal FlashAttention) may be up to about 20 to 50 % faster per step on some models (its own claim, not verified on an M4 Max). An RTX 4090 is 5 to 15x faster for the same model, and that gap is the hardware. |
+| **Video, LTX (default path)** | **In line**, maybe slightly ahead | ltx-2-mlx q4 distilled: 4 s at 768x512 in about 128 to 138 s. The only M4 Max node-graph MLX figure is 88 s for 2 s at 704x480. An RTX 5090 does a 720p 4 s clip in about 25 s, roughly 10x faster. |
 | **Video, Wan 2.2 and the legacy bf16 LTX rows** | **Slower** | Wan runs through diffusers on MPS (293 s for 33 frames at 832x480, 20 steps). MLX ports and distilled Wan builds are several times faster. The bf16 mlx-video LTX rows were measured at 1130 s for 33 frames on 64 GB, about 10x slower than published MLX fp16 timings on a 128 GB M4 Max (probably memory pressure). |
 | **Music** | **Faster** than the published Mac numbers, and close to an RTX 3090 | ACE-Step 1.5 turbo on MLX DiT + MLX VAE with the planner LM off: a 60 s song in 5.1 to 5.9 s warm (about 10x real time). The only other Mac figure is about 3.4x real time on an M1 Max with the LM on and a PyTorch DiT. Upstream says under 10 s per full song on an RTX 3090. |
 | **Voice (TTS)** | **In line or faster on speed, behind on choice** | Kokoro warm: 0.17 s for 6 s of speech (about 35x real time). A published M4 Max mlx-audio run gives 22x, and a 4060 Ti gives 35 to 50x. We ship only Kokoro, while competitors ship voice cloning (Qwen3-TTS, Chatterbox, F5), which runs at roughly 1.5 to 2x real time on Macs. |
@@ -44,21 +44,21 @@ Column "Ours" = ChaosEngineAI on the machine above. "M4 Max field" = other runti
 | Model | Steps | Ours (M4 Max 40c, 64 GB) | M4 Max field | CUDA reference |
 |---|---|---|---|---|
 | Iris-3B Turbo (mflux 0.24) | 4 | **12.6 s warm, 14.6 s first run; 8.4 s at 768 px; 12 to 13 GB** (MEASURED, settings-rec) | No other runtime ships Iris. Closest class: FLUX.2 klein 4B **10.9 s** fp16 at 4 steps, Core ML, M4 Max 128 GB (MEASURED, [HF card](https://huggingface.co/mlboydaisuke/FLUX.2-klein-4B-CoreAI)). FLUX.2 klein 4B in mflux on an M1 Max: 21.4 s pure, 31.7 s wall (MEASURED, [lilting](https://lilting.ch/en/articles/flux2-klein-4b-mflux-iris-m1-max)); **about 9 to 11 s on an M4 Max** (ESTIMATED: about 2 to 2.4x for 25 % more cores, a newer GPU and 37 % more bandwidth) | n/a |
-| FLUX 3 Image Klein (mflux) | 8 (Studio default) | **40 s; 15 GB** (MEASURED) | No published FLUX 3 timings. FLUX.2 klein 9B: 85 s on an M4 Max per [lilting](https://lilting.ch/en/articles/flux2-klein-apple-silicon) (unverified: no steps or app given). Draw Things on an M5 Max: klein 4B about 10 s, 9B about 15 s ([note.com](https://note.com/tamilab/n/n89032ac3645d?hl=en); M5 has neural accelerators, so it is not comparable) | 4090: FLUX.2 klein 9B 12 to 18 s (lilting, secondary) |
+| FLUX 3 Image Klein (mflux) | 8 (Studio default) | **40 s; 15 GB** (MEASURED) | No published FLUX 3 timings. FLUX.2 klein 9B: 85 s on an M4 Max per [lilting](https://lilting.ch/en/articles/flux2-klein-apple-silicon) (unverified: no steps or app given). A Mac-native image app on an M5 Max: klein 4B about 10 s, 9B about 15 s ([note.com](https://note.com/tamilab/n/n89032ac3645d?hl=en); M5 has neural accelerators, so it is not comparable) | 4090: FLUX.2 klein 9B 12 to 18 s (lilting, secondary) |
 | FLUX 3 Image Klein | 16 (maker default) | **70 to 78 s** (MEASURED) | as above | |
 | FLUX 3 Image Klein, edit with 2 references, 1024x576 | 8 | **81 to 91 s per still** (MEASURED, lighthouse `run.log`) | n/a | |
 | FLUX 3 Image Klein, 3072 px | 8 | **110 s, 41 GB** (MEASURED, hub status) | n/a | |
 | Qwen-Image-2.1 Turbo (mflux) | 8 | **72 to 75 s; 46 to 50 GB** (MEASURED) | n/a | |
-| Qwen-Image-2.1 bf16 (mflux) | 40 | **258 to 271 s (6.6 s/step); 46 to 50 GB** (MEASURED) | mflux bf16 on an M5 Max: 78 s, 1.5 s/step, 46 GB ([modelfit](https://modelfit.io/blog/qwen-image-2-1-mac-apple-silicon/); M5 neural accelerators). ComfyUI + GGUF on an M4 Pro 48 GB: about 13 s/step (same source), so **about 6 to 7 s/step on an M4 Max** (ESTIMATED: 2x GPU cores, 2x bandwidth) | **4090: 18.7 s**; RTX PRO 6000: 8.0 s; DGX Spark: 35.4 s (SGLang cookbook via modelfit, 40 steps, MEASURED) |
+| Qwen-Image-2.1 bf16 (mflux) | 40 | **258 to 271 s (6.6 s/step); 46 to 50 GB** (MEASURED) | mflux bf16 on an M5 Max: 78 s, 1.5 s/step, 46 GB ([modelfit](https://modelfit.io/blog/qwen-image-2-1-mac-apple-silicon/); M5 neural accelerators). A node-graph image app with GGUF on an M4 Pro 48 GB: about 13 s/step (same source), so **about 6 to 7 s/step on an M4 Max** (ESTIMATED: 2x GPU cores, 2x bandwidth) | **4090: 18.7 s**; RTX PRO 6000: 8.0 s; DGX Spark: 35.4 s (SGLang cookbook via modelfit, 40 steps, MEASURED) |
 | FLUX.1 schnell (not timed by us) | 2 | catalog only | **mflux: about 19 s**, including cold start, M4 Max 128 GB (MEASURED, [mflux README](https://pypi.org/project/mflux/0.6.2/)) | |
-| FLUX.1 dev (not timed by us) | 20 | catalog only (diffusers, GGUF, sd.cpp, mflux rows) | Draw Things, M4 Max 40c: **about 170 s** (Reddit r/drawthingsapp, March 2025, anecdotal). ComfyUI fp8, M4 Max 48 GB: 45 to 70 s ([bitdoze](https://www.bitdoze.com/ai-images-mac/), unverified). Draw Things, M4 Pro: about 50 s, Q6_K ([heyuan110](https://www.heyuan110.com/posts/ai/2026-02-15-mac-mini-local-image-generation/)). The sources disagree by 3x | 4090: 11 to 18 s; 5090: 5.5 to 9 s (several secondary sources, fp8 vs bf16) |
-| Z-Image Turbo (not timed by us) | 8 to 9 | catalog only | ComfyUI on an M4 Pro: 60 to 80 s (heyuan110). Draw Things says it is "up to 54 % faster than other implementations" ([Draw Things](https://releases.drawthings.ai/p/quantify-z-image-turbo-efficiency)) | 4090: about 2.3 s (secondary) |
+| FLUX.1 dev (not timed by us) | 20 | catalog only (diffusers, GGUF, sd.cpp, mflux rows) | A Mac-native image app, M4 Max 40c: **about 170 s** (a Reddit post, March 2025, anecdotal). A node-graph image app, fp8, M4 Max 48 GB: 45 to 70 s ([bitdoze](https://www.bitdoze.com/ai-images-mac/), unverified). The Mac-native app, M4 Pro: about 50 s, Q6_K ([heyuan110](https://www.heyuan110.com/posts/ai/2026-02-15-mac-mini-local-image-generation/)). The sources disagree by 3x | 4090: 11 to 18 s; 5090: 5.5 to 9 s (several secondary sources, fp8 vs bf16) |
+| Z-Image Turbo (not timed by us) | 8 to 9 | catalog only | A node-graph image app on an M4 Pro: 60 to 80 s (heyuan110). The Mac-native app says it is "up to 54 % faster than other implementations" ([its maker](https://releases.drawthings.ai/p/quantify-z-image-turbo-efficiency)) | 4090: about 2.3 s (secondary) |
 
 ### Video
 
 | Model / engine | Size, frames, steps | Ours | M4 Max field | CUDA reference |
 |---|---|---|---|---|
-| LTX-2.3 distilled q4 (ltx-2-mlx) | 768x512, 33 f (1.4 s), 8+3 passes | **55 to 57 s, 14 GB** (MEASURED, settings-rec) | ComfyUI LTX-2 MLX node, q4 distilled, 704x480, 49 f, M4 Max 64 GB: **88 s** (MEASURED by its author, [comfy.icu](https://comfy.icu/node/LTX2MLXModelLoader)); its two-stage modes take about 16 min | |
+| LTX-2.3 distilled q4 (ltx-2-mlx) | 768x512, 33 f (1.4 s), 8+3 passes | **55 to 57 s, 14 GB** (MEASURED, settings-rec) | A node-graph LTX-2 MLX node, q4 distilled, 704x480, 49 f, M4 Max 64 GB: **88 s** (MEASURED by its author, [comfy.icu](https://comfy.icu/node/LTX2MLXModelLoader)); its two-stage modes take about 16 min | |
 | LTX-2.3 q4 | 768x512, 97 f (4 s) | **135 to 138 s, 15 GB** (MEASURED) | ESTIMATED from the 88 s above, scaled by frames: about 150 to 175 s, so we are level or a little faster | 5090: about 25 s for 720p, 4 s (NVIDIA guide via [runaihome](https://runaihome.com/blog/ltx-2-5-local-ai-video-hardware-guide-2026/)) |
 | LTX-2.3 q4 | 1280x704, 121 f (5 s) | **363 s, 18 GB** (MEASURED, runs-2026-10-29) | MLX q4, video only, 576x1024, 121 f, M4 Max 128 GB: **154 s denoise only** (stage 1 51 s + stage 2 101 s), against 264 s for PyTorch MPS bf16 (MEASURED, [HF card](https://huggingface.co/gajesh/ltx-2.3-mlx-q4)). Scaled to our 1.53x pixel count plus encoder, decode and audio: about 300 to 350 s (ESTIMATED). In line | 3090 int8 distilled, 5 s: about 2.5 min (community, via runaihome) |
 | LTX-2.3 q4 | 768x512, 257 f (10.7 s) | **352 s, 18 GB** (MEASURED) | n/a | 5090: an 8 s 720p clip spills out of VRAM and takes about 3 min |
@@ -98,15 +98,15 @@ Column "Ours" = ChaosEngineAI on the machine above. "M4 Max field" = other runti
 - **Picking fewer steps is our biggest measured win.** FLUX 3 Klein starts at 8 steps instead of 16 (40 s against 70 s, same look on 3 prompts).
 - **Qwen-Image-2.1 is limited by memory more than compute.** It peaks at 46 to 50 GB on a 64 GB Mac. The bf16 row is the only one measured; the 8-bit row is not timed. On Apple GPUs, int8 weights save memory but do not speed up compute (the Core ML klein card shows fp16 10.9 s against int8 11.6 s).
 - **Where we may lose:**
-  - Draw Things uses its own Metal FlashAttention kernels. It claims about 20 % over ComfyUI and up to 54 % over "other implementations" for Z-Image. Nobody has published a head-to-head on an M4 Max, and its M4 Max FLUX.1 dev anecdote (170 s) is slower than ComfyUI reports, so the claim is unproven for our models.
+  - The Mac-native app uses its own Metal FlashAttention kernels. It claims about 20 % over a node-graph image app and up to 54 % over "other implementations" for Z-Image. Nobody has published a head-to-head on an M4 Max, and its M4 Max FLUX.1 dev anecdote (170 s) is slower than the node-graph app reports, so the claim is unproven for our models.
   - Core ML (Apple's `coreai-models`) runs FLUX.2 klein 4B at 4 steps in 10.9 s, a little faster than our Iris class at the same step count.
-  - M5 Macs are 3 to 4.6x faster than M4 on image work in both mflux and Draw Things, because of the neural accelerators. A new Mac will beat any software gain.
-- **Not timed by us:** FLUX.1, SD3.5, SDXL and Z-Image through diffusers, and the sd.cpp rows. These are the places where an MPS-diffusers path could be slower than mflux or Draw Things.
+  - M5 Macs are 3 to 4.6x faster than M4 on image work in both mflux and the Mac-native app, because of the neural accelerators. A new Mac will beat any software gain.
+- **Not timed by us:** FLUX.1, SD3.5, SDXL and Z-Image through diffusers, and the sd.cpp rows. These are the places where an MPS-diffusers path could be slower than mflux or the Mac-native app.
 
 **Video.**
 - **LTX via ltx-2-mlx (default) is good.** The time is in the two-stage distilled sampler. On the HF card's M4 Max run, stage 2 (3 steps at full resolution) is about 66 % of denoising. Text encoding (Gemma), VAE decode and the audio branch come on top.
   - The q4 transformer keeps the footprint at 14 to 18 GB, so a 64 GB Mac never pages memory.
-  - Cold model plus encoder load is about 24 to 41 s (ComfyUI node author's figure) and lands on the first clip.
+  - Cold model plus encoder load is about 24 to 41 s (the node author's figure) and lands on the first clip.
 - **Where we lose:**
   1. **The legacy mlx-video bf16 rows** (1130 s for 33 frames, 40 GB) are about 10x slower than published MLX fp16 runs on a 128 GB M4 Max. Hide them on 64 GB Macs, or point them at the q4 pack.
   2. **Wan 2.x through diffusers on MPS:** 293 s for 2 s at 480p and 20 steps. MLX ports are probably 1.5 to 2x faster. Distilled 3-step builds (FastMetal) do a 5 s 720p clip in 151 s, or 47 s in fast mode.
@@ -134,7 +134,7 @@ Column "Ours" = ChaosEngineAI on the machine above. "M4 Max field" = other runti
 
 ### Could not source
 
-- A controlled FLUX.1 dev or schnell timing on an M4 Max in Draw Things or ComfyUI (only anecdotes and unverified blog tables).
+- A controlled FLUX.1 dev or schnell timing on an M4 Max in the Mac-native or node-graph apps (only anecdotes and unverified blog tables).
 - Any third-party timing for FLUX 3 Image Klein, Iris-3B or Qwen-Image-2.1 on an M4 Max.
 - Undistilled Wan 2.2 5B on an M4 Max in any runtime (only an M3 Max mlx-video figure and the distilled FastMetal builds).
 - ACE-Step 1.5 on an M4 Max by anyone else, and a 4090 or 5090 timing for ACE-Step 1.5 (upstream gives only the 3090 and A100).
@@ -143,7 +143,7 @@ Column "Ours" = ChaosEngineAI on the machine above. "M4 Max field" = other runti
 
 ### Follow-ups this suggests (not done)
 
-1. Time FLUX.2 klein 4B (mflux) and Z-Image Turbo (diffusers) on this Mac. Those two let us compare directly with the Core ML 10.9 s figure and the Draw Things Z-Image claim.
+1. Time FLUX.2 klein 4B (mflux) and Z-Image Turbo (diffusers) on this Mac. Those two let us compare directly with the Core ML 10.9 s figure and the Mac-native app's Z-Image claim.
 2. Retime or hide the bf16 mlx-video LTX rows on 64 GB Macs (1130 s against about 130 s on the q4 path).
 3. Price an MLX Wan path (mlx-video or a distilled 3-step build) against diffusers MPS, expected 1.5 to 3x faster.
 4. Try ACE-Step XL in bf16 on MPS (47 GB peak today).
@@ -155,14 +155,14 @@ Column "Ours" = ChaosEngineAI on the machine above. "M4 Max field" = other runti
 - FLUX.2 klein 4B Core AI (M4 Max): https://huggingface.co/mlboydaisuke/FLUX.2-klein-4B-CoreAI
 - FLUX.2 klein 4B mflux / iris.c (M1 Max): https://lilting.ch/en/articles/flux2-klein-4b-mflux-iris-m1-max
 - FLUX.2 klein 9B Mac table (unverified): https://lilting.ch/en/articles/flux2-klein-apple-silicon
-- Draw Things on M5 Max (FLUX.2): https://note.com/tamilab/n/n89032ac3645d?hl=en
-- Draw Things Z-Image claims: https://releases.drawthings.ai/p/quantify-z-image-turbo-efficiency ; MFA v2.5 (M5 vs M4): https://releases.drawthings.ai/p/metal-flashattention-v25-w-neural
-- Mac mini M4 Pro, Draw Things vs ComfyUI: https://www.heyuan110.com/posts/ai/2026-02-15-mac-mini-local-image-generation/
+- Mac-native image app on M5 Max (FLUX.2): https://note.com/tamilab/n/n89032ac3645d?hl=en
+- Mac-native app Z-Image claims: https://releases.drawthings.ai/p/quantify-z-image-turbo-efficiency ; MFA v2.5 (M5 vs M4): https://releases.drawthings.ai/p/metal-flashattention-v25-w-neural
+- Mac mini M4 Pro, two image apps compared: https://www.heyuan110.com/posts/ai/2026-02-15-mac-mini-local-image-generation/
 - Flux on Mac guide (unverified M4 Max ranges): https://www.bitdoze.com/ai-images-mac/
 - Qwen-Image-2.1 on Mac + SGLang CUDA table: https://modelfit.io/blog/qwen-image-2-1-mac-apple-silicon/
 - FLUX.1 dev 4090 / 5090: https://dev.to/jovan_chan_9500711396d4e6/comfyui-nvfp4-in-2026-3x-faster-image-generation-on-rtx-50-series-and-the-right-format-for-rtx-2i8b , https://insiderllm.com/guides/rtx-5090-local-ai-worth-it/
 - LTX-2.3 MLX q4 / fp16 (M4 Max 128 GB): https://huggingface.co/gajesh/ltx-2.3-mlx-q4 , https://huggingface.co/gajesh/ltx-2.3-mlx-fp16
-- ComfyUI LTX-2 MLX node (M4 Max 64 GB): https://comfy.icu/node/LTX2MLXModelLoader
+- Node-graph LTX-2 MLX node (M4 Max 64 GB): https://comfy.icu/node/LTX2MLXModelLoader
 - ltx-2-mlx: https://github.com/dgrauet/ltx-2-mlx
 - LTX-2.5 hardware guide (5090 and 3090 figures): https://runaihome.com/blog/ltx-2-5-local-ai-video-hardware-guide-2026/
 - FastMetal Wan (M4 Max): https://haoailab.com/blogs/fastmetal/ ; Wan 2.2 5B on Mac: https://modelfit.io/video/wan-2-2-5b/

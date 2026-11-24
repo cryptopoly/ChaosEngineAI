@@ -717,3 +717,115 @@ Verified on an RTX 4090 (docs/progress/rtx4090-progress.md). Each package and it
 - librosa 0.11.0 - ISC; conformer 0.3.2, pyloudnorm 0.2.0, spacy-pkuseg 1.0.2, einops 0.8, inflect 7.6,
   addict 2.4.0, pydantic 2 - MIT; omegaconf 2.3 - BSD-3-Clause; soundfile 0.13 - BSD-3-Clause.
 - Left out on purpose: pykakasi (GPL-3.0), gradio, funasr, modelscope, datasets, matplotlib.
+
+## Weights you download yourself
+
+ChaosEngineAI does not ship or redistribute any model weights. The model catalogues list models that you download
+from Hugging Face yourself, onto your own computer and (for gated repos) under your own Hugging Face account. Each
+download is under the licence shown on its model card, and you accept that licence, not ChaosEngineAI's. The table
+below names every model family the catalogues offer (text, image, video, music, sounds, speech, speech-to-text and
+drafters), grouped by family rather than by quantisation or conversion. Community conversions (GGUF, MLX, 4-bit,
+diffusers) keep the licence of the upstream weights they were made from, even when the conversion's card lists
+another one or none.
+
+Checked on 2026-11-24 against each upstream model card's licence field on the Hugging Face Hub and, for every
+restricted licence, the licence text itself. This is a plain summary, not legal advice: the model card and its
+licence file are what count, and they can change.
+
+**Restricted** in the last column means at least one of: non-commercial use only, a revenue or user cap above which
+you need another licence, a territory limit, an acceptable-use policy that restricts what you may do, or a gated repo
+where you accept terms on Hugging Face before downloading. "None" means a permissive licence (Apache-2.0, MIT,
+CC-BY-4.0, OpenMDW-1.1) whose only conditions are keeping the licence and notices when you share the files.
+
+### Text models
+
+| Family | Upstream model card | Licence | Restrictions |
+|---|---|---|---|
+| Gemma 4 (E2B to 31B) | [google/gemma-4-31B-it](https://huggingface.co/google/gemma-4-31B-it) | Apache-2.0 ([Gemma 4 licence page](https://ai.google.dev/gemma/docs/gemma_4_license)) | None. Not gated. |
+| Qwen 3.8 (27B) | [Qwen/Qwen3.8-27B](https://huggingface.co/Qwen/Qwen3.8-27B) | Apache-2.0 | None. |
+| Qwen 3.8 Flash-Next | [Qwen/Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | Qwen Community License 1.0 | **Restricted:** the model name must be shown in a product with over 100 million monthly active users or US$20 million monthly revenue; a model-as-a-service or AI work assistant business needs a separate licence from Qwen for commercial use. |
+| Qwen 3.5, Qwen 3.6, Qwen3 Coder Next | [Qwen/Qwen3.6-27B](https://huggingface.co/Qwen/Qwen3.6-27B), [Qwen/Qwen3.5-9B](https://huggingface.co/Qwen/Qwen3.5-9B), [Qwen/Qwen3-Coder-Next](https://huggingface.co/Qwen/Qwen3-Coder-Next) | Apache-2.0 | None. |
+| Qwen 2.5 (3B, 7B, 32B, Coder 7B) | [Qwen/Qwen2.5-7B-Instruct](https://huggingface.co/Qwen/Qwen2.5-7B-Instruct), [Qwen/Qwen2.5-3B-Instruct](https://huggingface.co/Qwen/Qwen2.5-3B-Instruct) | Apache-2.0; **3B: Qwen Research Licence** | **Restricted (3B only):** research and evaluation only, no commercial use. The other sizes: none. |
+| Bonsai and Ternary Bonsai | [prism-ml/Bonsai-8B-gguf](https://huggingface.co/prism-ml/Bonsai-8B-gguf) | Apache-2.0 | None. |
+| Nemotron 3 Nano | [nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8) | [NVIDIA Nemotron Open Model License](https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-nemotron-open-model-license/) | Commercial use allowed. When you share the weights, keep the licence and the line "Licensed by NVIDIA Corporation under the NVIDIA Nemotron Model License"; suing over the model ends your licence. |
+| Nemotron 3.5 Lightning, Nemotron 3.5 Bolt | [nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16), [nvidia/NVIDIA-Nemotron-3.5-Bolt-E4B-4GB](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Bolt-E4B-4GB) | [OpenMDW-1.1](https://openmdw.ai/license/1-1/) | None. |
+| MiniCPM 5 | [openbmb/MiniCPM5-2B](https://huggingface.co/openbmb/MiniCPM5-2B) | Apache-2.0 | None. |
+| Kolibri 1 | [Aleph-Alpha/Kolibri-1](https://huggingface.co/Aleph-Alpha/Kolibri-1) | Apache-2.0 | None. |
+| Flint | [RecursiveSI/flint](https://huggingface.co/RecursiveSI/flint) | Apache-2.0 | None. |
+| Devstral Small | [mistralai/Devstral-Small-2507](https://huggingface.co/mistralai/Devstral-Small-2507) | Apache-2.0 | None. |
+| Mistral Nemo | [mistralai/Mistral-Nemo-Instruct-2407](https://huggingface.co/mistralai/Mistral-Nemo-Instruct-2407) | Apache-2.0 | None. |
+| Mistral Large 3 | [mistralai/Mistral-Large-3-675B-Instruct-2512](https://huggingface.co/mistralai/Mistral-Large-3-675B-Instruct-2512) | Apache-2.0 | None. |
+| Llama 3.3 | [meta-llama/Llama-3.3-70B-Instruct](https://huggingface.co/meta-llama/Llama-3.3-70B-Instruct) | Llama 3.3 Community License | **Restricted:** gated; acceptable use policy; "Built with Llama" when you share it or a product built on it; companies with over 700 million monthly active users need a licence from Meta. |
+| Llama 4 Scout | [meta-llama/Llama-4-Scout-17B-16E-Instruct](https://huggingface.co/meta-llama/Llama-4-Scout-17B-16E-Instruct) | Llama 4 Community License | **Restricted:** as Llama 3.3, and its acceptable use policy does not grant the multimodal model's rights to individuals living in, or companies based in, the European Union (end users of a product built on it are not affected). |
+| Phi 4 | [microsoft/phi-4](https://huggingface.co/microsoft/phi-4) | MIT | None. |
+| DeepSeek V4 | [deepseek-ai/DeepSeek-V4-Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash) | MIT | None. |
+| GLM-5, GLM-5.1, GLM-5.3-Flash | [zai-org/GLM-5.1](https://huggingface.co/zai-org/GLM-5.1), [zai-org/GLM-5.3-Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | MIT | None. |
+| MiniMax M2 (M2.7) | [MiniMaxAI/MiniMax-M2.7](https://huggingface.co/MiniMaxAI/MiniMax-M2.7) | MiniMax M2.7 Non-Commercial License | **Restricted:** non-commercial use only; commercial use needs MiniMax's prior written authorisation and "Built with MiniMax M2.7". |
+| MiniMax M3, MiniMax-M3.1-Flash | [MiniMaxAI/MiniMax-M3](https://huggingface.co/MiniMaxAI/MiniMax-M3), [MiniMaxAI/MiniMax-M3.1-Flash](https://huggingface.co/MiniMaxAI/MiniMax-M3.1-Flash) | MiniMax Community License | **Restricted:** commercial use needs "Built with MiniMax M3" (or M3.1-Flash) shown, and a one-time notice to MiniMax; above US$20 million yearly revenue, prior written authorisation. |
+| Ornith 1.0 and 1.5 | [deepreinforce-ai/Ornith-1.0-9B](https://huggingface.co/deepreinforce-ai/Ornith-1.0-9B), [ornith-ai/Ornith-1.5-9B-GGUF](https://huggingface.co/ornith-ai/Ornith-1.5-9B-GGUF) | MIT | None. |
+| Kimi K2.6 | [moonshotai/Kimi-K2.6](https://huggingface.co/moonshotai/Kimi-K2.6) | Modified MIT | **Restricted:** a product with over 100 million monthly active users or US$20 million monthly revenue must show "Kimi K2.6" in its interface. |
+| LFM2.5, LFM3 | [LiquidAI/LFM2.5-24B-A2B-GGUF](https://huggingface.co/LiquidAI/LFM2.5-24B-A2B-GGUF), [LiquidAI/LFM3-1.7B-GGUF](https://huggingface.co/LiquidAI/LFM3-1.7B-GGUF) | LFM Open License v1.0 | **Restricted:** commercial use is limited for organisations at or above US$10 million annual revenue (the licence's "Threshold"); non-commercial and research use is free. |
+| Nanbeige 4.3 | [Nanbeige/Nanbeige4.3-33B](https://huggingface.co/Nanbeige/Nanbeige4.3-33B) | Apache-2.0 | None. |
+| Spark-X2.6 | [XHToken/Spark-X2.6-4B](https://huggingface.co/XHToken/Spark-X2.6-4B) | Apache-2.0 | None. |
+| Granite Switch 4.1 | [ibm-granite/granite-switch-4.1-8b-GGUF](https://huggingface.co/ibm-granite/granite-switch-4.1-8b-GGUF) | Apache-2.0 | None. |
+| Muse Glimmer | [meta-models/Muse-Glimmer-30B](https://huggingface.co/meta-models/Muse-Glimmer-30B) | Apache-2.0 | None. |
+| Inkling 2 | [thinkingmachines/Inkling-2-Mini](https://huggingface.co/thinkingmachines/Inkling-2-Mini) | Apache-2.0 | None. |
+| DFlash and DFlash 2 drafters (speculative decoding) | [z-lab/Qwen3.6-27B-DFlash](https://huggingface.co/z-lab/Qwen3.6-27B-DFlash), [z-lab/Qwen3.8-27B-DFlash2](https://huggingface.co/z-lab/Qwen3.8-27B-DFlash2) | MIT or Apache-2.0, per drafter | None for the Qwen, Gemma 4, Llama 3.1, gpt-oss and Kimi drafters (the Kimi one is gated). **`z-lab/MiniMax-M2.7-DFlash`: check the model card** (licence "other", gated). A drafter does not change the licence of the model it speeds up. MTP and DFlash drafters packed inside a model repo share that repo's licence. |
+
+### Image models
+
+| Family | Upstream model card | Licence | Restrictions |
+|---|---|---|---|
+| FLUX.1 Schnell | [black-forest-labs/FLUX.1-schnell](https://huggingface.co/black-forest-labs/FLUX.1-schnell) | Apache-2.0 | Gated (accept on Hugging Face); otherwise none. |
+| FLUX.1 Dev | [black-forest-labs/FLUX.1-dev](https://huggingface.co/black-forest-labs/FLUX.1-dev) | FLUX.1 [dev] Non-Commercial License | **Restricted:** gated; non-commercial use only. Also covers the int4 conversion [noted above](#nunchaku-and-vllm-in-wsl-optional-installed-by-the-user-never-bundled). |
+| FLUX.2 (dev, klein 4B, klein 9B, dev Turbo) | [black-forest-labs/FLUX.2-dev](https://huggingface.co/black-forest-labs/FLUX.2-dev), [black-forest-labs/FLUX.2-klein-4B](https://huggingface.co/black-forest-labs/FLUX.2-klein-4B) | dev, klein 9B and `fal/FLUX.2-dev-Turbo`: FLUX Non-Commercial License; klein 4B: Apache-2.0 | **Restricted (dev, klein 9B, dev Turbo):** gated; non-commercial use only. klein 4B: none. |
+| FLUX 3 Image Klein | [black-forest-labs/flux-3-image-klein](https://huggingface.co/black-forest-labs/flux-3-image-klein) | FLUX Kommunity licence v1.0 | **Restricted:** see [the notice above](#optional-apple-silicon-image-runtime). |
+| Stable Diffusion 3.5 (Medium, Large Turbo) | [stabilityai/stable-diffusion-3.5-medium](https://huggingface.co/stabilityai/stable-diffusion-3.5-medium) | Stability AI Community License | **Restricted:** gated; free while you and your affiliates earn under US$1 million a year, then a licence from Stability AI; commercial use means registering with Stability AI; acceptable use policy. |
+| SDXL | [stabilityai/stable-diffusion-xl-base-1.0](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0) | CreativeML OpenRAIL++-M | **Restricted:** use restrictions (OpenRAIL attachment) that pass on to anyone you share it with. |
+| Qwen-Image (original, 2512, Edit, Edit 2511) | [Qwen/Qwen-Image](https://huggingface.co/Qwen/Qwen-Image), [Qwen/Qwen-Image-2512](https://huggingface.co/Qwen/Qwen-Image-2512) | Apache-2.0 | None. |
+| Qwen-Image 2.1 and 2.1 Turbo | [Qwen/Qwen-Image-2.1](https://huggingface.co/Qwen/Qwen-Image-2.1) | Qwen Research Licence | **Restricted:** non-commercial use only; see [the notice above](#optional-apple-silicon-image-runtime). |
+| Z-Image (Turbo, base) | [Tongyi-MAI/Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo) | Apache-2.0 | None. |
+| Iris-3B | [speridlabs/iris-3b](https://huggingface.co/speridlabs/iris-3b) | Apache-2.0 | None. |
+| MOSS-Image | [OpenMOSS-Team/MOSS-Image-SFT](https://huggingface.co/OpenMOSS-Team/MOSS-Image-SFT) | Apache-2.0 | None. |
+| ERNIE-Image (and Turbo) | [baidu/ERNIE-Image](https://huggingface.co/baidu/ERNIE-Image) | Apache-2.0 | None. |
+| Nucleus-Image | [NucleusAI/Nucleus-Image](https://huggingface.co/NucleusAI/Nucleus-Image) | Apache-2.0 | None. |
+| HiDream-I1 | [HiDream-ai/HiDream-I1-Full](https://huggingface.co/HiDream-ai/HiDream-I1-Full) | MIT | **Restricted through a component:** its pipeline also loads `meta-llama/Meta-Llama-3.1-8B-Instruct` (Llama 3.1 Community License, gated) and `google/t5-v1_1-xxl`; the card asks you to follow their terms. |
+| GLM-Image | [zai-org/GLM-Image](https://huggingface.co/zai-org/GLM-Image) | MIT | It includes tokenizer and ViT weights from X-Omni: check the model card for their terms. |
+| Sana Sprint (0.6B, 1.6B) | [Efficient-Large-Model/Sana_Sprint_1.6B_1024px_diffusers](https://huggingface.co/Efficient-Large-Model/Sana_Sprint_1.6B_1024px_diffusers) | Apache-2.0 | **Restricted through a component:** the card points to the Gemma Terms of Use and Gemma Prohibited Use Policy for its Gemma-2-2B-IT text encoder. |
+
+### Video models
+
+| Family | Upstream model card | Licence | Restrictions |
+|---|---|---|---|
+| LTX-Video (0.9.x) | [Lightricks/LTX-Video](https://huggingface.co/Lightricks/LTX-Video) | LTXV RAIL-M licence, one file per version (linked from the card) | **Restricted:** RAIL-M use restrictions that pass on to anyone you share it with. |
+| LTX-2 and LTX-2.3 (NVIDIA diffusers rows, Mac MLX rows) | [Lightricks/LTX-2.3](https://huggingface.co/Lightricks/LTX-2.3), [Lightricks/LTX-2](https://huggingface.co/Lightricks/LTX-2) | [LTX-2 Community License](https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2) | **Restricted:** free below US$10 million annual revenue (affiliates counted together), a paid licence above it; use restrictions in its Attachment A. Conversions keep these terms even where their card says otherwise or nothing. The `ltx-2-mlx` rows also download `mlx-community/gemma-3-12b-it-4bit`, under Google's Gemma Terms of Use. See also [the video runtime notice above](#optional-apple-silicon-video-runtime). |
+| LTX-2.5 | [Lightricks/LTX-2.5](https://huggingface.co/Lightricks/LTX-2.5) | [LTX-2.x Community License](https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2_x) (11 August 2026, amended 11 November 2026) | **Restricted:** gated; organisations at or above US$10 million annual revenue need a paid licence for anything other than non-commercial use; use restrictions. |
+| Wan 2.1, Wan 2.2 | [Wan-AI/Wan2.1-T2V-14B-Diffusers](https://huggingface.co/Wan-AI/Wan2.1-T2V-14B-Diffusers), [Wan-AI/Wan2.2-TI2V-5B-Diffusers](https://huggingface.co/Wan-AI/Wan2.2-TI2V-5B-Diffusers) | Apache-2.0 | None. |
+| Kandinsky 6.0 Lite | [kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers](https://huggingface.co/kandinskylab/Kandinsky-6.0-Lite-distill-5s-Diffusers) | MIT | None. |
+| HunyuanVideo | [tencent/HunyuanVideo](https://huggingface.co/tencent/HunyuanVideo) | Tencent Hunyuan Community License | **Restricted:** territory-limited, the licence does not apply in the European Union, the United Kingdom or South Korea; acceptable use policy. The `hunyuanvideo-community` conversion the app downloads lists no licence and keeps these terms. |
+| Mochi 1 | [genmo/mochi-1-preview](https://huggingface.co/genmo/mochi-1-preview) | Apache-2.0 | None. |
+| CogVideoX (2B, 5B, 1.5 5B) | [THUDM/CogVideoX-5b](https://huggingface.co/THUDM/CogVideoX-5b), [THUDM/CogVideoX-2b](https://huggingface.co/THUDM/CogVideoX-2b) | 2B: Apache-2.0; 5B and 1.5 5B: CogVideoX License | **Restricted (5B, 1.5 5B):** free for academic research; commercial use needs registering for a free basic commercial licence, up to 1 million visits a month. 2B: none. |
+| MiniMax H3 | [MiniMaxAI/MiniMax-H3](https://huggingface.co/MiniMaxAI/MiniMax-H3) | MiniMax H3 Community License Agreement | **Restricted:** territory-limited; see [the notice above](#minimax-h3-weights-user-downloaded-never-bundled). |
+
+### Music and sounds
+
+| Family | Upstream model card | Licence | Restrictions |
+|---|---|---|---|
+| ACE-Step 1.5 | [ACE-Step/Ace-Step1.5](https://huggingface.co/ACE-Step/Ace-Step1.5) | MIT | None; see [the notice above](#ace-step-15-weights). |
+| Stable Audio Open (1.0, Small) | [stabilityai/stable-audio-open-small](https://huggingface.co/stabilityai/stable-audio-open-small) | Stability AI Community License | **Restricted:** gated; US$1 million revenue cap; "Powered by Stability AI"; see [the notice above](#sound-effects-stable-audio-open-and-stable-audio-3-optional). |
+| Stable Audio 3 (Small SFX, Small Music, Medium) | [stabilityai/stable-audio-3-medium](https://huggingface.co/stabilityai/stable-audio-3-medium) | Stability AI Community License and Gemma Terms of Use | **Restricted:** as Stable Audio Open, plus the Gemma Prohibited Use Policy for its text encoder; see [the notice above](#sound-effects-stable-audio-open-and-stable-audio-3-optional). |
+
+### Speech and speech-to-text
+
+| Family | Upstream model card | Licence | Restrictions |
+|---|---|---|---|
+| Qwen3-TTS (Base, CustomVoice, VoiceDesign) | [Qwen/Qwen3-TTS-12Hz-1.7B-Base](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-Base) | Apache-2.0 | None. |
+| Chatterbox (Turbo, Multilingual V3) | [ResembleAI/chatterbox](https://huggingface.co/ResembleAI/chatterbox), [ResembleAI/chatterbox-turbo](https://huggingface.co/ResembleAI/chatterbox-turbo) | MIT | None. |
+| VoxCPM2 | [openbmb/VoxCPM2](https://huggingface.co/openbmb/VoxCPM2) | Apache-2.0 | None. |
+| Orpheus 3B | [canopylabs/orpheus-3b-0.1-ft](https://huggingface.co/canopylabs/orpheus-3b-0.1-ft) | Apache-2.0 (licence field) | **Check the model card:** the repo is gated and its card names Llama 3.2 3B Instruct (Llama 3.2 Community License) as the base model; see [the notice above](#more-speech-models-optional-on-demand-d-70). |
+| Kokoro 82M | [hexgrad/Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) | Apache-2.0 | None. |
+| Whisper (large-v3-turbo, small, base) | [openai/whisper-large-v3-turbo](https://huggingface.co/openai/whisper-large-v3-turbo), [openai/whisper-small](https://huggingface.co/openai/whisper-small) | large-v3-turbo: MIT; small and base: Apache-2.0 (card licence fields); the `faster-whisper` conversions: MIT | None. |
+| Parakeet TDT 0.6B v3 | [nvidia/parakeet-tdt-0.6b-v3](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) | CC-BY-4.0 | None beyond attribution when you share it. |
+| Nemotron 3.5 ASR (streaming 0.6B) and Nemotron 3.5 Transcribe (30B-A4B) | [nvidia/nemotron-3.5-asr-streaming-0.6b](https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b), [nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Transcribe-30B-A4B) | OpenMDW-1.1 | None. |
+| Qwen3-ASR (0.6B, 1.7B) and Qwen3-ForcedAligner | [Qwen/Qwen3-ASR-1.7B](https://huggingface.co/Qwen/Qwen3-ASR-1.7B), [Qwen/Qwen3-ForcedAligner-0.6B-hf](https://huggingface.co/Qwen/Qwen3-ForcedAligner-0.6B-hf) | Apache-2.0 | None. |
+| Granite Speech 5.0 | [ibm-granite/granite-speech-5.0-2b](https://huggingface.co/ibm-granite/granite-speech-5.0-2b) | Apache-2.0 | None. |

@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 276 rows with work, decisions or watch items still open, newest first.
+summary: 277 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-616 · llama.cpp b12675: 4090 run before merge — Next free GPU slot, before bump-llamacpp merges</summary>
+
+**Status or trigger:** Next free GPU slot, before `bump-llamacpp` merges
+
+**Notes:** **Pinned `b12675` on branch `bump-llamacpp` 2026-11-24** (`llama_cuda.py` tag and the three Windows CUDA digests, `stage-runtime.mjs`, `update-llama-cpp.sh`, `linux-gpu-check.sh`, CLAUDE.md row). b12651..b12675 is 24 commits: prompt-cache entry kept until restore succeeds, CUDA MMQ zero-block fix, FLASH_ATTN_EXT indexed bias, `llama-quantize` target size, Metal NVFP4, web UI; no server flag, parser, reasoning, KV-type or speculative change; asset names identical. Checked: `check-upstreams.py` ok at b12675 (b12676 and b12679 have no release yet), installer into a throwaway home (`E:\tmp\llama-bump-home`) with both CUDA 13.5 zips sha256-verified, CUDA 12.4 zip digest matched by download, Linux/macOS assets the staging scripts match all published with digests; llama tests pass (one order-dependent failure, `test_install_detection_repoints_the_cached_server_path`, also fails on the base commit when run after `test_setup_routes.py` or `test_moe_offload.py`). **Not done:** `llama-server --version` and Qwen3.6-35B-A3B Q4_K_M on the 4090 against b12651 (41.6 tokens/s), because the GPU lock was held for the whole 90-minute window; run `bench.py`-style 3 x 300-token replies on both builds, then merge.
+
+</details>
 
 <details>
 <summary>FU-615 · A Studio turn can fill the whole context inside its own tool loop — With FU-614</summary>

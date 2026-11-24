@@ -80,6 +80,14 @@ _OWN_JOB_TOOLS = {"job_status", "wait_for_job", "cancel_job"}
 _STRIPPED_KEYS = {"previewBase64", "download", "data_base64"}
 _MAX_RESULT_CHARS = 1800
 _MAX_LIST_ITEMS = 12
+# A list of short strings is a list of ids (shot ids, model ids, voice ids): kept whole up to this many, since an id
+# the model never sees is one it guesses (a 30-shot film showed only 12 shot ids, 2026-11-24).
+_MAX_ID_ITEMS = 100
+_ID_CHARS = 64
+# Keys that say what the model acts on next. They lead the answer so the cut at _MAX_RESULT_CHARS never takes them
+# (a job's notes came before its output and error; an added shot's id came after the whole shot list).
+_FIRST_KEYS = ("error", "next", "jobId", "state", "projectId", "revision", "shotId", "clipId", "refId", "batchId",
+               "path", "file", "ids", "warning", "output")
 
 STUDIO_HINT = (
     "Studio tools are on. You can make images (generate_image), video clips (generate_video), speech "
@@ -241,9 +249,8 @@ def ready_answer(name: str, args: dict[str, Any], *, check_revision: bool = True
 
 def already_running(name: str, job: Any) -> StructuredToolOutput:
     """The answer for a repeat of a storyboard render that is running: that job, not a new one."""
-    info = trim_result(job.describe())
-    info["next"] = (f"This render is already running as {job.id}, so it was not started again. "
-                    "Call wait_for_job with this jobId.")
+    info = trim_result({**job.describe(), "next": f"This render is already running as {job.id}, so it was not "
+                                                  "started again. Call wait_for_job with this jobId."})
     return StructuredToolOutput(text=_text(info), render_as="studio", data={"tool": name, "alreadyRunning": True, **info})
 
 
@@ -278,9 +285,11 @@ def _trim(value: Any, depth: int = 0) -> Any:
     if isinstance(value, dict):
         return {k: _trim(v, depth + 1) for k, v in value.items() if k not in _STRIPPED_KEYS and v is not None}
     if isinstance(value, list):
-        items = [_trim(v, depth + 1) for v in value[:_MAX_LIST_ITEMS]]
-        if len(value) > _MAX_LIST_ITEMS:
-            items.append(f"... {len(value) - _MAX_LIST_ITEMS} more")
+        ids = all(isinstance(v, str) and len(v) <= _ID_CHARS for v in value)
+        cap = _MAX_ID_ITEMS if ids else _MAX_LIST_ITEMS
+        items = [_trim(v, depth + 1) for v in value[:cap]]
+        if len(value) > cap:
+            items.append(f"... {len(value) - cap} more")
         return items
     if isinstance(value, str) and len(value) > 400:
         return value[:400] + "..."
@@ -288,11 +297,14 @@ def _trim(value: Any, depth: int = 0) -> Any:
 
 
 def trim_result(payload: Any) -> dict[str, Any]:
-    """A short copy of a tool answer: no base64, no download links, lists cut to 12, long strings cut."""
+    """A short copy of a tool answer: no base64, no download links, lists cut to 12 (id lists to 100), long strings
+    cut, and the keys the model acts on next (error, ids, state, output) first, notes last."""
     trimmed = _trim(payload) if isinstance(payload, dict) else {"result": _trim(payload)}
-    if isinstance(trimmed, dict) and isinstance(trimmed.get("notes"), list):
+    if isinstance(trimmed.get("notes"), list):
         trimmed["notes"] = trimmed["notes"][:3]
-    return trimmed
+    first = {k: trimmed[k] for k in _FIRST_KEYS if k in trimmed}
+    rest = {k: v for k, v in trimmed.items() if k not in first and k != "notes"}
+    return {**first, **rest, **({"notes": trimmed["notes"]} if "notes" in trimmed else {})}
 
 
 def _text(payload: dict[str, Any]) -> str:
@@ -379,16 +391,17 @@ class StudioTool(BaseTool):
         finally:
             if self._watch is not None:
                 self._watch.finish()
-        info = trim_result(job.describe())
+        extra: dict[str, Any] = {}
         if stalled:
-            info["stalled"] = True
-            info["next"] = (f"Keep going stopped. {self._watch.reason} The job was left as it is. Tell the user, "
-                            "then end your turn.")
+            extra["stalled"] = True
+            extra["next"] = (f"Keep going stopped. {self._watch.reason} The job was left as it is. Tell the user, "
+                             "then end your turn.")
         elif cancelled:
-            info["next"] = "The user stopped the chat. The job keeps running; do not call wait_for_job again unless asked."
+            extra["next"] = "The user stopped the chat. The job keeps running; do not call wait_for_job again unless asked."
         elif not job.done.is_set():
-            info["next"] = "Still running after 30 minutes. Call wait_for_job again to keep waiting."
-        info["waitedSeconds"] = round(time.monotonic() - started, 1)
+            extra["next"] = "Still running after 30 minutes. Call wait_for_job again to keep waiting."
+        extra["waitedSeconds"] = round(time.monotonic() - started, 1)
+        info = trim_result({**job.describe(), **extra})  # "next" leads, so the cut never takes it
         return StructuredToolOutput(text=_text(info), render_as="studio", data={"tool": self.name, **info})
 
     def execute_structured(self, **kwargs: Any) -> StructuredToolOutput:
@@ -488,7 +501,19 @@ def _own_jobs(args: dict[str, Any]) -> dict[str, Any]:
     from backend_service.mcp_bridge.jobs import MAX_KEPT, STORE
 
     jobs = [j for j in STORE.list(args.get("state"), MAX_KEPT) if j.owner == CHAT_OWNER]
-    return {"jobs": [j.describe() for j in jobs[: int(args.get("limit", 20))]]}
+    return {"jobs": [_job_row(j) for j in jobs[: int(args.get("limit", 20))]]}
+
+
+def _job_row(job: Any) -> dict[str, Any]:
+    """One job of list_jobs, short: a whole describe() (notes, progress, output) let only two or three jobs past the
+    cut, and list_jobs is how the model finds a lost job id. job_status has the rest."""
+    row: dict[str, Any] = {"jobId": job.id, "kind": job.kind, "label": job.label, "state": job.state}
+    if job.error:
+        row["error"] = job.error
+    output = job.output if isinstance(job.output, dict) else {}
+    if output.get("path") or output.get("file"):
+        row["path"] = output.get("path") or output.get("file")
+    return row
 
 
 _FILM_WORDS = re.compile(

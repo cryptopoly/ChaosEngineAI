@@ -408,10 +408,11 @@ def storyboard_project(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         # The shot ids come first: a chat's tool result is cut at about 1800 characters, and a project with a song
         # puts its beats and sections ahead of the shots, so a model that read only `get` never saw a shot id
         # (found by the one-go music video run, 2026-11-24).
+        ordered = sorted(project.shots, key=lambda s: s.order)
         shots = [{"id": s.id, "title": s.title, "seconds": round(float(s.seconds), 2), "status": s.status,
-                  "hasStillPrompt": bool(s.stillPrompt.strip())}
-                 for s in sorted(project.shots, key=lambda s: s.order)]
-        return {"projectId": project.id, "revision": project.revision, "shots": shots,
+                  "hasStillPrompt": bool(s.stillPrompt.strip())} for s in ordered]
+        # shotIds holds every id in film order (shot 1 first): Chat cuts a list of objects at 12, a list of ids at 100.
+        return {"projectId": project.id, "revision": project.revision, "shotIds": [s.id for s in ordered], "shots": shots,
                 "project": dump(project), "timeline": compute_timeline(project).as_dict()}
     if action == "export":
         path = _run(lambda: bundle.export_bundle(store, pid))
@@ -570,7 +571,9 @@ def _batch_job(batch: Any, pid: str) -> dict[str, Any]:
     def run() -> tuple[dict[str, Any], list[str]]:
         batch.done.wait()
         record = batch.record()
-        notes = [f"{r.shotId} {r.kind}: {r.state}{' - ' + r.error if r.error else ''}" for r in record.results]
+        # Failed and skipped steps first: Chat shows only the first three notes of a job.
+        results = sorted(record.results, key=lambda r: r.state == "done")
+        notes = [f"{r.shotId} {r.kind}: {r.state}{' - ' + r.error if r.error else ''}" for r in results]
         return {"batchId": batch.id, "state": record.state, "projectId": pid}, notes
 
     return _submitted(STORE.submit("storyboard", f"storyboard {batch.id}", run, cancel=batch.cancel,

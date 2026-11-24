@@ -463,6 +463,8 @@ class KeepGoing:
             run.nudge_why = "error"
         elif claims_done(outcome.text):
             run.nudge_why = "claimed"
+        elif not outcome.tool_calls and outcome.text.strip():
+            run.nudge_why = "no_call"  # it described work (often "Queued: ...") and ran nothing
         else:
             run.nudge_why = "stopped"
         return None

@@ -234,6 +234,8 @@ def nudge_text(
         "error": "Your last turn ended after a tool error.",
         "resume": "Resuming after a pause. Rebuild your picture from the project state below, not from memory.",
         "swap_done": "The renders you queued ran while the chat model was unloaded; their results are below.",
+        "no_call": "Your last reply made no tool call, so nothing was queued, written or started, whatever it said. "
+                   "Only a tool call does work; a sentence does not.",
     }.get(why)
     if why == "unreadable":
         tool, reason = last_error or (None, "")

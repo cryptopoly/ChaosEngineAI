@@ -162,6 +162,14 @@ class NudgeTests(unittest.TestCase):
         self.assertTrue(claims_done("All done!"))
         self.assertFalse(claims_done("I will render it next."))
 
+    def test_a_reply_with_no_tool_call_is_called_out(self):
+        """The one-go music video run (2026-11-24): the model answered three nudges with "Queued: ..." and no tool
+        call, so nothing ran. The next nudge says so plainly."""
+        text = nudge_text(number=2, cap=20, goal="x", include_goal=False, summary="Project p: 4 shots.",
+                          next_step="Do A.", last_error=None, finished_jobs=[], why="no_call")
+        self.assertIn("made no tool call, so nothing was queued", text)
+        self.assertLess(len(text), 700)
+
     def test_text_is_short_and_concrete(self):
         text = nudge_text(number=3, cap=20, goal="x" * 5000, include_goal=False, summary="Project p: 4 shots.",
                           next_step="Do A.", last_error=("t", "e" * 900), finished_jobs=["image job j1 done"],

@@ -21,9 +21,9 @@ from typing import Any
 MODES = ("auto", "always", "never")
 HEADROOM_GB = 1.5
 DEFERRED_TEXT = (
-    "Queued: to free GPU memory the app runs this render after your turn, with the chat model unloaded, and "
-    "tells you the result in its next message. Do not call wait_for_job for it. End your turn now with one line "
-    "saying what you queued."
+    "This render runs after your turn (the app unloads the chat model to free GPU memory) and its result comes in "
+    "the next message. Do not call wait_for_job for it. End your turn now with one short sentence, in your own "
+    "words, saying what is running."
 )
 # The kinds the job store uses, for the default peak when the catalogue gives none.
 _KIND_FOR_TOOL = {"generate_image": "image", "generate_video": "video", "make_music": "music", "make_sound": "music",

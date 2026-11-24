@@ -200,7 +200,8 @@ class CaptionRef(_Args):
 def _shot(project: Project, shot_id: str) -> Shot:
     shot = project.shot(shot_id)
     if shot is None:
-        raise OpError(f"Unknown shot '{shot_id}'.")
+        ids = ", ".join(f"{s.id} ({s.title})" for s in sorted(project.shots, key=lambda s: s.order)[:12])
+        raise OpError(f"Unknown shot '{shot_id}'." + (f" This project's shot ids are: {ids}." if ids else ""))
     return shot
 
 

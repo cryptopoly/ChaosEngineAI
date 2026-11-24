@@ -149,6 +149,22 @@ class StoryboardToolTests(unittest.TestCase):
         path.write_text("hi")
         return path
 
+    def test_get_lists_shot_ids_first_and_an_unknown_shot_names_the_real_ones(self):
+        """The one-go run (2026-11-24): a chat's tool result is cut at 1800 characters and `get` led with the
+        project dump, so the model never saw a shot id and tried "7-10", "shot-7" and "s7" thirty times."""
+        import json
+
+        info = self.project(shots=2)
+        pid = info["projectId"]
+        got = self.call("storyboard_project", {"action": "get", "project_id": pid})
+        self.assertEqual(list(got)[:3], ["projectId", "revision", "shots"])
+        self.assertEqual([s["id"] for s in got["shots"]], [s["id"] for s in got["project"]["shots"]])
+        self.assertIn(got["shots"][0]["id"], json.dumps(got, separators=(",", ":"))[:1800])
+        text = self.call("storyboard_shot", {"action": "edit", "project_id": pid, "revision": info["revision"],
+                                             "shot_id": "7-10", "fields": {"stillPrompt": "x"}}, error=True)
+        self.assertIn("Unknown shot '7-10'", text)
+        self.assertIn(got["shots"][1]["id"], text)
+
     def test_generate_refuses_stills_for_shots_with_no_prompt(self):
         info = self.project(shots=2)
         pid = info["projectId"]

@@ -405,7 +405,14 @@ def storyboard_project(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     pid = str(args["project_id"])
     if action == "get":
         project = _run(lambda: store.load(pid))
-        return {"project": dump(project), "timeline": compute_timeline(project).as_dict()}
+        # The shot ids come first: a chat's tool result is cut at about 1800 characters, and a project with a song
+        # puts its beats and sections ahead of the shots, so a model that read only `get` never saw a shot id
+        # (found by the one-go music video run, 2026-11-24).
+        shots = [{"id": s.id, "title": s.title, "seconds": round(float(s.seconds), 2), "status": s.status,
+                  "hasStillPrompt": bool(s.stillPrompt.strip())}
+                 for s in sorted(project.shots, key=lambda s: s.order)]
+        return {"projectId": project.id, "revision": project.revision, "shots": shots,
+                "project": dump(project), "timeline": compute_timeline(project).as_dict()}
     if action == "export":
         path = _run(lambda: bundle.export_bundle(store, pid))
         return {"file": path.name, "download": download_info(path)}  # no local path for the agent

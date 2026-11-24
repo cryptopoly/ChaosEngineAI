@@ -32,6 +32,11 @@ Full notes in [RELEASE_NOTES_v0.10.0.md](RELEASE_NOTES_v0.10.0.md). Includes the
 
 **Voice, music and sounds**
 
+- **Voice I/O**: a mic in the chat composer (click or hold to talk, optional auto-send), read-aloud on every reply with an auto-read setting, Voice Studio (record or drop audio and video files, editable transcripts with timestamps, TXT/SRT/VTT export; speech with download) and Voice Models (one-click voice pack, model picker, 54 voices in 9 languages with previews). Runs on this computer only: Parakeet / Whisper and Kokoro on MLX on Apple Silicon; faster-whisper (CUDA when available) and kokoro-onnx on Windows and Linux.
+- **Voice calls** in Chat: a Call button opens a hands-free conversation with the loaded model. Silero VAD detects when you stop talking, the reply is spoken sentence by sentence while it is still being written, and speaking over the model interrupts it (the cut-off reply stays in the thread). Space mutes, Esc ends. Turn pause and interruption are in Voice > Models settings. Existing voice packs get an "Update voice pack" button (about 20 seconds).
+- **Voice Studio, Transcribe**: drop several audio or video files at once (or record) and they are transcribed one after another, each kept in the Library with its audio. Optional speaker labels ("Speaker 1", "Speaker 2", renameable) and translation to English (Whisper Small and Base). The transcript editor plays from any time or word you click, highlights the word being spoken, lets you edit a line in place (its times stay) and exports TXT, Markdown, SRT, VTT or JSON. "Summarise in chat", "Action items" and "Meeting notes" put the transcript into the chat composer with a prompt.
+- **Voice Studio, Speak**: long texts are spoken paragraph by paragraph with progress and Cancel; `[pause]` adds a pause; any voice can be previewed with one click; export WAV or MP3.
+- **Voice Library** replaces Voice Gallery: search, filter by transcripts or speech, open a transcript in the editor, play, export, delete one or several. Items saved in the Gallery move to the Library on first open.
 - **Music**: songs with lyrics and instrumentals, 10 to 600 s, with ACE-Step 1.5 turbo and XL turbo. Apple Silicon (XL turbo for 64 GB Macs) and, new, Windows and Linux x86_64 with an NVIDIA GPU (a 3-minute song in about 3 s turbo or 4 s XL warm on an RTX 4090; 6.6 GB music pack; offload follows free video memory). A music pack in its own environment, Music Models, Music Studio (Options and Expert), a Music Library with rename, tags, filter and "Make another like this", and a prompt-free AI tag in the FLAC file with a switch for private use (FU-139).
 - **Stable Audio 3** (small SFX, small music, medium) beside Stable Audio Open on the NVIDIA lane; the Mac sounds pack does not install it (FU-274, FU-493).
 - **Speech-to-text on the NVIDIA GPU** (the "More speech-to-text on the NVIDIA GPU" add-on): Qwen3-ASR 1.7B and 0.6B, Parakeet TDT 0.6B v3, Nemotron 3.5 ASR, Granite Speech 5.0; word timings (native for Parakeet, a forced aligner for the rest) and speaker labels (FU-270, FU-271). Transformers 5.24.0 in the add-on's own folder (FU-562).
@@ -119,6 +124,8 @@ Full notes in [RELEASE_NOTES_v0.10.0.md](RELEASE_NOTES_v0.10.0.md). Includes the
 
 ### Fixed
 
+- Every chat message waited about 3 seconds before generating: the launch settings saved by the backend lack the speculative-decoding fields, and a context above the model's maximum is clamped at load, so each send looked like a settings change, re-requested the model load and refreshed the whole workspace.
+- Thinking High on Qwen3.8 failed with "name 'TranscriptLoopFilter' is not defined"; an effort level a model's template rejects is now mapped to the nearest one it accepts.
 - **Windows**: llama-server and the other workers end when the backend is force-killed (Job Object); the first model load no longer hangs 300 s in the music and lip-sync workers; a crashed worker restarts where `poll()` stays `None`; diffusers pipelines load without the memory map (Wan 2.2 TI2V 5B had run the system out of commit); unload returns host RAM (mimalloc); image and video pipelines load, run and unload on one thread; the speech add-on installs again (a new `kaldifst` had no Windows wheel); a GPU runtime install no longer leaves half-replaced overlay copies, so the packaged backend starts; GPU metrics no longer block the backend; Hugging Face models no longer count twice in sizes.
 - **Memory and GPU**: the memory gate credits the resident pipeline on same-model reuse; the CUDA allocator's cache is handed back after an image or video run; a failed video load no longer holds 19 GB of GPU and 21 GB of RAM; LTX-2.5 loads without its processor (every clip had failed in the installed app).
 - **Chat**: a chat whose model cannot load answers with the reason instead of "Internal Server Error"; `thinkingMode` reaches the llama.cpp engine; tool calls stream and return from `/v1/chat/completions`; the 60 s prefill watchdog no longer cancels a tool turn; non-streaming replies wait for the longest reply the request allows; a send on the non-streaming route stops an active Keep going run; Enter no longer starts a second turn while one runs; a studio turn runs on after a window reload.
@@ -191,22 +198,6 @@ Full notes in [RELEASE_NOTES_v0.9.9.md](RELEASE_NOTES_v0.9.9.md).
 - **Fit** rating and best-fit pick on every chat, image and video row (`helpers/fit.py`, `helpers/hardware_class.py`); **recommended settings** panel in the Image and Video Studios (`helpers/recommendations.py`); **per-model size limits** replace the 2048 px cap with a pixel-aware memory gate (`catalog/size_limits.py`, `helpers/memory_gate.py`), hard ceiling 8192 (FU-133).
 - Preloading an mflux or stable-diffusion.cpp model is a no-op instead of a 500; distilled video rows start the Studio at their own steps and guidance; the video safety estimate no longer applies the diffusers attention heuristic to ltx-2-mlx; the startup timer no longer re-renders the app every second.
 - Project hub: `docs/hub/` plus `tools/hub_tracker.py` and `tools/build_hub.py` (FU-131).
-
-## Unreleased
-
-### Added
-
-- **Voice I/O**: a mic in the chat composer (click or hold to talk, optional auto-send), read-aloud on every reply with an auto-read setting, Voice Studio (record or drop audio and video files, editable transcripts with timestamps, TXT/SRT/VTT export; speech with download) and Voice Models (one-click voice pack, model picker, 54 voices in 9 languages with previews). Runs on this computer only: Parakeet / Whisper and Kokoro on MLX on Apple Silicon; faster-whisper (CUDA when available) and kokoro-onnx on Windows and Linux.
-- **Voice calls** in Chat: a Call button opens a hands-free conversation with the loaded model. Silero VAD detects when you stop talking, the reply is spoken sentence by sentence while it is still being written, and speaking over the model interrupts it (the cut-off reply stays in the thread). Space mutes, Esc ends. Turn pause and interruption are in Voice > Models settings. Existing voice packs get an "Update voice pack" button (about 20 seconds).
-- **Voice Studio, Transcribe**: drop several audio or video files at once (or record) and they are transcribed one after another, each kept in the Library with its audio. Optional speaker labels ("Speaker 1", "Speaker 2", renameable) and translation to English (Whisper Small and Base). The transcript editor plays from any time or word you click, highlights the word being spoken, lets you edit a line in place (its times stay) and exports TXT, Markdown, SRT, VTT or JSON. "Summarise in chat", "Action items" and "Meeting notes" put the transcript into the chat composer with a prompt.
-- **Voice Studio, Speak**: long texts are spoken paragraph by paragraph with progress and Cancel; `[pause]` adds a pause; any voice can be previewed with one click; export WAV or MP3.
-- **Voice Library** replaces Voice Gallery: search, filter by transcripts or speech, open a transcript in the editor, play, export, delete one or several. Items saved in the Gallery move to the Library on first open.
-
-### Fixed
-
-- Every chat message waited about 3 seconds before generating: the launch settings saved by the backend lack the speculative-decoding fields, and a context above the model's maximum is clamped at load, so each send looked like a settings change, re-requested the model load and refreshed the whole workspace.
-- Thinking High on Qwen3.8 failed with "name 'TranscriptLoopFilter' is not defined"; an effort level a model's template rejects is now mapped to the nearest one it accepts.
-- The chat header has an Unload button, which reads "Cancel load" while a model is loading.
 
 ## v0.9.8 - 2026-10
 

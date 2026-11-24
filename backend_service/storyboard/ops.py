@@ -200,15 +200,20 @@ class CaptionRef(_Args):
 def _shot(project: Project, shot_id: str) -> Shot:
     shot = project.shot(shot_id)
     if shot is None:
-        ids = ", ".join(f"{s.id} ({s.title})" for s in sorted(project.shots, key=lambda s: s.order)[:12])
-        raise OpError(f"Unknown shot '{shot_id}'." + (f" This project's shot ids are: {ids}." if ids else ""))
+        # Every id, numbered in film order: Keep going names shots by number ("shot 7-10"), and a model that saw
+        # only those numbers sent "7-10", "shot-7", "s7" as ids (2026-11-24). An error is never cut in Chat.
+        ids = ", ".join(f"{n}={s.id}" for n, s in enumerate(sorted(project.shots, key=lambda s: s.order), start=1))
+        raise OpError(f"Unknown shot '{shot_id}'. shot_id is a shot's id, not its number"
+                      + (f"; this project's shots in order (number=id): {ids}." if ids else "; the project has no shots."))
     return shot
 
 
 def _clip(project: Project, clip_id: str) -> AudioClip:
     clip = project.clip(clip_id)
     if clip is None:
-        raise OpError(f"Unknown audio clip '{clip_id}'.")
+        ids = ", ".join(f"{c.id} ({c.kind})" for c in project.audio)
+        raise OpError(f"Unknown audio clip '{clip_id}'." + (f" This project's audio clips: {ids}." if ids
+                                                            else " The project has no audio clips."))
     return clip
 
 
@@ -370,7 +375,9 @@ from backend_service.storyboard.ref_ops import (  # noqa: E402
 def _check_refs(p: Project, ids: list[str] | None) -> None:
     for ref_id in ids or []:
         if p.reference(ref_id) is None:
-            raise OpError(f"Unknown reference '{ref_id}'. Add it to the project references first.")
+            known = ", ".join(f"{r.id} ({r.name})" for r in p.references.all())
+            raise OpError(f"Unknown reference '{ref_id}'. "
+                          + (f"This project's references: {known}." if known else "Add it to the project references first."))
 
 
 def add_shot(p: Project, folder: Path, a: AddShot) -> None:
@@ -413,7 +420,8 @@ def lock(p: Project, folder: Path, a: Lock) -> None:
 def pick_take(p: Project, folder: Path, a: PickTake) -> None:
     shot = _shot(p, a.shotId)
     if shot.take(a.takeId) is None:
-        raise OpError(f"Shot {a.shotId} has no take '{a.takeId}'.")
+        takes = ", ".join(t.id for t in shot.takes)
+        raise OpError(f"Shot {a.shotId} has no take '{a.takeId}'." + (f" Its takes: {takes}." if takes else " It has no takes."))
     shot.activeTake = a.takeId
     shot.status = "done"
 
@@ -564,7 +572,8 @@ def remove_audio(p: Project, folder: Path, a: ClipRef) -> None:
 def _caption(p: Project, caption_id: str) -> Caption:
     caption = next((c for c in p.captions if c.id == caption_id), None)
     if caption is None:
-        raise OpError(f"Unknown caption '{caption_id}'.")
+        ids = ", ".join(c.id for c in p.captions[:20]) + (f" and {len(p.captions) - 20} more" if len(p.captions) > 20 else "")
+        raise OpError(f"Unknown caption '{caption_id}'." + (f" This project's captions: {ids}." if ids else " The project has no captions."))
     return caption
 
 

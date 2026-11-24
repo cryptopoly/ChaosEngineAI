@@ -36,6 +36,7 @@ LEAD_IN = 0.4
 TAIL = 0.5  # FU-609: room after the phrase (the research windows had 0.6-0.7 s)
 SUNG_MIN_SECONDS, SUNG_MAX_SECONDS = 3.0, 5.0  # the cut plan's bounds for sung shots (FU-380: 3-5 s sing best)
 VOICED_SHARE_MIN = 0.2  # a stem slice with less of its time voiced than this has no singing to follow
+MIN_SHOT_SECONDS = 2.0  # the cut plan's own shortest shot: a shorter one is left alone, a longer one can lip-sync
 PHRASE_GAP = 0.3  # FU-607: silence before a voiced run that makes it a phrase start
 SNAP_RANGE = 1.5  # FU-607: how far a cut may move to reach a phrase start
 _FRAME_SECONDS = 0.05
@@ -167,8 +168,9 @@ def plan_vocals(project: Project, voiced: Any = None, lead_in: float = LEAD_IN, 
             reason = "is locked"
         elif begins < -1e-6 or begins + length > song.seconds + 0.05:
             reason = "is outside the song"
-        elif clip < MIN_SECONDS - 1e-6 or clip > MAX_SECONDS + 1e-6:
-            reason = f"lasts {length:.1f} s; a lip-sync shot with its lead-in lasts {MIN_SECONDS:g} to {MAX_SECONDS:g} s"
+        elif length < MIN_SHOT_SECONDS - 1e-6 or clip > MAX_SECONDS + 1e-6:
+            reason = (f"lasts {length:.1f} s; a lip-sync shot lasts {MIN_SHOT_SECONDS:g} to "
+                      f"{MAX_SECONDS - lead:g} s (its lead-in and room come on top)")
         elif voiced is not None and voiced_share(voiced, begins, begins + length) < VOICED_SHARE_MIN:
             reason = "has no singing in the vocal stem"
         if reason:
@@ -185,6 +187,9 @@ def plan_vocals(project: Project, voiced: Any = None, lead_in: float = LEAD_IN, 
         begins, length = window["begins"], window["length"]
         lead = round(max(0.0, min(lead_in, begins)), 3)
         extra, natural = room_after(voiced, begins, length, MAX_SECONDS - lead - length, tail)
+        short = MIN_SECONDS - (lead + length + extra)  # the run needs 3 s: a short shot gets the rest as silent room
+        if short > 1e-6:
+            extra, natural = round(extra + short, 3), False
         items.append({"shotId": window["shotId"], "number": window["number"], "songStart": round(begins - lead, 3),
                       "lead": lead, "length": length, "tail": extra, "natural": natural})
     return {"items": items, "skipped": skipped, "snapped": snapped}

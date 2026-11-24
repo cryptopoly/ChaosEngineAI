@@ -45,11 +45,11 @@ class PlanTests(StoreCase):
         self.assertEqual(plan["skipped"], [])
 
     def test_too_short_too_long_and_past_the_song_are_named(self):
-        project = self.project([2.0, 9.0, 4.0])
+        project = self.project([1.5, 9.0, 4.0])
         plan = sv.plan_vocals(project)
         self.assertEqual([i["number"] for i in plan["items"]], [3])
         reasons = [s["reason"] for s in plan["skipped"]]
-        self.assertIn("Shot 1 lasts 2.0 s", reasons[0])
+        self.assertIn("Shot 1 lasts 1.5 s", reasons[0])
         self.assertIn("Shot 2 lasts 9.0 s", reasons[1])
 
     def test_silent_stem_windows_get_no_vocal(self):
@@ -253,3 +253,15 @@ class SongSoundTests(StoreCase):
                           "audio": str(fake_wav(self.src / "slice.wav")), "lead": 0.0, "length": 4.0, "tail": 0.5,
                           "singing": True}])
         self.assertEqual(project.shots[0].nativeSoundDb, -60.0)
+
+
+class ShortShotTests(PlanTests):
+    def test_a_2_s_shot_lip_syncs_with_silent_room_to_reach_the_3_s_the_run_needs(self):
+        plan = sv.plan_vocals(self.project([2.5, 2.0, 4.0]))
+        first, second, third = plan["items"]
+        self.assertEqual((first["lead"], first["length"], first["tail"], first["natural"]), (0.0, 2.5, 0.5, False))
+        self.assertEqual((second["lead"], second["tail"]), (0.4, 0.6))  # 0.4 + 2.0 + 0.6 = 3.0
+        self.assertEqual(third["tail"], 0.5)
+        for item in plan["items"]:
+            self.assertGreaterEqual(item["lead"] + item["length"] + item["tail"], 3.0 - 1e-6)
+        self.assertEqual(plan["skipped"], [])

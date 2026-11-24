@@ -176,7 +176,9 @@
     "grammarNotInstalled": "尚未安裝。強制執行 JSON Schema 需要它；沒有它時，此類請求會被拒絕。會加入 PyTorch，下載體積較大。",
     "addGrammar": "加入結構化輸出",
     "exclusiveLabel": "說明:",
-    "exclusiveBody": "應用程式中沒有其他引擎能載入此模型，因此它一律在 TensorFold 上執行；此核取方塊用於開啟或關閉其草稿功能。"
+    "exclusiveBody": "應用程式中沒有其他引擎能載入此模型，因此它一律在 TensorFold 上執行；此核取方塊用於開啟或關閉其草稿功能。",
+    "contextCapped": null,
+    "cacheNote": null
   },
   "strategyRole": {
     "memorySaverTitle": "壓縮 KV 快取，讓長上下文佔用更少記憶體。生成速度比原生慢。",

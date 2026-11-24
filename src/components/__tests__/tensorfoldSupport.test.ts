@@ -5,6 +5,7 @@ import {
   isTensorfoldRepo,
   resolveTensorfoldSupport,
   tensorfoldHasExtra,
+  tensorfoldContextFit,
   tensorfoldEngaged,
   tensorfoldLaunchInfoFor,
   tensorfoldMemoryShortfall,
@@ -249,5 +250,36 @@ describe("TensorFold 1.x native engine (CUDA hosts)", () => {
   it("leaves the Mac engine's info unmarked", () => {
     const launch = tensorfoldLaunchInfoFor({ info: makeInfo() }, [DENSE]);
     expect(launch?.native).toBe(false);
+  });
+});
+
+describe("tensorfoldContextFit", () => {
+  // Qwen3.8 27B 4-bit on a 64 GB Mac: 16.0 GB standard cache at 262,144 tokens, 15.0 GB of weights. TensorFold
+  // refused that window (34.1 GiB needed) and started at 196,608.
+  const base = { cacheGbPerToken: 16 / 262144, weightsGb: 15, totalMemoryGb: 64 };
+
+  it("refuses the full window that TensorFold refused on a 64 GB Mac", () => {
+    const fit = tensorfoldContextFit({ ...base, contextTokens: 262144 });
+    expect(fit?.fits).toBe(false);
+    expect(fit?.needGb).toBeGreaterThan(34);
+  });
+
+  it("caps below the window that started, in whole 4,096 steps", () => {
+    const fit = tensorfoldContextFit({ ...base, contextTokens: 262144 });
+    expect(fit?.maxContext).toBeLessThan(196608 + 1);
+    expect(fit?.maxContext).toBeGreaterThan(131072);
+    expect((fit?.maxContext ?? 0) % 4096).toBe(0);
+  });
+
+  it("leaves a window that fits alone", () => {
+    const fit = tensorfoldContextFit({ ...base, contextTokens: 131072 });
+    expect(fit).toMatchObject({ fits: true, maxContext: 131072 });
+  });
+
+  it("never caps below 8,192 and invents no limit from unknown inputs", () => {
+    expect(tensorfoldContextFit({ ...base, totalMemoryGb: 20, contextTokens: 262144 })?.maxContext).toBe(8192);
+    expect(tensorfoldContextFit({ ...base, weightsGb: 0, contextTokens: 262144 })).toBeNull();
+    expect(tensorfoldContextFit({ ...base, cacheGbPerToken: 0, contextTokens: 262144 })).toBeNull();
+    expect(tensorfoldContextFit({ ...base, totalMemoryGb: 0, contextTokens: 262144 })).toBeNull();
   });
 });

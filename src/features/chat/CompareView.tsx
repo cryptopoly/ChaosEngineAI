@@ -26,6 +26,7 @@ import {
   requestedSpeculativeMode,
   resolvedDraftModel,
   resolvedSpeculativeMode,
+  tensorfoldFellBack,
   runtimeOutcomeWarning,
 } from "./runtimeDetails";
 import { newStickyScroll, stickToBottom, updateStickyScroll, type StickyScroll } from "../../utils/stickyScroll";
@@ -677,7 +678,8 @@ export function CompareView({
     const runtimeWarning = metrics ? runtimeOutcomeWarning(metrics) : null;
     const speculativeActive = actualSpeculativeMode != null
       && actualSpeculativeMode !== "Off"
-      && actualSpeculativeMode !== "Requested, no compatible draft";
+      && actualSpeculativeMode !== "Requested, no compatible draft"
+      && !tensorfoldFellBack(metrics?.runtimeNote);
     const speculativeSummary = speculativeActive
       ? [
           `Speculative: ${actualSpeculativeMode}`,

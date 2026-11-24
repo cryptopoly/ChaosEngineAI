@@ -176,7 +176,9 @@
     "grammarNotInstalled": "jomlu'be'. JSON schema pabmeH poQlu'; Hutlhchugh tlhobmeyvetlh lajQo'lu'. PyTorch chel; tIn lI'vam.",
     "addGrammar": "ngoD chen yIchel",
     "exclusiveLabel": "qeS:",
-    "exclusiveBody": "appDaq latlh jonta' chu'laHbe' yabvam, vaj reH TensorFoldDaq Qap; nungDaj neH chu' 'ej chu'Ha' leQ."
+    "exclusiveBody": "appDaq latlh jonta' chu'laHbe' yabvam, vaj reH TensorFoldDaq Qap; nungDaj neH chu' 'ej chu'Ha' leQ.",
+    "contextCapped": null,
+    "cacheNote": null
   },
   "strategyRole": {
     "memorySaverTitle": "KV cache machmoH vaj qawHaq puSDaq yap ghu' nI'. Native chenmoH law', chenmoH puS.",

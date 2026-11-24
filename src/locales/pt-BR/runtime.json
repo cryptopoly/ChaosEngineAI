@@ -176,7 +176,9 @@
     "grammarNotInstalled": "Não instalado. Necessário para aplicar um esquema JSON; sem isso essas solicitações são recusadas. Adiciona o PyTorch, que é um download grande.",
     "addGrammar": "Adicionar saída estruturada",
     "exclusiveLabel": "Observação:",
-    "exclusiveBody": "Nenhum outro motor do app consegue carregar este modelo, então ele sempre roda no TensorFold; a caixa de seleção apenas liga e desliga o drafting."
+    "exclusiveBody": "Nenhum outro motor do app consegue carregar este modelo, então ele sempre roda no TensorFold; a caixa de seleção apenas liga e desliga o drafting.",
+    "contextCapped": null,
+    "cacheNote": null
   },
   "strategyRole": {
     "memorySaverTitle": "Reduz o KV cache para que contextos longos caibam em menos memória. A geração é mais lenta que com Nativo.",

@@ -5,7 +5,7 @@ import type { LaunchPreferences, PreviewMetrics, StrategyInstallLog } from "../t
 import type { MtplxJobState, TensorfoldExtra, TensorfoldJobState } from "../api";
 import { InstallLogPanel } from "./InstallLogPanel";
 import { TensorfoldLaunchControl } from "./TensorfoldLaunchControl";
-import { tensorfoldEngaged, type TensorfoldLaunchInfo } from "./tensorfoldSupport";
+import { tensorfoldContextFit, tensorfoldEngaged, TENSORFOLD_CACHE_FACTOR, type TensorfoldLaunchInfo } from "./tensorfoldSupport";
 import { NativeKvTypeField } from "./NativeKvTypeField";
 import { MoeOffloadField, moeCpuLayersForLoad } from "./MoeOffloadField";
 import { SliderField } from "./SliderField";
@@ -357,6 +357,23 @@ export function RuntimeControls({
   // ngram-mod lookup. The backend picks one and notes a fallback.
   const ggufSpecSupported = isGgufBackend;
   const specActive = (settings.speculativeDecoding && dflashAvailable) || tensorfoldRuns;
+  // TensorFold refuses to start when its own caches do not fit, and the app then runs standard MLX without it. Cap the
+  // window before launch instead, so the setting the user sees is the one that runs.
+  const tensorfoldFitInputs = tensorfoldRuns && preview.contextTokens > 0
+    ? {
+        cacheGbPerToken: preview.optimizedCacheGb / preview.contextTokens,
+        weightsGb: diskSizeGb ?? preview.diskSizeGb,
+        totalMemoryGb,
+      }
+    : null;
+  const tensorfoldFullWindow = tensorfoldFitInputs
+    ? tensorfoldContextFit({ ...tensorfoldFitInputs, contextTokens: effectiveMaxContext })
+    : null;
+  const tensorfoldCap = tensorfoldFullWindow && !tensorfoldFullWindow.fits ? tensorfoldFullWindow.maxContext : null;
+  const sliderMaxContext = tensorfoldCap != null ? Math.min(effectiveMaxContext, tensorfoldCap) : effectiveMaxContext;
+  useEffect(() => {
+    if (tensorfoldCap != null && tensorfoldCap < settings.contextTokens) onChange("contextTokens", tensorfoldCap);
+  }, [onChange, settings.contextTokens, tensorfoldCap]);
   const strategies = (availableCacheStrategies ?? [{id: "native", name: "Native f16", available: true, bitRange: null, defaultBits: null, supportsFp16Layers: false}])
     .filter((s) => !s.appliesTo || s.appliesTo.length === 0 || s.appliesTo.includes("text"));
   const hasSelectedStrategy = strategies.some((strategy) => strategy.id === settings.cacheStrategy);
@@ -671,12 +688,22 @@ export function RuntimeControls({
         ) : null}
         <SliderField
           label={t("sliders.context", { defaultValue: "Context" })}
-          value={clampedContext}
-          min={contextMin} max={effectiveMaxContext} step={contextStep}
-          ticks={contextTicksFor(effectiveMaxContext)}
+          value={Math.min(clampedContext, sliderMaxContext)}
+          min={contextMin} max={sliderMaxContext} step={contextStep}
+          ticks={contextTicksFor(sliderMaxContext)}
           formatValue={(v) => v >= 1_000_000 ? `${(v / 1_048_576).toFixed(1)}M` : v >= 1024 ? `${(v / 1024).toFixed(0)}K` : String(v)}
-          onChange={(v) => onChange("contextTokens", Math.min(v, effectiveMaxContext))}
+          onChange={(v) => onChange("contextTokens", Math.min(v, sliderMaxContext))}
         />
+        {tensorfoldCap != null && tensorfoldFullWindow ? (
+          <p className="perf-preview__advice" role="note">
+            {t("tensorfold.contextCapped", {
+              needGb: tensorfoldFullWindow.needGb.toFixed(0),
+              maxContext: tensorfoldCap >= 1024 ? `${(tensorfoldCap / 1024).toFixed(0)}K` : String(tensorfoldCap),
+              defaultValue:
+                "TensorFold keeps its own caches, about {needGb} GB at the full window, which does not fit beside this model. The window is capped at {maxContext} so TensorFold starts.",
+            })}
+          </p>
+        ) : null}
         <SliderField
           label={t("sliders.maxTokens", { defaultValue: "Max tokens" })}
           value={settings.maxTokens}
@@ -1088,7 +1115,17 @@ export function RuntimeControls({
           gpuVramTotalGb={gpuVramTotalGb}
           actualDiskSizeGb={diskSizeGb}
           compact={compact}
+          fitCacheGb={tensorfoldRuns ? preview.optimizedCacheGb * TENSORFOLD_CACHE_FACTOR : undefined}
         />
+      ) : null}
+      {showPreview && tensorfoldRuns ? (
+        <p className="perf-preview__advice" role="note">
+          {t("tensorfold.cacheNote", {
+            cacheGb: (preview.optimizedCacheGb * TENSORFOLD_CACHE_FACTOR).toFixed(1),
+            defaultValue:
+              "TensorFold holds about {cacheGb} GB of cache here (its own caches and the draft model's), more than the standard estimate shown.",
+          })}
+        </p>
       ) : null}
     </>
   );

@@ -176,7 +176,9 @@
     "grammarNotInstalled": "Not installed. Needed to enforce a JSON schema; without it such requests are refused. Adds PyTorch, which is a large download.",
     "addGrammar": "Add structured output",
     "exclusiveLabel": "Note:",
-    "exclusiveBody": "No other engine in the app can load this model, so it always runs on TensorFold; the box switches its drafting on and off."
+    "exclusiveBody": "No other engine in the app can load this model, so it always runs on TensorFold; the box switches its drafting on and off.",
+    "contextCapped": "TensorFold keeps its own caches, about {needGb} GB at the full window, which does not fit beside this model. The window is capped at {maxContext} so TensorFold starts.",
+    "cacheNote": "TensorFold holds about {cacheGb} GB of cache here (its own caches and the draft model's), more than the standard estimate shown."
   },
   "strategyRole": {
     "memorySaverTitle": "Shrinks the KV cache so long contexts fit in less memory. Generation is slower than Native.",

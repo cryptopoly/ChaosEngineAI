@@ -12,6 +12,26 @@ function parseDraftModel(runtimeNote: string | null | undefined): string | null 
   return match ? match[1] : null;
 }
 
+/** TensorFold was asked for but could not start, and the load fell back to standard MLX (it shares the speculative
+ * flag with DFlash, so the "DFlash requested" wording hid the real reason). */
+export function tensorfoldFellBack(runtimeNote: string | null | undefined): boolean {
+  return /tensorfold startup failed/i.test(runtimeNote ?? "");
+}
+
+function tensorfoldFallbackReason(runtimeNote: string | null | undefined): string {
+  const note = runtimeNote ?? "";
+  if (/needs [\d.]+ GiB/i.test(note)) {
+    return "TensorFold needs more memory at this window, ran standard MLX";
+  }
+  return "TensorFold could not start, ran standard MLX";
+}
+
+/** The "Requested, ..." mode line repeats what the warning already says; show only the warning then. */
+export function modeCoveredByWarning(mode: string | null, warning: string | null): boolean {
+  if (!mode || !warning) return false;
+  return mode === "Requested, no compatible draft" || mode.startsWith("TensorFold ");
+}
+
 function noteHasNoCompatibleDraft(runtimeNote: string | null | undefined): boolean {
   const note = runtimeNote ?? "";
   return (
@@ -87,6 +107,9 @@ export function resolvedSpeculativeMode(metrics: GenerationMetrics): string {
   if (metrics.speculativeDecoding) {
     return (metrics.treeBudget ?? 0) > 0 ? `DDTree (${metrics.treeBudget})` : "DFlash";
   }
+  if (tensorfoldFellBack(runtimeNote)) {
+    return tensorfoldFallbackReason(runtimeNote);
+  }
   if (noteHasNoCompatibleDraft(runtimeNote)) {
     return "Requested, no compatible draft";
   }
@@ -147,6 +170,9 @@ export function runtimeOutcomeWarning(metrics: GenerationMetrics): string | null
   const actualSpecMode = resolvedSpeculativeMode(metrics);
 
   if (requestedSpecMode && requestedSpecMode !== "Off") {
+    if (tensorfoldFellBack(metrics.runtimeNote)) {
+      return tensorfoldFallbackReason(metrics.runtimeNote);
+    }
     if (noteHasNoCompatibleDraft(metrics.runtimeNote)) {
       return `${requestedSpecMode} requested, no compatible draft`;
     }

@@ -17,6 +17,9 @@ interface PerformancePreviewProps {
   gpuVramTotalGb?: number | null;
   compact?: boolean;
   actualDiskSizeGb?: number;
+  /** Cache the engine really holds when it is more than the standard estimate (TensorFold keeps its own caches).
+   * Drives the fit verdict and the memory bar, so "Fits easily" is never shown for a launch that will not fit. */
+  fitCacheGb?: number;
 }
 
 function fmt(value: number, digits = 1): string {
@@ -30,15 +33,16 @@ function getSpeedLabel(tokS: number, t: TFunction): { label: string; className: 
   return { label: t("performancePreview.speedVeryFast", { defaultValue: "Very fast" }), className: "perf-preview__speed-label--fast" };
 }
 
-export function PerformancePreview({ preview, availableMemoryGb, totalMemoryGb, gpuVramTotalGb, compact, actualDiskSizeGb }: PerformancePreviewProps) {
+export function PerformancePreview({ preview, availableMemoryGb, totalMemoryGb, gpuVramTotalGb, compact, actualDiskSizeGb, fitCacheGb }: PerformancePreviewProps) {
   const { t } = useTranslation("common");
   const diskGb = actualDiskSizeGb ?? preview.diskSizeGb;
-  const fitStatus = getCacheFitStatus(preview.optimizedCacheGb, diskGb, totalMemoryGb, preview.bits, gpuVramTotalGb);
+  const heldCacheGb = fitCacheGb ?? preview.optimizedCacheGb;
+  const fitStatus = getCacheFitStatus(heldCacheGb, diskGb, totalMemoryGb, preview.bits, gpuVramTotalGb);
   const cacheDelta = preview.baselineCacheGb - preview.optimizedCacheGb;
   const qualityDelta = preview.qualityPercent - 100;
   const cacheMax = Math.max(preview.baselineCacheGb, totalMemoryGb * 0.6, 1);
   const ramUsedPercent = totalMemoryGb > 0
-    ? Math.min(100, ((preview.optimizedCacheGb + diskGb) / totalMemoryGb) * 100)
+    ? Math.min(100, ((heldCacheGb + diskGb) / totalMemoryGb) * 100)
     : 0;
   const ramColor = ramUsedPercent > 90 ? "var(--warning, #e4be75)" : "var(--accent)";
   const speedLabel = getSpeedLabel(preview.estimatedTokS, t);
@@ -220,7 +224,7 @@ export function PerformancePreview({ preview, availableMemoryGb, totalMemoryGb, 
           <span className="perf-preview__ram-label">
             {t("performancePreview.ramValue", {
               defaultValue: "{used}/{total} GB",
-              used: fmt(preview.optimizedCacheGb + diskGb),
+              used: fmt(heldCacheGb + diskGb),
               total: fmt(totalMemoryGb),
             })}
           </span>

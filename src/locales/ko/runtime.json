@@ -176,7 +176,9 @@
     "grammarNotInstalled": "설치되지 않았습니다. JSON 스키마를 적용하는 데 필요하며, 없으면 해당 요청이 거부됩니다. PyTorch가 추가되므로 다운로드 용량이 큽니다.",
     "addGrammar": "구조화된 출력 추가",
     "exclusiveLabel": "참고:",
-    "exclusiveBody": "앱의 다른 엔진은 이 모델을 로드할 수 없으므로 항상 TensorFold에서 실행됩니다. 체크박스는 드래프팅만 켜고 끕니다."
+    "exclusiveBody": "앱의 다른 엔진은 이 모델을 로드할 수 없으므로 항상 TensorFold에서 실행됩니다. 체크박스는 드래프팅만 켜고 끕니다.",
+    "contextCapped": null,
+    "cacheNote": null
   },
   "strategyRole": {
     "memorySaverTitle": "KV cache를 줄여 긴 컨텍스트가 더 적은 메모리에 들어가도록 합니다. 생성 속도는 네이티브보다 느립니다.",

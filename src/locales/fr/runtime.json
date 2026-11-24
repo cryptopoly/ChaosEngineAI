@@ -176,7 +176,9 @@
     "grammarNotInstalled": "Non installé. Nécessaire pour appliquer un schéma JSON ; sans lui, ces requêtes sont refusées. Ajoute PyTorch, ce qui représente un gros téléchargement.",
     "addGrammar": "Ajouter la sortie structurée",
     "exclusiveLabel": "Remarque :",
-    "exclusiveBody": "Aucun autre moteur de l'application ne peut charger ce modèle ; il tourne donc toujours sur TensorFold, et la case active ou désactive uniquement les brouillons."
+    "exclusiveBody": "Aucun autre moteur de l'application ne peut charger ce modèle ; il tourne donc toujours sur TensorFold, et la case active ou désactive uniquement les brouillons.",
+    "contextCapped": null,
+    "cacheNote": null
   },
   "strategyRole": {
     "memorySaverTitle": "Réduit le cache KV pour que les longs contextes tiennent dans moins de mémoire. La génération est plus lente qu'avec Natif.",

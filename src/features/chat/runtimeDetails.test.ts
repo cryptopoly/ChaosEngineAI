@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { GenerationMetrics } from "../../types";
 import {
   hasDecodeSpeed,
+  modeCoveredByWarning,
   resolvedSpeculativeMode,
   runtimeOutcomeWarning,
 } from "./runtimeDetails";
@@ -65,5 +66,44 @@ describe("hasDecodeSpeed", () => {
     expect(hasDecodeSpeed(null)).toBe(false);
     expect(hasDecodeSpeed(undefined)).toBe(false);
     expect(hasDecodeSpeed(31.4)).toBe(true);
+  });
+});
+
+describe("TensorFold start-up fallback", () => {
+  const note =
+    "Using python with MLX 0.32.4 and mlx-lm 0.32.2. DFLASH unavailable for 'Vontra/Qwen3.8-27B-MLX-4bit': no compatible draft model is registered. "
+    + "TensorFold startup failed (--parallel 1 needs 34.1 GiB for its streams at a 262144-token context; 26.2 GiB remains); using standard MLX.";
+  const metrics = makeMetrics({
+    runtimeNote: note,
+    speculativeDecoding: false,
+    requestedSpeculativeDecoding: true,
+    requestedTreeBudget: 0,
+  });
+
+  it("names TensorFold, not DFlash, as what did not run", () => {
+    expect(resolvedSpeculativeMode(metrics)).toBe("TensorFold needs more memory at this window, ran standard MLX");
+    expect(runtimeOutcomeWarning(metrics)).toBe("TensorFold needs more memory at this window, ran standard MLX");
+  });
+
+  it("says a start-up failure with no memory figure plainly", () => {
+    const other = makeMetrics({
+      runtimeNote: "TensorFold startup failed (the server exited); using standard MLX.",
+      speculativeDecoding: false,
+      requestedSpeculativeDecoding: true,
+    });
+    expect(runtimeOutcomeWarning(other)).toBe("TensorFold could not start, ran standard MLX");
+  });
+
+  it("does not print the same sentence twice in the summary line", () => {
+    const mode = resolvedSpeculativeMode(metrics);
+    const warning = runtimeOutcomeWarning(metrics);
+    expect(modeCoveredByWarning(mode, warning)).toBe(true);
+    const plain = makeMetrics({
+      runtimeNote: "Using python with MLX 0.31.1. DFLASH unavailable for 'foo/bar': no compatible draft model is registered.",
+      speculativeDecoding: false,
+      requestedSpeculativeDecoding: true,
+    });
+    expect(modeCoveredByWarning(resolvedSpeculativeMode(plain), runtimeOutcomeWarning(plain))).toBe(true);
+    expect(modeCoveredByWarning("DFlash", null)).toBe(false);
   });
 });

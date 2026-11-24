@@ -30,6 +30,7 @@ import {
   resolvedCacheStrategy,
   resolvedDraftModel,
   resolvedFp16Layers,
+  modeCoveredByWarning,
   resolvedSpeculativeMode,
   resolvedTreeBudget,
   runtimeOutcomeWarning,
@@ -369,7 +370,7 @@ export function ChatThread({
                       {(message.metrics.model ?? activeChat?.model) || t("thread.details.unknown", { defaultValue: "Unknown" })}
                       {hasDecodeSpeed(message.metrics.tokS) ? ` | ${number(message.metrics.tokS)} tok/s` : ""}
                       {message.metrics.dflashAcceptanceRate != null ? ` | ${t("thread.details.dflashAccepted", { value: number(message.metrics.dflashAcceptanceRate), defaultValue: "DFLASH {value} avg accepted" })}` : ""}
-                      {messageSpeculativeMode && messageSpeculativeMode !== "Off" ? ` | ${messageSpeculativeMode}` : ""}
+                      {messageSpeculativeMode && messageSpeculativeMode !== "Off" && !modeCoveredByWarning(messageSpeculativeMode, messageRuntimeWarning) ? ` | ${messageSpeculativeMode}` : ""}
                       {messageRuntimeWarning ? ` | ${messageRuntimeWarning}` : ""}
                       {" | "}{number(message.metrics.responseSeconds ?? 0)} s
                     </small>

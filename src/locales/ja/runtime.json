@@ -176,7 +176,9 @@
     "grammarNotInstalled": "未インストールです。JSON スキーマを強制するために必要で、ないとそのようなリクエストは拒否されます。PyTorch が追加されるため、ダウンロードサイズが大きくなります。",
     "addGrammar": "構造化出力を追加",
     "exclusiveLabel": "注:",
-    "exclusiveBody": "アプリ内のほかのエンジンではこのモデルを読み込めないため、常に TensorFold で実行されます。このチェックボックスはドラフトのオン / オフを切り替えます。"
+    "exclusiveBody": "アプリ内のほかのエンジンではこのモデルを読み込めないため、常に TensorFold で実行されます。このチェックボックスはドラフトのオン / オフを切り替えます。",
+    "contextCapped": null,
+    "cacheNote": null
   },
   "strategyRole": {
     "memorySaverTitle": "KV キャッシュを圧縮し、長いコンテキストを少ないメモリに収めます。生成速度はネイティブより遅くなります。",

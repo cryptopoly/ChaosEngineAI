@@ -341,6 +341,8 @@ class SdCppImageEngine:
             str(seed),
             "-o",
             str(output_path),
+            # Since 0d71f96 sd.cpp embeds its generated DGL script, with absolute local model paths, in the PNG.
+            "--disable-image-metadata",
         ]
         for flag, path in (aux_paths or {}).items():
             args.extend([flag, path])

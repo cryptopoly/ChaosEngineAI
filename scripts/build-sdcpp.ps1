@@ -122,7 +122,7 @@ function Get-CudaRedistToolkit {
 
 # Pinned commit, kept in step with SDCPP_REF in build-sdcpp.sh, update-sdcpp.sh and update-sdcpp.ps1
 # (tests/test_check_upstreams.py checks they match).
-$SdcppRef    = if ($env:SDCPP_REF)           { $env:SDCPP_REF }           else { "532d2c15c430a785a712b2d94281f04e733008a4" }
+$SdcppRef    = if ($env:SDCPP_REF)           { $env:SDCPP_REF }           else { "3b12781fac1a22eda27ad0f08d0884ef816f24d7" }
 $SdcppRepo   = "https://github.com/leejet/stable-diffusion.cpp.git"
 $SdcppDir    = if ($env:SDCPP_DIR)           { $env:SDCPP_DIR }           else { Join-Path $env:TEMP "stable-diffusion.cpp" }
 $InstallDir  = if ($env:CHAOSENGINE_BIN_DIR) { $env:CHAOSENGINE_BIN_DIR } else { Join-Path $HOME ".chaosengine\bin" }

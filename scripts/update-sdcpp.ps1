@@ -16,7 +16,7 @@ $ErrorActionPreference = "Stop"
 
 $ScriptDir   = $PSScriptRoot
 # Keep in step with SDCPP_REF in build-sdcpp.sh / build-sdcpp.ps1 (tests/test_check_upstreams.py checks they match).
-$SdcppRef    = if ($env:SDCPP_REF)           { $env:SDCPP_REF }           else { "532d2c15c430a785a712b2d94281f04e733008a4" }
+$SdcppRef    = if ($env:SDCPP_REF)           { $env:SDCPP_REF }           else { "3b12781fac1a22eda27ad0f08d0884ef816f24d7" }
 $InstallDir  = if ($env:CHAOSENGINE_BIN_DIR) { $env:CHAOSENGINE_BIN_DIR } else { Join-Path $HOME ".chaosengine\bin" }
 $VersionFile = Join-Path $InstallDir "sd.version"
 

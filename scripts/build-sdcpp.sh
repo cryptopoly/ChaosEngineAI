@@ -20,12 +20,13 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SDCPP_REPO="https://github.com/leejet/stable-diffusion.cpp.git"
-# Pinned commit (no longer floating ``master``). 532d2c1 = master-1106 (2026-11-15), moved from 5dcfa79
-# (master-1104): C API refactor only, CLI flags unchanged (seed and video frames now default in the library;
-# the app always passes both). Moving the pin means rerunning the sd.cpp
+# Pinned commit (no longer floating ``master``). 3b12781 = master-1122 (2026-11-24), moved from 532d2c1
+# (master-1106): the CLI now runs through upstream's Diffusion Graph Language (DGL); 36 unused flags are gone,
+# every flag the app passes is kept, and the image builder passes --disable-image-metadata so PNGs carry no
+# DGL script with local model paths. Moving the pin means rerunning the sd.cpp
 # tests plus one real Qwen-Image 2.1 sd.cpp image on the old and the new build; bump it with
 # scripts/update-sdcpp.sh and the sd.cpp row in scripts/check-upstreams.py.
-SDCPP_REF="${SDCPP_REF:-532d2c15c430a785a712b2d94281f04e733008a4}"
+SDCPP_REF="${SDCPP_REF:-3b12781fac1a22eda27ad0f08d0884ef816f24d7}"
 SDCPP_DIR="${SDCPP_DIR:-/tmp/stable-diffusion.cpp}"
 INSTALL_DIR="${CHAOSENGINE_BIN_DIR:-$HOME/.chaosengine/bin}"
 

@@ -72,6 +72,13 @@ class FilmState:
     captions_srt: bool = False  # export setting: captions written as an .srt beside the film
     hashes: set[str] = field(default_factory=set)  # sha256 of every still, clip and audio file in the project
     made: set[str] = field(default_factory=set)  # audio this run's chat made ("music", "voice"); set by the adapter
+    shot_ids: list[str] = field(default_factory=list)  # in film order: shot number n is shot_ids[n - 1]
+
+    def _ids(self, numbers: list[int]) -> str:
+        """' (shot_id 7=s_ab, 8=s_cd)' for the steps that edit shots by id; '' when the ids are not known. A model
+        told only "shot 7-10" sent "7-10", "shot-7" and "s7" as shot ids thirty times (2026-11-24)."""
+        known = [f"{n}={self.shot_ids[n - 1]}" for n in sorted(set(numbers)) if 0 < n <= len(self.shot_ids)]
+        return f" (shot_id {', '.join(known)})" if known else ""
 
     def captions_ok(self, goal: str) -> bool:
         """Captions that exist show in the film: burned in, or an .srt when the brief asks for a file."""
@@ -149,11 +156,13 @@ class FilmState:
                     f"{self.extra_shots(target)} more shots with storyboard_shot add (project_id {pid}) to fill the "
                     "story, then make them.")
         if self.no_prompt:
-            return (f"Write the picture for shot {_numbers(self.no_prompt)}: storyboard_shot edit with project_id {pid}, "
+            return (f"Write the picture for shot {_numbers(self.no_prompt)}{self._ids(self.no_prompt)}: storyboard_shot "
+                    f"edit with project_id {pid}, "
                     "the shot_id and fields {stillPrompt, motionPrompt} for each shot, in the story of the brief. "
                     "Then generate.")
         if self.missing_files:
-            return (f"Shot {_numbers(self.missing_files)} lost its files: storyboard_generate with shot_ids for "
+            return (f"Shot {_numbers(self.missing_files)}{self._ids(self.missing_files)} lost its files: "
+                    "storyboard_generate with shot_ids for "
                     "those shots, or ask the user.")
         if self.needs_still:
             return (f"storyboard_generate with project_id {pid}, what \"still\" (shots {_numbers(self.needs_still)}), "
@@ -251,7 +260,7 @@ def film_state(project: Any, folder: Path) -> FilmState:
     """Read one loaded project (``storyboard.models.Project``) and its folder."""
     shots = sorted(project.shots, key=lambda s: s.order)
     state = FilmState(project_id=project.id, name=project.name, revision=project.revision, shots=len(shots),
-                      seconds=sum(float(s.seconds) for s in shots))
+                      seconds=sum(float(s.seconds) for s in shots), shot_ids=[s.id for s in shots])
     newest = 0.0
     for number, shot in enumerate(shots, start=1):
         state.takes += len(shot.takes)

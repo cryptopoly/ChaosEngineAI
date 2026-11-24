@@ -71,12 +71,13 @@ def library_source(item_id: str) -> tuple[Path, dict[str, Any]]:
     """The audio file and metadata of a Music library track, or ``SongError``."""
     from backend_service import music_library
 
+    hint = "Use a track id from music_library list (make_music returns it as tracks[].id)."
     if not music_library.is_valid_id(item_id):
-        raise SongError("Unknown Music library item.")
+        raise SongError(f"Unknown Music library item '{item_id[:40]}'. {hint}")
     meta = music_library.get(item_id)
     path = music_library.audio_path(item_id)
     if meta is None or path is None:
-        raise SongError("That Music library item is gone or has no audio file.")
+        raise SongError(f"The Music library item '{item_id[:40]}' is gone or has no audio file. {hint}")
     return check_source(str(path)), meta
 
 

@@ -234,6 +234,34 @@ class TrimTests(unittest.TestCase):
         self.assertLess(len(out["prompt"]), 410)
         self.assertNotIn("missing", out)
 
+    def test_ids_state_and_error_come_before_the_cut_and_notes_go_last(self):
+        """A job's notes came before its output and error, and an added shot's id after the whole shot list, so the
+        1800-character cut took exactly what the model needed next (2026-11-24)."""
+        from backend_service.tools.studio import _MAX_RESULT_CHARS, _text
+
+        job = {"jobId": "job-9", "kind": "storyboard", "label": "x", "state": "failed", "notes": ["n" * 390] * 3,
+               "output": {"batchId": "b1", "state": "failed"}, "error": "Shot 4 failed: out of memory"}
+        out = trim_result(job)
+        self.assertEqual(list(out)[:4], ["error", "jobId", "state", "output"])
+        self.assertEqual(list(out)[-1], "notes")
+        self.assertIn("out of memory", _text(out)[:_MAX_RESULT_CHARS])
+        added = {"projectId": "p1", "revision": 7, "shots": [{"id": f"s_{i:08x}", "title": "t" * 60} for i in range(12)],
+                 "audio": [], "shotId": "s_new"}
+        self.assertIn('"shotId":"s_new"', _text(trim_result(added))[:200])
+
+    def test_a_list_of_ids_is_kept_whole(self):
+        ids = [f"s_{i:08x}" for i in range(40)]
+        self.assertEqual(trim_result({"shotIds": ids})["shotIds"], ids)
+        self.assertEqual(len(trim_result({"shots": [{"id": i} for i in ids]})["shots"]), 13)
+
+    def test_list_jobs_rows_are_short(self):
+        from backend_service.tools.studio import _job_row
+
+        job = SimpleNamespace(id="job-3", kind="video", label="clip", state="done", error=None,
+                              output={"path": "/o/clip.mp4", "download": {"url": "u"}, "fps": 24})
+        self.assertEqual(_job_row(job), {"jobId": "job-3", "kind": "video", "label": "clip", "state": "done",
+                                         "path": "/o/clip.mp4"})
+
 
 class GateTests(unittest.TestCase):
     def tearDown(self):

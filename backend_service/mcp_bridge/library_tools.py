@@ -43,7 +43,9 @@ def music_library(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     if action == "list":
         items = lib.list_items(str(args.get("query") or ""), str(args.get("tag") or ""))
         offset, limit = int(args.get("offset", 0)), int(args.get("limit", 25))
-        out: dict[str, Any] = {"total": len(items), "tracks": [_row(m) for m in items[offset:offset + limit]]}
+        page = items[offset:offset + limit]
+        # The ids first: a row with its caption is several hundred characters, and Chat cuts a result at about 1800.
+        out: dict[str, Any] = {"total": len(items), "ids": [m["id"] for m in page], "tracks": [_row(m) for m in page]}
         if offset + limit < len(items):
             out["nextOffset"] = offset + limit
         return out

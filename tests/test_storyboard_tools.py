@@ -157,13 +157,35 @@ class StoryboardToolTests(unittest.TestCase):
         info = self.project(shots=2)
         pid = info["projectId"]
         got = self.call("storyboard_project", {"action": "get", "project_id": pid})
-        self.assertEqual(list(got)[:3], ["projectId", "revision", "shots"])
+        self.assertEqual(list(got)[:4], ["projectId", "revision", "shotIds", "shots"])
         self.assertEqual([s["id"] for s in got["shots"]], [s["id"] for s in got["project"]["shots"]])
+        self.assertEqual(got["shotIds"], [s["id"] for s in got["shots"]])
         self.assertIn(got["shots"][0]["id"], json.dumps(got, separators=(",", ":"))[:1800])
         text = self.call("storyboard_shot", {"action": "edit", "project_id": pid, "revision": info["revision"],
                                              "shot_id": "7-10", "fields": {"stillPrompt": "x"}}, error=True)
         self.assertIn("Unknown shot '7-10'", text)
-        self.assertIn(got["shots"][1]["id"], text)
+        # Numbered like Keep going's "shot 2", so a model that has only the number finds the id.
+        self.assertIn(f"2={got['shots'][1]['id']}", text)
+
+    def test_unknown_ids_name_the_valid_ones(self):
+        """Every "not found" error in a shot or audio edit lists what exists, so the model can correct itself."""
+        info = self.project(shots=1)
+        pid, sid = info["projectId"], info["shots"][0]["id"]
+        info = self.call("storyboard_audio", {"action": "add", "project_id": pid, "revision": info["revision"], "kind": "voice",
+                                              "path": str(fake_wav(self.src / "v.wav"))})
+        clip, rev = info["clipId"], info["revision"]
+        text = self.call("storyboard_audio", {"action": "edit", "project_id": pid, "revision": rev, "clip_id": "a_nope",
+                                              "fields": {"gainDb": 1}}, error=True)
+        self.assertIn(f"{clip} (voice)", text)
+        text = self.call("storyboard_shot", {"action": "pick_take", "project_id": pid, "revision": rev, "shot_id": sid,
+                                             "take_id": "t_nope"}, error=True)
+        self.assertIn("It has no takes", text)
+        text = self.call("storyboard_shot", {"action": "edit", "project_id": pid, "revision": rev, "shot_id": sid,
+                                             "fields": {"referenceImages": ["r_nope"]}}, error=True)
+        self.assertIn("Unknown reference 'r_nope'", text)
+        text = self.call("storyboard_captions", {"action": "edit", "project_id": pid, "revision": rev,
+                                                 "caption_id": "c_nope", "text": "hi"}, error=True)
+        self.assertIn("The project has no captions", text)
 
     def test_generate_refuses_stills_for_shots_with_no_prompt(self):
         info = self.project(shots=2)

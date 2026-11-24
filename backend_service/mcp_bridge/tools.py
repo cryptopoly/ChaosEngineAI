@@ -217,14 +217,16 @@ def recommend_models(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
 
 def list_models(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     rows = bridge_models.installed_models(_state(ctx), args["kind"])
-    out: dict[str, Any] = {"kind": args["kind"], "models": rows}
+    # The ids first: each row is several hundred characters, and a chat's tool result is cut at about 1800.
+    out: dict[str, Any] = {"kind": args["kind"], "ids": [str(r["id"]) for r in rows], "models": rows}
     if not rows:
         out["hint"] = "Nothing installed for this kind. Call recommend_models and tell the user what to download."
     return out
 
 
 def list_voices(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
-    return {"voices": bridge_models.list_voices()}
+    voices = bridge_models.list_voices()
+    return {"ids": [str(v["id"]) for v in voices], "voices": voices}
 
 
 def _pick_variant(ctx: Any, kind: str, model: str | None) -> dict[str, Any]:
@@ -474,7 +476,7 @@ def speak(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     }
     ready = {v["id"] for v in bridge_models.list_voices()}
     if args.get("voice") and voice not in ready:
-        raise ToolError(f"Voice '{voice}' is not available. Call list_voices.")
+        raise ToolError(f"Voice '{voice}' is not available. Ready voices: {', '.join(sorted(ready)) or 'none'}.")
     scope = project_scope(args)
 
     def run() -> tuple[dict[str, Any], list[str]]:

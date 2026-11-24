@@ -244,6 +244,13 @@ def nudge_text(
                      f"{': ' + _short(reason, 200) if reason else ''}. Send it again as a tool call"
                      f"{': ' + tool if tool else ''}.")
         last_error = None
+    if last_error is not None and last_error[0] == "chat":
+        # The turn failed in the model server, not in a tool: nothing in the model's calls is wrong, and "Fix that
+        # error first" made it blame the wording of its last call (an apostrophe, 2026-11-24).
+        intro = (f"Your last turn was cut short by the model server, not by a tool, so there is nothing in your "
+                 f"calls to fix ({_short(last_error[1], 160)}). Carry on from the project state below, one short tool "
+                 "call at a time.")
+        last_error = None
     if intro:
         lines.append(intro)
     if summary:

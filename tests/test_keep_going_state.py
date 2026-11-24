@@ -84,6 +84,8 @@ class FilmStateTests(unittest.TestCase):
         self.assertIn("a stillPrompt for shot 1-2", f.summary(""))
         self.assertIn("storyboard_shot edit", f.next_step(""))
         self.assertNotIn("storyboard_generate", f.next_step(""))
+        # The ids of the shots to write, by number: "shot 1-2" alone made the model guess ids (2026-11-24).
+        self.assertIn("(shot_id 1=s1, 2=s2)", f.next_step(""))
 
     def test_complete_needs_clips_music_and_a_current_final_render(self):
         music = AudioClip(id="a1", kind="music", source=AudioSource(path="media/audio/m.wav"))

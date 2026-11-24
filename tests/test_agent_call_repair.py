@@ -222,5 +222,73 @@ class LoopTests(unittest.TestCase):
         self.assertEqual(out.tool_calls, [])
 
 
+def _structured(name, arguments, call_id):
+    return {"id": call_id, "type": "function", "function": {"name": name, "arguments": arguments}}
+
+
+class CutOffStructuredCallTests(unittest.TestCase):
+    """2026-11-24: llama-server handed back a ``storyboard_shot`` call cut off at the end of the 32,768-token context
+    with its arguments as partial JSON. The loop ran it, then sent the broken arguments back in the next request,
+    which llama-server refused ("Failed to parse tool call arguments as JSON") and the whole turn failed."""
+
+    CUT = '{"action": "edit", "shot_id": "s_1", "fields": {"stillPrompt": "Close-up of the singer\'s hands, 16:9'
+
+    def gen(self):
+        replies = [
+            SimpleNamespace(text="", finishReason="length", promptTokens=32602, completionTokens=166,
+                            tool_calls=[_structured("storyboard_audio", '{"action": "add"}', "c1"),
+                                        _structured("storyboard_audio", self.CUT, "c2")]),
+            SimpleNamespace(text="Done.", finishReason="stop", promptTokens=5, completionTokens=5, tool_calls=None),
+        ]
+        seen = []
+
+        def generate_fn(**kwargs):
+            seen.append(list(kwargs.get("history") or []))
+            return replies[min(len(seen) - 1, len(replies) - 1)]
+
+        generate_fn.seen = seen
+        return generate_fn
+
+    def check(self, gen, tool, records):
+        self.assertEqual(tool.calls, [{"action": "add"}])  # the whole call ran, the cut-off one did not
+        history = gen.seen[1]
+        sent = [c for m in history for c in (m.get("tool_calls") or [])]
+        self.assertEqual([c["id"] for c in sent], ["c1"])  # the broken arguments never go back to the server
+        self.assertIn("cut off inside the call", history[-1]["text"])
+        self.assertIn("the second call in your reply", history[-1]["text"])
+        self.assertEqual(len(records), 2)
+
+    def test_both_loops_skip_and_report_the_cut_off_call(self):
+        registry, tool = _registry()
+        gen = self.gen()
+        out = run_agent_loop(generate_fn=gen, prompt="go", history=[], system_prompt=None, max_tokens=100,
+                             temperature=0.7, tool_registry=registry)
+        self.check(gen, tool, out.tool_calls)
+        registry, tool = _registry()
+        gen = self.gen()
+        events = list(run_agent_loop_streaming(generate_fn=gen, stream_generate_fn=None, prompt="go", history=[],
+                                               system_prompt=None, max_tokens=100, temperature=0.7,
+                                               tool_registry=registry))
+        self.check(gen, tool, events[-1]["tool_calls"])
+
+    def test_a_lone_cut_off_call_is_an_unreadable_turn(self):
+        registry, tool = _registry()
+        replies = [SimpleNamespace(text="", finishReason="length", promptTokens=9, completionTokens=9,
+                                   tool_calls=[_structured("storyboard_audio", self.CUT, "c9")]),
+                   SimpleNamespace(text="ok", finishReason="stop", promptTokens=5, completionTokens=5, tool_calls=None)]
+        seen = []
+
+        def generate_fn(**kwargs):
+            seen.append(list(kwargs.get("history") or []))
+            return replies[min(len(seen) - 1, 1)]
+
+        out = run_agent_loop(generate_fn=generate_fn, prompt="go", history=[], system_prompt=None, max_tokens=100,
+                             temperature=0.7, tool_registry=registry)
+        self.assertEqual(tool.calls, [])
+        self.assertEqual(out.text, "ok")
+        self.assertFalse(any(m.get("tool_calls") for m in seen[1]))
+        self.assertIn("your tool call could not be read, so nothing ran: the reply was cut off", seen[1][-1]["text"])
+
+
 if __name__ == "__main__":
     unittest.main()

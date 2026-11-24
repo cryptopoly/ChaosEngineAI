@@ -159,6 +159,25 @@ class Registry(unittest.TestCase):
         self.assertLess(native.estimate_vram_gb(model, 8192, drafts=False), 18.8)
         self.assertGreater(native.estimate_vram_gb(model, 32768), 18.8)
 
+    def test_max_context_for_vram_inverts_the_estimate(self):
+        model = native.match_native_model("TensorFold/Qwen3.8-27B-MLX-4bit")
+        for free in (24.0, 40.0):
+            window = native.max_context_for_vram(model, free, ceiling=262144)
+            self.assertEqual(window % 4096, 0)
+            self.assertLessEqual(native.estimate_vram_gb(model, window), free)
+            # One more step would no longer fit the 97 % that is kept.
+            self.assertGreater(native.estimate_vram_gb(model, window + 8192), free * 0.97 - 1.0)
+
+    def test_max_context_for_vram_is_bounded(self):
+        model = native.match_native_model("TensorFold/Qwen3.8-27B-MLX-4bit")
+        self.assertEqual(native.max_context_for_vram(model, 4.0, ceiling=262144), 8192)
+        self.assertEqual(native.max_context_for_vram(model, 400.0, ceiling=65536), 65536)
+        # Without the draft model the same free memory buys a longer window.
+        self.assertGreaterEqual(
+            native.max_context_for_vram(model, 24.0, drafts=False, ceiling=262144),
+            native.max_context_for_vram(model, 24.0, drafts=True, ceiling=262144),
+        )
+
     def test_unknown_repo_matches_nothing(self):
         self.assertIsNone(native.match_native_model("someone/else", None))
 

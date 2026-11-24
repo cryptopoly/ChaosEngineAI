@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -140,6 +141,30 @@ class CachePreviewRouteTests(_RouteContractCase):
         self.assertIsInstance(body, dict)
         self.assertEqual(body["archSource"], "estimate")
         self.assertIn(body["speedSource"], {"estimate", "measured"})
+
+    def test_cache_preview_reports_the_memory_ceiling_and_the_native_fit(self):
+        from backend_service.routes import cache as cache_routes
+
+        with mock.patch.object(cache_routes, "_memory_budget", return_value={"kind": "metal", "limitGb": 51.8, "totalGb": 64.0, "freeGb": None}):
+            body = self.client.get("/api/cache/preview").json()
+        self.assertEqual(body["memory"]["kind"], "metal")
+        self.assertEqual(body["memory"]["limitGb"], 51.8)
+        # No CUDA card here, so the TensorFold fit is absent rather than invented.
+        self.assertIsNone(body["tensorfoldFit"])
+
+    def test_tensorfold_native_fit_uses_the_cards_free_memory(self):
+        from backend_service.routes import cache as cache_routes
+
+        with mock.patch("backend_service.helpers.memory_gate.cuda_free_vram_gb", return_value=24.0):
+            fit = cache_routes._tensorfold_native_fit("TensorFold/Qwen3.8-27B-MLX-4bit", 262144)
+        self.assertFalse(fit["fits"])
+        self.assertEqual(fit["freeGb"], 24.0)
+        self.assertEqual(fit["maxContext"] % 4096, 0)
+        self.assertLess(fit["maxContext"], 262144)
+        with mock.patch("backend_service.helpers.memory_gate.cuda_free_vram_gb", return_value=None):
+            self.assertIsNone(cache_routes._tensorfold_native_fit("TensorFold/Qwen3.8-27B-MLX-4bit", 8192))
+        with mock.patch("backend_service.helpers.memory_gate.cuda_free_vram_gb", return_value=24.0):
+            self.assertIsNone(cache_routes._tensorfold_native_fit("someone/unlisted-model", 8192))
 
     def test_cache_preview_rejects_out_of_range_bits(self):
         resp = self.client.get("/api/cache/preview", params={"bits": 99})

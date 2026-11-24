@@ -178,7 +178,8 @@
     "exclusiveLabel": "Nota:",
     "exclusiveBody": "Ningún otro motor de la app puede cargar este modelo, así que siempre se ejecuta en TensorFold; la casilla solo activa o desactiva los borradores.",
     "contextCapped": null,
-    "cacheNote": null
+    "cacheNote": null,
+    "contextCappedVram": null
   },
   "strategyRole": {
     "memorySaverTitle": "Reduce la caché KV para que los contextos largos quepan en menos memoria. La generación es más lenta que con Nativo.",

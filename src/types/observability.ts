@@ -45,6 +45,25 @@ export interface PreviewMetrics {
   /** A mixture-of-experts GGUF on a discrete NVIDIA card (FU-550): its layer count and how many layers' experts
    * would stay in system RAM to fit the card's free memory now (``autoCpuLayers``, null when that cannot be read). */
   moeOffload?: MoeOffloadPreview | null;
+  /** The ceiling a launch has to fit under here: Mac Metal's working-set limit, an NVIDIA card's VRAM (with the
+   * free part), or 80 % of RAM. */
+  memory?: MemoryBudget | null;
+  /** NVIDIA only: what the TensorFold 1.x binary needs at this window and the largest window that fits now. */
+  tensorfoldFit?: TensorfoldNativeFit | null;
+}
+
+export interface MemoryBudget {
+  kind: "metal" | "vram" | "ram";
+  limitGb: number;
+  totalGb: number;
+  freeGb: number | null;
+}
+
+export interface TensorfoldNativeFit {
+  needGb: number;
+  freeGb: number;
+  fits: boolean;
+  maxContext: number;
 }
 
 export interface MoeOffloadPreview {

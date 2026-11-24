@@ -5939,34 +5939,9 @@ select.text-input {
   white-space: nowrap;
 }
 
-.perf-preview__ram-group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 1;
-  min-width: 120px;
-}
 
-.perf-preview__ram-label {
-  font-size: 0.78rem;
-  white-space: nowrap;
-  color: var(--muted);
-}
 
-.perf-preview__ram-bar {
-  flex: 1;
-  height: 6px;
-  border-radius: 999px;
-  background: #0f1317;
-  border: 1px solid var(--border);
-  overflow: hidden;
-}
 
-.perf-preview__ram-fill {
-  height: 100%;
-  border-radius: 999px;
-  transition: width 0.25s ease;
-}
 
 /* Delta badges */
 
@@ -17558,4 +17533,67 @@ select.music-library__select {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+/* Memory bar in the launch dialog: in use now, model weights, cache, and a tick at the ceiling. */
+
+.memory-bar {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.memory-bar__track {
+  position: relative;
+  display: flex;
+  height: 12px;
+  border-radius: 999px;
+  background: #0f1317;
+  border: 1px solid var(--border);
+  overflow: visible;
+}
+
+.memory-bar__seg {
+  display: block;
+  height: 100%;
+  transition: width 0.25s ease;
+}
+
+.memory-bar__seg:first-child { border-radius: 999px 0 0 999px; }
+
+.memory-bar__seg--used { background: #5b6672; }
+.memory-bar__seg--weights { background: var(--accent); }
+.memory-bar__seg--cache { background: color-mix(in srgb, var(--accent) 45%, #ffffff); }
+
+.memory-bar__limit {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--warning, #e4be75);
+  border-radius: 1px;
+}
+
+.memory-bar__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.memory-bar__dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 5px;
+  border-radius: 50%;
+  vertical-align: baseline;
+}
+
+.memory-bar__summary {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text);
 }

@@ -909,8 +909,6 @@
     "f16Label": "f16",
     "diskStat": "Disque : {value} Go",
     "compressionStat": "compression {ratio}×",
-    "ramLabel": "RAM",
-    "ramValue": "{used}/{total} Go",
     "speedSlow": "Lent",
     "speedGood": "Bon",
     "speedFast": "Rapide",
@@ -1582,5 +1580,17 @@
   },
   "secretMask": {
     "note": "La clé est masquée à l'écran. Copier copie toujours la vraie clé."
+  },
+  "memoryBar": {
+    "aria": null,
+    "usedNow": null,
+    "weights": null,
+    "cache": null,
+    "summary": null,
+    "limitMetal": null,
+    "limitVram": null,
+    "limitRam": null,
+    "overLimit": null,
+    "overFree": null
   }
 }

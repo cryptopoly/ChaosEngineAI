@@ -909,8 +909,6 @@
     "f16Label": "f16",
     "diskStat": "디스크: {value} GB",
     "compressionStat": "{ratio}배 압축",
-    "ramLabel": "RAM",
-    "ramValue": "{used}/{total} GB",
     "speedSlow": "느림",
     "speedGood": "양호",
     "speedFast": "빠름",
@@ -1582,5 +1580,17 @@
   },
   "secretMask": {
     "note": "키는 화면에서 숨겨져 있습니다. 복사하면 항상 실제 키가 복사됩니다."
+  },
+  "memoryBar": {
+    "aria": null,
+    "usedNow": null,
+    "weights": null,
+    "cache": null,
+    "summary": null,
+    "limitMetal": null,
+    "limitVram": null,
+    "limitRam": null,
+    "overLimit": null,
+    "overFree": null
   }
 }

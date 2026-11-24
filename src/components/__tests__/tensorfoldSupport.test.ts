@@ -271,6 +271,16 @@ describe("tensorfoldContextFit", () => {
     expect((fit?.maxContext ?? 0) % 4096).toBe(0);
   });
 
+  it("uses the machine's own GPU limit when the backend sends it", () => {
+    // 51.8 GB measured against the 0.8 x 64 = 51.2 GB stand-in.
+    const real = tensorfoldContextFit({ ...base, contextTokens: 262144, limitGb: 51.8 });
+    const stand = tensorfoldContextFit({ ...base, contextTokens: 262144 });
+    expect(real?.limitGb).toBe(51.8);
+    expect(stand?.limitGb).toBeCloseTo(51.2);
+    expect(real?.budgetGb).toBeCloseTo(51.8 - 15 - 8);
+    expect(real?.maxContext).toBeGreaterThanOrEqual(stand?.maxContext ?? 0);
+  });
+
   it("leaves a window that fits alone", () => {
     const fit = tensorfoldContextFit({ ...base, contextTokens: 131072 });
     expect(fit).toMatchObject({ fits: true, maxContext: 131072 });

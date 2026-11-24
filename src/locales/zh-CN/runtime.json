@@ -178,7 +178,8 @@
     "exclusiveLabel": "说明:",
     "exclusiveBody": "应用中没有其他引擎能加载此模型，因此它始终在 TensorFold 上运行；该复选框用于开启或关闭其草稿功能。",
     "contextCapped": null,
-    "cacheNote": null
+    "cacheNote": null,
+    "contextCappedVram": null
   },
   "strategyRole": {
     "memorySaverTitle": "压缩 KV 缓存，让长上下文占用更少内存。生成速度比原生慢。",

@@ -163,8 +163,8 @@ export function isTensorfoldRepo(
  */
 export const TENSORFOLD_CACHE_FACTOR = 2.2;
 /** TensorFold keeps this much free beside the weights (its own start-up check says "an 8 GiB margin"). */
-const TENSORFOLD_MARGIN_GB = 8;
-/** Share of unified memory Metal lets one process use (51.8 of 64 GB measured, so 0.8 is slightly cautious). */
+export const TENSORFOLD_MARGIN_GB = 8;
+/** Share of unified memory used as the limit when the backend cannot read Metal's own (51.8 of 64 GB measured). */
 const TENSORFOLD_USABLE_SHARE = 0.8;
 const TENSORFOLD_CONTEXT_STEP = 4096;
 const TENSORFOLD_MIN_CONTEXT = 8192;
@@ -174,6 +174,9 @@ export interface TensorfoldContextFit {
   needGb: number;
   /** GB left for them beside the weights and the margin. */
   budgetGb: number;
+  /** The ceiling everything is measured against, and the weights taken out of it. */
+  limitGb: number;
+  weightsGb: number;
   fits: boolean;
   /** The window to use instead: the asked one when it fits, else the largest that does (a multiple of 4,096). */
   maxContext: number;
@@ -182,23 +185,26 @@ export interface TensorfoldContextFit {
 /**
  * Whether TensorFold will start at ``contextTokens``. It refuses at start-up when its caches do not fit, and the
  * app then quietly runs standard MLX; this predicts that so the launch dialog can cap the window first.
- * ``cacheGbPerToken`` is the standard estimate per token (the preview's cache GB over its window). Returns null
- * when an input is unknown, so no limit is invented.
+ * ``cacheGbPerToken`` is the standard estimate per token (the preview's cache GB over its window). ``limitGb`` is
+ * the machine's own GPU limit (Metal's working set, sent by the backend); without it 80 % of RAM stands in. Returns
+ * null when an input is unknown, so no limit is invented.
  */
 export function tensorfoldContextFit(input: {
   cacheGbPerToken: number;
   contextTokens: number;
   weightsGb: number;
   totalMemoryGb: number;
+  limitGb?: number | null;
 }): TensorfoldContextFit | null {
   const { cacheGbPerToken, contextTokens, weightsGb, totalMemoryGb } = input;
   if (!(cacheGbPerToken > 0) || !(contextTokens > 0) || !(weightsGb > 0) || !(totalMemoryGb > 0)) return null;
+  const limitGb = input.limitGb && input.limitGb > 0 ? input.limitGb : totalMemoryGb * TENSORFOLD_USABLE_SHARE;
   const perToken = cacheGbPerToken * TENSORFOLD_CACHE_FACTOR;
-  const budgetGb = totalMemoryGb * TENSORFOLD_USABLE_SHARE - weightsGb - TENSORFOLD_MARGIN_GB;
+  const budgetGb = limitGb - weightsGb - TENSORFOLD_MARGIN_GB;
   const needGb = perToken * contextTokens;
-  if (needGb <= budgetGb) return { needGb, budgetGb, fits: true, maxContext: contextTokens };
+  if (needGb <= budgetGb) return { needGb, budgetGb, limitGb, weightsGb, fits: true, maxContext: contextTokens };
   // Sized under the budget with a 10 % reserve, because the real need is not exactly linear.
   const raw = Math.floor((budgetGb * 0.9) / perToken / TENSORFOLD_CONTEXT_STEP) * TENSORFOLD_CONTEXT_STEP;
   const maxContext = Math.max(TENSORFOLD_MIN_CONTEXT, Math.min(raw, contextTokens));
-  return { needGb, budgetGb, fits: false, maxContext };
+  return { needGb, budgetGb, limitGb, weightsGb, fits: false, maxContext };
 }

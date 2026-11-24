@@ -909,8 +909,6 @@
     "f16Label": "f16",
     "diskStat": "Диск: {value} ГБ",
     "compressionStat": "сжатие {ratio}x",
-    "ramLabel": "RAM",
-    "ramValue": "{used}/{total} ГБ",
     "speedSlow": "Медленно",
     "speedGood": "Хорошо",
     "speedFast": "Быстро",
@@ -1582,5 +1580,17 @@
   },
   "secretMask": {
     "note": "Ключ скрыт на экране. Копирование всегда копирует настоящий ключ."
+  },
+  "memoryBar": {
+    "aria": null,
+    "usedNow": null,
+    "weights": null,
+    "cache": null,
+    "summary": null,
+    "limitMetal": null,
+    "limitVram": null,
+    "limitRam": null,
+    "overLimit": null,
+    "overFree": null
   }
 }

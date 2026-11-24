@@ -178,7 +178,8 @@
     "exclusiveLabel": "說明:",
     "exclusiveBody": "應用程式中沒有其他引擎能載入此模型，因此它一律在 TensorFold 上執行；此核取方塊用於開啟或關閉其草稿功能。",
     "contextCapped": null,
-    "cacheNote": null
+    "cacheNote": null,
+    "contextCappedVram": null
   },
   "strategyRole": {
     "memorySaverTitle": "壓縮 KV 快取，讓長上下文佔用更少記憶體。生成速度比原生慢。",

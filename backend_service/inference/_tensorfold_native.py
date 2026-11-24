@@ -540,6 +540,29 @@ def estimate_vram_gb(model: NativeModel, context: int, *, drafts: bool = True) -
     return round(max(total, 0.5), 1)
 
 
+def max_context_for_vram(
+    model: NativeModel,
+    free_gb: float,
+    *,
+    drafts: bool = True,
+    ceiling: int | None = None,
+    minimum: int = 8192,
+    step: int = 4096,
+) -> int:
+    """Largest window (a multiple of ``step``) whose estimated VRAM stays within ``free_gb``.
+
+    Inverts :func:`estimate_vram_gb`, keeping 3 % of the free memory in reserve. Never below ``minimum`` and never
+    above ``ceiling`` (default: the checkpoint's reference window times 8, so an open-ended request stays bounded).
+    """
+    ceiling = int(ceiling or model.ctx_ref * 8)
+    base = model.vram_gb - (model.drafter_gb if model.drafter and not drafts else 0.0)
+    if model.kv_gb_per_ref <= 0:
+        return max(minimum, ceiling // step * step)
+    room = free_gb * 0.97 - base
+    raw = int(model.ctx_ref * (1.0 + room / model.kv_gb_per_ref)) // step * step
+    return max(minimum, min(raw, ceiling // step * step))
+
+
 def match_native_model(*repos: str | None) -> NativeModel | None:
     wanted = {repo.lower() for repo in repos if repo}
     for model in NATIVE_MODELS:

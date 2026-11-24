@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import type { PreviewMetrics } from "../types";
+import { MemoryBar } from "./MemoryBar";
 import { ProgressRow } from "./ProgressRow";
 import { getCacheFitStatus } from "../utils/cache";
 import type { TFunction } from "i18next";
@@ -41,10 +42,12 @@ export function PerformancePreview({ preview, availableMemoryGb, totalMemoryGb, 
   const cacheDelta = preview.baselineCacheGb - preview.optimizedCacheGb;
   const qualityDelta = preview.qualityPercent - 100;
   const cacheMax = Math.max(preview.baselineCacheGb, totalMemoryGb * 0.6, 1);
-  const ramUsedPercent = totalMemoryGb > 0
-    ? Math.min(100, ((heldCacheGb + diskGb) / totalMemoryGb) * 100)
-    : 0;
-  const ramColor = ramUsedPercent > 90 ? "var(--warning, #e4be75)" : "var(--accent)";
+  // The bar is a share of the card on an NVIDIA host (the cache lives there) and of system memory otherwise.
+  const onCard = preview.memory?.kind === "vram";
+  const memoryBase = onCard ? preview.memory?.totalGb ?? 0 : totalMemoryGb;
+  const memoryUsedNow = onCard
+    ? Math.max(0, (preview.memory?.totalGb ?? 0) - (preview.memory?.freeGb ?? preview.memory?.totalGb ?? 0))
+    : Math.max(0, totalMemoryGb - availableMemoryGb);
   const speedLabel = getSpeedLabel(preview.estimatedTokS, t);
   const speedMeasured = preview.speedSource === "measured";
   const speedTitle = speedMeasured
@@ -213,23 +216,14 @@ export function PerformancePreview({ preview, availableMemoryGb, totalMemoryGb, 
           defaultValue: "{ratio}x compression",
           ratio: fmt(preview.compressionRatio),
         })}</span>
-        <div className="perf-preview__ram-group">
-          <span className="perf-preview__ram-label">{t("performancePreview.ramLabel", { defaultValue: "RAM" })}</span>
-          <div className="perf-preview__ram-bar">
-            <div
-              className="perf-preview__ram-fill"
-              style={{ width: `${ramUsedPercent}%`, background: ramColor }}
-            />
-          </div>
-          <span className="perf-preview__ram-label">
-            {t("performancePreview.ramValue", {
-              defaultValue: "{used}/{total} GB",
-              used: fmt(heldCacheGb + diskGb),
-              total: fmt(totalMemoryGb),
-            })}
-          </span>
-        </div>
       </div>
+      <MemoryBar
+        totalGb={memoryBase}
+        usedNowGb={memoryUsedNow}
+        weightsGb={diskGb}
+        cacheGb={heldCacheGb}
+        budget={preview.memory}
+      />
     </div>
   );
 }

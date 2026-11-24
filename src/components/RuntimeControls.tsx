@@ -5,7 +5,7 @@ import type { LaunchPreferences, PreviewMetrics, StrategyInstallLog } from "../t
 import type { MtplxJobState, TensorfoldExtra, TensorfoldJobState } from "../api";
 import { InstallLogPanel } from "./InstallLogPanel";
 import { TensorfoldLaunchControl } from "./TensorfoldLaunchControl";
-import { tensorfoldContextFit, tensorfoldEngaged, TENSORFOLD_CACHE_FACTOR, type TensorfoldLaunchInfo } from "./tensorfoldSupport";
+import { tensorfoldContextFit, tensorfoldEngaged, TENSORFOLD_CACHE_FACTOR, TENSORFOLD_MARGIN_GB, type TensorfoldLaunchInfo } from "./tensorfoldSupport";
 import { NativeKvTypeField } from "./NativeKvTypeField";
 import { MoeOffloadField, moeCpuLayersForLoad } from "./MoeOffloadField";
 import { SliderField } from "./SliderField";
@@ -104,6 +104,10 @@ function activePresetId(settings: LaunchPreferences): string | null {
     if (match) return preset.id;
   }
   return null;
+}
+
+function formatContextK(tokens: number): string {
+  return tokens >= 1024 ? `${(tokens / 1024).toFixed(0)}K` : String(tokens);
 }
 
 function contextTicksFor(max: number): Array<{ value: number; label: string }> {
@@ -340,7 +344,8 @@ export function RuntimeControls({
   // TensorFold outranks both (``RuntimeController._select_tensorfold`` runs
   // first), so once it is installed for a checkpoint it serves, neither
   // DFlash nor MTPLX is offered for it.
-  const tensorfoldShown = isAppleSilicon && Boolean(tensorfoldInfo);
+  // The native 1.x binary serves CUDA hosts, so the box is shown there too, not only on Apple Silicon.
+  const tensorfoldShown = Boolean(tensorfoldInfo) && (isAppleSilicon || tensorfoldInfo?.native === true);
   const tensorfoldActive = tensorfoldShown && (tensorfoldInfo?.available ?? false);
   const tensorfoldRuns = tensorfoldShown && tensorfoldEngaged(tensorfoldInfo, settings.speculativeDecoding);
   const mtplxSupersedesDflash =
@@ -358,18 +363,29 @@ export function RuntimeControls({
   const ggufSpecSupported = isGgufBackend;
   const specActive = (settings.speculativeDecoding && dflashAvailable) || tensorfoldRuns;
   // TensorFold refuses to start when its own caches do not fit, and the app then runs standard MLX without it. Cap the
-  // window before launch instead, so the setting the user sees is the one that runs.
-  const tensorfoldFitInputs = tensorfoldRuns && preview.contextTokens > 0
+  // window before launch instead, so the setting the user sees is the one that runs. A Mac is sized against Metal's
+  // own limit (sent by the backend); an NVIDIA card against the free VRAM, with the backend's measured figures.
+  const tensorfoldFitInputs = tensorfoldRuns && !tensorfoldInfo?.native && preview.contextTokens > 0
     ? {
         cacheGbPerToken: preview.optimizedCacheGb / preview.contextTokens,
         weightsGb: diskSizeGb ?? preview.diskSizeGb,
         totalMemoryGb,
+        limitGb: preview.memory?.kind === "metal" ? preview.memory.limitGb : null,
       }
     : null;
   const tensorfoldFullWindow = tensorfoldFitInputs
     ? tensorfoldContextFit({ ...tensorfoldFitInputs, contextTokens: effectiveMaxContext })
     : null;
-  const tensorfoldCap = tensorfoldFullWindow && !tensorfoldFullWindow.fits ? tensorfoldFullWindow.maxContext : null;
+  const nativeFit = tensorfoldRuns && tensorfoldInfo?.native ? preview.tensorfoldFit ?? null : null;
+  const tensorfoldCap = tensorfoldFullWindow && !tensorfoldFullWindow.fits
+    ? tensorfoldFullWindow.maxContext
+    : nativeFit && !nativeFit.fits
+      ? nativeFit.maxContext
+      : null;
+  // Cache TensorFold really holds: the backend's measured need (less the weights) on a card, else the Mac factor.
+  const tensorfoldCacheGb = nativeFit
+    ? Math.max(0, nativeFit.needGb - (diskSizeGb ?? preview.diskSizeGb))
+    : preview.optimizedCacheGb * TENSORFOLD_CACHE_FACTOR;
   const sliderMaxContext = tensorfoldCap != null ? Math.min(effectiveMaxContext, tensorfoldCap) : effectiveMaxContext;
   useEffect(() => {
     if (tensorfoldCap != null && tensorfoldCap < settings.contextTokens) onChange("contextTokens", tensorfoldCap);
@@ -694,14 +710,26 @@ export function RuntimeControls({
           formatValue={(v) => v >= 1_000_000 ? `${(v / 1_048_576).toFixed(1)}M` : v >= 1024 ? `${(v / 1024).toFixed(0)}K` : String(v)}
           onChange={(v) => onChange("contextTokens", Math.min(v, sliderMaxContext))}
         />
-        {tensorfoldCap != null && tensorfoldFullWindow ? (
+        {tensorfoldCap != null && (tensorfoldFullWindow || nativeFit) ? (
           <p className="perf-preview__advice" role="note">
-            {t("tensorfold.contextCapped", {
-              needGb: tensorfoldFullWindow.needGb.toFixed(0),
-              maxContext: tensorfoldCap >= 1024 ? `${(tensorfoldCap / 1024).toFixed(0)}K` : String(tensorfoldCap),
-              defaultValue:
-                "TensorFold keeps its own caches, about {needGb} GB at the full window, which does not fit beside this model. The window is capped at {maxContext} so TensorFold starts.",
-            })}
+            {tensorfoldFullWindow
+              ? t("tensorfold.contextCapped", {
+                  limitGb: tensorfoldFullWindow.limitGb.toFixed(1),
+                  weightsGb: tensorfoldFullWindow.weightsGb.toFixed(1),
+                  marginGb: TENSORFOLD_MARGIN_GB,
+                  budgetGb: Math.max(0, tensorfoldFullWindow.budgetGb).toFixed(0),
+                  needGb: tensorfoldFullWindow.needGb.toFixed(0),
+                  maxContext: formatContextK(tensorfoldCap),
+                  defaultValue:
+                    "TensorFold keeps its own caches. This Mac's GPU limit is {limitGb} GB; the {weightsGb} GB model and a {marginGb} GB margin leave {budgetGb} GB, and the full window would need {needGb} GB. The window is capped at {maxContext} so TensorFold starts.",
+                })
+              : t("tensorfold.contextCappedVram", {
+                  needGb: (nativeFit?.needGb ?? 0).toFixed(0),
+                  freeGb: (nativeFit?.freeGb ?? 0).toFixed(0),
+                  maxContext: formatContextK(tensorfoldCap),
+                  defaultValue:
+                    "TensorFold needs about {needGb} GB of GPU memory at the full window and the card has {freeGb} GB free. The window is capped at {maxContext} so TensorFold starts.",
+                })}
           </p>
         ) : null}
         <SliderField
@@ -1115,13 +1143,13 @@ export function RuntimeControls({
           gpuVramTotalGb={gpuVramTotalGb}
           actualDiskSizeGb={diskSizeGb}
           compact={compact}
-          fitCacheGb={tensorfoldRuns ? preview.optimizedCacheGb * TENSORFOLD_CACHE_FACTOR : undefined}
+          fitCacheGb={tensorfoldRuns ? tensorfoldCacheGb : undefined}
         />
       ) : null}
       {showPreview && tensorfoldRuns ? (
         <p className="perf-preview__advice" role="note">
           {t("tensorfold.cacheNote", {
-            cacheGb: (preview.optimizedCacheGb * TENSORFOLD_CACHE_FACTOR).toFixed(1),
+            cacheGb: tensorfoldCacheGb.toFixed(1),
             defaultValue:
               "TensorFold holds about {cacheGb} GB of cache here (its own caches and the draft model's), more than the standard estimate shown.",
           })}

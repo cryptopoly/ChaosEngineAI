@@ -178,7 +178,8 @@
     "exclusiveLabel": "Hinweis:",
     "exclusiveBody": "Keine andere Engine der App kann dieses Modell laden, daher läuft es immer auf TensorFold; das Kontrollkästchen schaltet nur das Drafting ein und aus.",
     "contextCapped": null,
-    "cacheNote": null
+    "cacheNote": null,
+    "contextCappedVram": null
   },
   "strategyRole": {
     "memorySaverTitle": "Verkleinert den KV-Cache, damit lange Kontexte in weniger Speicher passen. Die Generierung ist langsamer als bei Nativ.",

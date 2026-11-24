@@ -909,8 +909,6 @@
     "f16Label": "f16",
     "diskStat": "Disk: {value} GB",
     "compressionStat": "{ratio}x compression",
-    "ramLabel": "RAM",
-    "ramValue": "{used}/{total} GB",
     "speedSlow": "Slow",
     "speedGood": "Good",
     "speedFast": "Fast",
@@ -1582,5 +1580,17 @@
   },
   "secretMask": {
     "note": "The key is hidden on screen. Copy always copies the real key."
+  },
+  "memoryBar": {
+    "aria": "Memory: {used} GB in use now, {weights} GB model weights, {cache} GB cache, out of {total} GB",
+    "usedNow": "In use now {value} GB",
+    "weights": "Model {value} GB",
+    "cache": "Cache {value} GB",
+    "summary": "Needs {need} GB. {free} GB free now. {label} {limit} GB.",
+    "limitMetal": "GPU limit",
+    "limitVram": "Card memory",
+    "limitRam": "Usable RAM",
+    "overLimit": "This launch needs more than the {label} allows, so it will not start as set.",
+    "overFree": "More than the free memory right now. It can start, but other apps will be moved out of RAM and it may swap. Closing apps first helps."
   }
 }

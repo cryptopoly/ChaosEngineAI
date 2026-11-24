@@ -178,7 +178,8 @@
     "exclusiveLabel": "참고:",
     "exclusiveBody": "앱의 다른 엔진은 이 모델을 로드할 수 없으므로 항상 TensorFold에서 실행됩니다. 체크박스는 드래프팅만 켜고 끕니다.",
     "contextCapped": null,
-    "cacheNote": null
+    "cacheNote": null,
+    "contextCappedVram": null
   },
   "strategyRole": {
     "memorySaverTitle": "KV cache를 줄여 긴 컨텍스트가 더 적은 메모리에 들어가도록 합니다. 생성 속도는 네이티브보다 느립니다.",

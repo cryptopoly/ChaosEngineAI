@@ -177,8 +177,9 @@
     "addGrammar": "Add structured output",
     "exclusiveLabel": "Note:",
     "exclusiveBody": "No other engine in the app can load this model, so it always runs on TensorFold; the box switches its drafting on and off.",
-    "contextCapped": "TensorFold keeps its own caches, about {needGb} GB at the full window, which does not fit beside this model. The window is capped at {maxContext} so TensorFold starts.",
-    "cacheNote": "TensorFold holds about {cacheGb} GB of cache here (its own caches and the draft model's), more than the standard estimate shown."
+    "contextCapped": "TensorFold keeps its own caches. This Mac's GPU limit is {limitGb} GB; the {weightsGb} GB model and a {marginGb} GB margin leave {budgetGb} GB, and the full window would need {needGb} GB. The window is capped at {maxContext} so TensorFold starts.",
+    "cacheNote": "TensorFold holds about {cacheGb} GB of cache here (its own caches and the draft model's), more than the standard estimate shown.",
+    "contextCappedVram": "TensorFold needs about {needGb} GB of GPU memory at the full window and the card has {freeGb} GB free. The window is capped at {maxContext} so TensorFold starts."
   },
   "strategyRole": {
     "memorySaverTitle": "Shrinks the KV cache so long contexts fit in less memory. Generation is slower than Native.",

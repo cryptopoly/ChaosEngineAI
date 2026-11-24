@@ -133,7 +133,63 @@ def cache_preview(
         **host,
     )
     preview["moeOffload"] = _moe_offload_preview(host, float(preview.get("optimizedCacheGb") or 0.0))
+    preview["memory"] = _memory_budget()
+    preview["tensorfoldFit"] = _tensorfold_native_fit(model_repo, context_tokens)
     return preview
+
+
+def _memory_budget() -> dict[str, Any] | None:
+    """The ceiling a launch has to fit under on this machine, for the launch dialog's memory bar and its
+    TensorFold window cap: the Metal working-set limit on a Mac (51.8 GB of 64 GB, what MLX and TensorFold stay
+    under), the card's VRAM on an NVIDIA host, else 80 % of system RAM. ``freeGb`` is the card's free VRAM on
+    NVIDIA only. Never raises."""
+    from backend_service.helpers.hardware_class import _metal_info, host_hardware_class
+    from backend_service.helpers.memory_gate import cuda_free_vram_gb
+
+    try:
+        kind = host_hardware_class().kind
+        if kind == "apple":
+            info = _metal_info()
+            if info is not None:
+                return {"kind": "metal", "limitGb": round(info[1], 1), "totalGb": round(info[0], 1), "freeGb": None}
+        if kind == "cuda":
+            from backend_service.helpers.gpu import get_device_vram_total_gb
+
+            total = get_device_vram_total_gb()
+            free = cuda_free_vram_gb()
+            if total:
+                return {"kind": "vram", "limitGb": round(float(total), 1), "totalGb": round(float(total), 1),
+                        "freeGb": round(free, 1) if free is not None else None}
+        import psutil
+
+        ram = psutil.virtual_memory().total / 1024 ** 3
+        return {"kind": "ram", "limitGb": round(ram * 0.8, 1), "totalGb": round(ram, 1), "freeGb": None}
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _tensorfold_native_fit(model_repo: str | None, context_tokens: int) -> dict[str, Any] | None:
+    """What the TensorFold 1.x binary needs on this NVIDIA card at ``context_tokens``, from its measured VRAM
+    figures, and the largest window that fits the free memory now. None off a CUDA host, for a checkpoint the
+    registry does not list, or when the free memory cannot be read. The Mac's Metal lane is sized in the
+    launch dialog instead."""
+    from backend_service.helpers.memory_gate import cuda_free_vram_gb
+    from backend_service.inference import _tensorfold_native as native
+
+    if not model_repo or not _REPO_ID.fullmatch(model_repo):
+        return None
+    model = native.match_native_model(model_repo)
+    free = cuda_free_vram_gb()
+    if model is None or free is None:
+        return None
+    drafts = bool(model.drafter)
+    need = native.estimate_vram_gb(model, context_tokens, drafts=drafts)
+    return {
+        "needGb": need,
+        "freeGb": round(free, 1),
+        "fits": need <= free,
+        "maxContext": native.max_context_for_vram(model, free, drafts=drafts, ceiling=context_tokens),
+    }
 
 
 def _moe_offload_preview(host: dict[str, Any], cache_gb: float) -> dict[str, Any] | None:

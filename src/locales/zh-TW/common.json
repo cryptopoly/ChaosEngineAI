@@ -909,8 +909,6 @@
     "f16Label": "f16",
     "diskStat": "磁碟: {value} GB",
     "compressionStat": "{ratio}x 壓縮",
-    "ramLabel": "RAM",
-    "ramValue": "{used}/{total} GB",
     "speedSlow": "緩慢",
     "speedGood": "良好",
     "speedFast": "快速",
@@ -1582,5 +1580,17 @@
   },
   "secretMask": {
     "note": "金鑰在畫面上已隱藏。「複製」一律複製真正的金鑰。"
+  },
+  "memoryBar": {
+    "aria": null,
+    "usedNow": null,
+    "weights": null,
+    "cache": null,
+    "summary": null,
+    "limitMetal": null,
+    "limitVram": null,
+    "limitRam": null,
+    "overLimit": null,
+    "overFree": null
   }
 }

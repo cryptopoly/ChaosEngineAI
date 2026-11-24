@@ -909,8 +909,6 @@
     "f16Label": "f16",
     "diskStat": "polmeH Daq: {value} GB",
     "compressionStat": "{ratio}logh machmoH",
-    "ramLabel": "RAM",
-    "ramValue": "{used}/{total} GB",
     "speedSlow": "QIt",
     "speedGood": "QaQ",
     "speedFast": "nom",
@@ -1582,5 +1580,17 @@
   },
   "secretMask": {
     "note": null
+  },
+  "memoryBar": {
+    "aria": null,
+    "usedNow": null,
+    "weights": null,
+    "cache": null,
+    "summary": null,
+    "limitMetal": null,
+    "limitVram": null,
+    "limitRam": null,
+    "overLimit": null,
+    "overFree": null
   }
 }

@@ -178,7 +178,8 @@
     "exclusiveLabel": "Примечание:",
     "exclusiveBody": "Ни один другой движок в приложении не может загрузить эту модель, поэтому она всегда работает на TensorFold; флажок включает и выключает только генерацию черновиков.",
     "contextCapped": null,
-    "cacheNote": null
+    "cacheNote": null,
+    "contextCappedVram": null
   },
   "strategyRole": {
     "memorySaverTitle": "Уменьшает KV cache, чтобы длинные контексты умещались в меньшем объёме памяти. Генерация медленнее, чем при стратегии «Нативный».",

@@ -178,7 +178,8 @@
     "exclusiveLabel": "Observação:",
     "exclusiveBody": "Nenhum outro motor do app consegue carregar este modelo, então ele sempre roda no TensorFold; a caixa de seleção apenas liga e desliga o drafting.",
     "contextCapped": null,
-    "cacheNote": null
+    "cacheNote": null,
+    "contextCappedVram": null
   },
   "strategyRole": {
     "memorySaverTitle": "Reduz o KV cache para que contextos longos caibam em menos memória. A geração é mais lenta que com Nativo.",

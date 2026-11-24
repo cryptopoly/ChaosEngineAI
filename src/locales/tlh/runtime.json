@@ -178,7 +178,8 @@
     "exclusiveLabel": "qeS:",
     "exclusiveBody": "appDaq latlh jonta' chu'laHbe' yabvam, vaj reH TensorFoldDaq Qap; nungDaj neH chu' 'ej chu'Ha' leQ.",
     "contextCapped": null,
-    "cacheNote": null
+    "cacheNote": null,
+    "contextCappedVram": null
   },
   "strategyRole": {
     "memorySaverTitle": "KV cache machmoH vaj qawHaq puSDaq yap ghu' nI'. Native chenmoH law', chenmoH puS.",

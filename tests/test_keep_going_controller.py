@@ -357,7 +357,11 @@ class StopConditionTests(Base):
     def test_model_failures(self):
         self.begin()
         self.finish(error="worker crashed")
-        self.assertIn("Last error (chat): worker crashed", self.hooks.turns[0].prompt)
+        prompt = self.hooks.turns[0].prompt
+        # A model server failure is not the model's to fix: it is named, but not as an error in its calls.
+        self.assertIn("cut short by the model server, not by a tool", prompt)
+        self.assertIn("(worker crashed)", prompt)
+        self.assertNotIn("Fix that error first", prompt)
         self.finish(error="worker crashed")
         self.stopped("turn_failed")
 

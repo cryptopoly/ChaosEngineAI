@@ -20,6 +20,16 @@ Commands assume the repo at `~/ChaosEngineAI`, the dev venv at `.venv`, and a ba
 (for model runs, link the model folders read-only into `$T`, or set the data and model folders in that profile).
 `B=http://127.0.0.1:8876`. The CLI-driven E2E suite needs `CHAOSENGINE_REQUIRE_AUTH=0` on that backend, or a token.
 
+## Where this stands at the tip (`bb433c6d`, 2026-11-24; last tag `v0.9.9`, 894 non-merge commits since)
+
+| Where | State |
+|---|---|
+| Windows 11, RTX 4090 (dev backend) | Full E2E green on `8cc3a9b8` with llama.cpp b12651 (23 phases pass, 216 skips for MLX); smoke 7 of 7; Playwright 250 passed, 14 host-bound failures (FU-256); the bundle with the CUDA `sd.exe` built and its `sd.exe` made a real image; Nunchaku, WSL2 vLLM bridge, TensorFold 1.2.x engine, lip sync, music, speech-to-text and Storyboard runs recorded in `docs/progress/rtx4090-progress.md`. Last section of this page. |
+| WSL2 Ubuntu-26.04 | Full pytest 6628 passed, 0 failed (`84315da2`); rerun on `2d746618` exit 0. Section below. |
+| macOS | **Not run in this pass:** 32 of 32 rows `todo`. |
+| Native Linux | **Not run:** 19 of 27 rows `todo`, 8 `WSL-done` (WSL2 is not native Linux). |
+| After the Windows E2E | Seven product commits (`14793206` to `bb433c6d`: sd.cpp pick fix, Keep going and Storyboard prompt fixes, TensorFold launch dialog and memory bar) have unit tests only; rerun the Windows smoke before the tag. `npm run i18n:validate` at the tip reports 5331 of 5344 per shipping locale (13 null placeholders from the memory bar and TensorFold launch notes, FU-420). |
+
 ## What WSL2 already covered (2026-11-12 and 2026-11-23)
 
 | Run | Where | Result |
@@ -47,7 +57,7 @@ below that touches those still needs the dual-boot Ubuntu.
 | M-07 | MLX tool block prints allowed values and limits (FU-231 part 1, FU-437) | `HOME=$(mktemp -d) .venv/bin/python -m pytest tests/test_tool_prompt_limits.py -v`; then load a small MLX model with Studio tools on and read the prompt in Server > Activity (the live phase 1 check FU-437 asks for is not written yet) | prompt lists enum values, ranges and defaults | Claude, write the phase 1 check in the same session | todo |
 | M-08 | dflash-mlx at the pinned `9ca0028` | `.venv/bin/pip install "dflash-mlx @ git+https://github.com/bstnxbt/dflash-mlx.git@9ca002898b48e14c9727dec17299f497e8467870"`; `HOME=$(mktemp -d) .venv/bin/python -m pytest tests/test_dflash.py -v`; `./scripts/e2e_test_suite.py --phases 1` with a DFlash target and drafter on disk | tests pass; phase 1 DFlash check passes with `dflash` in `runtimeNote` (a plain MLX fallback is a fail) | Claude | todo |
 | M-09 | Cache strategies on MLX (TurboQuant, native) | `.venv/bin/python scripts/cache-strategy-matrix.py --quick` against the backend | exit 0; legacy `chaosengine` and `rotorquant` load as `turboquant` (exit 2 if not) | Claude | todo |
-| M-10 | TensorFold 1.2.9 native on macOS arm64, and the Python 0.6.6 fallback for `native=False` families | `curl -X POST $B/api/setup/install-tensorfold-native`; `curl -X POST $B/api/setup/install-tensorfold`; `HOME=$(mktemp -d) .venv/bin/python -m pytest tests/test_tensorfold_native.py tests/test_tensorfold_registry.py tests/test_tensorfold_routing.py tests/test_tensorfold_setup.py tests/test_tensorfold_engine_integration.py -v`; `./scripts/e2e_test_suite.py --phases 0,1` | install jobs end "done"; phase 0 registry check and phase 1 TensorFold load pass with engine `tensorfold-native` or `tensorfold` (not a silent MLX fallback); Nanbeige and Flint skip below M5 | Claude | todo |
+| M-10 | TensorFold 1.3.4 native on macOS arm64, and the Python 0.6.6 fallback for `native=False` families | `curl -X POST $B/api/setup/install-tensorfold-native`; `curl -X POST $B/api/setup/install-tensorfold`; `HOME=$(mktemp -d) .venv/bin/python -m pytest tests/test_tensorfold_native.py tests/test_tensorfold_registry.py tests/test_tensorfold_routing.py tests/test_tensorfold_setup.py tests/test_tensorfold_engine_integration.py -v`; `./scripts/e2e_test_suite.py --phases 0,1` | install jobs end "done"; phase 0 registry check and phase 1 TensorFold load pass with engine `tensorfold-native` or `tensorfold` (not a silent MLX fallback); Nanbeige and Flint skip below M5 | Claude | todo |
 | M-11 | MTPLX | `curl -X POST $B/api/setup/install-mtplx`; `./scripts/e2e_test_suite.py --phases 1` | `mtplx` in `runtimeNote` | Claude | todo |
 | M-12 | mflux 0.24.0: Iris-3B, FLUX 3 Klein edit with reference images | `curl -X POST $B/api/setup/install-mflux`; `./scripts/e2e_test_suite.py --phases 4,9` | phase 4 generation and "new image families" pass; phase 9 reference-image round trip passes | Claude | todo |
 | M-13 | ltx-2-mlx `895201d` text and image to video | `curl -X POST $B/api/setup/install-ltx2`; `HOME=$(mktemp -d) .venv/bin/python -m pytest tests/test_ltx2_mlx_runtime.py -v`; `./scripts/e2e_test_suite.py --phases 5` | LTX-2.5 / 2.3 MLX clips render with sound | Claude | todo |
@@ -83,8 +93,8 @@ Record results in `docs/progress/linux-progress.md` on a `test/linux` branch (wi
 | L-04 | Frontend gate | `npm ci && npm test && npx tsc --noEmit && npm run i18n:validate` | pass. Not run in WSL (the distro has no Linux Node; only the Windows `npm` was on `PATH`). | Claude | todo |
 | L-05 | Tauri shell tests | `cargo test --manifest-path src-tauri/Cargo.toml` | pass (sidecar lifecycle, port wait) | Claude | todo |
 | L-06 | E2E smoke and full against a native backend | backend with `CHAOSENGINE_REQUIRE_AUTH=0`; `./scripts/e2e_test_suite.py --smoke`; `./scripts/e2e_test_suite.py` | smoke exit 0; full: Mac-only rows fail as on Windows (phase 4 "new image families", phase 5 LTX-2.5 MLX), everything else pass or skip | Claude | WSL-done (smoke, 2026-11-12) |
-| L-07 | CUDA llama.cpp `b12441` through the app | `curl -X POST $B/api/setup/install-llama-cuda`; load Qwen3-0.6B Q8_0, 3 x 300 tokens; `./scripts/e2e_test_suite.py --phases 1` | archive and `cudart-` sha256 verified; GGUF on the GPU; tok/s near Windows native (549 to 563), WSL gave 480; without `libgomp1` the message names it | Claude | WSL-done (b12292) |
-| L-08 | TensorFold 1.2.9 Linux x86_64 archive | `curl -X POST $B/api/setup/install-tensorfold-native`; `~/.chaosengine/bin/tensorfold capabilities --json`; load Qwen3.5-2B 4-bit with `backend: tensorfold`; `./scripts/e2e_test_suite.py --phases 0,1` | `nvidia-sm89`, back end cuda; about 450 tok/s; engine `tensorfold-native` | Claude | WSL-done (1.2.7) |
+| L-07 | CUDA llama.cpp `b12651` through the app | `curl -X POST $B/api/setup/install-llama-cuda`; load Qwen3-0.6B Q8_0, 3 x 300 tokens; `./scripts/e2e_test_suite.py --phases 1` | archive and `cudart-` sha256 verified; GGUF on the GPU; tok/s near Windows native (549 to 563), WSL gave 480; without `libgomp1` the message names it | Claude | WSL-done (b12292) |
+| L-08 | TensorFold 1.3.4 Linux x86_64 archive | `curl -X POST $B/api/setup/install-tensorfold-native`; `~/.chaosengine/bin/tensorfold capabilities --json`; load Qwen3.5-2B 4-bit with `backend: tensorfold`; `./scripts/e2e_test_suite.py --phases 0,1` | `nvidia-sm89`, back end cuda; about 450 tok/s; engine `tensorfold-native` | Claude | WSL-done (1.2.7) |
 | L-09 | vLLM native lane (not the WSL bridge) | Setup > Boost Pack > DFlash (CUDA), or `.venv/bin/pip install "vllm>=0.28.0"` into the extras folder as the app does; load `Qwen/Qwen3-0.6B` with backend `vllm`; chat; unload | loads from the library folder (no second download), think split, VRAM back after unload. Check FU-532 here too: `--trust-remote-code` only for rows that need it. Check the native lane passes a GPU share like the bridge does | Claude | WSL-done (inside WSL, 0.33) |
 | L-10 | TriAttention on its own vLLM 0.18 venv (FU-171) | `HOME=$(mktemp -d) .venv/bin/python -m pytest tests/test_cache_strategies.py -v`; `.venv/bin/python scripts/cache-strategy-matrix.py` | TriAttention cell compacts on 0.18 | Claude | WSL-done |
 | L-11 | stable-diffusion.cpp `532d2c1` CUDA build | `./scripts/build-sdcpp.sh` (CUDA); `./scripts/e2e_test_suite.py --phases 4` with the `leejet/Qwen-Image-2.1-GGUF-q4k` row | `sd` builds, device label `cuda`, one image | Claude | todo |
@@ -172,3 +182,10 @@ b12649 CUDA llama build and the tip pins b12651 (copied the verified build in, r
 4 checks). Phase 0 failed on the `gpu-status` check: the first call after a cold backend start imports torch and took
 over the CLI's 10 s limit; by hand it answers in 0.2 s and a rerun of phase 0 passes (20 checks). Checks over the run:
 195 pass, 63 skip, 2 fail (the two above). Reports in `E:\tmp\e2e-tip-report`. Not covered: MLX phases, native Linux.
+
+Same day, same machine, other Windows checks (FU-399, FU-563, `docs/progress/rtx4090-progress.md`): the NSIS installer with the
+pinned `532d2c1` CUDA 13 `sd.exe` built (582 MiB, under the 1.9 GB guard; not installed or opened), and its packaged `sd.exe`
+made a real Qwen-Image-2.1 Turbo image (8.0 s warm, 15.4 GiB peak); a Nunchaku 1.2.1 wheel installed in a scratch folder made a
+real FLUX.1 schnell INT4 image (4.8 s generation, 17.0 GB peak with CPU offload); `check-upstreams.py` and
+`audit-dependencies.py` pass (sd.cpp `0d71f96` not taken, 18 % slower per step on CUDA, D-131). Seven product commits came after
+the E2E run (`14793206` to `bb433c6d`) with unit tests only, so rerun `--smoke` on the tag candidate.

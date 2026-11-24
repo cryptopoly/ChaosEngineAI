@@ -31,6 +31,9 @@ export interface ReferenceCardProps {
   onRemoveColour?: (index: number) => void;
   /** The "What it looks like" placeholder (a style asks for the look instead). */
   descriptionPlaceholder?: string;
+  /** A character: the "In every shot" switch is shown when `onInEveryShot` is given. */
+  inEveryShot?: boolean;
+  onInEveryShot?: (on: boolean) => void;
 }
 
 function Picture({ projectId, image, index, name, disabled, onRemove }: {
@@ -72,7 +75,7 @@ function Picture({ projectId, image, index, name, disabled, onRemove }: {
 
 export function ReferenceCard({
   projectId, reference, usedBy, disabled, autoFocus, onEdit, onRemove, onRemovePicture, onOpenPicker, onFiles,
-  palette, onRemoveColour, descriptionPlaceholder,
+  palette, onRemoveColour, descriptionPlaceholder, inEveryShot, onInEveryShot,
 }: ReferenceCardProps) {
   const { t } = useTranslation("studio");
   const [name, setName] = useState(reference.name);
@@ -218,6 +221,23 @@ export function ReferenceCard({
             {t("cast.usedBy", { defaultValue: "{n, plural, =0 {Not used by a shot yet} one {Used by # shot} other {Used by # shots}}", n: usedBy })}
           </p>
         )}
+        {onInEveryShot ? (
+          <div className="cast-card__every">
+            <label className="check-row">
+              <input
+                type="checkbox"
+                role="switch"
+                checked={Boolean(inEveryShot)}
+                disabled={disabled}
+                onChange={(event) => onInEveryShot(event.target.checked)}
+              />
+              {t("cast.inEveryShot", { defaultValue: "In every shot" })}
+            </label>
+            <p className="muted-text">
+              {t("cast.inEveryShotHint", { defaultValue: "Puts this character in every shot, now and later. A shot can still leave them out in its editor." })}
+            </p>
+          </div>
+        ) : null}
       </div>
       <button
         type="button"

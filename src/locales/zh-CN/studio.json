@@ -1706,7 +1706,12 @@
       "vocalTakes": "版本",
       "vocalTakesDefault": "默认（{count}）",
       "vocalTakesBest": "4（最佳质量）",
-      "vocalTakesHint": "演唱人声：使用人声分轨，配一张嘴巴闭合的正面特写静帧，并在乐句开始前约 0.4 秒起始。每个版本使用各自的种子；同步评分会保留最佳版本，其余留在视频图库中。"
+      "vocalTakesHint": "演唱人声：使用人声分轨，配一张嘴巴闭合的正面特写静帧，并在乐句开始前约 0.4 秒起始。每个版本使用各自的种子；同步评分会保留最佳版本，其余留在视频图库中。",
+      "castInShot": null,
+      "castNone": null,
+      "castEveryShot": null,
+      "leaveOut": null,
+      "lipSyncSeparate": null
     },
     "empty": "还没有镜头。添加一个镜头，然后写提示词或导入素材。",
     "estimate": {
@@ -2733,7 +2738,9 @@
     "title": "角色和地点",
     "unnamed": "未命名",
     "usedBy": "{n, plural, =0 {尚未被任何镜头使用} other {被 # 个镜头使用}}",
-    "noneShort": "还没有。"
+    "noneShort": "还没有。",
+    "inEveryShot": null,
+    "inEveryShotHint": null
   },
   "exportTab": {
     "bundleBody": "一个 .chaosfilm 文件，包含镜头、版本、角色图片和声音，用于备份项目或在另一台电脑上打开。",

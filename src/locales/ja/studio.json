@@ -1706,7 +1706,12 @@
       "vocalTakes": "テイク",
       "vocalTakesDefault": "デフォルト ({count})",
       "vocalTakesBest": "4 (最高品質)",
-      "vocalTakesHint": "歌唱ボーカル: ボーカルステムと、口を閉じた正面のクローズアップ静止画を使い、フレーズの約 0.4 秒前から始めてください。各テイクは独自のシードを使い、同期スコアが最良のものを残し、ほかは動画ギャラリーに残ります。"
+      "vocalTakesHint": "歌唱ボーカル: ボーカルステムと、口を閉じた正面のクローズアップ静止画を使い、フレーズの約 0.4 秒前から始めてください。各テイクは独自のシードを使い、同期スコアが最良のものを残し、ほかは動画ギャラリーに残ります。",
+      "castInShot": null,
+      "castNone": null,
+      "castEveryShot": null,
+      "leaveOut": null,
+      "lipSyncSeparate": null
     },
     "empty": "まだショットがありません。ショットを追加して、プロンプトを入力するか素材をインポートしてください。",
     "estimate": {
@@ -2733,7 +2738,9 @@
     "title": "キャラクターと場所",
     "unnamed": "名前なし",
     "usedBy": "{n, plural, =0 {まだどのショットでも使われていません} other {# 件のショットで使用}}",
-    "noneShort": "まだありません。"
+    "noneShort": "まだありません。",
+    "inEveryShot": null,
+    "inEveryShotHint": null
   },
   "exportTab": {
     "bundleBody": "ショット、テイク、キャストの画像、音声を含む 1 つの .chaosfilm ファイル。プロジェクトのバックアップや、別のコンピューターで開くために使います。",

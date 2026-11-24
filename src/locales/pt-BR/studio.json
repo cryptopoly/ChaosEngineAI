@@ -1706,7 +1706,12 @@
       "vocalTakes": "Versões",
       "vocalTakesDefault": "Padrão ({count})",
       "vocalTakesBest": "4 (melhor qualidade)",
-      "vocalTakesHint": "Vocal cantado: use o stem de vocal, um quadro fixo frontal em close com a boca fechada, e comece cerca de 0,4 s antes de uma frase. Cada versão usa seu próprio seed; a pontuação de sincronia mantém a melhor e as outras ficam na Galeria de vídeo."
+      "vocalTakesHint": "Vocal cantado: use o stem de vocal, um quadro fixo frontal em close com a boca fechada, e comece cerca de 0,4 s antes de uma frase. Cada versão usa seu próprio seed; a pontuação de sincronia mantém a melhor e as outras ficam na Galeria de vídeo.",
+      "castInShot": null,
+      "castNone": null,
+      "castEveryShot": null,
+      "leaveOut": null,
+      "lipSyncSeparate": null
     },
     "empty": "Ainda não há planos. Adicione um plano e dê a ele um prompt ou importe filmagens.",
     "estimate": {
@@ -2733,7 +2738,9 @@
     "title": "Personagens e lugares",
     "unnamed": "Sem nome",
     "usedBy": "{n, plural, =0 {Ainda não usado por nenhum plano} one {Usado por # plano} other {Usado por # planos}}",
-    "noneShort": "Nenhum ainda."
+    "noneShort": "Nenhum ainda.",
+    "inEveryShot": null,
+    "inEveryShotHint": null
   },
   "exportTab": {
     "bundleBody": "Um arquivo .chaosfilm com os planos, versões, imagens do elenco e som, para fazer backup do projeto ou abri-lo em outro computador.",

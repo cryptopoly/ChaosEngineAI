@@ -13060,6 +13060,13 @@ button.licence-chip:focus-visible {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
 }
+.shot-editor__every {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
 .shot-editor__actions {
   display: flex;
   gap: 8px;

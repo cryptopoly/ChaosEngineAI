@@ -1706,7 +1706,12 @@
       "vocalTakes": "Takes",
       "vocalTakesDefault": "Standard ({count})",
       "vocalTakesBest": "4 (beste Qualität)",
-      "vocalTakesHint": "Singstimmen: Nimm den Gesangs-Stem, ein frontales Close-up-Standbild mit geschlossenem Mund und starte etwa 0,4 s vor einer Phrase. Jeder Take nutzt einen eigenen Seed; die Sync-Bewertung behält den besten, die übrigen bleiben in der Videogalerie."
+      "vocalTakesHint": "Singstimmen: Nimm den Gesangs-Stem, ein frontales Close-up-Standbild mit geschlossenem Mund und starte etwa 0,4 s vor einer Phrase. Jeder Take nutzt einen eigenen Seed; die Sync-Bewertung behält den besten, die übrigen bleiben in der Videogalerie.",
+      "castInShot": null,
+      "castNone": null,
+      "castEveryShot": null,
+      "leaveOut": null,
+      "lipSyncSeparate": null
     },
     "empty": "Noch keine Einstellungen. Füge eine Einstellung hinzu und gib ihr einen Prompt oder importiere Material.",
     "estimate": {
@@ -2733,7 +2738,9 @@
     "title": "Figuren und Orte",
     "unnamed": "Ohne Namen",
     "usedBy": "{n, plural, =0 {Von keinem Shot verwendet} one {Von # Shot verwendet} other {Von # Shots verwendet}}",
-    "noneShort": "Noch keine."
+    "noneShort": "Noch keine.",
+    "inEveryShot": null,
+    "inEveryShotHint": null
   },
   "exportTab": {
     "bundleBody": "Eine .chaosfilm-Datei mit den Shots, Takes, Besetzungsbildern und dem Ton, um das Projekt zu sichern oder auf einem anderen Computer zu öffnen.",

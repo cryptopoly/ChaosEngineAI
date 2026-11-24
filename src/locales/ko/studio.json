@@ -1706,7 +1706,12 @@
       "vocalTakes": "테이크",
       "vocalTakesDefault": "기본값({count})",
       "vocalTakesBest": "4(최고 품질)",
-      "vocalTakesHint": "노래 보컬: 보컬 스템과 입을 다문 정면 클로즈업 스틸을 사용하고, 프레이즈보다 약 0.4초 앞에서 시작하세요. 각 테이크는 자체 시드를 사용하며, 싱크 점수가 가장 좋은 것을 남기고 나머지는 비디오 갤러리에 남습니다."
+      "vocalTakesHint": "노래 보컬: 보컬 스템과 입을 다문 정면 클로즈업 스틸을 사용하고, 프레이즈보다 약 0.4초 앞에서 시작하세요. 각 테이크는 자체 시드를 사용하며, 싱크 점수가 가장 좋은 것을 남기고 나머지는 비디오 갤러리에 남습니다.",
+      "castInShot": null,
+      "castNone": null,
+      "castEveryShot": null,
+      "leaveOut": null,
+      "lipSyncSeparate": null
     },
     "empty": "아직 샷이 없습니다. 샷을 추가한 뒤 프롬프트를 입력하거나 영상을 가져오세요.",
     "estimate": {
@@ -2733,7 +2738,9 @@
     "title": "등장인물과 장소",
     "unnamed": "이름 없음",
     "usedBy": "{n, plural, =0 {아직 어떤 컷에서도 사용하지 않음} other {컷 #개에서 사용 중}}",
-    "noneShort": "아직 없습니다."
+    "noneShort": "아직 없습니다.",
+    "inEveryShot": null,
+    "inEveryShotHint": null
   },
   "exportTab": {
     "bundleBody": "컷, 테이크, 출연진 사진, 소리가 들어 있는 .chaosfilm 파일 하나입니다. 프로젝트를 백업하거나 다른 컴퓨터에서 열 때 사용합니다.",

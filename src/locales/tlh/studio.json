@@ -1706,7 +1706,12 @@
       "vocalTakes": null,
       "vocalTakesDefault": null,
       "vocalTakesBest": null,
-      "vocalTakesHint": null
+      "vocalTakesHint": null,
+      "castInShot": null,
+      "castNone": null,
+      "castEveryShot": null,
+      "leaveOut": null,
+      "lipSyncSeparate": null
     },
     "empty": "wej 'ay' tu'lu'. 'ay' yIchel, ghIq QIn yInob pagh mIllogh vIH yIqem.",
     "estimate": {
@@ -2733,7 +2738,9 @@
     "title": "ghot ghom Daq je",
     "unnamed": "pongbe'",
     "usedBy": "{n, plural, =0 {wej 'ay' lo''} other {# 'ay' lo''}}",
-    "noneShort": "wej pagh."
+    "noneShort": "wej pagh.",
+    "inEveryShot": null,
+    "inEveryShotHint": null
   },
   "exportTab": {
     "bundleBody": "wa' .chaosfilm nav: 'ay', nID, ghot ghom mIllogh, wab je ngaS. Qu' qonmeH pagh latlh De'wI'Daq poSmoHmeH lo'.",

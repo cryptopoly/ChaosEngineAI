@@ -220,6 +220,39 @@ def _truncated(result: Any) -> bool:
     return getattr(result, "finishReason", None) == "length"
 
 
+def _without_broken_args(tool_calls: Any, truncated: bool) -> tuple[list[dict[str, Any]], agent_call_repair.Unreadable | None]:
+    """The structured calls whose arguments read as a JSON object, and the first one that does not.
+
+    llama-server hands back a call cut off at the token or context limit with its arguments as the partial JSON
+    text. Run, it fails; sent back in the next request's history, llama-server refuses that whole request ("Failed
+    to parse tool call arguments as JSON"), which ended a Keep going turn with an error the model took for an
+    apostrophe problem (2026-11-24: the prompt had reached 32,602 of 32,768 tokens). So such a call never runs and
+    never goes back to the server: the model is told it was cut off, like any call that could not be read.
+    """
+    good: list[dict[str, Any]] = []
+    broken: agent_call_repair.Unreadable | None = None
+    for index, call in enumerate(tool_calls or []):
+        func = call.get("function") if isinstance(call, dict) else None
+        raw = func.get("arguments") if isinstance(func, dict) else None
+        if isinstance(raw, str) and raw.strip():
+            try:
+                ok = isinstance(json.loads(raw), dict)
+            except json.JSONDecodeError:
+                ok = False
+            if not ok:
+                if broken is None:
+                    reason = ("the reply was cut off inside the call (the token limit or the context ran out), so its "
+                              "arguments are incomplete; make the call shorter" if truncated
+                              else "its arguments are not a JSON object")
+                    broken = agent_call_repair.Unreadable(str(func.get("name") or "") or None, reason, "json",
+                                                          raw[:2000], position=index + 1)
+                continue
+        good.append(call)
+    if broken is not None and not good:
+        broken.position = None  # the only call: no "(the second call in your reply)"
+    return good, broken
+
+
 def _unreadable_record(bad: agent_call_repair.Unreadable) -> ToolCallResult:
     """The error record for a call that could not be read (FU-196)."""
     logger.info("Tool call could not be read (%s): %s", bad.tool, bad.reason)
@@ -355,17 +388,17 @@ def run_agent_loop(
         total_prompt += result.promptTokens
         total_completion += result.completionTokens
 
-        # Check for tool calls in the structured response
-        tool_calls = getattr(result, "tool_calls", None)
+        # Check for tool calls in the structured response (one cut off mid-arguments is set aside as ``broken``)
+        tool_calls, broken = _without_broken_args(getattr(result, "tool_calls", None), _truncated(result))
 
         # If no structured tool calls, try parsing from text. ``beside`` is a call next to the ones read that
         # could not be read itself (FU-205): the read ones run and the model is told about it in the same turn.
-        beside = None
-        if not tool_calls and result.text:
+        beside = broken
+        if not tool_calls and broken is None and result.text:
             tool_calls, beside = read_calls(result.text, names, _truncated(result))
 
         if not tool_calls and unreadable < _UNREADABLE_LIMIT:
-            bad = agent_call_repair.unreadable_call(result.text or "", names, truncated=_truncated(result))
+            bad = broken or agent_call_repair.unreadable_call(result.text or "", names, truncated=_truncated(result))
             if bad is not None:
                 unreadable += 1
                 record, told = _unreadable_turn(bad, result.text or "")
@@ -504,15 +537,15 @@ def run_agent_loop_streaming(
 
         # The prompt size of the newest step: Keep going (FU-191) stops before the context fills up.
         last_prompt_tokens = int(getattr(result, "promptTokens", 0) or 0)
-        tool_calls = getattr(result, "tool_calls", None)
-        beside = None  # a call next to the read ones that could not be read (FU-205)
-        if not tool_calls and result.text:
+        tool_calls, broken = _without_broken_args(getattr(result, "tool_calls", None), _truncated(result))
+        beside = broken  # a call next to the read ones that could not be read (FU-205)
+        if not tool_calls and broken is None and result.text:
             tool_calls, beside = read_calls(result.text, names, _truncated(result))
 
         if not tool_calls and unreadable < _UNREADABLE_LIMIT:
             # FU-196: a call that could not be read is never dropped silently: the model is told why, and the
             # reply counts against the iteration budget like any other step.
-            bad = agent_call_repair.unreadable_call(result.text or "", names, truncated=_truncated(result))
+            bad = broken or agent_call_repair.unreadable_call(result.text or "", names, truncated=_truncated(result))
             if bad is not None:
                 unreadable += 1
                 used += 1

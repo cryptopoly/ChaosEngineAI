@@ -84,6 +84,8 @@ class CLIParserTests(unittest.TestCase):
             ["unload"],
             ["unload", "some/ref"],
             ["prompt", "hi"],
+            ["chat"],
+            ["chat", "Qwen/Qwen3.5-7B", "--system", "Be brief"],
             ["bench", "Qwen/Qwen3.5-7B"],
             ["mtplx-install"],
             ["mtplx-install", "--wait"],
@@ -368,6 +370,73 @@ class CLIPromptTests(unittest.TestCase):
         metrics = json.loads(output[output.find("{"):])
         self.assertEqual(metrics["tokS"], 30.1)
         self.assertEqual(metrics["completionTokens"], 2)
+
+
+class CLIChatTests(unittest.TestCase):
+    """The interactive `chat` command: one backend session, each turn sends only the new text."""
+
+    def _run(self, lines: list[str], *, loaded: bool = True) -> tuple[int, str, list[dict[str, Any]]]:
+        runtime = {"loadedModel": {"ref": "demo/model", "runtimeNote": "MLX"} if loaded else None}
+        sse = (
+            b"data: " + json.dumps({"reasoning": "hmm"}).encode() + b"\n\n"
+            b"data: " + json.dumps({"token": "Hi"}).encode() + b"\n\n"
+            b"data: " + json.dumps({"token": " there"}).encode() + b"\n\n"
+            b"data: " + json.dumps({"done": True, "assistant": {"metrics": {"tokS": 12.5, "completionTokens": 2}}}).encode() + b"\n\n"
+        )
+        sent: list[dict[str, Any]] = []
+        responses = {
+            "/api/runtime": _FakeResp(json.dumps(runtime).encode()),
+            "/api/chat/sessions": _FakeResp(json.dumps({"session": {"id": "s-1"}}).encode()),
+            "/api/chat/generate/stream": _FakeResp(sse),
+        }
+        opener = _mock_urlopen(responses)
+
+        def recording(req, timeout=None):
+            if req.full_url.endswith("/api/chat/generate/stream"):
+                sent.append(json.loads(req.data))
+            return opener(req, timeout)
+
+        out = io.StringIO()
+        feed = iter(lines)
+
+        def fake_input(*_args: Any) -> str:
+            try:
+                return next(feed)
+            except StopIteration:
+                raise EOFError from None
+
+        with mock.patch.object(cli.urllib.request, "urlopen", recording), \
+                mock.patch.object(sys, "stdout", out), \
+                mock.patch("builtins.input", fake_input):
+            try:
+                rc = cli.main(["chat", "--metrics"])
+            except SystemExit as exc:
+                rc = int(exc.code or 0)
+        return rc, out.getvalue(), sent
+
+    def test_turns_reuse_one_session_and_print_the_reply(self) -> None:
+        rc, output, sent = self._run(["hello", "again", "/exit"])
+        self.assertEqual(rc, 0)
+        self.assertEqual([m["prompt"] for m in sent], ["hello", "again"])
+        self.assertEqual({m["sessionId"] for m in sent}, {"s-1"})
+        self.assertIn("Hi there", output)
+        self.assertIn("12.5 tok/s", output)
+        self.assertNotIn("hmm", output)  # reasoning stays hidden unless asked for
+
+    def test_system_command_applies_to_next_turn_and_blank_lines_are_skipped(self) -> None:
+        _, _, sent = self._run(["/system Be brief", "", "hello", "/exit"])
+        self.assertEqual(len(sent), 1)
+        self.assertEqual(sent[0]["systemPrompt"], "Be brief")
+
+    def test_end_of_input_leaves_cleanly(self) -> None:
+        rc, _, sent = self._run([])
+        self.assertEqual(rc, 0)
+        self.assertEqual(sent, [])
+
+    def test_no_loaded_model_is_an_error(self) -> None:
+        rc, _, sent = self._run(["hello"], loaded=False)
+        self.assertNotEqual(rc, 0)
+        self.assertEqual(sent, [])
 
 
 class CLIUnloadTests(unittest.TestCase):

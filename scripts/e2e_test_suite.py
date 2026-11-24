@@ -1727,7 +1727,28 @@ def phase_2(cap: Capability) -> PhaseResult:
             return "fail", f"compare rc={rc}: {err[:200] if err else ''}", {}
         return "pass", "", {"keys": sorted(payload.keys())[:10] if isinstance(payload, dict) else None}
 
+    def _terminal_chat():
+        # `chaosengine-cli chat`: loads the model, keeps one backend chat across turns, /new starts another.
+        if not cap.local_mlx_models:
+            return "skip", "need a local MLX model", {}
+        ref, path = cap.local_mlx_models[0]
+        script = "Say hello in 5 words.\nSay it again.\n/new\nSay hi.\n/exit\n"
+        try:
+            rc, out, err = _cli("chat", ref, "--path", path, "--backend", "mlx", "--max-tokens", "24",
+                                "--timeout", "300", stdin=script, timeout=900.0)
+        finally:
+            _cli("unload", timeout=60.0)
+        if rc != 0:
+            return "fail", f"chat rc={rc}: {(err or out)[:200]}", {}
+        if "New chat started." not in out:
+            return "fail", "/new did not start a chat", {"out": out[:300]}
+        replies = [p for p in out.replace("New chat started.", "\n\n").split("\n\n") if p.strip()]
+        if len(replies) < 3:
+            return "fail", f"expected 3 replies, saw {len(replies)}", {"out": out[:300]}
+        return "pass", "", {"replies": len(replies)}
+
     phase.checks.append(_check("two-model compare", _compare_two_models))
+    phase.checks.append(_check("terminal chat (chat command)", _terminal_chat))
     fails = [c for c in phase.checks if c.status == "fail"]
     phase.status = "fail" if fails else ("skip" if all(c.status == "skip" for c in phase.checks) else "pass")
     return phase

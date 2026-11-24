@@ -8,6 +8,7 @@ Full notes in [RELEASE_NOTES_v0.10.0.md](RELEASE_NOTES_v0.10.0.md). Includes the
 
 **Chat and Studio tools**
 
+- **Terminal chat**: `chaosengine-cli chat [model]` is an interactive chat in the terminal (one backend chat across turns, `/new`, `/system`, `/think`, `/stats`, Ctrl-C stops a reply), with the same model loading options as `load`.
 - **Keep going** for Studio chats: the app nudges the model after a reply that made nothing, frees GPU memory while a render runs, stops a run whose waited job makes no progress, and checks the film length against the brief. Control, chips and app-written nudges show in the thread; a run can be armed on a new chat (FU-188, FU-191, FU-197, FU-198, FU-207, FU-219).
 - **Plan card** for Studio renders: prices the settings that will run, Draft, Standard and Final buttons, Expert settings priced and validated, draft stills priced with the draft model; the card comes back after a reload and can be answered (FU-240, FU-241, S-J).
 - `wait_for_job` blocks up to 30 minutes in Chat with a live progress line (elapsed and time left), one card per waited job, and message and tool-call times (FU-208).

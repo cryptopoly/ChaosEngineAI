@@ -9,7 +9,7 @@ Two layers:
      ``chaosengine-cli call POST /api/models/load --body '{"modelRef":"..."}'``
 
   2. Typed shortcuts — ergonomic subcommands for common workflows:
-     load / unload / prompt / bench / status / mtplx-install / mtplx-status
+     load / unload / prompt / chat / bench / status / mtplx-install / mtplx-status
      tensorfold-install / tensorfold-status / mflux-install / mflux-status / ltx2-install / ltx2-status
      download / convert / search / hub-search / list-weights
      session-create / session-delete / session-fork / session-variant
@@ -34,6 +34,7 @@ Examples:
     scripts/chaosengine-cli status | jq .runtime.state
     scripts/chaosengine-cli load Youssofal/Qwen3.6-27B-MTPLX-Optimized-Speed --spec
     scripts/chaosengine-cli prompt "hi" --stream --metrics
+    scripts/chaosengine-cli chat Youssofal/Qwen3.6-27B-MTPLX-Optimized-Speed
     scripts/chaosengine-cli image-generate "neon city skyline" --model FLUX.1-schnell --steps 4
     scripts/chaosengine-cli call POST /api/setup/install-package --body '{"package":"sageattention"}'
 """
@@ -607,6 +608,132 @@ def cmd_prompt(args: argparse.Namespace) -> int:
             "runtimeNote": final.get("runtimeNote") or metrics.get("runtimeNote"),
             "dflashAcceptanceRate": metrics.get("dflashAcceptanceRate"),
         })
+    return 0
+
+
+def _chat_help() -> str:
+    return (
+        "  /new            start a fresh chat (the model stays loaded)\n"
+        "  /system TEXT    set the system prompt for the next messages (empty clears it)\n"
+        "  /stats          speed of the last reply\n"
+        "  /think on|off   show or hide the model's reasoning\n"
+        "  /help           this list\n"
+        "  /exit           leave (Ctrl-D or Ctrl-C at the prompt does the same)\n"
+        "  End a line with \\ to continue on the next line. Ctrl-C while a reply streams stops it."
+    )
+
+
+def cmd_chat(args: argparse.Namespace) -> int:
+    """Interactive terminal chat. The backend keeps the history in a session, so each turn sends only the new text."""
+    base = _base_url(args)
+    if args.ref:
+        payload: dict[str, Any] = {
+            "modelRef": args.ref, "backend": args.backend, "cacheStrategy": args.cache_strategy,
+            "contextTokens": args.context, "speculativeDecoding": args.spec,
+        }
+        if args.path:
+            payload["path"] = args.path
+        print(f"Loading {args.ref} ...", file=sys.stderr, flush=True)
+        code, body = _request("POST", f"{base}/api/models/load", body=payload, timeout=args.timeout)
+        if code != 200:
+            _die(f"load failed (HTTP {code}): {body}")
+    code, body = _request("GET", f"{base}/api/runtime", timeout=15.0)
+    loaded = ((body or {}).get("loadedModel") or {}) if code == 200 and isinstance(body, dict) else {}
+    if not loaded.get("ref"):
+        _die("no model is loaded; run `chaosengine-cli chat <model-ref>` or `chaosengine-cli load <model-ref>` first")
+    model_name = str(loaded.get("ref"))
+    note = loaded.get("runtimeNote")
+
+    def new_session() -> str:
+        code, payload = _request("POST", f"{base}/api/chat/sessions", body={"title": "Terminal chat"}, timeout=15.0)
+        if code != 200 or not isinstance(payload, dict):
+            _die(f"could not start a chat (HTTP {code}): {payload}")
+        return str(payload["session"]["id"])
+
+    session_id = new_session()
+    system = args.system
+    show_thinking = args.thinking_shown
+    last: dict[str, Any] = {}
+    interactive = sys.stdin.isatty()
+    if interactive:
+        print(f"{model_name}" + (f"  ({note})" if note else "") + "\nType /help for commands, /exit to leave.\n", flush=True)
+
+    while True:
+        try:
+            line = input("you> " if interactive else "")
+            text = line
+            while text.endswith("\\"):
+                text = text[:-1] + "\n" + input("...> " if interactive else "")
+        except EOFError:
+            break
+        except KeyboardInterrupt:
+            print()
+            break
+        text = text.strip()
+        if not text:
+            continue
+        if text.startswith("/"):
+            cmd, _, rest = text.partition(" ")
+            cmd = cmd.lower()
+            if cmd in ("/exit", "/quit"):
+                break
+            if cmd == "/help":
+                print(_chat_help())
+            elif cmd == "/new":
+                session_id = new_session()
+                print("New chat started.")
+            elif cmd == "/system":
+                system = rest.strip() or None
+                print("System prompt set." if system else "System prompt cleared.")
+            elif cmd == "/think":
+                show_thinking = rest.strip().lower() != "off"
+                print(f"Reasoning is {'shown' if show_thinking else 'hidden'}.")
+            elif cmd == "/stats":
+                print(json.dumps({k: last.get(k) for k in ("tokS", "promptTokens", "completionTokens", "responseSeconds")}))
+            else:
+                print(f"Unknown command {cmd}. /help lists them.")
+            continue
+
+        body_out: dict[str, Any] = {
+            "prompt": text, "sessionId": session_id, "temperature": args.temperature, "maxTokens": args.max_tokens,
+        }
+        if system:
+            body_out["systemPrompt"] = system
+        if args.thinking:
+            body_out["thinkingMode"] = args.thinking
+        sys.stdout.write("\n")
+        in_reasoning = False
+        try:
+            for event in _stream(f"{base}/api/chat/generate/stream", body_out, timeout=args.timeout):
+                if "error" in event:
+                    print(f"\n[error] {event['error']}", file=sys.stderr)
+                    break
+                if "reasoning" in event and show_thinking:
+                    if not in_reasoning:
+                        sys.stdout.write("[thinking] ")
+                        in_reasoning = True
+                    sys.stdout.write(str(event["reasoning"]))
+                    sys.stdout.flush()
+                if "token" in event:
+                    if in_reasoning:
+                        sys.stdout.write("\n[/thinking]\n")
+                        in_reasoning = False
+                    sys.stdout.write(str(event["token"]))
+                    sys.stdout.flush()
+                if event.get("done"):
+                    metrics = (event.get("assistant") or {}).get("metrics") or {}
+                    last = metrics if isinstance(metrics, dict) else {}
+        except KeyboardInterrupt:
+            _request("POST", f"{base}/api/chat/generate/{session_id}/cancel", timeout=10.0)
+            sys.stdout.write("\n[stopped]")
+        except SystemExit:
+            raise
+        except Exception as exc:  # a dropped connection should not end the chat
+            print(f"\n[error] {exc}", file=sys.stderr)
+        sys.stdout.write("\n")
+        if args.metrics and last.get("tokS"):
+            print(f"[{last.get('tokS')} tok/s, {last.get('completionTokens')} tokens]")
+        sys.stdout.write("\n")
     return 0
 
 
@@ -1685,6 +1812,23 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--quiet", action="store_true")
     s.add_argument("--timeout", type=float, default=600.0)
     s.set_defaults(func=cmd_prompt)
+
+    s = sub.add_parser("chat", help="Interactive chat in the terminal (loads MODEL first when given).")
+    s.add_argument("ref", nargs="?", default=None, help="Model to load; omit to use the one already loaded.")
+    s.add_argument("--path", default=None)
+    s.add_argument("--backend", default="auto",
+                    choices=["auto", "mlx", "gguf", "llama.cpp", "vllm", "remote"])
+    s.add_argument("--cache-strategy", default="native")
+    s.add_argument("--context", type=int, default=8192)
+    s.add_argument("--spec", action="store_true")
+    s.add_argument("--system", default=None)
+    s.add_argument("--max-tokens", type=int, default=2048)
+    s.add_argument("--temperature", type=float, default=0.7)
+    s.add_argument("--thinking", default=None, choices=["off", "auto"])
+    s.add_argument("--show-thinking", dest="thinking_shown", action="store_true", help="Print the model's reasoning.")
+    s.add_argument("--metrics", action="store_true", help="Print tok/s after each reply.")
+    s.add_argument("--timeout", type=float, default=600.0)
+    s.set_defaults(func=cmd_chat)
 
     s = sub.add_parser("bench", help="Load + N-prompt sweep + tok/s.")
     s.add_argument("ref")

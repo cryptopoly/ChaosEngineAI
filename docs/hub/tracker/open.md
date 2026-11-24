@@ -1,13 +1,31 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 274 rows with work, decisions or watch items still open, newest first.
+summary: 276 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-615 · A Studio turn can fill the whole context inside its own tool loop — With FU-614</summary>
+
+**Status or trigger:** With FU-614
+
+**Notes:** 2026-11-24, session-fef175b3: one Keep going turn grew from about 10k to 32,602 of 32,768 tokens (tool results of about 900 tokens each), the next reply hit the end of the context inside a `storyboard_shot` call, and llama-server returned that call with partial JSON arguments; the loop sent them back and llama-server refused the request ("Failed to parse tool call arguments as JSON", event 324 of `model-events.jsonl`, 5 ms, no tokens). The apostrophe the model blamed was not the cause. **Fixed in `agent._without_broken_args`** (the cut-off call never runs or goes back; the model is told) and in the nudge (a server failure is not called the model's error). Left: the loop has no guard before the context fills, so the next request now fails with llama-server's context error instead, and `keep_going/run._context_error` does not match its text ("...-token context"), so it counts as a turn failure (the next turn starts again from the windowed history, which recovers). A guard that ends the turn cleanly at about 90 % of the context, with a nudge that says so, would save the wasted call.
+
+</details>
+
+<details>
+<summary>FU-614 · Keep going: a local model answers "Queued: ..." in text and calls no tool, turn after turn — Next Keep going change, before the next one-go music video run</summary>
+
+**Status or trigger:** Next Keep going change, before the next one-go music video run
+
+**Notes:** Seen with Qwen3.8-27B GGUF in session-fef175b3 (2026-11-24), before and after the parse failure of FU-615: the same "Queued: making the draft clips ..." line, word for word, in replies 5, 9-15, 17-21 and 23-29, each after a nudge that said the last reply made no tool call. Cause found in the code: `state/_helpers._build_history_with_reasoning` passes each earlier assistant reply as its text only (tool calls dropped, only refusal notes kept), and the GPU-swap answer tells the model to "end your turn now with one line saying what you queued", so the history the model reads is a run of "Queued: X" lines each followed by "the renders you queued ran". It copies that. Not fixed here: a marker such as "[called storyboard_generate]" in the history risks the model writing the marker as text; dropping text-only Keep going replies from the history breaks the user/assistant alternation some templates need. Options to weigh: (a) after two identical text-only replies, send the next nudge with the previous reply left out of the history; (b) mark only replies whose calls were kept for after the turn, in words the model would not copy; (c) re-send the turn once with `tool_choice: required` when the reply has no call and the nudge asked for one. Pick one with a rehearsal on the 4090.
+
+</details>
 
 <details>
 <summary>FU-613 · llama.cpp b12651 is out — Done 2026-11-23 on test/rtx4090: pinned b12651 (llama_cuda.py tag and the three Windows CUDA digests, stage-ru…</summary>

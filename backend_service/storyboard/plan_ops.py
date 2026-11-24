@@ -49,6 +49,7 @@ class PlannedShot(_Args):
     motionPrompt: Prompt = ""
     seconds: float = Field(4.0, ge=0.5, le=60)
     referenceImages: list[Id] = Field(default_factory=list, max_length=8)
+    castOut: list[Id] = Field(default_factory=list, max_length=50)  # inEveryShot characters left out (B1309)
     trimOut: float | None = Field(None, ge=0, le=3600)  # a cut plan ends the clip on the music (S-M1)
 
 
@@ -66,6 +67,8 @@ class ShotChange(_Args):
     stillPrompt: Prompt | None = None
     motionPrompt: Prompt | None = None
     seconds: float | None = Field(None, ge=0.5, le=60)
+    referenceImages: list[Id] | None = Field(None, max_length=8)  # the shot's cast, as the planner named it (B1309)
+    castOut: list[Id] | None = Field(None, max_length=50)
 
 
 class AddedShot(PlannedShot):
@@ -116,11 +119,23 @@ def _check_refs(p: Project, ids: list[str]) -> None:
             raise OpError(f"Unknown reference '{ref_id}'.")
 
 
+def _check_cast(p: Project, refs: list[str] | None, cast_out: list[str] | None) -> None:
+    from backend_service.storyboard.ops import _check_cast_out
+
+    _check_refs(p, refs or [])
+    _check_cast_out(p, cast_out)
+
+
 def _new_shot(p: Project, planned: PlannedShot) -> Shot:
-    _check_refs(p, planned.referenceImages)
-    return Shot(id=new_id("s"), title=planned.title, stillPrompt=planned.stillPrompt, motionPrompt=planned.motionPrompt,
-                seconds=planned.seconds, referenceImages=list(planned.referenceImages), trimOut=planned.trimOut,
-                nativeSoundDb=SONG_SHOT_NATIVE_SOUND_DB if p.song is not None else 0.0)
+    """A planned shot; every ``inEveryShot`` character is in it unless the plan lists it in ``castOut`` (B1309)."""
+    from backend_service.storyboard.cast import tidy
+
+    _check_cast(p, planned.referenceImages, planned.castOut)
+    shot = Shot(id=new_id("s"), title=planned.title, stillPrompt=planned.stillPrompt, motionPrompt=planned.motionPrompt,
+                seconds=planned.seconds, referenceImages=list(planned.referenceImages), castOut=list(planned.castOut),
+                trimOut=planned.trimOut, nativeSoundDb=SONG_SHOT_NATIVE_SOUND_DB if p.song is not None else 0.0)
+    tidy(shot, cast_out_wins=False)
+    return shot
 
 
 def set_plan(p: Project, folder: Path, a: SetPlan) -> None:
@@ -163,6 +178,15 @@ def plan_changes(p: Project, folder: Path, a: PlanChanges) -> None:
             value = getattr(change, key)
             if value is not None:
                 setattr(shot, key, value)
+        if change.referenceImages is not None or change.castOut is not None:
+            from backend_service.storyboard.cast import tidy
+
+            _check_cast(p, change.referenceImages, change.castOut)
+            if change.referenceImages is not None:
+                shot.referenceImages = list(change.referenceImages)
+            if change.castOut is not None:
+                shot.castOut = list(change.castOut)
+            tidy(shot, cast_out_wins=change.castOut is not None)
     for shot_id in a.remove:
         if _shot(p, shot_id).locked:
             raise OpError(f"Shot '{shot_id}' is locked.")

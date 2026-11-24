@@ -673,12 +673,13 @@ def _record_chat(project_id: str, role: str, text: str) -> Any:
 @router.get("/api/storyboard/projects/{project_id}/plan/status")
 def plan_status(request: Request, project_id: str) -> dict[str, Any]:
     """The loaded chat model (or null), and how the project's style reaches its still model."""
-    from backend_service.storyboard import planner, style
+    from backend_service.storyboard import cast, planner, style
 
     project = _guard(get_store().load, project_id)
     variant, why = _project_variant(request, "image", project.defaults.imageModel)
     return {
         "chatModel": planner.chat_model(request.app.state.chaosengine),
+        "cast": {"mode": cast.cast_mode(project, variant)},  # B1309: how every-shot characters reach the still model
         "style": {
             "mode": style.style_mode(project, variant),
             "stillModel": (variant or {}).get("name"),

@@ -117,6 +117,8 @@ def plan_cuts(project: Project, clip_seconds: float, min_seconds: float = DEFAUL
                 "seconds": min(60.0, seconds),
                 "trimOut": min(60.0, seconds),
                 "referenceImages": list(source.referenceImages) if source else [],
+                # B1309: every inEveryShot character is in each new shot; a kept shot's opt-outs stay with it.
+                "castOut": list(source.castOut) if source else [],
             })
             cursor = cut
         summary.append({"start": section["start"], "end": section["end"], "label": label, "shots": len(cuts)})

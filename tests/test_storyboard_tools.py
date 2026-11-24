@@ -149,6 +149,16 @@ class StoryboardToolTests(unittest.TestCase):
         path.write_text("hi")
         return path
 
+    def test_generate_refuses_stills_for_shots_with_no_prompt(self):
+        info = self.project(shots=2)
+        pid = info["projectId"]
+        sid = self.call("storyboard_project", {"action": "get", "project_id": pid})["project"]["shots"][0]["id"]
+        info = self.call("storyboard_shot", {"action": "edit", "project_id": pid, "revision": info["revision"],
+                                             "shot_id": sid, "fields": {"stillPrompt": ""}})
+        text = self.call("storyboard_generate", {"project_id": pid, "revision": info["revision"], "what": "still"}, error=True)
+        self.assertIn("Shot 1 has no stillPrompt", text)
+        self.assertIn("storyboard_shot edit", text)
+
     def test_generate_is_a_job_and_respects_locks(self):
         info = self.project(shots=2)
         pid = info["projectId"]

@@ -23,6 +23,7 @@ from backend_service.tools.studio_gate import StudioGate
 
 def shot(sid, order, take=None, **kw):
     takes = [take] if take else []
+    kw.setdefault("stillPrompt", f"a picture for {sid}")
     return Shot(id=sid, order=order, takes=takes, activeTake=take.id if take else None, **kw)
 
 
@@ -71,6 +72,18 @@ class FilmStateTests(unittest.TestCase):
         summary = f.summary("an ad with a voiceover and captions")
         for piece in ("still for shot 2", "clip for shot 3, 5", "music", "voice", "captions", "the final render"):
             self.assertIn(piece, summary)
+
+    def test_blank_still_prompts_come_before_any_picture(self):
+        """The one-go music video run (2026-11-24): a cut plan leaves every stillPrompt blank and the model went
+        straight to drawing ten pictures from the titles. The prompts are the first thing the nudge asks for."""
+        p = self.project([shot("s1", 0, stillPrompt=""), shot("s2", 1, stillPrompt="  "), shot("s3", 2),
+                          shot("s4", 3, startFrom="text", stillPrompt="")])
+        f = film_state(p, self.folder)
+        self.assertEqual(f.no_prompt, [1, 2])
+        self.assertFalse(f.shots_done)
+        self.assertIn("a stillPrompt for shot 1-2", f.summary(""))
+        self.assertIn("storyboard_shot edit", f.next_step(""))
+        self.assertNotIn("storyboard_generate", f.next_step(""))
 
     def test_complete_needs_clips_music_and_a_current_final_render(self):
         music = AudioClip(id="a1", kind="music", source=AudioSource(path="media/audio/m.wav"))

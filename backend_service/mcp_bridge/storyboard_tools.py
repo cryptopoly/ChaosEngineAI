@@ -529,10 +529,27 @@ def storyboard_audio(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     return _summary(_op(args, "remove_audio", {"clipId": args["clip_id"]}))
 
 
+def _refuse_blank_still_prompts(pid: str, what: str, shot_ids: Any) -> None:
+    """A still made from a blank stillPrompt is drawn from the shot's title alone ("A 1"): ten generic pictures
+    that the run then keeps. The model must write the prompts first (found by the one-go music video run, 2026-11-24)."""
+    if what not in ("still", "both", "redo-still", "final"):
+        return
+    project = _run(lambda: _store().load(pid))
+    wanted = set(shot_ids) if shot_ids else None
+    blank = [n for n, shot in enumerate(sorted(project.shots, key=lambda s: s.order), start=1)
+             if (wanted is None or shot.id in wanted) and shot.startFrom == "generate" and not shot.stillPrompt.strip()]
+    if blank:
+        from backend_service.keep_going.project_state import _numbers
+
+        raise ToolError(f"Shot {_numbers(blank)} has no stillPrompt, so its picture would be drawn from the title alone. "
+                        "Write each shot's stillPrompt (and motionPrompt) with storyboard_shot edit, then generate.")
+
+
 def storyboard_generate(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     from backend_service.routes.storyboard import start_batch
 
     pid = str(args["project_id"])
+    _refuse_blank_still_prompts(pid, str(args.get("what", "both")), args.get("shot_ids"))
     batch = _run(lambda: start_batch(ctx.request, pid, int(args["revision"]), str(args.get("what", "both")),
                                      list(args["shot_ids"]) if "shot_ids" in args else None, bool(args.get("force")),
                                      bool(args.get("draft"))))

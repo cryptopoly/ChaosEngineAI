@@ -54,6 +54,7 @@ class FilmState:
     revision: int
     shots: int
     seconds: float = 0.0  # the shots' lengths added up
+    no_prompt: list[int] = field(default_factory=list)  # shots whose stillPrompt is blank (a picture from the title alone)
     needs_still: list[int] = field(default_factory=list)  # shot numbers, 1-based in film order
     needs_clip: list[int] = field(default_factory=list)
     needs_redo: list[int] = field(default_factory=list)  # stale (inputs changed) or failed
@@ -81,7 +82,7 @@ class FilmState:
 
     @property
     def shots_done(self) -> bool:
-        return self.shots > 0 and not (self.needs_still or self.needs_clip or self.needs_redo or self.missing_files)
+        return self.shots > 0 and not (self.no_prompt or self.needs_still or self.needs_clip or self.needs_redo or self.missing_files)
 
     def too_short(self, goal: str) -> float | None:
         """The length the brief asks for when the shots add up to clearly less than it, else None."""
@@ -101,6 +102,8 @@ class FilmState:
         if target:
             out.append(f"film length ({self.seconds:.0f} s of the {target:.0f} s the brief asks for: about "
                        f"{self.extra_shots(target)} more shots)")
+        if self.no_prompt:
+            out.append(f"a stillPrompt for shot {_numbers(self.no_prompt)} (blank: the picture would come from the title alone)")
         if self.needs_still:
             out.append(f"still for shot {_numbers(self.needs_still)}")
         if self.needs_clip:
@@ -145,6 +148,10 @@ class FilmState:
             return (f"The film is {self.seconds:.0f} s, the brief asks for about {target:.0f} s. Add about "
                     f"{self.extra_shots(target)} more shots with storyboard_shot add (project_id {pid}) to fill the "
                     "story, then make them.")
+        if self.no_prompt:
+            return (f"Write the picture for shot {_numbers(self.no_prompt)}: storyboard_shot edit with project_id {pid}, "
+                    "the shot_id and fields {stillPrompt, motionPrompt} for each shot, in the story of the brief. "
+                    "Then generate.")
         if self.missing_files:
             return (f"Shot {_numbers(self.missing_files)} lost its files: storyboard_generate with shot_ids for "
                     "those shots, or ask the user.")
@@ -251,6 +258,8 @@ def film_state(project: Any, folder: Path) -> FilmState:
         newest = max([newest, *(t.createdAt for t in shot.takes)])
         state.hashes.update(h for t in shot.takes for h in t.hashes.values())
         take = shot.active()
+        if shot.startFrom == "generate" and not shot.stillPrompt.strip():
+            state.no_prompt.append(number)
         if shot.status == "missing":
             state.missing_files.append(number)
         elif shot.status in ("stale", "failed") or shot.redo:

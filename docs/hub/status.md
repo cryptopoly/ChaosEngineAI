@@ -36,7 +36,7 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 
 **Done:** llama.cpp `b12441` -> `b12649` (new Windows CUDA digests; the new `--version` format is read; the CUDA 13.5 build ran a short chat on the 4090, FU-560). TensorFold native `1.2.9` -> `1.3.4` from the release notes and source (FU-561). `audit-dependencies.py`: PASS, nothing high or critical.
 
-**Open for Claude:** TensorFold 1.3.4 family rows on the Mac (FU-561); sd.cpp `0d71f963` needs two CUDA builds and a Qwen-Image 2.1 image (FU-563); Mac-only pins (FU-564).
+**Open for Claude:** TensorFold 1.3.4 family rows on the Mac (FU-561); Mac-only pins (FU-564).
 
 **Open for Dan:** nothing to decide; push and merge the branch when ready.
 ## Update 2026-11-23 (WSL2 pass of the current tip, cross-platform tracker; agent branch, not pushed)
@@ -122,7 +122,7 @@ Newest dated update first. Each update has the same sections: Done, Open for Cla
 - **TensorFold (R9, FU-168):** family table now comes from the binary's `capabilities --json`; four CUDA-only families listed, not offered; Gemma 4 26B-A4B stays on the Python install (`native_refuses`).
 - **Music (R10, FU-139):** wording route only: one sentence, "Mac-only in this version", install and download hidden. The CUDA build is not done.
 - **First-clip ETA (R7, FU-153):** catalogue estimate shows from the first clip of a batch; wired into `start_batch`.
-- **MiniMax H3 (B, FU-166):** territory gate, licence screen and H3 video row built behind `licence_gate.H3_RELEASED = False`. sd.cpp pinned at `532d2c1` (was `5dcfa79` when H3 was built) (bumped 2026-11-14, checked with a real Qwen-Image 2.1 image on old and new builds). No H3-Image row; release bundles carry no `sd`. H3 was never downloaded or run.
+- **MiniMax H3 (B, FU-166):** territory gate, licence screen and H3 video row built behind `licence_gate.H3_RELEASED = False`. sd.cpp pinned at `3b12781` (bumped 2026-11-24 from `532d2c1`, same Qwen-Image 2.1 image pixel for pixel and faster on the RTX 4090, FU-563). No H3-Image row; release bundles carry no `sd`. H3 was never downloaded or run.
 
 **Open for Claude:**
 - Run the full suites on the merged tree (pytest, vitest, tsc, i18n, full `e2e_test_suite.py`, Playwright, upstreams, audits), build the Mac installer and check the manifest, then recut `test/rtx4090` (plan section 5).

@@ -1,7 +1,7 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 276 rows with work, decisions or watch items still open, newest first.
+summary: 275 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
@@ -141,15 +141,6 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** Next Mac session
 
 **Notes:** `check-upstreams.py` reports dflash-mlx current at v0.1.10, but untagged `main` (`6080323`) is ahead with the Qwen3.8 DFlash2 drafts (FU-057); the worker glue calls its private module layout, so a move to an untagged commit needs a Mac run (needs Mac). `turboquant-mlx-full` is frozen at 0.3.0 in `release-constraints.txt`; PyPI's newest is 0.30.0 (needs Mac; freeze only there, FU-514). ltx-2-mlx newest commit is CI files only. mflux, ACE-Step, stable-audio-3, TriAttention, Chatterbox and Playwright are current. llama-server-turbo tracks its branch HEAD (FU-065) and DDTree is a ported algorithm, so neither has a pin to move. This pass changed no Python package pin (llama.cpp and TensorFold are binaries; the Transformers asr-site pin was left, FU-562), so `release-constraints.txt` needs no refresh for it.
-
-</details>
-
-<details>
-<summary>FU-563 · stable-diffusion.cpp 532d2c1 -&gt; 0d71f963 (master, 2026-11-22): not bumped, CUDA sampling 18 % slower — Next sd.cpp master (re-measure), or on D-131</summary>
-
-**Status or trigger:** Next sd.cpp master (re-measure), or on D-131
-
-**Notes:** **Measured 2026-11-23 on the RTX 4090, kept at `532d2c1`.** Both commits built with `scripts/build-sdcpp.ps1` (CUDA 13.5, MSVC 2022 Build Tools with their own CMake and Ninja, `SDCPP_CUDA_ARCHITECTURES=89`; 7.3 and 5.7 min) into `E:\tmp\sdcpp-532d2c1` and `E:\tmp\sdcpp-0d71f96`. Same `leejet/Qwen-Image-2.1-GGUF-q4k` image (fox prompt, 1024x1024, 40 steps, seed 42, `--sampling-method euler --fa`), four runs each under `E:\tmp\gpu.lock`: output **bit-identical** (looked at: fox in snow, sign reads "ChaosEngine"), peak VRAM the same (15.4 GB), the `parse_step` progress parser reads all 40 steps off both logs, but steady sampling is **1.96 to 1.99 it/s on `0d71f96` against 2.41 to 2.44 it/s on `532d2c1`** (sampling 21.1 to 21.7 s against 17.6 s, wall 24 to 25 s against 21 s), the same with `--fa`, `--flash-attn on` and no flag. The new build runs the legacy CLI through DGL (#2396). Other findings for the bump: (1) `--help` loses 36 flags (`--high-noise-*`, `--slg-scale`, `--skip-layer*`, `--timestep-shift`, `--ref-image-args`, `--input-frames`, `--upscale-factor`, `--vsr-*`, PhotoMaker, PuLID, IP-Adapter, `--ad-*`, `--motion-module`, `--increase-ref-index`, `--image-preprocess`); the app passes none of them, every sd flag it passes is still listed. (2) `_build_h3_cli_args` matches the "Legacy CLI" section of `docs/models/minimax_h3.md` unchanged; reference videos may now be files (AVI, WebP, VP8 WebM); `--fa` / `--diffusion-fa` still deprecated aliases. (3) Each PNG now also carries a `dgl` text chunk holding the whole generated script with **absolute local model paths**; pass `--disable-image-metadata` (in both builds) when bumping. (4) `libwebp` submodule built without extra steps here; `webpdemux` is needed only by WebP builds outside the submodule. `tests -k sdcpp`: 85 passed on both pins (pins unchanged). **To do:** at the next master, rebuild and re-run the image; bump when it/s is back within 5 %, or if the owner accepts the loss (D-131). **2026-11-24: master `3b12781` (master-1122) built, not yet timed.** It carries #2405 "restore Qwen Image 2.1 prefix caching in DGL", the likely cause of the 18 % loss. Built with `scripts/build-sdcpp.ps1` (CUDA 13.5, MSVC 2022, arch 89, about 8 min) into `E:\tmp\sdcpp-new\bin` (source `E:\tmp\sdcpp-src`, log `E:\tmp\sdcpp-build-3b12781.log`); `--version` reports `master-1122-3b12781`. Its `--help` flag set is the same as `0d71f96`: the same 36 flags are gone, 8 DGL flags are new (`--script`, `--check`, `--max-ram` and others), and every flag the app passes is still there. The Qwen-Image 2.1 old-vs-new image was not run: the shared GPU lock (`E:\tmp\gpu-lock`, "clip retry pending") stayed held for the whole 90-minute wait. Next: run the image on `E:\tmp\sdcpp-532d2c1` and `E:\tmp\sdcpp-new` once the GPU is free.
 
 </details>
 

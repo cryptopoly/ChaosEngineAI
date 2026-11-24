@@ -1,7 +1,7 @@
 ---
 title: Closed follow-ups
 order: 3
-summary: 136 shipped, obsoleted or dropped rows, newest first.
+summary: 137 shipped, obsoleted or dropped rows, newest first.
 ---
 
 # Closed follow-ups
@@ -42,6 +42,15 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 **Status or trigger:** **Fixed 2026-11-23** (shorter `make_sound` and `make_lipsync_shot` descriptions, example, `audio` maxLength, golden refreshed; `moss-image` and `kandinsky-6` size rows, both marked unverified). Next agent-bridge change, before the merge
 
 **Notes:** Found by the WSL2 pass 2026-11-23 and reproduced on Windows: `test_agent_guide::test_every_real_tool_is_in_the_guide` (`make_lipsync_shot` missing from AGENTS.md Tools) and 7 in `test_mcp_contract.py` (`make_lipsync_shot` has no example, scope or `maxLength` on `audio`; `make_sound` description 311 characters against the 260 cap; golden tools list stale, regenerate with `UPDATE_MCP_GOLDEN=1` once the tool is final). Not a platform bug.
+
+</details>
+
+<details>
+<summary>FU-563 · stable-diffusion.cpp 532d2c1 -&gt; 3b12781 (master-1122): bumped 2026-11-24, same picture and faster (0d71f963 had been 18 % slower) — Shipped 2026-11-24: pinned at 3b12781</summary>
+
+**Status or trigger:** Shipped 2026-11-24: pinned at `3b12781`
+
+**Notes:** **Measured 2026-11-23 on the RTX 4090, kept at `532d2c1`.** Both commits built with `scripts/build-sdcpp.ps1` (CUDA 13.5, MSVC 2022 Build Tools with their own CMake and Ninja, `SDCPP_CUDA_ARCHITECTURES=89`; 7.3 and 5.7 min) into `E:\tmp\sdcpp-532d2c1` and `E:\tmp\sdcpp-0d71f96`. Same `leejet/Qwen-Image-2.1-GGUF-q4k` image (fox prompt, 1024x1024, 40 steps, seed 42, `--sampling-method euler --fa`), four runs each under `E:\tmp\gpu.lock`: output **bit-identical** (looked at: fox in snow, sign reads "ChaosEngine"), peak VRAM the same (15.4 GB), the `parse_step` progress parser reads all 40 steps off both logs, but steady sampling is **1.96 to 1.99 it/s on `0d71f96` against 2.41 to 2.44 it/s on `532d2c1`** (sampling 21.1 to 21.7 s against 17.6 s, wall 24 to 25 s against 21 s), the same with `--fa`, `--flash-attn on` and no flag. The new build runs the legacy CLI through DGL (#2396). Other findings for the bump: (1) `--help` loses 36 flags (`--high-noise-*`, `--slg-scale`, `--skip-layer*`, `--timestep-shift`, `--ref-image-args`, `--input-frames`, `--upscale-factor`, `--vsr-*`, PhotoMaker, PuLID, IP-Adapter, `--ad-*`, `--motion-module`, `--increase-ref-index`, `--image-preprocess`); the app passes none of them, every sd flag it passes is still listed. (2) `_build_h3_cli_args` matches the "Legacy CLI" section of `docs/models/minimax_h3.md` unchanged; reference videos may now be files (AVI, WebP, VP8 WebM); `--fa` / `--diffusion-fa` still deprecated aliases. (3) Each PNG now also carries a `dgl` text chunk holding the whole generated script with **absolute local model paths**; pass `--disable-image-metadata` (in both builds) when bumping. (4) `libwebp` submodule built without extra steps here; `webpdemux` is needed only by WebP builds outside the submodule. `tests -k sdcpp`: 85 passed on both pins (pins unchanged). **To do:** at the next master, rebuild and re-run the image; bump when it/s is back within 5 %, or if the owner accepts the loss (D-131). **Resolved 2026-11-24 at master `3b12781` (master-1122).** It carries #2405, "restore Qwen Image 2.1 prefix caching in DGL", the cause of the loss. Built with `scripts/build-sdcpp.ps1` (CUDA 13.5, MSVC 2022, arch 89, about 8 min; run it through a child `powershell.exe -File`, since PowerShell 5.1 with `*>` turns git's stderr into a stop) into `E:\tmp\sdcpp-new\bin`. Same image, same arguments, on the RTX 4090: `532d2c1` 31.0 s wall, 20.1 s sampling, 15032 MiB peak; `3b12781` 28.4 s wall, 17.6 s sampling, 15033 MiB peak; output pixel-identical (difference 0), looked at: fox in snow, sign reads "ChaosEngine". `--help` has the same flag set as `0d71f96` (36 unused flags gone, DGL flags added); every flag the app passes is kept. The image builder now passes `--disable-image-metadata` (finding 3), with a test. Pin moved in `build-sdcpp.sh`, `update-sdcpp.sh`, `build-sdcpp.ps1` and `update-sdcpp.ps1`; CLAUDE.md row and THIRD_PARTY_NOTICES updated. Not verified: Metal speed, any video or H3 run, the Images tab end to end.
 
 </details>
 

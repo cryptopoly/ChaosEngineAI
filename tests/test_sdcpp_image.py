@@ -273,6 +273,17 @@ class SdCppImageEngineGenerateTests(unittest.TestCase):
         self.assertNotIn("--video-frames", args)
         self.assertNotIn("--fps", args)
 
+    def test_build_cli_args_keeps_local_paths_out_of_the_png(self):
+        # sd.cpp 0d71f96+ writes its DGL script, with absolute model paths, into the PNG unless told not to.
+        args = SdCppImageEngine()._build_cli_args(
+            binary=Path("/tmp/sd"),
+            config=_make_config(),
+            model_path="/tmp/flux.gguf",
+            output_path=Path("/tmp/out.png"),
+            seed=42,
+        )
+        self.assertEqual(args.count("--disable-image-metadata"), 1)
+
     def test_build_cli_args_includes_negative_prompt_when_set(self):
         engine = SdCppImageEngine()
         config = ImageGenerationConfig(

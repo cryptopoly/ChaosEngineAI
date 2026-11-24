@@ -1,31 +1,143 @@
 # Changelog
 
-## Unreleased (planned v0.10.0)
+## v0.10.0 - 2026-11
 
-Music and Storyboard are built but not yet switched on in the app (`HOME_STUDIO_ENABLED` in `src/constants/features.ts`).
+Full notes in [RELEASE_NOTES_v0.10.0.md](RELEASE_NOTES_v0.10.0.md). Includes the Linux ARM64 beta (v0.9.10-beta.1).
 
 ### Added
 
-- **Agent bridge**: an MCP endpoint (`/mcp`) so an agent such as Claude Code can make images, video, speech, music and storyboards with 18 tools on the same queue as the Studios. Switch it on in Settings > Integrations > Agent access. Agent jobs and Studio jobs run one at a time; files can be sent in and fetched out for an agent on another machine.
+**Chat and Studio tools**
+
+- **Keep going** for Studio chats: the app nudges the model after a reply that made nothing, frees GPU memory while a render runs, stops a run whose waited job makes no progress, and checks the film length against the brief. Control, chips and app-written nudges show in the thread; a run can be armed on a new chat (FU-188, FU-191, FU-197, FU-198, FU-207, FU-219).
+- **Plan card** for Studio renders: prices the settings that will run, Draft, Standard and Final buttons, Expert settings priced and validated, draft stills priced with the draft model; the card comes back after a reload and can be answered (FU-240, FU-241, S-J).
+- `wait_for_job` blocks up to 30 minutes in Chat with a live progress line (elapsed and time left), one card per waited job, and message and tool-call times (FU-208).
+- **Skills** imported from a folder or zip: stored off by default, a rule-based security scan on import with a rating and findings, "I read the findings" before a High-rated skill can be switched on, a per-chat Skills switch in the composer (D-62, D-68).
+- **Prompts** live in Chat; the backend and tab of **Plugins** are gone (D-87).
+- Tool prompt for MLX models prints allowed values, ranges, defaults and nested keys; text tool calls of LFM2.5 (`<|tool_call_start|>`) are parsed; a call that only lacks its closing braces or its opening tag is mended; a tool-call scorecard (FU-196, FU-192, FU-230, FU-231).
+- Chat Models: "Best fit", "Fastest", "Newest" and "Most popular" chips on the recommended rows (Hugging Face download counts cached daily, never awaited); the Dashboard names the best-fit row and opens on "Start here" for a new user (FU-456, FU-457, FU-463, D-105).
+- **Experts in system RAM** in the launch dialog (llama.cpp `--n-cpu-moe`) with a "Fits with offload" badge; **KV cache type** f16 / q8_0 / q4_0 for the native strategy on llama.cpp; draft acceptance read from llama-server; a DFlash-family drafter outranks MTP (FU-550, FU-178).
+- Launch dialog shows one memory bar (in use now, model, cache, limit) for every engine.
+- Settings: 110 % and 125 % UI scale, a stronger-borders accessibility switch, a clean-up panel in Settings > Disk (projects, chat threads, gallery items), a "Show experimental tabs" switch; below 1180 px the sidebar becomes a top bar with a menu drawer (S-L).
+- Server > Activity: structured model events (requested to unloaded) in a bounded ring and rotated file, a per-model timeline, a filterable event list with detail, copy and export; `chaosengine-cli server-events` streams them; Logs folds into it (D-88).
+- Benchmarks: Delete run, Copy CSV, Cancel that stops the backend; Conversion: Cancel, free-space check; progress dialogs show what the job reports instead of a timed guess.
+
+**Agent bridge and Storyboard**
+
+- **Agent bridge**: an MCP endpoint (`/mcp`) so an agent such as Claude Code can make images, video, speech, music, sounds, lip-sync shots and storyboards with 28 tools on the same queue as the Studios. Switch it on in Settings > Integrations > Agent access. Agent jobs and Studio jobs run one at a time; files can be sent in and fetched out for an agent on another machine. An `AGENTS.md` guide is served at `/api/agent/guide`, as the `chaosengine://guide` resource and as the `start_here` prompt (D-61).
+- **Storyboard**: a film as a project folder of shots, takes and audio lanes. The Board adds shots, imports or makes takes, locks and redoes shots, marks stale shots, sets cuts and crossfades, has undo and redo and "Make missing", and a freestyle board tab with picture cards. The Mixer has lanes with moving and trimming, ducking, an inspector, a rough-cut player that plays the takes without a render, and MP4 export at 16:9, 9:16 or 1:1 with a -16 LUFS default, a corner logo, title and end cards. An AI label (a metadata tag, forced when a clip is marked as a cloned voice) and `.chaosfilm` bundles for sharing and backup. "Use in storyboard" from the Image and Video Galleries, the Voice Library and Music.
+- **Plan tab**: brief, proposed shots with a suggested count, style references with a palette, brand kit, per-shot rework and a direction chat; draft and final passes on a fast default still model; take compare side by side; durable batches that pause and resume across a restart; a bundled four-shot sample film (S2, S6, S8 to S15).
+- **Song to music video**: attach a song (tempo, beat and section analysis), a cut plan with cuts snapped to phrase starts, lyric captions, and "song to lip-sync shots" that slices the vocal at each shot with a 0.4 s lead-in (FU-371, FU-380, FU-607, FU-609).
+- Chat gets the storyboard tools only for a turn about a film.
 - **Image and video from images**: reference images in Image Studio (FLUX.1, FLUX.2 Klein, Qwen Image 2.1, FLUX 3 Klein) and a start image and optional end image in Video Studio (LTX-2.3 and LTX-2.5); the same inputs on the agent tools.
-- **Music** (planned for v0.10.0): songs with lyrics and instrumentals, 10 to 600 s, with ACE-Step 1.5 turbo (XL turbo for 64 GB Macs) on Apple Silicon. A music pack in its own environment, Music Models, Music Studio (Options and Expert), a Music Library with rename, tags, filter and "Make another like this", and a prompt-free AI tag in the FLAC file with a switch for private use.
-- **Storyboard** (planned for v0.10.0): a film as a project folder of shots, takes and audio lanes. The Board adds shots, imports or makes takes, locks and redoes shots, marks stale shots, sets cuts and crossfades, and has undo and redo and "Make missing". The Mixer has lanes with moving and trimming, ducking, an inspector, a preview and MP4 export at 16:9, 9:16 or 1:1 with a -16 LUFS loudness default. An AI label (a metadata tag, forced when a clip is marked as a cloned voice) and `.chaosfilm` bundles for sharing and backup. "Use in storyboard" from the Image and Video Galleries, the Voice Library and Music.
-- **Calmer Image and Video Studios**: the default view holds what a first-time user needs; **Options** and **Expert** folds, a run estimate strip (time, memory, disk, Measured or Estimated) above Generate, one **Models** button and a **More actions** menu.
-- **Sidebar**: an accordion where only the active group stays open, with **Make** and **Run** section labels; a Settings switch keeps every group open.
+
+**Voice, music and sounds**
+
+- **Music**: songs with lyrics and instrumentals, 10 to 600 s, with ACE-Step 1.5 turbo and XL turbo. Apple Silicon (XL turbo for 64 GB Macs) and, new, Windows and Linux x86_64 with an NVIDIA GPU (a 3-minute song in about 3 s turbo or 4 s XL warm on an RTX 4090; 6.6 GB music pack; offload follows free video memory). A music pack in its own environment, Music Models, Music Studio (Options and Expert), a Music Library with rename, tags, filter and "Make another like this", and a prompt-free AI tag in the FLAC file with a switch for private use (FU-139).
+- **Stable Audio 3** (small SFX, small music, medium) beside Stable Audio Open on the NVIDIA lane; the Mac sounds pack does not install it (FU-274, FU-493).
+- **Speech-to-text on the NVIDIA GPU** (the "More speech-to-text on the NVIDIA GPU" add-on): Qwen3-ASR 1.7B and 0.6B, Parakeet TDT 0.6B v3, Nemotron 3.5 ASR, Granite Speech 5.0; word timings (native for Parakeet, a forced aligner for the rest) and speaker labels (FU-270, FU-271). Transformers 5.24.0 in the add-on's own folder (FU-562).
+- **Natural voices on the GPU**: Chatterbox Turbo and Multilingual V3, VoxCPM2 and Orpheus, with voice design and cloning for the first three; Qwen3-TTS (CustomVoice, VoiceDesign, Base clone) on the NVIDIA GPU with a memory and compute-capability gate (FU-148, FU-322, FU-360).
+- Voice Studio on the studio shell with Models and Library; a voice manager (kind and language filters, samples, Use in Speak and Use in Chat); any listed voice can read aloud in Chat or run a call, with a Kokoro fallback and a note; every Speak result is saved to the Library; delete for speech and dictation models, add-ons and the voice runtime; cloning model choice in the new-voice form (D-67, D-72, D-73).
+- Speak says when it waits behind a video, image or music job.
+
+**Lip sync and sync scoring**
+
+- Lip-sync shots (experimental): a vocal track and a start image make an LTX-2.3 clip where the mouth follows the audio (NVIDIA card with about 22 GB free). **Takes per shot** (3 sung, 1 speech, 4 best), kept by an automatic sync score; a vocal picker in Video Studio (3 to 8 s, start, sung switch, takes, estimate); the same per-shot controls in Storyboard (D-110, FU-372, FU-373, FU-381).
+- **Sync-scoring add-on** (MediaPipe, OpenCV, a face model; about 90 MB) installed on demand into its own folder from "Install sync scoring" in the lip-sync panel; without it take 1 is used and the panel says so (D-132, FU-334).
+
+**Image and video engines**
+
+- **Nunchaku (SVDQuant INT4) FLUX.1** on NVIDIA: FLUX.1 schnell at 1024 px in about 6 s warm. Nunchaku is not on PyPI under that name, so its wheel is installed by the user; Nunchaku rows are CUDA-only (D-133, FU-399, FU-490).
+- **LTX-2.3 on diffusers for NVIDIA GPUs** (text, start-picture and start-plus-end-picture video with sound, 4-bit and bf16 rows; about 70 s for a 97-frame clip on an RTX 4090) and **LTX-2.5 4-bit** on NVIDIA (gated, 62 s for 768 x 512 x 97 on a 24 GB card). Model offload by free GPU memory, never on unified memory.
+- **FLUX 3 Image Klein** on CUDA (diffusers and a stable-diffusion.cpp Q8_0 row), **Qwen-Image-2.1 Turbo** on stable-diffusion.cpp, **MOSS-Image SFT** and **Kandinsky 6.0 Lite** distilled video with sound (FU-259).
+- FLUX on CUDA runs fully on the GPU when the card holds the pipeline and offloads to system memory only when it cannot (a large speed-up on 24 GB); diffusion cache strategies work on CUDA; a hardware low-precision format gate (fp8 / NVFP4) reads the card.
+- stable-diffusion.cpp pinned at `532d2c1`; builds with CUDA on Windows (`SD_CUDA`) and a Windows installer with that `sd.exe` carries NVIDIA's CUDA runtime DLLs (see `THIRD_PARTY_NOTICES.md`; release CI does not build `sd`).
+- **Calmer Image and Video Studios**: the default view holds what a first-time user needs; **Options** and **Expert** folds, a run estimate strip (time, memory, disk, Measured or Estimated) above Generate, one **Models** button and a **More actions** menu. Measured estimates for the M4 Max and the RTX 4090 (FU-165).
 - **Standard size buttons**: an aspect row and size row in Image Studio (0.5 to 8 MP) and an aspect row and named resolutions in Video Studio; buttons past a model's limit are greyed out with a reason.
+- The Studios show a card for a run started elsewhere (agent, Chat, Storyboard) with the denoise step (FU-180).
+- **Sidebar**: an accordion where only the active group stays open, with **Make** and **Run** section labels; a Settings switch keeps every group open.
+
+**TensorFold 1.x and the launch dialog**
+
+- **TensorFold 1.x native binary** as the CUDA text engine, pinned at 1.3.4: installer, GPU gate, engine, routing and a Setup entry. Linux x86_64 and ARM64 download the release archive (sha256 checked); Windows has no release archive, so it takes a source build or a self-hosted archive. Measured through the app on an RTX 4090 with Qwen3.8-27B and its DFlash 2 drafter (1.2.x build): 49.6 tokens per second plain, 132 to 206 drafted. The Mac uses the native lane too (96.7 tokens per second drafted against 24.6 on MLX for Qwen3.8-27B) and keeps the Python 0.6.6 install for families the binary does not serve (FU-111, FU-168).
+- The launch dialog sizes TensorFold against the real GPU limit, caps the context it can start at from the binary's figures, and uses TensorFold's own cache size for its fit verdict; the TensorFold box shows on CUDA hosts.
+
+**llama.cpp**
+
+- llama.cpp b12651 (from b11981 in v0.9.9; the Windows CUDA archives and their digests are pinned); on Windows and Linux, Settings > Accelerators installs the **CUDA llama-server** (driver-matched archive, sha256 checked, status "driver too old"). llama.cpp 1.0 prints its version in a new format, which the app reads, and rejects `--no-mmap`, so `--load-mode none` is used (FU-613).
+- **vLLM in WSL2**: "Install vLLM in WSL" in Settings > Accelerators installs vLLM inside the user's Ubuntu distro and the app talks to it as an engine; a GPU share sized to free memory, reasoning split, DFlash served over the bridge where it fits (FU-172, FU-533).
+
+**Models catalogue**
+
+- GGUF: Gemma 4 12B QAT and 26B-A4B QAT (each paired with Unsloth's MTP drafter), Gemma 26B Q8_0, Nemotron 3.5 Lightning Q4_0, Qwen3.6-35B-A3B MTP UD-IQ4_XS, Qwen3.8-27B with z-lab's DFlash 2 drafter, Bonsai 2 Q2_0, Inkling 2 Mini and a Qwen3.8 Flash Next Q2_0 row for a 24 GB card with expert offload (not run). Rows run on the RTX 4090 carry their measured memory and decode speed (FU-456, FU-540, FU-550, FU-259, FU-263 to FU-269).
+- MTPLX: hidden for MLX checkpoints without MTP weights; a Qwen3.8-27B MTPLX checkpoint is listed (FU-178). dflash-mlx moves from v0.1.5.1 to v0.1.10 (FU-057).
+- Pause and resume of Hub downloads continues from the partial file (FU-275); a catalogue download size is shown before a download (FU-471).
+
+**Linux ARM64, DGX Spark and Linux NVIDIA (from v0.9.10-beta.1, FU-137)**
+
+- **Linux ARM64 packages** (`_aarch64.AppImage`, `_arm64.deb`) with the Python runtime and a CPU build of llama.cpp, built on Ubuntu 22.04 ARM runners; updater manifest entries per architecture.
+- **Optional CUDA llama-server on Linux** (x86_64 and ARM64): Settings > Accelerators shows an Install button when `nvidia-smi` is present; it installs into `~/.chaosengine/bin/llama-cuda/` and is used only when the app sees a CUDA device, otherwise the CPU build stays.
+- **Shared-memory GPUs** (DGX Spark GB10, GH200): the app reads system memory when `nvidia-smi` reports "Not Supported", so the GPU is detected and estimates use the shared pool; llama-server loads with `--no-mmap` there (`CHAOSENGINE_LLAMA_MMAP=1` keeps mmap).
+- The GPU runtime install picks the PyTorch build that matches the CPU and driver (CUDA 13.0 first on ARM64 and on drivers 580 and newer, 12.8 on 570 and newer; on the Windows tip, the newest CUDA the driver supports); no CUDA 12 voice libraries on ARM64.
+- `scripts/linux-gpu-check.sh` writes a local GPU report for testers; `scripts/check-platform-wheels.py` checks the ARM64 wheels.
+
+**Windows**
+
+- The CUDA llama-server, CUDA stable-diffusion.cpp, Nunchaku, vLLM in WSL2, TensorFold (own build), music, speech-to-text and voice add-ons, and lip sync above run on Windows with an NVIDIA GPU.
+- Packaging: release staging guards the NSIS 1.9 GB archive limit; `build.sh` stages a clean `.venv-release` with `release-constraints.txt`; unpacked runtimes of earlier builds are removed, keeping any in use.
+
+**Languages**
+
+- The nine shipping translations were filled on 2026-11-23 (5331 of 5344 strings each at the tip; the 13 newest, the memory bar and TensorFold launch notes, show in English until the last pass, FU-420). A Klingon (`tlh`) locale is registered as experimental, outside the coverage gate, with Tauri menu and tray strings and a backend catalogue.
+
+**Other**
+
 - **ffmpeg notice**: `THIRD_PARTY_NOTICES.md` lists the GPL ffmpeg build from imageio-ffmpeg with a source offer.
+- `scripts/check-upstreams.py` compares every pin with the newest release (D-78); Playwright 1.65.1 for the E2E suite (own lockfile).
 
 ### Changed
 
 - A Studio's Cancel stops only its own job. An agent's running or waiting job is left alone; an agent cancels its own with `cancel_job`.
+- Hardware-specific rows follow the host: `cudaOnly` rows (Nunchaku, Wan 2.2 TI2V 5B) are hidden on Apple Silicon (MPS corrupts Wan 2.2 TI2V output); a PC shows only the voice models it can run.
+- Dropped cache strategy ids (`chaosengine`, `rotorquant`) load and report as `turboquant` on every engine (FU-185).
+- The model's own path decides its repo and engine (GGUF or MLX is read from the files, not from "gguf" in a name); a `canonicalRepo` or `modelRef` hint that disagrees is ignored.
+- Benchmarks and Conversion report measured values only: the constant Quality 100 % is gone, task accuracy scores the answer letter the model rates highest (zero-shot MMLU on a 0.6B model went from 47 to 150 of 500), and runs scored differently show no delta.
+- API keys are masked on screen (dots and the last 4 characters) with a Reveal control; Copy still copies the real key.
+- Studio estimates scale with size, frames and steps.
 
 ### Removed
 
 - **Enhance** (the button, the auto-enhance switch and the prompt enhancer). Video prompts are sent as typed.
+- **Plugins** (backend package, routes, CLI commands, tab); old ids open the Dashboard. **Fine-Tuning** is hidden unless Settings > General > Appearance > Show experimental tabs is on (D-87).
+- The **Logs** tab: Server > Activity replaces it and old ids redirect.
+
+### Security
+
+- The WSL bridge runs bash with `--exec` (a command-injection fix); agent audio for lip sync is held to uploads and outputs; ffmpeg is given a protocol whitelist and zip members are checked by their stored name, refusing backslash paths and drive letters (security review 2026-11-20, FU-530 to FU-534).
+- Privacy: images and videos made from an input image carried the full local path, including the account name, in their embedded settings. They now carry the file name only.
+- Hugging Face library usage reporting is off by default (`HF_HUB_DISABLE_TELEMETRY=1`; set it to `0` to opt back in).
+- `audit-dependencies.py` passes with no blocking advisory on the tip.
 
 ### Fixed
 
-- Privacy: images and videos made from an input image carried the full local path, including the account name, in their embedded settings. They now carry the file name only.
+- **Windows**: llama-server and the other workers end when the backend is force-killed (Job Object); the first model load no longer hangs 300 s in the music and lip-sync workers; a crashed worker restarts where `poll()` stays `None`; diffusers pipelines load without the memory map (Wan 2.2 TI2V 5B had run the system out of commit); unload returns host RAM (mimalloc); image and video pipelines load, run and unload on one thread; the speech add-on installs again (a new `kaldifst` had no Windows wheel); a GPU runtime install no longer leaves half-replaced overlay copies, so the packaged backend starts; GPU metrics no longer block the backend; Hugging Face models no longer count twice in sizes.
+- **Memory and GPU**: the memory gate credits the resident pipeline on same-model reuse; the CUDA allocator's cache is handed back after an image or video run; a failed video load no longer holds 19 GB of GPU and 21 GB of RAM; LTX-2.5 loads without its processor (every clip had failed in the installed app).
+- **Chat**: a chat whose model cannot load answers with the reason instead of "Internal Server Error"; `thinkingMode` reaches the llama.cpp engine; tool calls stream and return from `/v1/chat/completions`; the 60 s prefill watchdog no longer cancels a tool turn; non-streaming replies wait for the longest reply the request allows; a send on the non-streaming route stops an active Keep going run; Enter no longer starts a second turn while one runs; a studio turn runs on after a window reload.
+- **Library and routing**: the text model library follows a moved Hugging Face cache, and a repo downloaded only for its drafter is no longer listed as a runnable model; a local model no longer takes another catalogue row's repo (a small Qwen was refused as "runs only on TensorFold"); automatic and agent picks skip stable-diffusion.cpp rows when no `sd` binary is installed (FU-610 to FU-613).
+- **Storyboard**: a shot lasts the seconds asked for (clips round up to the model's frame rule and the timeline cuts the take); lyric lines no longer overlap; renders work with ffmpeg 9; a bundle of a project with a non-ASCII name can be fetched; work a crash left queued or running is reset at start; touch targets are 44 px on a touch screen.
+- **Voice**: stopping the voice worker no longer leaves Orpheus's llama-server running; cloned voices work on the CUDA lane (m4a samples, NumPy 2); the Windows GPU view of Voice offers only rows that run here.
+- **Settings**: the chosen language and clock format now persist (the language pick never reached `settings.json`); the language banner no longer takes the sidebar's place on a non-English system.
+- Accessibility and layout: model dialogs trap focus and close on Escape; monochrome SVG icons replace the last emoji glyphs; panels no longer clip at the smallest window or at phone width.
+- A process psutil cannot read (macOS) no longer breaks the snapshot and app start; the Diagnostics snapshot takes 4 s instead of 61 s.
+
+### Known limits
+
+- Run on one Windows 11 PC with one RTX 4090 (full E2E on `8cc3a9b8`, 23 phases pass, 1 skip; WSL2 pytest 6628 passed, 0 failed). Linux x86_64 natively, Linux ARM64 with a GPU (DGX Spark), RTX 50-series, cards below 24 GB and AMD or Intel GPUs have not been run; Linux ARM64 stays experimental.
+- The macOS rows of the cross-platform tracker were not re-run on the merged tree (MLX, mflux, ltx-2-mlx, Music on MLX, the packaged DMG, notarisation, the microphone). Lip sync on the Mac (`ltx-2-mlx a2v`) has never run; Stable Audio 3 does not run on the Mac yet (FU-600).
+- Lip sync is a preview: sync scores are better than chance but no person has judged them, and sung shots often have no usable take.
+- Voices and music were checked by measurement and read-back, not by listening. The new features were run from the development tree, not the installed app.
+- TensorFold on Windows needs a binary you build or host yourself; the 1.3.4 pin was set from release notes and source, and its family rows were not compared with a 1.3.4 `capabilities --json` (FU-561).
+- MiniMax H3 video stays off (`H3_RELEASED` is False): its licence does not apply in several territories and a live check of its machine-generated tag is open.
+- Seven product commits after the last Windows E2E run (`14793206` to `bb433c6d`) have unit tests only.
 
 ## v0.9.9 - 2026-10
 

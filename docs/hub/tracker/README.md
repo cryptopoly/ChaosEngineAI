@@ -8,13 +8,14 @@ summary: Every FU row from FOLLOW_UPS.md, split into open and closed.
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here.
 
-- [Open and live follow-ups](open.md): **276** rows.
+- [Open and live follow-ups](open.md): **277** rows.
 - [Closed follow-ups](closed.md): **136** rows.
 
 ## Newest ten
 
 | Row | Item | Status |
 |---|---|---|
+| [FU-616](open.md) | llama.cpp b12675: 4090 run before merge | Next free GPU slot, before bump-llamacpp merges |
 | [FU-615](open.md) | A Studio turn can fill the whole context inside its own tool loop | With FU-614 |
 | [FU-614](open.md) | Keep going: a local model answers "Queued: ..." in text and calls no tool, turn after turn | Next Keep going change, before the next one-go music video run |
 | [FU-613](open.md) | llama.cpp b12651 is out | Done 2026-11-23 on test/rtx4090: pinned b12651 (llama_cuda.py tag and the three Windows CUDA digests, stage-ru… |
@@ -24,4 +25,3 @@ Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.p
 | [FU-609](open.md) | Keep a little silence after the phrase in a sung lip-sync shot | Next lip-sync quality pass (with FU-607) |
 | [FU-608](closed.md) | /api/chat/generate ignores thinkingMode | Shipped 2026-11-23 (branch fix/windows-loose-ends). |
 | [FU-607](closed.md) | Snap song-to-shots cuts to phrase starts | Built 2026-11-23 (feat/sung-shot-window, not merged). |
-| [FU-606](open.md) | Other lip-sync takes as Storyboard takes | When sung shots are made in batches |

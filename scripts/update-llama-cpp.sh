@@ -33,7 +33,7 @@ cd "$LLAMA_DIR"
 echo "==> git fetch"
 git fetch --all --tags --prune
 
-LLAMA_CPP_REF="${LLAMA_CPP_REF:-b12651}"
+LLAMA_CPP_REF="${LLAMA_CPP_REF:-b12675}"
 
 # Warn loudly if there are uncommitted changes — then refuse unless FORCE=1.
 if [[ -n "$(git status --porcelain)" ]]; then

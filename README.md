@@ -496,7 +496,7 @@ That writes the local app + DMG to `releases/macos/`.
 
 Every feature in the desktop app is also reachable from the terminal via `scripts/chaosengine-cli` — a Python 3 wrapper (stdlib only, zero new dependencies) that talks to the same FastAPI backend the Tauri shell uses. It covers 100% of the 125 backend routes through a generic `call <METHOD> <PATH>` dispatcher plus 95 ergonomic typed shortcuts.
 
-**Subcommand categories:** `serve`, `status`, `load`, `unload`, `prompt`, `bench`, `mtplx-install`, `mtplx-status`, `tensorfold-install`, `tensorfold-status`, `image-generate`, `video-generate`, `session-*`, `setup-*`, `diagnostics-*`, and more. JSON is written to stdout, errors to stderr — composable with `jq` or any other pipeline tool.
+**Subcommand categories:** `serve`, `status`, `load`, `unload`, `prompt`, `chat`, `bench`, `mtplx-install`, `mtplx-status`, `tensorfold-install`, `tensorfold-status`, `image-generate`, `video-generate`, `session-*`, `setup-*`, `diagnostics-*`, and more. JSON is written to stdout, errors to stderr — composable with `jq` or any other pipeline tool.
 
 The backend on port 8876 must be running (either via the Tauri app or `./scripts/chaosengine-cli serve`).
 
@@ -509,6 +509,9 @@ The backend on port 8876 must be running (either via the Tauri app or `./scripts
 
 # Prompt with streaming + per-token metrics
 ./scripts/chaosengine-cli prompt "Write a Rust quicksort" --max-tokens 256 --stream --metrics
+
+# Chat in the terminal (loads the model first when you name one; /help lists the commands)
+./scripts/chaosengine-cli chat mlx-community/Qwen3.6-35B-A3B-4bit
 
 # Benchmark a model with 3 runs
 ./scripts/chaosengine-cli bench mlx-community/Qwen3.6-35B-A3B-4bit --spec --runs 3

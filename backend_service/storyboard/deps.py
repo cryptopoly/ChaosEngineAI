@@ -41,8 +41,12 @@ def style_basis(project: Project, shot: Shot, used: str) -> list[Any]:
 
 def fingerprint(project: Project, shot: Shot) -> str:
     """What a take of ``shot`` made now would be made from, as a short hash."""
+    from backend_service.storyboard.cast import effective_references
+
     refs: list[Any] = []
-    for ref_id in shot.referenceImages:
+    # The effective cast (B1309): the same as referenceImages when no character is in every shot, so older takes keep
+    # their fingerprint; turning a character's inEveryShot on or off marks the shots it reaches stale.
+    for ref_id in [*shot.referenceImages, *(i for i in effective_references(project, shot) if i not in shot.referenceImages)]:
         ref = project.reference(ref_id)
         if ref is None:
             refs.append([ref_id, None])

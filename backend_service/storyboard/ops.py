@@ -60,6 +60,7 @@ class ShotFields(_Args):
     stillPrompt: Prompt | None = None
     motionPrompt: Prompt | None = None
     referenceImages: list[Id] | None = Field(None, max_length=8)
+    castOut: list[Id] | None = Field(None, max_length=50)  # inEveryShot characters this shot leaves out (B1309)
     startFrom: Literal["generate", "upload", "previous-shot", "text"] | None = None
     seconds: float | None = Field(None, ge=0.5, le=60)
     seed: int | None = Field(None, ge=0, le=2**31 - 1)
@@ -381,19 +382,39 @@ def _check_refs(p: Project, ids: list[str] | None) -> None:
                           + (f"This project's references: {known}." if known else "Add it to the project references first."))
 
 
+def _check_cast_out(p: Project, ids: list[str] | None) -> None:
+    """``castOut`` names characters (B1309): a place or style is never in every shot, so it cannot be left out."""
+    _check_refs(p, ids)
+    characters = {r.id for r in p.references.characters}
+    wrong = [i for i in ids or [] if i not in characters]
+    if wrong:
+        raise OpError(f"castOut lists characters only; '{wrong[0]}' is a place or style.")
+
+
+def _tidy_cast(shot: Shot, a: ShotFields) -> None:
+    from backend_service.storyboard.cast import tidy
+
+    tidy(shot, cast_out_wins="castOut" in a.model_fields_set)
+
+
 def add_shot(p: Project, folder: Path, a: AddShot) -> None:
     _check_refs(p, a.referenceImages)
+    _check_cast_out(p, a.castOut)
     shot = Shot(id=new_id("s"))
     if p.song is not None:
         shot.nativeSoundDb = SONG_SHOT_NATIVE_SOUND_DB
     _set_fields(shot, a, {"index"})
+    _tidy_cast(shot, a)
     index = len(p.shots) if a.index is None else min(a.index, len(p.shots))
     p.shots.insert(index, shot)
 
 
 def edit_shot(p: Project, folder: Path, a: EditShot) -> None:
     _check_refs(p, a.referenceImages)
-    _set_fields(_shot(p, a.shotId), a, {"shotId"})
+    _check_cast_out(p, a.castOut)
+    shot = _shot(p, a.shotId)
+    _set_fields(shot, a, {"shotId"})
+    _tidy_cast(shot, a)
 
 
 def remove_shot(p: Project, folder: Path, a: ShotRef) -> None:

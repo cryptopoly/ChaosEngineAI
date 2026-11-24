@@ -129,13 +129,15 @@ class RefImage(_Model):
 
 class Reference(_Model):
     """A character, place or style: a name, a few words and up to four pictures (format 3; format 2 held one
-    ``image``). A style also keeps the main colours read from its pictures (``palette``, S15)."""
+    ``image``). A style also keeps the main colours read from its pictures (``palette``, S15). A character with
+    ``inEveryShot`` is in every shot unless a shot leaves it out (``Shot.castOut``, B1309; ``cast.py``)."""
 
     id: Id
     name: Line = ""
     description: Prompt = ""
     images: list[RefImage] = Field(default_factory=list, max_length=MAX_REF_IMAGES)
     palette: list[HexColour] = Field(default_factory=list, max_length=MAX_PALETTE)
+    inEveryShot: bool = False  # characters only (the ops refuse it on a place or style)
 
 
 class References(_Model):
@@ -210,6 +212,9 @@ SONG_SHOT_NATIVE_SOUND_DB = -60.0
 
 
 class Shot(_Model):
+    """One shot. Its cast (B1309): the references it ticks (``referenceImages``) plus every ``inEveryShot`` character
+    not in ``castOut``; the ops keep the two lists apart, and ``cast.effective_references`` is the only resolver."""
+
     id: Id
     order: int = Field(0, ge=0)
     title: Line = ""
@@ -217,6 +222,7 @@ class Shot(_Model):
     stillPrompt: Prompt = ""
     motionPrompt: Prompt = ""
     referenceImages: list[Id] = Field(default_factory=list, max_length=8)  # ids in project.references
+    castOut: list[Id] = Field(default_factory=list, max_length=50)  # inEveryShot characters this shot leaves out
     # "text": no picture at all, a text-to-video clip made from the motion prompt, on any video model.
     startFrom: Literal["generate", "upload", "previous-shot", "text"] = "generate"
     endImage: RelPath | None = None

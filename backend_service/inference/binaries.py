@@ -98,6 +98,13 @@ def _which_with_fallbacks(name: str) -> str | None:
     return None
 
 
+def llama_install_hint() -> str:
+    """How to get llama-server on this machine: Homebrew on a Mac, the Setup page's installer elsewhere."""
+    if sys.platform == "darwin":
+        return "brew install llama.cpp"
+    return "open Setup and install llama-server (the CUDA build for an NVIDIA GPU)"
+
+
 def _resolve_llama_server() -> str | None:
     # A CUDA build the user installed from Setup (Linux or Windows + NVIDIA) wins over the
     # bundled portable build, but only when it actually sees a CUDA device.

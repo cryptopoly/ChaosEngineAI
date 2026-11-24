@@ -24,7 +24,9 @@ Extracted as part of the v0.8.0 Phase 1a-11 refactor.
 from __future__ import annotations
 
 import json
+import threading
 import time
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any
 
 from fastapi import HTTPException
@@ -60,6 +62,26 @@ def _load_for_chat(state: Any, request: LoadModelRequest) -> None:
         detail = str(exc) or "Unknown error during model loading."
         state.add_log("runtime", "error", f"Load failed for {request.modelRef}: {detail}")
         raise HTTPException(status_code=500, detail=detail) from exc
+
+
+@contextmanager
+def _keep_going_start_guard(state: Any, session_id: str | None, user_turn: bool):
+    """A user message can start a Keep going run (it is the brief). If the turn then cannot start because the model
+    will not load, the run stops with that reason instead of staying "running" with no turn behind it."""
+    try:
+        yield
+    except Exception as exc:
+        if user_turn and session_id:
+            from backend_service import keep_going as _keep_going
+
+            detail = str(getattr(exc, "detail", None) or exc) or "The model did not load."
+            outcome = _keep_going.TurnOutcome(
+                session_id=session_id, error=detail, extra={"runId": None, "modelMissing": True})
+            # The controller is never called while the state lock is held (its own lock is taken first elsewhere),
+            # and this runs inside that lock: tell it from a thread that starts as the error leaves the lock.
+            threading.Thread(target=_keep_going.on_turn_finished, args=(state, outcome), daemon=True,
+                             name="keep-going-start-failed").start()
+        raise
 
 
 def _apply_canonical_hint(state: Any, hint: str | None) -> None:
@@ -457,21 +479,22 @@ def generate_stream(state: ChaosEngineState, request: GenerateRequest, app_reque
             speculative_decoding=desired_speculative_decoding,
             tree_budget=desired_tree_budget,
         )
-        if effective_model_ref and should_reload:
-            _load_for_chat(state, LoadModelRequest(
-                modelRef=effective_model_ref, modelName=effective_model_name,
-                canonicalRepo=effective_canonical_repo,
-                source=effective_source, backend=effective_backend, path=effective_path,
-                cacheStrategy=desired_cache_strategy, cacheBits=desired_cache_bits,
-                fp16Layers=desired_fp16_layers,
-                fusedAttention=desired_fused_attention,
-                fitModelInMemory=desired_fit_model, contextTokens=desired_context_tokens,
-                speculativeDecoding=desired_speculative_decoding,
-                treeBudget=desired_tree_budget,
-            ))
+        with _keep_going_start_guard(state, request.sessionId, keep_going is None):
+            if effective_model_ref and should_reload:
+                _load_for_chat(state, LoadModelRequest(
+                    modelRef=effective_model_ref, modelName=effective_model_name,
+                    canonicalRepo=effective_canonical_repo,
+                    source=effective_source, backend=effective_backend, path=effective_path,
+                    cacheStrategy=desired_cache_strategy, cacheBits=desired_cache_bits,
+                    fp16Layers=desired_fp16_layers,
+                    fusedAttention=desired_fused_attention,
+                    fitModelInMemory=desired_fit_model, contextTokens=desired_context_tokens,
+                    speculativeDecoding=desired_speculative_decoding,
+                    treeBudget=desired_tree_budget,
+                ))
 
-        if state.runtime.loaded_model is None:
-            raise HTTPException(status_code=409, detail="Load a model before sending prompts.")
+            if state.runtime.loaded_model is None:
+                raise HTTPException(status_code=409, detail="Load a model before sending prompts.")
 
         _apply_canonical_hint(state, effective_canonical_repo)
 

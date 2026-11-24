@@ -77,6 +77,7 @@ from backend_service.inference.binaries import (
     _resolve_llama_server_turbo,
     _resolve_mlx_python,
     _which_with_fallbacks,
+    llama_install_hint,
 )
 from backend_service.inference.capabilities import (
     _capability_cache,
@@ -883,7 +884,7 @@ class RuntimeController:
                 return LlamaCppEngine(self.capabilities)
             raise RuntimeError(
                 "This model requires llama-server (llama.cpp) which is not installed. "
-                "Install with: brew install llama.cpp"
+                f"Install it: {llama_install_hint()}"
             )
         if hint == "vllm":
             # FU-056 Phase 8: prefer the WSL bridge on Windows hosts.
@@ -919,7 +920,7 @@ class RuntimeController:
                 return LlamaCppEngine(self.capabilities)
             raise RuntimeError(
                 "This is a GGUF model which requires llama-server. "
-                "Install with: brew install llama.cpp"
+                f"Install it: {llama_install_hint()}"
             )
         if self.capabilities.mlxUsable:
             return MLXWorkerEngine(self.capabilities)
@@ -927,7 +928,7 @@ class RuntimeController:
             return LlamaCppEngine(self.capabilities)
         raise RuntimeError(
             "No inference backend is available. "
-            "Install llama.cpp (brew install llama.cpp) for GGUF models, "
+            f"Install llama.cpp ({llama_install_hint()}) for GGUF models, "
             "or ensure MLX is working for safetensors models on Apple Silicon."
         )
 

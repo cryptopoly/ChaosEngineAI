@@ -124,6 +124,18 @@ class RouteTests(Harness):
         self.client.delete(f"/api/chat/sessions/{self.sid}")
         self.assertIsNone(keep_going.for_state(self.state).get(self.sid))
 
+    def test_a_brief_whose_model_will_not_load_stops_the_run_with_the_reason(self):
+        """The brief starts the run; if the chat cannot load its model the run must not stay 'running' with no turn."""
+        self.client.post(f"/api/chat/keepgoing/{self.sid}/start", json={})
+        with mock.patch.object(self.state, "load_model", side_effect=RuntimeError("llama-server is not installed")):
+            response = self.client.post("/api/chat/generate/stream", json={
+                "sessionId": self.sid, "prompt": "make a film", "studioTools": True, "maxTokens": 64,
+                "modelRef": "some/other-model", "modelName": "Other", "source": "catalog", "backend": "llama.cpp"})
+        self.assertEqual(response.status_code, 500)
+        run = self.wait_stopped()
+        self.assertEqual(run["stopCode"], "model_unavailable")
+        self.assertIn("llama-server is not installed", run["stopDetail"])
+
     def test_studio_off_ends_the_run(self):
         self.client.post(f"/api/chat/keepgoing/{self.sid}/start", json={})
         run = self.client.post(f"/api/chat/keepgoing/{self.sid}/studio-off").json()["run"]

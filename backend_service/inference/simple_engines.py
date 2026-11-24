@@ -25,6 +25,7 @@ from collections.abc import Iterator
 from typing import Any
 
 from backend_service.inference._utils import _now_label
+from backend_service.inference.binaries import llama_install_hint
 from backend_service.inference.base import (
     BackendCapabilities,
     BaseInferenceEngine,
@@ -177,7 +178,7 @@ class MockInferenceEngine(BaseInferenceEngine):
         if not self.capabilities.mlxUsable:
             hints.append("MLX is not available" + (f" ({self.capabilities.mlxMessage})" if self.capabilities.mlxMessage else ""))
         if not self.capabilities.ggufAvailable:
-            hints.append("llama-server not found (install with: brew install llama.cpp)")
+            hints.append(f"llama-server not found (install: {llama_install_hint()})")
         if not self.capabilities.vllmAvailable:
             hints.append("vLLM not installed")
         return (

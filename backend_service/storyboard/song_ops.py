@@ -16,6 +16,7 @@ from typing import Annotated
 from pydantic import Field
 
 from backend_service.storyboard.models import (
+    SONG_SHOT_NATIVE_SOUND_DB,
     MAX_BEATS,
     MAX_LYRICS,
     MAX_SECTIONS,
@@ -146,6 +147,7 @@ def set_shot_vocals(p: Project, folder: Path, a: SetShotVocals) -> None:
         shot.seconds = round(item.lead + item.length + item.tail, 3)
         shot.trimIn = item.lead
         shot.trimOut = round(item.lead + item.length, 3)
+        shot.nativeSoundDb = SONG_SHOT_NATIVE_SOUND_DB  # the song carries the vocal; the clip's own copy of it would double it
 
 
 # name -> (argument model, change function, reversible); merged into ops.OPS

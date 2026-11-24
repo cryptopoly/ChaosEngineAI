@@ -20,6 +20,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from backend_service.storyboard import audio_level, media
 from backend_service.storyboard.models import (
+    SONG_SHOT_NATIVE_SOUND_DB,
     Anchor,
     AudioClip,
     AudioSource,
@@ -383,6 +384,8 @@ def _check_refs(p: Project, ids: list[str] | None) -> None:
 def add_shot(p: Project, folder: Path, a: AddShot) -> None:
     _check_refs(p, a.referenceImages)
     shot = Shot(id=new_id("s"))
+    if p.song is not None:
+        shot.nativeSoundDb = SONG_SHOT_NATIVE_SOUND_DB
     _set_fields(shot, a, {"index"})
     index = len(p.shots) if a.index is None else min(a.index, len(p.shots))
     p.shots.insert(index, shot)

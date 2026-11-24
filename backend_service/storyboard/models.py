@@ -203,6 +203,12 @@ class Take(_Model):
 ShotStatus = Literal["idle", "queued", "running", "done", "failed", "stale", "missing"]
 
 
+# A film cut to a song plays the song, not each clip's own generated sound: at 0 dB that sound buries the song and
+# changes with every cut (measured on a 30 s music video: the film's level followed the song with a correlation of 0.05,
+# and 1.0 with the clips' sound muted). A shot made under a song starts muted; ``nativeSoundDb`` still sets it.
+SONG_SHOT_NATIVE_SOUND_DB = -60.0
+
+
 class Shot(_Model):
     id: Id
     order: int = Field(0, ge=0)

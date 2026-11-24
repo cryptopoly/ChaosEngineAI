@@ -17,6 +17,7 @@ from typing import Literal
 from pydantic import Field, model_validator
 
 from backend_service.storyboard.models import (
+    SONG_SHOT_NATIVE_SOUND_DB,
     MAX_PLAN_CHAT,
     MAX_SHOTS,
     Brand,
@@ -118,7 +119,8 @@ def _check_refs(p: Project, ids: list[str]) -> None:
 def _new_shot(p: Project, planned: PlannedShot) -> Shot:
     _check_refs(p, planned.referenceImages)
     return Shot(id=new_id("s"), title=planned.title, stillPrompt=planned.stillPrompt, motionPrompt=planned.motionPrompt,
-                seconds=planned.seconds, referenceImages=list(planned.referenceImages), trimOut=planned.trimOut)
+                seconds=planned.seconds, referenceImages=list(planned.referenceImages), trimOut=planned.trimOut,
+                nativeSoundDb=SONG_SHOT_NATIVE_SOUND_DB if p.song is not None else 0.0)
 
 
 def set_plan(p: Project, folder: Path, a: SetPlan) -> None:

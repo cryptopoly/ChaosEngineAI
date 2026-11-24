@@ -229,3 +229,27 @@ class RouteTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SongSoundTests(StoreCase):
+    """A film cut to a song plays the song: clips made under it start with their own sound muted."""
+
+    def test_shots_made_under_a_song_start_muted_and_others_do_not(self):
+        project = self.new(shots=1)
+        self.assertEqual(project.shots[0].nativeSoundDb, 0.0)
+        project = self.op(project, "set_song", **song_args(fake_wav(self.src / "song.wav")))
+        project = self.op(project, "add_shot", title="later")
+        project = self.op(project, "add_shot", title="loud", nativeSoundDb=-6.0)
+        self.assertEqual([s.nativeSoundDb for s in project.shots], [0.0, -60.0, -6.0])
+
+    def test_a_cut_plan_applied_under_a_song_makes_muted_shots(self):
+        project = self.op(self.new(shots=0), "set_song", **song_args(fake_wav(self.src / "song.wav")))
+        project = self.op(project, "apply_plan", shots=[{"title": "a", "seconds": 4.0}, {"title": "b", "seconds": 4.0}])
+        self.assertEqual({s.nativeSoundDb for s in project.shots}, {-60.0})
+
+    def test_a_lip_sync_slice_mutes_the_clips_own_copy_of_the_vocal(self):
+        project = self.op(self.new(shots=1), "set_song", **song_args(fake_wav(self.src / "song.wav")))
+        project = self.op(project, "set_shot_vocals", items=[{"shotId": project.shots[0].id,
+                          "audio": str(fake_wav(self.src / "slice.wav")), "lead": 0.0, "length": 4.0, "tail": 0.5,
+                          "singing": True}])
+        self.assertEqual(project.shots[0].nativeSoundDb, -60.0)

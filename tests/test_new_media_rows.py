@@ -103,14 +103,17 @@ class RoutingTests(unittest.TestCase):
 
         inputs = _image_variant_inputs(_variant(IMAGE_MODEL_FAMILIES, FLUX3))
         self.assertEqual(inputs, {"acceptsGuidance": False, "acceptsNegativePrompt": False, "maxReferenceImages": 0})
-        self.assertEqual(_image_variant_inputs(_variant(IMAGE_MODEL_FAMILIES, FLUX3_SDCPP))["maxReferenceImages"], 0)
+        # B1309: the sd.cpp row edits from up to 4 reference pictures.
+        self.assertEqual(_image_variant_inputs(_variant(IMAGE_MODEL_FAMILIES, FLUX3_SDCPP))["maxReferenceImages"], 4)
 
-    def test_flux3_cuda_rows_refuse_reference_images(self) -> None:
+    def test_flux3_diffusers_row_refuses_reference_images(self) -> None:
+        # FU-273: the diffusers row returned the reference nearly unchanged; only the sd.cpp row takes them (B1309).
         from backend_service.helpers.media_input import InputImageError, checked_reference_images
 
-        for variant_id in (FLUX3, FLUX3_SDCPP):
-            with self.assertRaisesRegex(InputImageError, "cannot take a reference image"):
-                checked_reference_images(["a"], _variant(IMAGE_MODEL_FAMILIES, variant_id))
+        with self.assertRaisesRegex(InputImageError, "cannot take a reference image"):
+            checked_reference_images(["a"], _variant(IMAGE_MODEL_FAMILIES, FLUX3))
+        with self.assertRaisesRegex(InputImageError, "not found"):
+            checked_reference_images(["a"], _variant(IMAGE_MODEL_FAMILIES, FLUX3_SDCPP))
 
     def test_downloads_fetch_the_modular_index(self) -> None:
         from backend_service.helpers.images import _image_repo_allow_patterns

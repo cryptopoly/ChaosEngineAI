@@ -800,3 +800,99 @@ class MissingBinaryMessageTests(unittest.TestCase):
         self.assertIn("build-sdcpp.ps1" if os.name == "nt" else "build-sdcpp.sh", text)
         self.assertIn("CHAOSENGINE_SDCPP_BIN", text)
         self.assertEqual(scrub(text), text)
+
+
+class SdCppReferenceImageTests(unittest.TestCase):
+    """B1309: reference pictures reach FLUX 3 Klein on stable-diffusion.cpp as ``-r`` arguments."""
+
+    _REPO = "leejet/flux-3-image-klein-GGUF"
+
+    def setUp(self) -> None:
+        import tempfile
+
+        from PIL import Image
+
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.pngs = []
+        for index in range(5):
+            path = Path(self.tmp.name) / f"ref{index}.png"
+            Image.new("RGB", (32, 32), "red").save(path)
+            self.pngs.append(str(path))
+
+    def _config(self, refs, repo=_REPO):
+        return dataclasses.replace(
+            _make_config(repo, gguf_repo=repo, gguf_file="flux3-image-klein-Q8_0.gguf"),
+            referenceImagePaths=refs,
+            sdcppArgs=["--sampling-method", "euler", "--fa"],
+        )
+
+    def _args(self, config):
+        return SdCppImageEngine()._build_cli_args(
+            binary=Path("/tmp/sd"), config=config, model_path="/tmp/m.gguf",
+            output_path=Path("/tmp/x.png"), seed=1, aux_paths={"--vae": "/cache/ae.safetensors"},
+        )
+
+    def test_limit_table(self):
+        from backend_service.sdcpp_image_runtime import reference_image_limit
+
+        self.assertEqual(reference_image_limit(self._REPO), 4)
+        self.assertEqual(reference_image_limit("leejet/Qwen-Image-2.1-GGUF"), 0)
+        self.assertEqual(reference_image_limit("leejet/FLUX.1-dev-gguf"), 0)
+
+    def test_each_reference_becomes_one_r_argument_in_order(self):
+        args = self._args(self._config(self.pngs[:4]))
+        pairs = [args[i + 1] for i, a in enumerate(args) if a == "-r"]
+        self.assertEqual(pairs, [str(Path(p).resolve()) for p in self.pngs[:4]])
+        # The existing flags stay: metadata off, companions, and the catalogue's extra arguments last.
+        self.assertEqual(args.count("--disable-image-metadata"), 1)
+        self.assertEqual(args[args.index("--vae") + 1], "/cache/ae.safetensors")
+        self.assertEqual(args[-3:], ["--sampling-method", "euler", "--fa"])
+        # Flags the pinned build removed must never come back.
+        self.assertNotIn("--ref-image-args", args)
+        self.assertNotIn("--increase-ref-index", args)
+
+    def test_no_reference_no_r(self):
+        self.assertNotIn("-r", self._args(self._config(None)))
+        self.assertNotIn("-r", self._args(self._config([])))
+
+    def test_refuses_more_than_four(self):
+        with self.assertRaises(RuntimeError) as ctx:
+            self._args(self._config(self.pngs))
+        self.assertIn("takes 4 reference images", str(ctx.exception))
+
+    def test_refuses_on_a_model_without_reference_support(self):
+        with self.assertRaises(RuntimeError) as ctx:
+            self._args(self._config(self.pngs[:1], repo="leejet/FLUX.1-dev-gguf"))
+        self.assertIn("cannot take a reference image", str(ctx.exception))
+
+    def test_a_missing_or_non_image_file_is_refused_before_sd_runs(self):
+        from backend_service.helpers.media_input import InputImageError
+
+        note = Path(self.tmp.name) / "note.txt"
+        note.write_text("x")
+        for raw in (str(Path(self.tmp.name) / "missing.png"), str(note)):
+            with self.assertRaises(InputImageError, msg=raw):
+                self._args(self._config([raw]))
+
+    def test_manager_does_not_fall_back_to_another_engine_with_references(self):
+        from backend_service.image_runtime import ImageRuntimeManager
+
+        manager = ImageRuntimeManager()
+        manager._sdcpp.probe = MagicMock(return_value={"available": False, "reason": "no sd"})  # type: ignore[method-assign]
+        manager._diffusers.generate = MagicMock(side_effect=AssertionError("must not be called"))  # type: ignore[method-assign]
+        # A repo with a diffusers pipeline, so only the reference pictures stop the fallback.
+        config = dataclasses.replace(_make_config(), referenceImagePaths=self.pngs[:1])
+        with self.assertRaises(RuntimeError):
+            manager.generate(config)
+        manager._diffusers.generate.assert_not_called()
+
+    def test_catalogue_row_advertises_four_references(self):
+        from backend_service.catalog.image_models import IMAGE_MODEL_FAMILIES
+        from backend_service.helpers.images import _image_variant_inputs
+
+        row = next(v for f in IMAGE_MODEL_FAMILIES for v in f["variants"] if v["id"] == "leejet/flux-3-image-klein-GGUF-q8")
+        self.assertEqual(_image_variant_inputs(row)["maxReferenceImages"], 4)
+        other = next(v for f in IMAGE_MODEL_FAMILIES for v in f["variants"]
+                     if v.get("engine") == "sdcpp" and v["repo"] != self._REPO)
+        self.assertEqual(_image_variant_inputs(other)["maxReferenceImages"], 0)

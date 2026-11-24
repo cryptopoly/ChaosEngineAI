@@ -201,6 +201,12 @@ bundled in the desktop ``.app``; installed on demand from the Image Studio
 The weights it runs keep their own licences. In particular Qwen-Image-2.1 is
 under the Qwen Research Licence (non-commercial use only).
 
+**FLUX 3 Image Klein** (`black-forest-labs/flux-3-image-klein`, Black Forest Labs; the Mac mflux row, the NVIDIA
+diffusers row and the sd.cpp GGUF rows `leejet/flux-3-image-klein-GGUF`) is under the **FLUX Kommunity licence v1.0**
+(non-permissive): the repo is gated, the user accepts the licence on their own Hugging Face account, use is free for
+non-commercial purposes, and commercial use of outputs is allowed only below US$5M annual revenue. ChaosEngineAI
+ships and redistributes none of these files.
+
 ## Optional Apple Silicon Video Runtime
 
 | Package | Repository | Licence |
@@ -460,7 +466,7 @@ environment, `~/.chaosengine/voice-venv`; not bundled with the app. Run by
 ### Speech-to-text on the NVIDIA GPU (the `stt-gpu` add-on, Windows / Linux)
 
 - **Packages** (installed on request into the voice environment, `asr-site` folder; not shipped by us):
-  Transformers 5.23.0, tokenizers, safetensors, accelerate (Apache-2.0); regex (Apache-2.0 AND CNRI-Python);
+  Transformers 5.24.0, tokenizers, safetensors, accelerate (Apache-2.0); regex (Apache-2.0 AND CNRI-Python);
   psutil (BSD-3-Clause); PyTorch and torchaudio CUDA 12.8 wheels (BSD-3-Clause, with NVIDIA's CUDA libraries under
   NVIDIA's licence, downloaded by the user's machine).
 - **Weights** (downloaded by the user from Hugging Face): `Qwen/Qwen3-ASR-1.7B-hf` and `Qwen/Qwen3-ASR-0.6B-hf`
@@ -600,7 +606,10 @@ torchao (Apache-2.0).
 torchaudio (BSD-3-Clause), torchcodec (BSD-3-Clause), MLX and mlx-lm (MIT), transformers, diffusers, accelerate and
 huggingface-hub (Apache-2.0), numpy (BSD-3-Clause), soundfile (BSD-3-Clause; bundles libsndfile, LGPL-2.1),
 gradio, lightning, peft, torchao and modelscope (Apache-2.0 or BSD; pulled in by the library, not used for
-inference). All are MIT, BSD or Apache except the one below.
+inference). Checked against PyPI metadata on 2026-11-24, the rest are MIT, BSD, Apache, PSF, ISC or HPND except: the one
+below; `frozendict` 2.4.7 (LGPL-3.0-only, a library installed from PyPI, replaceable by the user); the MPL-2.0 packages
+`certifi`, `orjson` (MPL-2.0 AND (Apache-2.0 OR MIT)) and `tqdm` (MPL-2.0 AND MIT); and NVIDIA's CUDA runtime wheels
+(`nvidia-*`, NVIDIA proprietary licence, as for the GPU bundle), which the user's machine downloads from PyPI.
 
 - **pytorch-wavelets 1.3.0: not installed (dropped 2026-11-07, D-37, FU-138).** PyPI says "Free To Use But Restricted".
   Its LICENSE file is MIT (copyright 2020 Fergal Cotter) for the parts that are new, but the dual-tree (DTCWT) parts derive
@@ -651,8 +660,12 @@ inference). All are MIT, BSD or Apache except the one below.
 - **T5-base** (`google-t5/t5-base`) - Apache 2.0, downloaded on demand as the text encoder.
 - Sounds-pack dependencies are installed on demand (versions in `backend_service/sound_requirements.txt`): PyTorch and
   torchaudio (BSD-3), transformers and huggingface_hub (Apache 2.0), pytorch-lightning (Apache 2.0), einops, einops-exts,
-  vector-quantize-pytorch, nnAudio, v-diffusion-pytorch, alias-free-torch (MIT), torchsde (Apache 2.0). Licences of the other
-  pinned packages in that file are still to be confirmed one by one (FU row to add).
+  vector-quantize-pytorch, nnAudio, v-diffusion-pytorch (MIT), alias-free-torch (Apache 2.0), torchsde (Apache 2.0).
+  The other pinned packages in that file were checked against their PyPI metadata on 2026-11-24 and are MIT, BSD,
+  Apache 2.0, PSF, ISC or HPND, with these exceptions, all installed from PyPI on the user's machine and never bundled:
+  `frozendict` 2.5.1 (LGPL-3.0-only; a dependency of einx, used as a library and replaceable by the user), `soxr` 1.1.0
+  (LGPL-2.1-or-later, the libsoxr resampler it wraps), and the MPL-2.0 (file-level copyleft) packages `certifi` and `tqdm`
+  (MPL-2.0 AND MIT).
 
 ## Voice cloning and watermark (optional, on demand)
 

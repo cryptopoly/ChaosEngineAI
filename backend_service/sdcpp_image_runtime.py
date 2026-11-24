@@ -88,6 +88,19 @@ _DISTILLED_GUIDANCE_REPOS: frozenset[str] = frozenset({
 })
 
 
+# Models that take reference pictures through ``-r`` (B1309). FLUX.3 Klein edits from VAE reference latents with
+# increasing position indexing, the default sd.cpp picks for it (docs/guides/edit.md); upstream allows up to 10,
+# the image request takes 4. Each picture is scaled to at most the output's area (1 MP cap) before encoding.
+_REFERENCE_IMAGE_LIMITS: dict[str, int] = {
+    "leejet/flux-3-image-klein-GGUF": 4,
+}
+
+
+def reference_image_limit(repo: str) -> int:
+    """How many reference pictures this model takes through sd.cpp: 0 when none."""
+    return _REFERENCE_IMAGE_LIMITS.get(repo, 0)
+
+
 def _fetch_file(repo: str, filename: str) -> str:
     """Local path of ``filename`` from ``repo``, downloading it on first use.
 
@@ -308,6 +321,27 @@ class SdCppImageEngine:
             return ["--cfg-scale", "1", "--guidance", f"{config.guidance:g}"]
         return ["--cfg-scale", f"{config.guidance:g}"]
 
+    @staticmethod
+    def _reference_args(config: ImageGenerationConfig) -> list[str]:
+        """``-r PATH`` per reference picture, each checked again as an input image (real file, image type, size cap).
+
+        A model without reference support refuses rather than rendering as if no picture had been given.
+        """
+        refs = list(config.referenceImagePaths or [])
+        if not refs:
+            return []
+        limit = reference_image_limit(config.repo)
+        if limit == 0:
+            raise RuntimeError(f"{config.modelName} cannot take a reference image on stable-diffusion.cpp.")
+        if len(refs) > limit:
+            raise RuntimeError(f"{config.modelName} takes {limit} reference images; got {len(refs)}.")
+        from backend_service.helpers.media_input import resolve_input_image
+
+        args: list[str] = []
+        for raw in refs:
+            args.extend(["-r", str(resolve_input_image(raw))])
+        return args
+
     def _build_cli_args(
         self,
         *,
@@ -346,6 +380,7 @@ class SdCppImageEngine:
         ]
         for flag, path in (aux_paths or {}).items():
             args.extend([flag, path])
+        args.extend(self._reference_args(config))
         if config.negativePrompt:
             args.extend(["--negative-prompt", config.negativePrompt])
         args.extend(config.sdcppArgs or [])

@@ -146,6 +146,10 @@ def _image_variant_inputs(variant: dict[str, Any]) -> dict[str, Any]:
                 "acceptsNegativePrompt": family.takes_negative_prompt,
                 "maxReferenceImages": reference_image_limit(str(variant.get("repo") or "")),
             }
+    if variant.get("engine") == "sdcpp":
+        from backend_service.helpers.media_input import reference_image_limit
+
+        return {"acceptsGuidance": True, "acceptsNegativePrompt": True, "maxReferenceImages": reference_image_limit(variant)}
     from backend_service.image_runtime.flux3_modular import FLUX3_MODULAR_REPOS
 
     repo = str(variant.get("repo") or "")

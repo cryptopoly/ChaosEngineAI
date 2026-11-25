@@ -550,13 +550,13 @@
     "sameAsChat": "(igual ao Chat)",
     "title": "Voz no Chat: qual voz lê, faz chamadas e ditado",
     "noFallback": "Nenhuma definida",
-    "changeFor": null,
-    "openStudio": null,
-    "voicesInChat": null,
-    "readAloud": null,
-    "calls": null,
-    "backup": null,
-    "dictate": null
+    "changeFor": "Alterar {use}",
+    "openStudio": "Abrir o Estúdio de Voz",
+    "voicesInChat": "Vozes no Chat",
+    "readAloud": "Leitura em voz alta",
+    "calls": "Chamadas",
+    "backup": "Voz de backup",
+    "dictate": "Ditar"
   },
   "keepGoing": {
     "label": "Continuar",

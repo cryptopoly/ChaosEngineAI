@@ -589,6 +589,10 @@
           "maxItems": 4,
           "type": "array"
         },
+        "in_every_shot": {
+          "description": "add_ref, edit_ref (character): in every shot, no need to list it in referenceImages; a shot leaves it out with fields.castOut.",
+          "type": "boolean"
+        },
         "kind": {
           "description": "add_ref. character, place: keeps a face or place the same across shots. style: the look of the whole film (pictures, words, palette read from them).",
           "enum": [
@@ -749,7 +753,7 @@
           "type": "string"
         },
         "fields": {
-          "description": "title, stillPrompt, motionPrompt, startFrom (generate|upload|previous-shot|text), seconds, seed (leave unset on shots with referenceImages: the reference's seed returns a copy of it), trimIn, trimOut, speed, transition{type,seconds}, nativeSoundDb, index, vocalStart, vocalSinging, vocalTakes.",
+          "description": "title, stillPrompt, motionPrompt, startFrom (generate|upload|previous-shot|text), seconds, referenceImages (cast ids), castOut (locked characters to skip), seed (unset with referenceImages), trimIn, trimOut, speed, transition{type,seconds}, nativeSoundDb, index, vocalStart, vocalSinging, vocalTakes.",
           "type": "object"
         },
         "order": {

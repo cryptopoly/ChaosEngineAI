@@ -15,6 +15,7 @@ import type {
   StoryboardSongVocals,
   StoryboardBatchWhat,
   StoryboardExportPreset,
+  StoryboardGuide,
   StoryboardListRow,
   StoryboardOpArgs,
   StoryboardOpName,
@@ -124,6 +125,12 @@ export async function createStoryboardProject(
 
 export async function getStoryboardProject(projectId: string): Promise<StoryboardProjectPayload> {
   return await request("GET", base(projectId));
+}
+
+/** Read-only: the guide block alone (quality, lip-sync coverage, failures, export readiness, stages). Every
+ *  project payload carries the same block as `guide`. */
+export async function getStoryboardGuide(projectId: string): Promise<{ projectId: string; revision: number; guide: StoryboardGuide }> {
+  return await request("GET", `${base(projectId)}/guide`, undefined, 30000);
 }
 
 export async function deleteStoryboardProject(projectId: string, revision: number): Promise<{ deleted: string }> {

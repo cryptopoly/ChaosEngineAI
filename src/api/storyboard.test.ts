@@ -14,6 +14,7 @@ import {
   exportStoryboardBundle,
   fetchStoryboardFileSize,
   getStoryboardBatch,
+  getStoryboardGuide,
   getStoryboardPeaks,
   getStoryboardRender,
   cancelStoryboardRender,
@@ -58,6 +59,14 @@ afterEach(() => {
 });
 
 describe("storyboard api client", () => {
+  it("reads the guide block with a GET", async () => {
+    const guide = { stages: { current: "shots", stages: [] } };
+    const fetchMock = stubFetch(() => ({ json: async () => ({ projectId: "abc", revision: 3, guide }) }));
+    const got = await getStoryboardGuide("abc");
+    expect(got.guide.stages.current).toBe("shots");
+    expect(requestTo(fetchMock, "/api/storyboard/projects/abc/guide").method).toBe("GET");
+  });
+
   it("lists projects", async () => {
     stubFetch(() => ({ json: async () => ({ projects: [{ id: "a", name: "A", revision: 1, shots: 0, createdAt: 1 }] }) }));
     await expect(listStoryboardProjects()).resolves.toHaveLength(1);

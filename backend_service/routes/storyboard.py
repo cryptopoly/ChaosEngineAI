@@ -79,9 +79,14 @@ def get_store() -> store_module.ProjectStore:
 
 
 def _payload(project: Any) -> dict[str, Any]:
+    """The project, its timeline and the guide block (quality, lip-sync coverage, failures, export readiness and the
+    stage rail; ``storyboard/guide.py``)."""
+    from backend_service.storyboard import guide
     from backend_service.storyboard.timeline import compute_timeline
 
-    return {"project": dump(project), "timeline": compute_timeline(project).as_dict()}
+    timeline = compute_timeline(project)
+    return {"project": dump(project), "timeline": timeline.as_dict(),
+            "guide": guide.build(project, timeline, get_store().folder(project.id))}
 
 
 def _http(exc: Exception) -> HTTPException:
@@ -185,7 +190,11 @@ def _batch_info(project_id: str, batch_id: str) -> dict[str, Any]:
     record = next((b for b in project.batches if b.id == batch_id), None)
     if record is None:
         raise HTTPException(status_code=404, detail=f"Unknown batch '{batch_id}'.")
-    info: dict[str, Any] = {"batch": record.model_dump(mode="json"), "revision": project.revision}
+    from backend_service.storyboard.failure import result_failure
+
+    info: dict[str, Any] = {"batch": record.model_dump(mode="json"), "revision": project.revision,
+                            # audit change 5: each failed step as a code, a sentence, an action and the raw text
+                            "failures": [result_failure(r) for r in record.results if r.state == "failed"]}
     from backend_service.storyboard.batch import get_batch
 
     live = get_batch(batch_id)
@@ -212,6 +221,17 @@ def create_project(body: CreateProject) -> dict[str, Any]:
 @router.get("/api/storyboard/projects/{project_id}")
 def get_project(project_id: str) -> dict[str, Any]:
     return _payload(_guard(get_store().load, project_id))
+
+
+@router.get("/api/storyboard/projects/{project_id}/guide")
+def get_guide(project_id: str) -> dict[str, Any]:
+    """Read-only: the guide block alone (quality, lip-sync coverage, failures, export readiness, stages)."""
+    from backend_service.storyboard import guide
+
+    store = get_store()
+    project = _guard(store.load, project_id)
+    return {"projectId": project.id, "revision": project.revision,
+            "guide": guide.build(project, folder=store.folder(project_id))}
 
 
 @router.delete("/api/storyboard/projects/{project_id}")

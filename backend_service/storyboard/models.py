@@ -95,6 +95,7 @@ Sha256 = Annotated[str, AfterValidator(check_hash)]
 Scalar = Union[bool, int, float, Annotated[str, Field(max_length=4000), AfterValidator(check_text)], None]
 Seconds = Annotated[float, Field(ge=0, le=3600)]
 HexColour = Annotated[str, Field(pattern=HEX_COLOUR_RE.pattern)]
+Code = Annotated[str, Field(pattern=r"^[a-z][a-z-]{0,39}$")]  # a stable machine-readable reason (a pattern: newer codes load)
 
 
 class _Model(BaseModel):
@@ -351,7 +352,10 @@ class BatchResult(_Model):
     kind: Literal["still", "clip"]
     state: Literal["queued", "running", "done", "failed", "skipped", "cancelled"] = "queued"
     takeId: Id | None = None
-    error: Annotated[str, Field(max_length=1000)] | None = None
+    error: Annotated[str, Field(max_length=1000)] | None = None  # the raw text, kept for Technical details
+    # Why a failed step failed, as a stable code (``failure.py``: out-of-memory, model-missing, ...); None before
+    # codes were stored, and on steps that did not fail.
+    code: Code | None = None
 
 
 class SongSection(_Model):
@@ -367,6 +371,26 @@ class SongSection(_Model):
         if self.end <= self.start:
             raise ValueError("a section must end after it starts")
         return self
+
+
+class CoverageShot(_Model):
+    """One shot of the last "Give each shot its vocal" run (audit change 3): ``code`` None when it got a vocal, else
+    why not (``coverage.SKIP_CODES``), with the sentence the run gave. ``songStart`` is the song second the shot
+    starts at (negative when the shot starts before the song)."""
+
+    shotId: Id
+    code: Code | None = None
+    message: Annotated[str, Field(max_length=300), AfterValidator(check_line)] = ""
+    songStart: float = Field(0.0, ge=-3600, le=3600)
+    length: float = Field(0.0, ge=0, le=3600)
+
+
+class VocalCoverage(_Model):
+    """What the last lip-sync assignment did per shot, kept with the song so the coverage table survives a reload."""
+
+    source: Literal["stem", "song"] = "song"
+    at: float = 0.0
+    shots: list[CoverageShot] = Field(default_factory=list, max_length=MAX_SHOTS)
 
 
 class Song(_Model):
@@ -386,6 +410,7 @@ class Song(_Model):
     rough: bool = True
     note: Annotated[str, Field(max_length=600), AfterValidator(check_text)] = ""
     analysedAt: float = 0.0
+    coverage: VocalCoverage | None = None  # the last lip-sync assignment (``song_vocals``), None before one
 
     @model_validator(mode="after")
     def _ordered(self) -> "Song":

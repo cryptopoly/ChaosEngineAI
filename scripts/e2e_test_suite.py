@@ -4067,6 +4067,11 @@ from e2e_phases import lipsync as _lipsync  # noqa: E402
 
 PHASES[22] = lambda cap: _lipsync.run(cap, sys.modules[__name__])  # lip sync (D-103): skips without weights or a 24 GB card
 
+from e2e_phases import storyboard_guide as _storyboard_guide  # noqa: E402
+
+# Storyboard guided-flow contracts (UX audit stream A) and the character lock (B1315); no model runs.
+PHASES[_storyboard_guide.PHASE_KEY] = lambda cap: _storyboard_guide.run(cap, sys.modules[__name__])
+
 
 def _write_reports(report_dir: Path, started: datetime, ended: datetime,
                     phases: list[PhaseResult], cap: Capability) -> tuple[Path, Path]:

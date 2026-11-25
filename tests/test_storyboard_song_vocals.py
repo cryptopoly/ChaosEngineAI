@@ -200,8 +200,15 @@ class RouteTests(unittest.TestCase):
         out = self.post(f"/projects/{pid}/song/vocals", {"revision": data["project"]["revision"], "stemPath": str(stem)})
         self.assertEqual((out["vocals"]["source"], out["vocals"]["attached"]), ("stem", 1))
         self.assertEqual([s["number"] for s in out["vocals"]["skipped"]], [1, 3])
+        self.assertEqual({s["code"] for s in out["vocals"]["skipped"]}, {"no-singing"})
         self.assertIsNotNone(out["project"]["shots"][1]["vocalClip"])
         self.assertIsNone(out["project"]["shots"][0]["vocalClip"])
+        # Audit change 3: the coverage is stored with the song and comes back with the answer and every payload.
+        stored = out["project"]["song"]["coverage"]
+        self.assertEqual((stored["source"], [s["code"] for s in stored["shots"]]), ("stem", ["no-singing", None, "no-singing"]))
+        states = [r["state"] for r in out["vocals"]["coverage"]["shots"]]
+        self.assertEqual(states, ["skipped", "waiting", "skipped"])
+        self.assertEqual(out["guide"]["coverage"]["shots"][0]["code"], "no-singing")
 
     def test_a_stem_moves_cuts_to_phrases_and_pads_a_phrase_that_runs_on(self):
         pid, data = self.project_with_song()

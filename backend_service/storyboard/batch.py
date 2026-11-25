@@ -34,6 +34,7 @@ from typing import Any, Callable
 from backend_service.progress import GenerationCancelled
 from backend_service.storyboard import deps, media
 from backend_service.storyboard.deps import clip_outdated
+from backend_service.storyboard.failure import classify
 from backend_service.storyboard.models import BatchRecord, BatchResult, Project, Shot, Take, new_id
 from backend_service.storyboard.store import LIVE_BATCHES, ProjectStore, RevisionConflict, StoreError
 
@@ -41,8 +42,11 @@ GenResult = Any  # str | Path | tuple[str | Path, dict]
 MakeStill = Callable[[Shot, Project], GenResult]
 MakeClip = Callable[[Shot, Project, "Path | None"], GenResult]
 # ``stillSeconds`` / ``clipSeconds``: how long making that still or clip took here (the estimate reads them).
+# ``stillWidth`` ... ``clipFps``: the size each half was made at (``quality.py``; ``width`` / ``height`` are the last half's).
 _SETTING_KEYS = ("model", "seed", "steps", "width", "height", "frames", "fps", "guidance", "stillSeconds", "clipSeconds",
-                 "stillModel", "clipModel", "stillSeed", "clipSeed", "style", "cast", "castNote")
+                 "stillModel", "clipModel", "stillSeed", "clipSeed", "style", "cast", "castNote",
+                 "stillWidth", "stillHeight", "clipWidth", "clipHeight", "clipFps")
+_STILL_KEYS = ("stillModel", "stillSeed", "stillWidth", "stillHeight")  # what a clip-only take keeps of the still
 KEEP_BATCHES = 20
 BATCHES: dict[str, "Batch"] = {}
 _BATCHES_LOCK = threading.Lock()
@@ -502,6 +506,9 @@ class Batch:
                 made[f"{kind}Model"] = made["model"]
             if made.get("seed") is not None:
                 made[f"{kind}Seed"] = made["seed"]
+            for key in ("width", "height") + (("fps",) if kind == "clip" else ()):
+                if made.get(key) is not None:
+                    made[f"{kind}{key.capitalize()}"] = made[key]
             info = {**info, "settings": made}
             self._update(lambda p, folder: self._store_output(p, folder, shot_id, kind, path, info))
             self._current = None
@@ -520,7 +527,8 @@ class Batch:
             if isinstance(detail, dict):
                 detail = detail.get("message") or detail.get("localized")
             message = media.scrub(detail or str(exc) or type(exc).__name__)
-            self._update(lambda p, folder: self._mark(p, shot_id, kind, "failed", message))
+            code = classify(message, exc)  # audit change 5: a stable code beside the raw text
+            self._update(lambda p, folder: self._mark(p, shot_id, kind, "failed", message, code))
             return not self.cancel_event.is_set()
 
     def _start_image(self, project: Project, shot: Shot) -> Path | None:
@@ -559,7 +567,7 @@ class Batch:
                 take.renderPass = shot.active().renderPass  # type: ignore[union-attr]
                 old = shot.active()
                 take.still, take.hashes = old.still, {"still": old.hashes["still"]} if "still" in old.hashes else {}  # type: ignore[union-attr]
-                take.settings = {k: v for k, v in old.settings.items() if k in ("stillModel", "stillSeed")}  # type: ignore[union-attr]
+                take.settings = {k: v for k, v in old.settings.items() if k in _STILL_KEYS}  # type: ignore[union-attr]
             elif kind == "still" and self.what == "redo-still" and active is not None and active.clip:
                 # The old clip stays until it is remade; it records the still it came from, so the shot shows stale.
                 take.clip, take.measuredSeconds, take.settings = active.clip, active.measuredSeconds, dict(active.settings)
@@ -588,10 +596,10 @@ class Batch:
         else:
             shot.status = "queued"
 
-    def _mark(self, p: Project, shot_id: str, kind: str, state: str, error: str | None) -> None:
+    def _mark(self, p: Project, shot_id: str, kind: str, state: str, error: str | None, code: str | None = None) -> None:
         shot, result = p.shot(shot_id), self._result(p, shot_id, kind)
         if result is not None:
-            result.state, result.error = state, error  # type: ignore[assignment]
+            result.state, result.error, result.code = state, error, code  # type: ignore[assignment]
         if shot is not None:
             shot.status = "failed" if state == "failed" else ("done" if shot.active() else "idle")
 

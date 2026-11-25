@@ -13,7 +13,7 @@ import time
 from pathlib import Path
 from typing import Annotated
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from backend_service.storyboard.models import (
     SONG_SHOT_NATIVE_SOUND_DB,
@@ -28,6 +28,7 @@ from backend_service.storyboard.models import (
     Project,
     Song,
     SongSection,
+    VocalCoverage,
     new_id,
 )
 from backend_service.storyboard.ops import OpError, _Args, _import, _seconds, _shot
@@ -70,9 +71,17 @@ class ShotVocal(_Args):
 
 
 class SetShotVocals(_Args):
-    """Song to lip-sync shots (FU-371): each shot's slice of the vocal, in one op (one Undo)."""
+    """Song to lip-sync shots (FU-371): each shot's slice of the vocal, in one op (one Undo), with the run's coverage
+    record (audit change 3). A run that gave no shot a vocal still stores its coverage."""
 
-    items: list[ShotVocal] = Field(min_length=1, max_length=500)
+    items: list[ShotVocal] = Field(default_factory=list, max_length=500)
+    coverage: VocalCoverage | None = None
+
+    @model_validator(mode="after")
+    def _something(self) -> "SetShotVocals":
+        if not self.items and self.coverage is None:
+            raise ValueError("Give items, coverage or both.")
+        return self
 
 
 def _need_song(p: Project) -> Song:
@@ -138,6 +147,12 @@ def set_shot_vocals(p: Project, folder: Path, a: SetShotVocals) -> None:
     """Attach each slice as the shot's vocal; the shot grows by its lead-in and the room after its phrase, cut off
     again by ``trimIn`` and ``trimOut``, so the film keeps the shot's length."""
     stamp = int(time.time() * 1000)
+    if a.coverage is not None:
+        song = _need_song(p)
+        unknown = [c.shotId for c in a.coverage.shots if p.shot(c.shotId) is None]
+        if unknown:
+            raise OpError(f"coverage names unknown shots: {', '.join(unknown[:5])}.")
+        song.coverage = a.coverage
     for item in a.items:
         shot = _shot(p, item.shotId)
         rel, _digest, _src = _import(folder, item.audio, {"audio"}, f"media/{shot.id}/vocal-{stamp}")

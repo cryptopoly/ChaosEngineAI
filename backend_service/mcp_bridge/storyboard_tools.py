@@ -578,6 +578,16 @@ def storyboard_generate(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     return _batch_job(batch, pid)
 
 
+def _result_note(result: Any) -> str:
+    """One batch step for Chat; a failed one leads with the plain sentence and its code (audit change 5)."""
+    if result.state == "failed":
+        from backend_service.storyboard.failure import result_failure
+
+        failed = result_failure(result)
+        return f"{result.shotId} {result.kind}: failed ({failed['code']}) - {failed['message']} Raw: {result.error or ''}"
+    return f"{result.shotId} {result.kind}: {result.state}{' - ' + result.error if result.error else ''}"
+
+
 def _batch_job(batch: Any, pid: str) -> dict[str, Any]:
     """A job for ``wait_for_job`` that ends when the batch run ends (done, failed, cancelled or paused)."""
 
@@ -586,7 +596,7 @@ def _batch_job(batch: Any, pid: str) -> dict[str, Any]:
         record = batch.record()
         # Failed and skipped steps first: Chat shows only the first three notes of a job.
         results = sorted(record.results, key=lambda r: r.state == "done")
-        notes = [f"{r.shotId} {r.kind}: {r.state}{' - ' + r.error if r.error else ''}" for r in results]
+        notes = [_result_note(r) for r in results]
         return {"batchId": batch.id, "state": record.state, "projectId": pid}, notes
 
     return _submitted(STORE.submit("storyboard", f"storyboard {batch.id}", run, cancel=batch.cancel,

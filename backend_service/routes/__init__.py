@@ -73,3 +73,8 @@ def register_routes(app: FastAPI) -> None:
     app.include_router(licence_gate_router)
     app.include_router(cleanup_router)
     app.include_router(keep_going_router)
+
+    # Voice errors carry ``code``, ``message`` and ``action`` beside ``detail`` (voice studio UX audit, change 6).
+    from backend_service import voice_errors
+
+    voice_errors.install(app)

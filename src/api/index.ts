@@ -799,6 +799,9 @@ export {
   deleteSttModel,
   removeVoiceExtra,
   uninstallVoiceRuntime,
+  VoiceApiError,
+  readVoiceError,
+  parseVoiceErrorInfo,
 } from "./voice";
 export type { TranscribeOptions, TranscribeResult, SpokenSentence, SpeechUse } from "./voice";
 

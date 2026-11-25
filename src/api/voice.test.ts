@@ -16,6 +16,9 @@ import {
   saveVoiceSettings,
   synthesizeSpeech,
   transcribeAudio,
+  speakVoice,
+  VoiceApiError,
+  parseVoiceErrorInfo,
 } from "./voice";
 
 const API = "http://127.0.0.1:8876";
@@ -210,5 +213,81 @@ describe("voice api client", () => {
     await startVoiceInstall(["chinese"]);
     expect(JSON.parse(String(requestTo(fetchMock, "/api/voice/settings").body))).toEqual({ autoRead: true });
     expect(JSON.parse(String(requestTo(fetchMock, "/api/voice/install").body))).toEqual({ extras: ["chinese"] });
+  });
+});
+
+describe("voice errors carry a code, a plain sentence and an action", () => {
+  const failure = {
+    detail: "OutOfMemoryError: CUDA out of memory.",
+    code: "gpu_memory",
+    message: "This model needs more GPU memory than is free.",
+    action: "smaller-model",
+    extra: null,
+  };
+
+  /** A failed response whose body can be read twice, as a real one can through ``clone()``. */
+  const failedResponse = (status: number, body: unknown): Partial<Response> => {
+    const make = (): Partial<Response> => ({
+      ok: false,
+      status,
+      json: async () => body,
+      text: async () => JSON.stringify(body),
+      clone: () => make() as Response,
+    });
+    return make();
+  };
+
+  it("keeps the raw detail as the message and adds the info", async () => {
+    stubFetch(() => failedResponse(503, failure));
+    const error = await transcribeAudio(new FormData()).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(VoiceApiError);
+    const voiceError = error as VoiceApiError;
+    expect(voiceError.message).toBe("OutOfMemoryError: CUDA out of memory.");
+    expect(voiceError.status).toBe(503);
+    expect(voiceError.info).toEqual({
+      code: "gpu_memory",
+      message: "This model needs more GPU memory than is free.",
+      action: "smaller-model",
+      extra: null,
+    });
+  });
+
+  it("reads the same fields from a failed Speak request", async () => {
+    stubFetch(() => failedResponse(503, { ...failure, code: "addon_missing", action: "install-addon", extra: "speech-gpu" }));
+    const error = (await speakVoice({ text: "Hi", voice: "qwen3:Ryan" }).catch((e: unknown) => e)) as VoiceApiError;
+    expect(error).toBeInstanceOf(VoiceApiError);
+    expect([error.info?.code, error.info?.action, error.info?.extra]).toEqual(["addon_missing", "install-addon", "speech-gpu"]);
+  });
+
+  it("has no info when the response has no code", async () => {
+    stubFetch(() => failedResponse(422, { detail: "Invalid input" }));
+    const error = (await speakVoice({ text: "", voice: "x" }).catch((e: unknown) => e)) as VoiceApiError;
+    expect(error.info).toBeNull();
+    expect(error.message).toBe("Invalid input");
+  });
+
+  it("carries the fields of an error line inside the read-aloud stream", async () => {
+    const line = JSON.stringify({ error: "no voice", code: "model_missing", message: "m", action: "download-model", extra: null, index: 0 });
+    const body = new ReadableStream<Uint8Array<ArrayBuffer>>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(`${line}\n`));
+        controller.close();
+      },
+    });
+    stubFetch(() => ({ ok: true, body }));
+    const error = (await speakStream("Hi.", "af_heart", 1, () => {}).catch((e: unknown) => e)) as VoiceApiError;
+    expect(error.message).toBe("no voice");
+    expect(error.info?.code).toBe("model_missing");
+  });
+
+  it("shows a code it does not know as the generic one and an unknown action as none", () => {
+    expect(parseVoiceErrorInfo({ code: "from_the_future", message: "x", action: "dance" })).toEqual({
+      code: "unknown",
+      message: "x",
+      action: "none",
+      extra: null,
+    });
+    expect(parseVoiceErrorInfo({ detail: "x" })).toBeNull();
+    expect(parseVoiceErrorInfo(null)).toBeNull();
   });
 });

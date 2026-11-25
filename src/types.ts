@@ -288,6 +288,11 @@ export type {
   VoiceFamily,
   SpeakBody,
   SpeakResult,
+  VoiceErrorAction,
+  VoiceErrorBody,
+  VoiceErrorCode,
+  VoiceErrorExtra,
+  VoiceErrorInfo,
 } from "./types/voice";
 
 export type * from "./types/storyboard";

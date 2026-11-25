@@ -4072,6 +4072,11 @@ from e2e_phases import storyboard_guide as _storyboard_guide  # noqa: E402
 # Storyboard guided-flow contracts (UX audit stream A) and the character lock (B1315); no model runs.
 PHASES[_storyboard_guide.PHASE_KEY] = lambda cap: _storyboard_guide.run(cap, sys.modules[__name__])
 
+from e2e_phases import voice_errors as _voice_errors  # noqa: E402
+
+# Voice error codes (UX audit change 6): code, plain message and action beside the raw detail; no model runs.
+PHASES[_voice_errors.PHASE_KEY] = lambda cap: _voice_errors.run(cap, sys.modules[__name__])
+
 
 def _write_reports(report_dir: Path, started: datetime, ended: datetime,
                     phases: list[PhaseResult], cap: Capability) -> tuple[Path, Path]:

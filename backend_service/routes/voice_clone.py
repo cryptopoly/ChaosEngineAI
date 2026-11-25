@@ -13,6 +13,8 @@ from typing import Any
 from fastapi import APIRouter, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field
 
+from backend_service.voice_errors import http_error
+
 router = APIRouter()
 
 
@@ -34,7 +36,7 @@ def _guard(request: Request) -> str:
     origin = safety.request_origin(request)
     if not safety.clone_allowed(request):
         safety.audit("refused", origin=origin, path=str(request.url.path))
-        raise HTTPException(status_code=403, detail=safety.REFUSED_MESSAGE)
+        raise http_error(403, safety.REFUSED_MESSAGE)
     return origin
 
 
@@ -58,7 +60,7 @@ def download_clone_model(request: Request, body: ModelDownloadRequest) -> dict[s
     try:
         return voice_clone.start_download(body.key)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise http_error(400, exc) from exc
 
 
 @router.get("/api/voice/clone/voices")
@@ -90,9 +92,9 @@ def create_cloned_voice(
 
     origin = _guard(request)
     if not permissionConfirmed:
-        raise HTTPException(status_code=400, detail="Confirm that this is your own voice or that the speaker gave permission.")
+        raise http_error(400, "Confirm that this is your own voice or that the speaker gave permission.")
     if Path(sample.filename or "").suffix.lower() not in voice_clone.SAMPLE_EXTENSIONS:
-        raise HTTPException(status_code=400, detail="The voice sample must be a WAV, MP3, M4A, FLAC or OGG file.")
+        raise http_error(400, "The voice sample must be a WAV, MP3, M4A, FLAC or OGG file.")
     sample_path, sample_ext = _receive_upload(sample)
     try:
         def transcribe(path):
@@ -113,7 +115,7 @@ def create_cloned_voice(
                     model_key=model,
                 )
         except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+            raise http_error(400, exc) from exc
         except HTTPException:
             raise
         except Exception as exc:  # noqa: BLE001
@@ -163,8 +165,8 @@ def speak_cloned(request: Request, body: CloneSpeakRequest) -> dict[str, Any]:
             return voice_clone.speak(body.voiceId, body.text, body.model, origin=origin,
                                      permission_confirmed=body.permissionConfirmed)
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise http_error(404, exc) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise http_error(400, exc) from exc
     except Exception as exc:  # noqa: BLE001
         raise _worker_error(exc) from exc

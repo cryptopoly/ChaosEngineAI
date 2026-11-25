@@ -19,7 +19,65 @@ import type {
   VoiceModelRow,
   SpeakBody,
   SpeakResult,
+  VoiceErrorAction,
+  VoiceErrorCode,
+  VoiceErrorExtra,
+  VoiceErrorInfo,
 } from "../types";
+import { VOICE_ERROR_ACTIONS, VOICE_ERROR_CODES } from "../types/voice";
+
+/**
+ * A failed voice request. ``message`` is the raw ``detail`` text, as before (callers that show it keep working, and
+ * the screen shows it under "Details"); ``info`` is the stable code, plain sentence and action the backend adds
+ * (null when the response had none, e.g. a validation error). Turn it into screen text with
+ * ``features/voice/voiceErrorText.ts``.
+ */
+export class VoiceApiError extends Error {
+  readonly status: number;
+  readonly info: VoiceErrorInfo | null;
+  constructor(message: string, status: number, info: VoiceErrorInfo | null = null) {
+    super(message);
+    this.name = "VoiceApiError";
+    this.status = status;
+    this.info = info;
+  }
+}
+
+/** ``code``, ``message``, ``action`` and ``extra`` from an error body or a stream line; null when ``code`` is missing. */
+export function parseVoiceErrorInfo(body: unknown): VoiceErrorInfo | null {
+  if (!body || typeof body !== "object") return null;
+  const fields = body as Record<string, unknown>;
+  if (typeof fields.code !== "string") return null;
+  // A code a newer backend adds is shown as the generic one, with the backend's own sentence.
+  const code: VoiceErrorCode = (VOICE_ERROR_CODES as readonly string[]).includes(fields.code)
+    ? (fields.code as VoiceErrorCode)
+    : "unknown";
+  const action: VoiceErrorAction = (VOICE_ERROR_ACTIONS as readonly string[]).includes(fields.action as string)
+    ? (fields.action as VoiceErrorAction)
+    : "none";
+  return {
+    code,
+    message: typeof fields.message === "string" ? fields.message : "",
+    action,
+    extra: typeof fields.extra === "string" ? (fields.extra as VoiceErrorExtra) : null,
+  };
+}
+
+/** The error for a failed response: the raw ``detail`` as the message and the voice error fields as ``info``. */
+export async function readVoiceError(response: Response, fallback: string): Promise<VoiceApiError> {
+  // The body is read twice (the detail reader, then the fields), so the second read needs its own copy.
+  const copy = typeof response.clone === "function" ? response.clone() : null;
+  const detail = await readErrorDetail(response, fallback);
+  let info: VoiceErrorInfo | null = null;
+  if (copy) {
+    try {
+      info = parseVoiceErrorInfo(await copy.json());
+    } catch {
+      // not JSON: no code
+    }
+  }
+  return new VoiceApiError(detail, response.status, info);
+}
 
 export async function getVoiceRuntime(): Promise<VoiceRuntime> {
   return await fetchJson<VoiceRuntime>("/api/voice/runtime", 20000);
@@ -60,7 +118,7 @@ export async function transcribeAudio(formData: FormData, signal?: AbortSignal):
     signal,
   });
   if (!response.ok) {
-    throw new Error(await readErrorDetail(response, `Transcription failed with status ${response.status}`));
+    throw await readVoiceError(response, `Transcription failed with status ${response.status}`);
   }
   return (await response.json()) as TranscribeResult;
 }
@@ -90,8 +148,7 @@ export async function synthesizeSpeech(text: string, voice: string, speed: numbe
     body: JSON.stringify({ text, voice, speed }),
   });
   if (!response.ok) {
-    const errText = await response.text().catch(() => `Status ${response.status}`);
-    throw new Error(errText || `Synthesis failed with status ${response.status}`);
+    throw await readVoiceError(response, `Synthesis failed with status ${response.status}`);
   }
   return await response.blob();
 }
@@ -136,7 +193,7 @@ export async function speakStream(
     signal,
   });
   if (!response.ok || !response.body) {
-    throw new Error(await readErrorDetail(response, `Read aloud failed with status ${response.status}`));
+    throw await readVoiceError(response, `Read aloud failed with status ${response.status}`);
   }
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -152,7 +209,7 @@ export async function speakStream(
       newline = buffer.indexOf("\n");
       if (!line) continue;
       const event = JSON.parse(line) as Partial<SpokenSentence> & { error?: string; done?: boolean; note?: string };
-      if (event.error) throw new Error(event.error);
+      if (event.error) throw new VoiceApiError(event.error, 200, parseVoiceErrorInfo(event));
       if (event.done) return;
       if (event.note) {
         options.onNote?.(event.note);
@@ -250,7 +307,7 @@ export async function saveSpeech(
   if (fields.voiceKind) form.append("voiceKind", fields.voiceKind);
   const response = await apiFetch("/api/voice/library/speech", { method: "POST", body: form });
   if (!response.ok) {
-    throw new Error(await readErrorDetail(response, `Saving failed with status ${response.status}`));
+    throw await readVoiceError(response, `Saving failed with status ${response.status}`);
   }
   return (await response.json()) as VoiceLibraryItem;
 }
@@ -259,7 +316,7 @@ export async function saveSpeech(
 export async function getLibraryAudio(id: string, format: "" | "mp3" = ""): Promise<Blob> {
   const response = await apiFetch(`/api/voice/library/${id}/audio${format ? `?format=${format}` : ""}`);
   if (!response.ok) {
-    throw new Error(await readErrorDetail(response, `Loading audio failed with status ${response.status}`));
+    throw await readVoiceError(response, `Loading audio failed with status ${response.status}`);
   }
   return await response.blob();
 }
@@ -271,7 +328,7 @@ export async function encodeMp3(audio: Blob): Promise<Blob> {
   form.append("format", "mp3");
   const response = await apiFetch("/api/voice/encode", { method: "POST", body: form });
   if (!response.ok) {
-    throw new Error(await readErrorDetail(response, `MP3 export failed with status ${response.status}`));
+    throw await readVoiceError(response, `MP3 export failed with status ${response.status}`);
   }
   return await response.blob();
 }
@@ -279,7 +336,32 @@ export async function encodeMp3(audio: Blob): Promise<Blob> {
 /** Speak with any voice (built-in, preset, designed or cloned); the backend picks the model from the voice. */
 export async function speakVoice(body: SpeakBody, signal?: AbortSignal): Promise<SpeakResult> {
   // Loading a model and speaking can take a few minutes the first time.
-  return await postJson<SpeakResult>("/api/voice/speak", body, 900000, signal);
+  const path = "/api/voice/speak";
+  const timeoutMs = 900000;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  if (signal) {
+    if (signal.aborted) controller.abort();
+    else signal.addEventListener("abort", () => controller.abort(), { once: true });
+  }
+  try {
+    const response = await apiFetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    if (!response.ok) throw await readVoiceError(response, `Request failed with status ${response.status}`);
+    return (await response.json()) as SpeakResult;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      if (signal?.aborted) throw new Error("Request cancelled");
+      throw new Error(`Request to ${path} timed out after ${Math.round(timeoutMs / 1000)}s`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** Stop the Speak screen's running speech job on the backend (the fetch abort alone leaves it running). */

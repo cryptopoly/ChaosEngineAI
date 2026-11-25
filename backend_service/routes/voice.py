@@ -123,18 +123,18 @@ class LibraryDeleteRequest(BaseModel):
 
 
 def _worker_error(exc: Exception) -> HTTPException:
+    """The route error for a failed voice request. ``detail`` is the raw text as ever; the response also carries
+    ``code``, ``message`` (one plain sentence) and ``action`` (``backend_service.voice_errors``)."""
     from backend_service.voice_client import VoiceWorkerError  # noqa: PLC0415
+    from backend_service.voice_errors import http_error  # noqa: PLC0415
     from backend_service.voice_runtime import UnknownSttModelError  # noqa: PLC0415
 
     if isinstance(exc, (UnknownSttModelError, ValueError)) and not isinstance(exc, VoiceWorkerError):
-        return HTTPException(status_code=400, detail=str(exc))
+        return http_error(400, exc)
     if "invalid data found" in str(exc).lower() or "invaliddataerror" in str(exc).lower():
-        return HTTPException(
-            status_code=400,
-            detail="This file could not be read as audio. Use WAV, MP3, M4A, FLAC, OGG or a video file.",
-        )
+        return http_error(400, "This file could not be read as audio. Use WAV, MP3, M4A, FLAC, OGG or a video file.")
     # RuntimeError / VoiceWorkerError: not installed, model missing, worker died.
-    return HTTPException(status_code=503, detail=str(exc))
+    return http_error(503, exc)
 
 
 # ---------------------------------------------------------------------------
@@ -388,13 +388,14 @@ def speak(request: Request, body: SpeakRequest) -> dict[str, Any]:
     from backend_service import voice_speak  # noqa: PLC0415
     from backend_service import voice_clone_safety as safety  # noqa: PLC0415
     from backend_service.helpers.job_queue import HEAVY_JOBS  # noqa: PLC0415
+    from backend_service.voice_errors import http_error  # noqa: PLC0415
 
     origin = "ui"
     if body.voice.strip().startswith(voice_speak.CLONE_PREFIX):
         origin = safety.request_origin(request)
         if not safety.clone_allowed(request):
             safety.audit("refused", origin=origin, path=str(request.url.path))
-            raise HTTPException(status_code=403, detail=safety.REFUSED_MESSAGE)
+            raise http_error(403, safety.REFUSED_MESSAGE)
     try:
         with HEAVY_JOBS.slot("voice", "ui" if origin == "ui" else "agent", "speech"):
             result = voice_speak.speak(
@@ -405,7 +406,7 @@ def speak(request: Request, body: SpeakRequest) -> dict[str, Any]:
     except GenerationCancelled as exc:
         raise HTTPException(status_code=499, detail="Speech was cancelled.") from exc
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise http_error(404, exc) from exc
     except Exception as exc:  # noqa: BLE001
         raise _worker_error(exc) from exc
     return {"audio": base64.b64encode(result["wav"]).decode("ascii"), **{k: v for k, v in result.items() if k != "wav"}}
@@ -447,17 +448,19 @@ def speak_stream(request: Request, body: StreamRequest) -> StreamingResponse:
     comes first (``voice_chat``); with no usable fallback the answer is 409 with ``voice_chat.NO_FALLBACK``.
 
     Lines: ``{"index", "total", "text", "audio" (base64 WAV), "durationS", "voice"}``, then ``{"done": true}``;
-    a failure ends the stream with ``{"error"}``.
+    a failure ends the stream with ``{"error", "code", "message", "action", "extra", "index"}``
+    (``backend_service.voice_errors``).
     """
     from backend_service import voice_chat  # noqa: PLC0415
     from backend_service import voice_clone_safety as safety  # noqa: PLC0415
+    from backend_service.voice_errors import error_fields, http_error  # noqa: PLC0415
 
     try:
         chat = voice_chat.plan_stream(body.text, body.voice, use=body.use, origin=safety.request_origin(request))
     except voice_chat.ChatVoiceRefused as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
+        raise http_error(403, exc) from exc
     except (voice_chat.NoFallbackVoice, RuntimeError) as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+        raise http_error(409, exc) from exc
     if not chat.sentences:
         raise HTTPException(status_code=400, detail="Nothing to read aloud.")
 
@@ -476,7 +479,7 @@ def speak_stream(request: Request, body: StreamRequest) -> StreamingResponse:
                 try:
                     current = voice_chat.switch_to_fallback(current, current.sentences[index:], str(exc))
                 except Exception as final:  # noqa: BLE001 - no fallback, or the fallback failed as well
-                    yield json.dumps({"error": str(final), "index": index}) + "\n"
+                    yield json.dumps({"error": str(final), **error_fields(final), "index": index}) + "\n"
                     return
                 index, sent_notes = 0, 0
                 continue

@@ -38,6 +38,7 @@ class AddReference(_Args):
     description: Prompt = ""
     image: str | None = Field(None, max_length=4096)
     images: list[_Source] | None = Field(None, max_length=MAX_REF_IMAGES)
+    inEveryShot: bool = False  # a character in every shot unless a shot leaves it out (B1309)
 
     @model_validator(mode="after")
     def _distinct_and_few(self) -> "AddReference":
@@ -49,6 +50,8 @@ class AddReference(_Args):
         if len(seen) > MAX_REF_IMAGES:
             raise ValueError(f"A character, place or style holds up to {MAX_REF_IMAGES} pictures.")
         self.image, self.images = None, seen
+        if self.inEveryShot and self.kind != "character":
+            raise ValueError("Only a character can be in every shot.")
         return self
 
 
@@ -63,6 +66,7 @@ class EditReference(_Args):
     addImage: str | None = Field(None, max_length=4096)
     removeImage: int | None = Field(None, ge=0, lt=MAX_REF_IMAGES)
     palette: list[HexColour] | None = Field(None, max_length=MAX_PALETTE)  # a style's colours, trimmed by hand
+    inEveryShot: bool | None = None  # characters only (B1309)
 
 
 class RemoveReference(_Args):
@@ -98,7 +102,7 @@ def _is_style(p: Project, ref: Reference) -> bool:
 
 
 def add_reference(p: Project, folder: Path, a: AddReference) -> None:
-    ref = Reference(id=new_id("r"), name=a.name, description=a.description)
+    ref = Reference(id=new_id("r"), name=a.name, description=a.description, inEveryShot=a.inEveryShot)
     for raw in ([a.image] if a.image else []) + list(a.images or []):
         _add_ref_image(folder, ref, raw)
     if a.kind == "style":
@@ -112,6 +116,8 @@ def edit_reference(p: Project, folder: Path, a: EditReference) -> None:
         raise OpError(f"Unknown reference '{a.refId}'.")
     if a.palette is not None and not _is_style(p, ref):
         raise OpError("Only a style keeps a palette.")
+    if a.inEveryShot and not any(r.id == ref.id for r in p.references.characters):
+        raise OpError("Only a character can be in every shot.")
     _set_fields(ref, a, {"refId", "image", "addImage", "removeImage"})
     pictures = [img.path for img in ref.images]
     if a.removeImage is not None:
@@ -135,3 +141,5 @@ def remove_reference(p: Project, folder: Path, a: RemoveReference) -> None:
     for shot in p.shots:
         if a.refId in shot.referenceImages:
             shot.referenceImages = [r for r in shot.referenceImages if r != a.refId]
+        if a.refId in shot.castOut:
+            shot.castOut = [r for r in shot.castOut if r != a.refId]

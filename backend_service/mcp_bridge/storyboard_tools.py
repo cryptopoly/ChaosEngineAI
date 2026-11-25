@@ -37,6 +37,8 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
                        "hero picture first with generate_image and pass its output path. Shots then list the ref id in "
                        "fields.referenceImages and leave seed unset."},
             "add_image": {"type": "string", "maxLength": 4096, "description": "edit_ref: one more picture (4 at most)."},
+            "in_every_shot": {"type": "boolean", "description": "add_ref, edit_ref (character): in every shot, no need to list it "
+                              "in referenceImages; a shot leaves it out with fields.castOut."},
             "remove_image": {"type": "integer", "minimum": 0, "maximum": 3, "description": "edit_ref: position of a picture to drop."},
             "palette": {"type": "array", "maxItems": 8, "items": {"type": "string", "maxLength": 7},
                         "description": "edit_ref on a style: its colours, trimmed."},
@@ -81,7 +83,8 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
             "project_id": _PID, "revision": _REV,
             "shot_id": {"type": "string"}, "take_id": {"type": "string"},
             "fields": {**_FIELDS, "description": "title, stillPrompt, motionPrompt, startFrom (generate|upload|previous-shot|text), "
-                       "seconds, seed (leave unset on shots with referenceImages: the reference's seed returns a copy of it), trimIn, trimOut, "
+                       "seconds, referenceImages (cast ids), castOut (in-every-shot characters left out), "
+                       "seed (leave unset on shots with referenceImages: the reference's seed returns a copy of it), trimIn, trimOut, "
                        "speed, transition{type,seconds}, nativeSoundDb, index, vocalStart, vocalSinging, vocalTakes."},
             "order": {"type": "array", "items": {"type": "string"}, "maxItems": 500},
             "path": {"type": "string", "description": "upload: handle, or a file in the app's output folders (import, end_image, vocal)."},
@@ -212,7 +215,7 @@ def _summary(project: Any, extra: dict[str, Any] | None = None) -> dict[str, Any
                    "takes": len(s.takes), "seconds": round(spans[s.id].duration, 3) if s.id in spans else None}
                   for s in project.shots],
         "audio": [{"id": a.id, "kind": a.kind, "status": a.status, "start": starts.get(a.id)} for a in project.audio],
-        "cast": [{"id": r.id, "kind": kind, "name": r.name, "pictures": len(r.images)}
+        "cast": [{"id": r.id, "kind": kind, "name": r.name, "pictures": len(r.images), **({"inEveryShot": True} if r.inEveryShot else {})}
                  for kind, refs in (("character", project.references.characters), ("place", project.references.places),
                                     ("style", project.references.styles))
                  for r in refs],
@@ -430,11 +433,14 @@ def storyboard_project(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
             raise ToolError("add_ref needs a name (the character, place or style as shots refer to it).")
         op_args = {"kind": args["kind"], "name": name, "description": str(args.get("description") or ""),
                    "images": [_cast_source(x) for x in args.get("images") or []]}
+        if args.get("in_every_shot"):
+            op_args["inEveryShot"] = True
         before = _run(lambda: store.load(pid))
         after = _op(args, "add_reference", op_args)
         added = next((r.id for r in after.references.all() if before.reference(r.id) is None), None)
-        extra: dict[str, Any] = {"refId": added, "next": f"Shots keep it when fields.referenceImages lists '{added}'; "
-                                 "leave seed unset on them."}
+        extra: dict[str, Any] = {"refId": added, "next": (f"Every shot has '{added}' unless its fields.castOut lists it; "
+                                 if op_args.get("inEveryShot") else f"Shots keep it when fields.referenceImages lists '{added}'; ")
+                                 + "leave seed unset on them."}
         if not op_args["images"] and args["kind"] != "style":
             extra["warning"] = (f"This {args['kind']} has no picture, so shots cannot keep the likeness. Make one with "
                                 f"generate_image, then edit_ref add_image with its output path.")
@@ -450,6 +456,8 @@ def storyboard_project(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
             changes["removeImage"] = args["remove_image"]
         if "palette" in args:
             changes["palette"] = list(args["palette"] or [])
+        if "in_every_shot" in args:
+            changes["inEveryShot"] = bool(args["in_every_shot"])
         return _summary(_op(args, "edit_reference", {"refId": args["ref_id"], **changes}))
     if action == "plan":
         return _summary(_op(args, "set_plan", _plan_args(args)))

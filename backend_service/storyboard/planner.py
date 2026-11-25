@@ -5,7 +5,8 @@ second client), with a JSON schema where the engine takes one. Nothing here writ
 return proposals, and the user applies them as ordinary ops (``apply_plan``, ``edit_shot``,
 ``plan_changes``), so Undo, Redo and the revision check hold. The model sees the brief, the format, the cast
 and the style (words and palette; the pictures themselves only when the loaded model reads images) and the
-shots so far, by number. Its reply is cleaned before anyone sees it: lengths cut to the project limits, one
+shots so far, by number, with each shot's characters. Each shot's ``characters`` names become ``referenceImages`` and
+``castOut`` ids (``cast_fields``, B1309; unknown names are dropped and named in the note). Its reply is cleaned before anyone sees it: lengths cut to the project limits, one
 line titles, seconds in range, shot numbers that do not exist dropped.
 """
 
@@ -49,7 +50,10 @@ SYSTEM = (
     "colours, in 1 to 3 concrete sentences. No camera moves, no on-screen text, no logos.\n"
     "- motionPrompt: one sentence: what moves in the shot and how the camera moves.\n"
     "- seconds: between 2 and 10 (a clip is at most about 10 seconds; a longer film needs more shots).\n"
-    "- Describe a character or place the same way in every shot it appears in, so it keeps its look.\n"
+    "- characters: the names of the characters seen in the shot, exactly as the cast lists them; [] when none. A "
+    "character marked (in every shot) belongs in every shot's list unless that shot is meant to be without them.\n"
+    "- Describe each character in the same words in every stillPrompt they appear in, so their face, hair and clothes "
+    "look identical from shot to shot; describe a place the same way in every shot it appears in.\n"
     "- Follow the visual style and palette when one is given.\n"
     "Answer with JSON only, no other text."
 )
@@ -59,13 +63,15 @@ _SHOT_FIELDS = {
     "stillPrompt": {"type": "string"},
     "motionPrompt": {"type": "string"},
     "seconds": {"type": "number"},
+    "characters": {"type": "array", "items": {"type": "string"}},  # cast names (B1309), mapped to ids by cast_fields
 }
+_REQUIRED = ["title", "stillPrompt", "motionPrompt", "seconds"]
 
 PROPOSE_SCHEMA = {
     "type": "object",
     "properties": {
         "shots": {"type": "array", "minItems": MIN_SHOTS, "maxItems": MAX_SHOTS,
-                  "items": {"type": "object", "properties": _SHOT_FIELDS, "required": list(_SHOT_FIELDS)}},
+                  "items": {"type": "object", "properties": _SHOT_FIELDS, "required": _REQUIRED}},
         "note": {"type": "string"},
     },
     "required": ["shots"],
@@ -126,6 +132,39 @@ def clean_shot(raw: Any) -> dict[str, Any] | None:
     return shot if shot["stillPrompt"] or shot["title"] else None
 
 
+def cast_fields(project: Project, raw: Any, keep: list[str] | None = None) -> tuple[dict[str, Any], list[str]]:
+    """The shot's cast from the model's ``characters`` names (B1309): ``referenceImages`` (the shot's places and styles
+    in ``keep``, then the named characters) and ``castOut`` (every-shot characters it left out), plus the names that
+    match no character, which are dropped. No ``characters`` list, or no cast: no change ({})."""
+    names = raw.get("characters") if isinstance(raw, dict) else None
+    if not isinstance(names, list) or not project.references.characters:
+        return {}, []
+    by_key: dict[str, str] = {}
+    for ref in project.references.characters:
+        by_key[ref.id.lower()] = ref.id
+        if ref.name.strip():
+            by_key.setdefault(" ".join(ref.name.split()).lower(), ref.id)
+    named: list[str] = []
+    unknown: list[str] = []
+    for value in names[:50]:
+        text = _text(value, 200, one_line=True)
+        ref_id = by_key.get(" ".join(text.split()).lower())
+        if ref_id is None:
+            if text and text not in unknown:
+                unknown.append(text)
+        elif ref_id not in named:
+            named.append(ref_id)
+    characters = {r.id for r in project.references.characters}
+    others = [i for i in keep or [] if i not in characters and project.reference(i) is not None]
+    refs = (others + named)[:8]
+    out = [r.id for r in project.references.characters if r.inEveryShot and r.id not in refs]
+    return {"referenceImages": refs, "castOut": out}, unknown
+
+
+def _unknown_note(unknown: list[str]) -> str:
+    return f" Left out names that are not in the cast: {', '.join(unknown[:8])}." if unknown else ""
+
+
 def parse_reply(text: str) -> dict[str, Any]:
     """The JSON object in a model reply (thinking, a code fence or a sentence around it are ignored)."""
     from backend_service.helpers.request_guards import strip_json_fence
@@ -157,8 +196,9 @@ def _refs_lines(project: Project) -> list[str]:
     lines: list[str] = []
     for label, refs in (("Character", project.references.characters), ("Place", project.references.places)):
         for ref in refs:
-            if ref.name or ref.description:
-                lines.append(f"{label}: {ref.name or 'unnamed'}{': ' + ref.description if ref.description else ''}")
+            every = " (in every shot)" if label == "Character" and ref.inEveryShot else ""
+            if ref.name or ref.description or every:
+                lines.append(f"{label}: {ref.name or 'unnamed'}{every}{': ' + ref.description if ref.description else ''}")
     from backend_service.storyboard.style import styles_in_use
 
     for ref in styles_in_use(project):
@@ -184,10 +224,14 @@ def context(project: Project, brief: str | None = None, film_seconds: float | No
 def shots_text(project: Project) -> str:
     if not project.shots:
         return "There are no shots yet."
+    from backend_service.storyboard.cast import shot_cast
+
     rows = []
     for number, shot in enumerate(project.shots, 1):
+        cast = ", ".join(r.name or "unnamed" for r in shot_cast(project, shot))
         rows.append(f"Shot {number}: {shot.title or 'untitled'} ({shot.seconds:g} s){' [locked]' if shot.locked else ''}\n"
-                    f"  still: {shot.stillPrompt or '-'}\n  motion: {shot.motionPrompt or '-'}")
+                    f"  still: {shot.stillPrompt or '-'}\n  motion: {shot.motionPrompt or '-'}"
+                    + (f"\n  characters: {cast or '-'}" if project.references.characters else ""))
     total = sum(shot.seconds for shot in project.shots)
     return f"Current shots ({len(project.shots)}, {total:g} s in all):\n" + "\n".join(rows)
 
@@ -253,13 +297,21 @@ def propose(state: Any, project: Project, folder: Path, brief: str, film_seconds
     want = f"exactly {count}" if count else f"{MIN_SHOTS} to {MAX_SHOTS}"
     length = f" whose seconds add up to about {round(film_seconds)}" if film_seconds else ""
     prompt = (f"{context(project, brief, film_seconds)}\n\nWrite {want} shots{length} that tell this film from start to "
-              'finish. Answer as {"shots": [{"title": ..., "stillPrompt": ..., "motionPrompt": ..., "seconds": ...}], '
-              '"note": "one sentence on the idea"}.')
+              'finish. Answer as {"shots": [{"title": ..., "stillPrompt": ..., "motionPrompt": ..., "seconds": ..., '
+              '"characters": [names]}], "note": "one sentence on the idea"}.')
     reply, facts = ask(state, project, folder, prompt, PROPOSE_SCHEMA)
-    shots = [s for s in (clean_shot(raw) for raw in _items(reply.get("shots"))) if s][:MAX_SHOTS + 4]
+    shots: list[dict[str, Any]] = []
+    unknown: list[str] = []
+    for raw in _items(reply.get("shots")):
+        shot = clean_shot(raw)
+        if shot is None or len(shots) >= MAX_SHOTS + 4:
+            continue
+        cast, missing = cast_fields(project, raw)
+        unknown.extend(n for n in missing if n not in unknown)
+        shots.append({**shot, **cast})
     if not shots:
         raise PlanError("The model answered without any shots. Try again, or say more in the brief.", "bad-reply")
-    return {"shots": shots, "note": _text(reply.get("note"), 400), **facts}
+    return {"shots": shots, "note": (_text(reply.get("note"), 400) + _unknown_note(unknown)).strip(), **facts}
 
 
 def _history(raw: list[dict[str, str]], limit: int = 12) -> list[dict[str, str]]:
@@ -272,13 +324,15 @@ def rework(state: Any, project: Project, folder: Path, shot: Shot, message: str,
     number = next(i for i, s in enumerate(project.shots, 1) if s.id == shot.id)
     prompt = (f"{context(project)}\n\n{shots_text(project)}\n\nRework shot {number} only. The person asks: "
               f"{message.strip() or 'make it better'}\n"
-              'Answer as {"title": ..., "stillPrompt": ..., "motionPrompt": ..., "seconds": ..., '
+              'Answer as {"title": ..., "stillPrompt": ..., "motionPrompt": ..., "seconds": ..., "characters": [names], '
               '"why": "one or two sentences on what you changed and why"}.')
     reply, facts = ask(state, project, folder, prompt, REWORK_SCHEMA, _history(history), max_tokens=4000)
     cleaned = clean_shot({"title": shot.title, "motionPrompt": shot.motionPrompt, "seconds": shot.seconds, **reply})
     if cleaned is None or not cleaned["stillPrompt"]:
         raise PlanError("The model did not write a new prompt. Try again with a clearer ask.", "bad-reply")
-    return {"shot": cleaned, "why": _text(reply.get("why"), 600) or "No reason given.", **facts}
+    cast, unknown = cast_fields(project, reply, shot.referenceImages)
+    why = (_text(reply.get("why"), 600) or "No reason given.") + _unknown_note(unknown)
+    return {"shot": {**cleaned, **cast}, "why": why, **facts}
 
 
 def _number_to_id(project: Project, value: Any) -> str | None:
@@ -307,11 +361,13 @@ def direct(state: Any, project: Project, folder: Path, message: str) -> dict[str
               "Change only what they ask for. You may edit, add or remove shots, or re-plan the whole film. "
               "Never change a locked shot. "
               'Answer as {"reply": "a short answer to the person", '
-              '"edits": [{"shot": number, "title"?, "stillPrompt"?, "motionPrompt"?, "seconds"?}], '
-              '"add": [{"after": number of the shot it follows, 0 for the start, "title", "stillPrompt", "motionPrompt", "seconds"}], '
+              '"edits": [{"shot": number, "title"?, "stillPrompt"?, "motionPrompt"?, "seconds"?, "characters"?: [names]}], '
+              '"add": [{"after": number of the shot it follows, 0 for the start, "title", "stillPrompt", "motionPrompt", "seconds", '
+              '"characters": [names]}], '
               '"remove": [shot numbers]}. Leave a list empty when nothing changes there.')
     reply, facts = ask(state, project, folder, prompt, DIRECT_SCHEMA, _history(chat))
     locked = {s.id for s in project.shots if s.locked}
+    unknown: list[str] = []
     edits = []
     for raw in _items(reply.get("edits")):
         shot_id = _number_to_id(project, raw.get("shot")) if isinstance(raw, dict) else None
@@ -323,6 +379,10 @@ def direct(state: Any, project: Project, folder: Path, message: str) -> dict[str
                 change[key] = _text(raw[key], limit, one_line=key == "title")
         if raw.get("seconds") is not None:
             change["seconds"] = _seconds(raw["seconds"])
+        target = project.shot(shot_id)
+        cast, missing = cast_fields(project, raw, target.referenceImages if target else None)
+        unknown.extend(n for n in missing if n not in unknown)
+        change.update(cast)
         if len(change) > 1:
             edits.append(change)
     remove = [sid for sid in dict.fromkeys(_number_to_id(project, n) for n in _items(reply.get("remove")))
@@ -336,6 +396,9 @@ def direct(state: Any, project: Project, folder: Path, message: str) -> dict[str
         after_id = None if after in (0, "0", None) else _number_to_id(project, after)
         if after not in (0, "0", None) and after_id is None:
             after_id = project.shots[-1].id if project.shots else None  # a number past the end: at the end
-        add.append({**shot, "after": _kept_before(project, after_id, remove)})
-    return {"reply": _text(reply.get("reply"), 2000) or "Done.", "changes": {"edits": edits, "add": add, "remove": remove},
+        cast, missing = cast_fields(project, raw)
+        unknown.extend(n for n in missing if n not in unknown)
+        add.append({**shot, **cast, "after": _kept_before(project, after_id, remove)})
+    text = (_text(reply.get("reply"), 2000) or "Done.") + _unknown_note(unknown)
+    return {"reply": text, "changes": {"edits": edits, "add": add, "remove": remove},
             **facts}

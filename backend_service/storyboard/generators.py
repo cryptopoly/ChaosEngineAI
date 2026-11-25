@@ -22,13 +22,19 @@ from backend_service.storyboard.models import Project, Shot
 MAX_REFERENCE_PATHS = 4  # what the image request takes
 
 
-def reference_paths(project: Project, shot: Shot, folder: Path) -> list[str]:
-    """The pictures of the references a shot uses, first picture of each reference first, at most four."""
-    refs = [r for r in (project.reference(i) for i in shot.referenceImages) if r is not None]
+def reference_paths(project: Project, shot: Shot, folder: Path, limit: int = MAX_REFERENCE_PATHS) -> list[str]:
+    """The pictures of the references a shot uses (its effective cast included, characters first), first picture of
+    each reference first, at most ``limit`` (four)."""
+    from backend_service.storyboard.cast import effective_references
+
+    characters = {r.id for r in project.references.characters}
+    ids = sorted(effective_references(project, shot), key=lambda i: i not in characters)  # stable: characters first
+    refs = [r for r in (project.reference(i) for i in ids) if r is not None]
+    limit = min(limit, MAX_REFERENCE_PATHS)
     paths: list[str] = []
     for rank in range(max((len(r.images) for r in refs), default=0)):
         for ref in refs:
-            if rank < len(ref.images) and len(paths) < MAX_REFERENCE_PATHS:
+            if rank < len(ref.images) and len(paths) < limit:
                 paths.append(str(media.inside(folder, ref.images[rank].path)))
     return paths
 
@@ -70,10 +76,15 @@ def studio_generators(request: Any, batch_id: str, folder: Path) -> dict[str, Ca
         for key in ("steps", "guidance"):
             if settings.get(key) is not None:
                 fields[key] = settings[key]
-        from backend_service.storyboard.style import apply_to_still
+        from backend_service.storyboard import cast
+        from backend_service.storyboard.style import apply_to_still, picture_slots
 
-        paths, fields["prompt"], style_mode = apply_to_still(project, shot, folder, variant,
-                                                             reference_paths(project, shot, folder), prompt)
+        # B1309: the shot's effective cast goes in as words always, and as pictures when the still model takes them.
+        slots = picture_slots(variant)
+        paths, prompt, cast_mode, cast_note = cast.apply_to_still(project, shot, reference_paths(project, shot, folder, slots),
+                                                                  slots, prompt)
+        paths, prompt, style_mode = apply_to_still(project, shot, folder, variant, paths, prompt)
+        fields["prompt"] = prompt[:4000]  # the request's limit: a long shot prompt plus the cast and style words
         if paths:
             fields["referenceImagePaths"] = paths
         body = ImageGenerationRequest(**fields)
@@ -94,6 +105,10 @@ def studio_generators(request: Any, batch_id: str, folder: Path) -> dict[str, Ca
                 "steps": body.steps, "width": art.get("width"), "height": art.get("height")}
         if style_mode != "none":
             info["style"] = style_mode  # S15: the project's style went in as reference pictures or as words
+        if cast_mode != "none":
+            info["cast"] = cast_mode  # B1309: the shot's characters went in as pictures and words, or as words only
+        if cast_note:
+            info["castNote"] = cast_note.replace("/", " ").replace("\\", " ")
         return str(art["imagePath"]), {"settings": info}
 
     def make_clip(shot: Shot, project: Project, still: Path | None) -> tuple[str, dict[str, Any]]:

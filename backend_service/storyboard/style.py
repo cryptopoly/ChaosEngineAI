@@ -27,12 +27,19 @@ def styles_in_use(project: Project) -> list[Reference]:
 
 
 def picture_slots(variant: dict[str, Any] | None) -> int:
-    """How many reference pictures the still model takes (0 for every engine but mflux)."""
-    if not variant or (variant.get("engine") or "").lower() != "mflux":
+    """How many reference pictures the still model takes: the shared check in ``helpers.media_input`` (mflux models and
+    the sd.cpp rows that take reference pictures)."""
+    if not variant:
         return 0
-    from backend_service.image_runtime.mflux_engine import reference_image_limit
+    try:
+        from backend_service.helpers.media_input import reference_image_limit
+    except ImportError:  # until the sd.cpp reference-picture branch is merged: the old mflux-only rule
+        if (variant.get("engine") or "").lower() != "mflux":
+            return 0
+        from backend_service.image_runtime.mflux_engine import reference_image_limit as mflux_limit
 
-    return int(reference_image_limit(str(variant.get("repo") or "")))
+        return int(mflux_limit(str(variant.get("repo") or "")))
+    return int(reference_image_limit(variant))
 
 
 def style_words(project: Project, styles: list[Reference] | None = None) -> str:

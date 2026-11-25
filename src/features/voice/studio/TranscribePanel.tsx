@@ -6,7 +6,8 @@ import type { VoiceLibraryItem, SttModel, VoiceRuntime } from "../../../types";
 import { MicSettingsButton } from "../MicSettingsButton";
 import { formatClock, micErrorMessage, startMicCapture, type MicCapture } from "../audio";
 import { useVoice } from "../VoiceContext";
-import { VOICE_LANGUAGES, voiceLanguageName } from "../voiceLanguages";
+import { describeVoiceError, type VoiceErrorView } from "../voiceErrorText";
+import { VOICE_LANGUAGES, sttFindsLanguageItself, sttLanguageMode, sttLanguageModeText, voiceLanguageName } from "../voiceLanguages";
 import { TranscriptEditor } from "./TranscriptEditor";
 
 const ACCEPTED_FILES = "audio/*,video/*,.wav,.mp3,.m4a,.aac,.flac,.ogg,.opus,.webm,.mp4,.mov,.mkv,.m4v,.aiff,.caf";
@@ -38,7 +39,7 @@ interface Job {
   file: Blob;
   options: JobOptions;
   status: "queued" | "running" | "done" | "error" | "cancelled";
-  error?: string;
+  error?: VoiceErrorView;
   libraryId?: string;
   startedAt?: number;
   seconds?: number;
@@ -60,9 +61,10 @@ export interface TranscribePanelProps {
 
 export function TranscribePanel({ runtime, openRequest, onSendToChat, onOpenModels }: TranscribePanelProps) {
   const { t, i18n } = useTranslation("studio");
-  const { settings, platform } = useVoice();
+  const tf = t as unknown as (key: string, options?: Record<string, unknown>) => string;
+  const { settings, platform, saveSettings } = useVoice();
   const [options, setOptions] = useState<JobOptions>({
-    model: "",
+    model: pickDefaultSttModel(runtime.sttModels, settings.sttModel)?.id ?? "",
     language: settings.language,
     translate: false,
     speakers: false,
@@ -74,16 +76,36 @@ export function TranscribePanel({ runtime, openRequest, onSendToChat, onOpenMode
   const [seconds, setSeconds] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [remember, setRemember] = useState(false);
   const [now, setNow] = useState(Date.now());
   const [open, setOpen] = useState<{ item: VoiceLibraryItem; audioUrl: string | null } | null>(null);
   const captureRef = useRef<MicCapture | null>(null);
   const abortRef = useRef<{ id: number; controller: AbortController } | null>(null);
   const nextId = useRef(1);
   const fileInput = useRef<HTMLInputElement | null>(null);
+  const modelSelect = useRef<HTMLSelectElement | null>(null);
+  const languageSelect = useRef<HTMLSelectElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
 
   const model = runtime.sttModels.find((m) => m.id === options.model);
   const canTranslate = model?.translate === true;
+  const findsLanguage = sttFindsLanguageItself(model?.key);
+
+  // Change the model or language; once "Remember as default" is ticked, the change is saved as the default too
+  // (Chat's Dictate and voice calls read the same two settings).
+  const persistDefault = async (next: Pick<JobOptions, "model" | "language">) => {
+    const picked = runtime.sttModels.find((m) => m.id === next.model);
+    try {
+      await saveSettings({ sttModel: picked?.key ?? picked?.id ?? "", language: next.language });
+    } catch (err) {
+      setError(describeVoiceError(err).sentence);
+    }
+  };
+  const change = (patch: Partial<Pick<JobOptions, "model" | "language">>) => {
+    const next = { ...options, ...patch };
+    setOptions(next);
+    if (remember) void persistDefault(next);
+  };
 
   useEffect(() => {
     if (!options.model) {
@@ -124,7 +146,7 @@ export function TranscribePanel({ runtime, openRequest, onSendToChat, onOpenMode
         const audio = item.audio ? await getLibraryAudio(item.id).catch(() => null) : null;
         if (!cancelled) showItem(item, audio);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+        if (!cancelled) setError(describeVoiceError(err).sentence);
       }
     })();
     return () => {
@@ -172,7 +194,7 @@ export function TranscribePanel({ runtime, openRequest, onSendToChat, onOpenMode
         }
       } catch (err) {
         if (controller.signal.aborted) patchJob(job.id, { status: "cancelled" });
-        else patchJob(job.id, { status: "error", error: err instanceof Error ? err.message : String(err) });
+        else patchJob(job.id, { status: "error", error: describeVoiceError(err) });
       } finally {
         if (abortRef.current?.id === job.id) abortRef.current = null;
       }
@@ -236,7 +258,25 @@ export function TranscribePanel({ runtime, openRequest, onSendToChat, onOpenMode
     try {
       showItem(await getLibraryItem(job.libraryId), job.file);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(describeVoiceError(err).sentence);
+    }
+  };
+
+  // The one button an error offers: try the file again, point at the setting to change, or go where the part is added.
+  const runErrorAction = (job: Job) => {
+    switch (job.error?.action) {
+      case "retry":
+        patchJob(job.id, { status: "queued", error: undefined });
+        break;
+      case "pick-another-language":
+        languageSelect.current?.focus();
+        break;
+      case "pick-another-model":
+      case "smaller-model":
+        modelSelect.current?.focus();
+        break;
+      default:
+        onOpenModels();
     }
   };
 
@@ -253,7 +293,7 @@ export function TranscribePanel({ runtime, openRequest, onSendToChat, onOpenMode
       case "cancelled":
         return t("voice.queue.cancelled", { defaultValue: "Cancelled" });
       default:
-        return job.error ?? t("voice.queue.failed", { defaultValue: "Failed" });
+        return job.error?.sentence ?? t("voice.queue.failed", { defaultValue: "Failed" });
     }
   };
 
@@ -267,18 +307,28 @@ export function TranscribePanel({ runtime, openRequest, onSendToChat, onOpenMode
           <div className="voice-studio__row">
             <label className="voice-settings__field">
               <span>{t("voice.transcribe.model", { defaultValue: "Model" })}</span>
-              <select className="text-input" value={options.model} onChange={(e) => setOptions({ ...options, model: e.target.value })}>
+              <select ref={modelSelect} className="text-input" value={options.model} onChange={(e) => change({ model: e.target.value })}>
                 {runtime.sttModels.map((m) => (
                   <option key={m.id} value={m.id}>
-                    {m.name}
-                    {m.installed ? "" : ` (${m.sizeGb} GB download)`}
+                    {t("voice.transcribe.modelOption", {
+                      defaultValue: "{name}, {language}",
+                      name: m.name,
+                      language: sttLanguageModeText(sttLanguageMode(m.key, options.language), tf),
+                    })}
                   </option>
                 ))}
               </select>
             </label>
             <label className="voice-settings__field">
               <span>{t("voice.transcribe.language", { defaultValue: "Language" })}</span>
-              <select className="text-input" value={options.language} onChange={(e) => setOptions({ ...options, language: e.target.value })}>
+              <select
+                ref={languageSelect}
+                className="text-input"
+                value={findsLanguage ? "" : options.language}
+                disabled={findsLanguage}
+                title={findsLanguage ? t("voice.transcribe.languageFixed", { defaultValue: "This model finds the language itself." }) : undefined}
+                onChange={(e) => change({ language: e.target.value })}
+              >
                 {VOICE_LANGUAGES.map(([code, label]) => (
                   <option key={code} value={code}>
                     {voiceLanguageName(code, label, i18n.language)}
@@ -286,7 +336,26 @@ export function TranscribePanel({ runtime, openRequest, onSendToChat, onOpenMode
                 ))}
               </select>
             </label>
+            <label
+              className="checkbox-label"
+              title={t("voice.transcribe.rememberTitle", { defaultValue: "Dictate in Chat and voice calls use this model and language too." })}
+            >
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(e) => {
+                  setRemember(e.target.checked);
+                  if (e.target.checked) void persistDefault(options);
+                }}
+              />
+              <span>{t("voice.transcribe.remember", { defaultValue: "Remember as default" })}</span>
+            </label>
           </div>
+          {model && !model.installed ? (
+            <p className="muted-text voice-studio__download-note">
+              {t("voice.transcribe.downloadsFirst", { defaultValue: "Downloads {gb} GB before the first file.", gb: model.sizeGb })}
+            </p>
+          ) : null}
 
           <div className="voice-studio__options">
             <label className="checkbox-label">
@@ -428,6 +497,21 @@ export function TranscribePanel({ runtime, openRequest, onSendToChat, onOpenMode
                       {t("voice.queue.remove", { defaultValue: "Remove" })}
                     </button>
                   )}
+                  {job.status === "error" && job.error && (job.error.actionLabel || job.error.details) ? (
+                    <span className="voice-queue__error" style={{ gridColumn: "1 / -1" }}>
+                      {job.error.actionLabel ? (
+                        <button type="button" className="link-button" onClick={() => runErrorAction(job)}>
+                          {job.error.actionLabel}
+                        </button>
+                      ) : null}
+                      {job.error.details ? (
+                        <details className="voice-error-details">
+                          <summary>{t("voice.errors.detailsToggle", { defaultValue: "Details" })}</summary>
+                          <span className="muted-text">{job.error.details}</span>
+                        </details>
+                      ) : null}
+                    </span>
+                  ) : null}
                 </li>
               ))}
             </ul>

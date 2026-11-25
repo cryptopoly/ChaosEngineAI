@@ -1,9 +1,10 @@
 /**
- * Voice > Models > Dictation models (D-73 M1, D-102 D): the speech-to-text models with "Use for dictation", a line
- * on what each is for, its licence by name with a link, the GPU memory it needs (measured or estimated), Download
- * with a bar, size and Cancel, and a row menu with Delete (confirm first; refused while voice is busy). The model that
- * is or becomes the default is badged. With the GPU dictation models comes the "Word timings" download (the forced
- * aligner, D-101). The dictation language sits in the panel header.
+ * Voice > Models > Speech to text (D-73 M1, D-102 D, D0143): the speech to text models with "Use as default", a line
+ * on what each is for, whether it finds the language itself, its licence by name with a link, the GPU memory it needs
+ * (measured or estimated), Download with a bar, size and Cancel, and a row menu with Delete (confirm first; refused
+ * while voice is busy). The panel opens with the one model recommended for this machine, the rest sit under "All
+ * models". The model that is or becomes the default is badged. With the GPU models comes the "Word timings" download
+ * (the forced aligner, D-101). The language is chosen in Transcribe ("Remember as default"), not here.
  */
 import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -13,8 +14,10 @@ import { cancelDownload, deleteSttModel, downloadModel, getDownloadStatus } from
 import type { DownloadStatus } from "../../../api";
 import type { SttAligner, SttModel, VoiceRuntime } from "../../../types";
 import { useVoice } from "../VoiceContext";
-import { VOICE_LANGUAGES, voiceLanguageName } from "../voiceLanguages";
-import { gpuDefaultPending, licenceLabel, licenceUrl, sttDeleteConfirmText, sttFitText, sttGuideText } from "./voiceModelsLogic";
+import { describeVoiceError, type VoiceErrorView } from "../voiceErrorText";
+import { sttLanguageMode, sttLanguageModeText } from "../voiceLanguages";
+import { VoiceErrorLine } from "./VoiceErrorLine";
+import { gpuDefaultPending, licenceLabel, licenceUrl, recommendedSttModel, sttDeleteConfirmText, sttFitText, sttGuideText } from "./voiceModelsLogic";
 
 type TF = (key: string, options?: Record<string, unknown>) => string;
 
@@ -186,7 +189,7 @@ function useDelete(key: string, name: string, sizeGb: number, onChanged: () => v
   const { t } = useTranslation("studio");
   const tf = t as unknown as TF;
   const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<VoiceErrorView | null>(null);
   const remove = async () => {
     if (!window.confirm(sttDeleteConfirmText(name, sizeGb, tf))) return;
     setError(null);
@@ -196,7 +199,7 @@ function useDelete(key: string, name: string, sizeGb: number, onChanged: () => v
       onDeleted();
       onChanged();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(describeVoiceError(err));
     } finally {
       setDeleting(false);
     }
@@ -208,12 +211,15 @@ function SttModelCard({
   model,
   selected,
   recommended,
+  language,
   onSelect,
   onChanged,
   onOpenUrl,
 }: {
   model: SttModel;
   selected: boolean;
+  /** The saved default language ("" is Detect), which decides what the model does with it. */
+  language: string;
   /** The GPU row that becomes the default once it is downloaded (D-102 C). */
   recommended: boolean;
   onSelect: () => void;
@@ -237,12 +243,18 @@ function SttModelCard({
           <h3 className="voice-model-card__name">{model.name}</h3>
           {guide ? <p className="voice-model-card__guide">{guide}</p> : null}
           <MetaLine repo={model.id} sizeGb={model.sizeGb} licence={model.licence} lead={model.languages} onOpenUrl={onOpenUrl} />
+          <p className="muted-text voice-model-card__meta">
+            {t("voice.models.languageLine", {
+              defaultValue: "Language: {mode}",
+              mode: sttLanguageModeText(sttLanguageMode(model.key, language), tf),
+            })}
+          </p>
           {model.note ? <p className="muted-text voice-model-card__meta">{model.note}</p> : null}
           {model.gpuFacts ? <p className="voice-error">{gpuFactsText(model.gpuFacts, tf)}</p> : null}
         </div>
         <div className="voice-model-card__badges">
           {model.default ? (
-            <span className="badge accent" title={t("voice.models.defaultTitle", { defaultValue: "Dictation uses this model unless you pick another." })}>
+            <span className="badge accent" title={t("voice.models.defaultTitleSetup", { defaultValue: "Dictate and Transcribe use this model unless you pick another." })}>
               {t("voice.models.defaultBadge", { defaultValue: "Default" })}
             </span>
           ) : recommended ? (
@@ -261,7 +273,7 @@ function SttModelCard({
       <div className="voice-model-card__actions">
         <label className="checkbox-label">
           <input type="radio" name="voice-stt-model" checked={selected} disabled={cannotRun && !selected} onChange={onSelect} />
-          {t("voice.models.use", { defaultValue: "Use for dictation" })}
+          {t("voice.models.useDefault", { defaultValue: "Use as default" })}
         </label>
         <DownloadOrMenu
           installed={model.installed}
@@ -273,8 +285,8 @@ function SttModelCard({
           onDelete={() => void removal.remove()}
         />
       </div>
-      {download.status?.state === "failed" ? <p className="voice-error" role="alert">{download.status.error}</p> : null}
-      {removal.error ? <p className="voice-error" role="alert">{removal.error}</p> : null}
+      {download.status?.state === "failed" ? <VoiceErrorLine view={describeVoiceError(download.status.error ?? "")} /> : null}
+      {removal.error ? <VoiceErrorLine view={removal.error} /> : null}
     </article>
   );
 }
@@ -313,8 +325,8 @@ function WordTimingsCard({ aligner, onChanged, onOpenUrl }: { aligner: SttAligne
           onDelete={() => void removal.remove()}
         />
       </div>
-      {download.status?.state === "failed" ? <p className="voice-error" role="alert">{download.status.error}</p> : null}
-      {removal.error ? <p className="voice-error" role="alert">{removal.error}</p> : null}
+      {download.status?.state === "failed" ? <VoiceErrorLine view={describeVoiceError(download.status.error ?? "")} /> : null}
+      {removal.error ? <VoiceErrorLine view={removal.error} /> : null}
     </article>
   );
 }
@@ -328,7 +340,7 @@ export function DictationModelsPanel({
   onChanged: () => void;
   onOpenExternalUrl?: (url: string) => void;
 }) {
-  const { t, i18n } = useTranslation("studio");
+  const { t } = useTranslation("studio");
   const { settings, saveSettings } = useVoice();
   const selectedModel =
     runtime.sttModels.find((m) => m.id === settings.sttModel || m.key === settings.sttModel)?.id ??
@@ -336,48 +348,51 @@ export function DictationModelsPanel({
   // The first GPU row is the default once it is on disk (voice_runtime.list_stt_models); until then Whisper is. Said
   // here and badged while no model was picked by hand, so the switch after the download is not a surprise.
   const gpuDefault = gpuDefaultPending(runtime.sttModels);
+  const recommendedModel = recommendedSttModel(runtime.sttModels);
+  const rest = runtime.sttModels.filter((m) => m.id !== recommendedModel?.id);
   const openUrl = (url: string) => (onOpenExternalUrl ? onOpenExternalUrl(url) : void window.open(url, "_blank", "noopener"));
+  const card = (model: SttModel) => (
+    <SttModelCard
+      key={model.id}
+      model={model}
+      selected={model.id === selectedModel}
+      recommended={model.id === gpuDefault?.id}
+      language={settings.language}
+      onSelect={() => void saveSettings({ sttModel: model.key ?? model.id })}
+      onChanged={onChanged}
+      onOpenUrl={openUrl}
+    />
+  );
 
   return (
     <Panel
-      title={t("voice.models.sttTitle", { defaultValue: "Dictation models" })}
-      subtitle={t("voice.models.sttSubtitle", { defaultValue: "Turn speech into text: the microphone in Chat, voice calls and Transcribe." })}
+      title={t("voice.models.sttTitleSetup", { defaultValue: "Speech to text" })}
+      subtitle={t("voice.models.sttSubtitleSetup", { defaultValue: "Turn speech into text: Dictate in Chat, voice calls and Transcribe." })}
       className="span-2 voice-dictation"
-      actions={
-        <label className="voice-dictation__language">
-          <span>{t("voice.settings.language", { defaultValue: "Language" })}</span>
-          <select className="text-input" value={settings.language} onChange={(e) => void saveSettings({ language: e.target.value })}>
-            {VOICE_LANGUAGES.map(([code, label]) => (
-              <option key={code} value={code}>
-                {voiceLanguageName(code, label, i18n.language)}
-              </option>
-            ))}
-          </select>
-        </label>
-      }
     >
-      <div className="image-library-grid">
-        {runtime.sttModels.map((model) => (
-          <SttModelCard
-            key={model.id}
-            model={model}
-            selected={model.id === selectedModel}
-            recommended={model.id === gpuDefault?.id}
-            onSelect={() => void saveSettings({ sttModel: model.key ?? model.id })}
-            onChanged={onChanged}
-            onOpenUrl={openUrl}
-          />
-        ))}
-        {runtime.aligner ? <WordTimingsCard aligner={runtime.aligner} onChanged={onChanged} onOpenUrl={openUrl} /> : null}
-      </div>
+      {recommendedModel ? (
+        <section className="voice-models__pick" aria-label={t("voice.models.pick.title", { defaultValue: "Recommended for this machine" })}>
+          <h4 className="voice-models__pick-title">{t("voice.models.pick.title", { defaultValue: "Recommended for this machine" })}</h4>
+          <div className="image-library-grid">{card(recommendedModel)}</div>
+        </section>
+      ) : null}
+      {rest.length > 0 || runtime.aligner ? (
+        <section className="voice-models__all" aria-label={t("voice.models.pick.all", { defaultValue: "All models" })}>
+          {recommendedModel ? <h4 className="voice-models__pick-title">{t("voice.models.pick.all", { defaultValue: "All models" })}</h4> : null}
+          <div className="image-library-grid">
+            {rest.map(card)}
+            {runtime.aligner ? <WordTimingsCard aligner={runtime.aligner} onChanged={onChanged} onOpenUrl={openUrl} /> : null}
+          </div>
+        </section>
+      ) : null}
       <p className="muted-text voice-model-card__meta">
-        {t("voice.models.firstUseLanguageLine", {
+        {t("voice.models.firstUseLine", {
           defaultValue:
-            "A model you pick but have not downloaded is fetched the first time you dictate. Whisper, Qwen3-ASR and Nemotron 3.5 ASR use the Language above (or find it when it is set to detect); Parakeet, Granite and Nemotron Transcribe always find it themselves.",
+            "A model you pick but have not downloaded downloads before the first file you transcribe or dictate. Choose the language in Transcribe and tick Remember as default to keep it.",
         })}
         {gpuDefault && !settings.sttModel
-          ? ` ${t("voice.models.gpuDefaultLine", {
-              defaultValue: "{name} becomes the dictation model once it is downloaded, unless you pick another.",
+          ? ` ${t("voice.models.gpuDefaultLineSetup", {
+              defaultValue: "{name} becomes the default speech to text model once it is downloaded, unless you pick another.",
               name: gpuDefault.name,
             })}`
           : ""}

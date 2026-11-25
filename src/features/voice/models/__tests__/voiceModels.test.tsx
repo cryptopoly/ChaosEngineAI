@@ -17,6 +17,12 @@ import {
   familyHeadingTracker,
   gpuDefaultPending,
   licenceLabel,
+  makesSentence,
+  pickSizeText,
+  recommendedSpeechPick,
+  recommendedSttModel,
+  speechGpuMemoryText,
+  sttGpuMemoryText,
   macOnlyOnThisPc,
   splitForLane,
   sttFitText,
@@ -141,8 +147,9 @@ describe("Speech models on the shared Models table (D-73 M3b)", () => {
 
   it("on a PC without the speech GPU add-on, a GPU row says to tick the add-on and an Apple row stays Apple-only", () => {
     const pc = runtime({ lane: "portable", extras: [{ id: "speech-gpu", label: "", installed: false }] });
-    const panel = (over: Partial<VoiceModelRow>, rt = pc) =>
-      wrap(
+    // The rows only: the recommended card above them says the same about the add-on (it falls back to Kokoro here).
+    const panel = (over: Partial<VoiceModelRow>, rt = pc) => {
+      const out = wrap(
         <SpeechModelsPanel
           catalog={{ ...catalog, modelsAvailable: false, models: [model("only-row", "Only row", { supported: false, ...over })] }}
           runtime={rt}
@@ -151,6 +158,8 @@ describe("Speech models on the shared Models table (D-73 M3b)", () => {
           onOpenStudio={() => {}}
         />,
       );
+      return out.slice(out.indexOf(">All models<"));
+    };
     const addon = "Needs the speech GPU add-on. Tick it under Voice &gt; Models &gt; Voice runtime &gt; Add-ons.";
     expect(panel({ lanes: ["cuda"] })).toContain(addon);
     expect(panel({ lanes: ["mlx"] })).not.toContain(addon);
@@ -164,28 +173,93 @@ describe("Speech models on the shared Models table (D-73 M3b)", () => {
     expect(speechGpuAddonMissing(runtime())).toBe(false);
   });
 
-  it("offers a natural voice while none is downloaded (first-run callout)", () => {
+  it("opens with the one model recommended for this machine: what it makes, its size, about how much GPU memory, then All models", () => {
+    const pickHtml = html.slice(html.indexOf("data-speech-pick"), html.indexOf(">All models<"));
+    expect(html).toContain("Recommended for this machine");
+    expect(html.indexOf("data-speech-pick")).toBeLessThan(html.indexOf(">All models<"));
+    expect(html.indexOf(">All models<")).toBeLessThan(html.indexOf('data-model-id="kokoro"'));
+    expect(pickHtml).toContain("<strong>Qwen3-TTS 1.7B CustomVoice</strong>: Natural voices, style");
+    expect(pickHtml).toContain("2.5 GB download, about 3.5 GB GPU memory.");
+    // Downloaded: a badge and Use in Speak, no Download button.
+    expect(pickHtml).toContain("Downloaded");
+    expect(pickHtml).toContain("Use in Speak");
+    expect(pickHtml).not.toContain("Download 2.50 GB");
+    // The table below still lists every model.
+    expect(html).toContain('data-model-id="qwen3-tts-custom-1.7b"');
+  });
+
+  it("offers Download on the recommended model while none is downloaded, replacing the old install card", () => {
     const none = wrap(
       <SpeechModelsPanel catalog={{ ...catalog, models: models.map((m) => ({ ...m, installed: false })) }} runtime={runtime()} availability="all" onAvailabilityChange={() => {}} />,
     );
-    expect(none).toContain("Install a better voice");
-    expect(html).not.toContain("Install a better voice");
+    const pickHtml = none.slice(none.indexOf("data-speech-pick"), none.indexOf(">All models<"));
+    expect(pickHtml).toContain("Download 2.50 GB");
+    expect(none).not.toContain("Install a better voice");
+  });
+
+  it("leaves out a memory figure the catalogue does not have, and falls back to Kokoro when no natural model runs here", () => {
+    const unmeasured = wrap(
+      <SpeechModelsPanel
+        catalog={{ ...catalog, models: models.map((m) => ({ ...m, estimates: null })) }}
+        runtime={runtime()}
+        availability="all"
+        onAvailabilityChange={() => {}}
+      />,
+    );
+    const pickHtml = unmeasured.slice(unmeasured.indexOf("data-speech-pick"), unmeasured.indexOf(">All models<"));
+    expect(pickHtml).toContain("2.5 GB download.");
+    expect(pickHtml).not.toContain("GPU memory");
+    const pc = runtime({ lane: "portable", extras: [{ id: "speech-gpu", label: "", installed: false }] });
+    const kokoro = wrap(
+      <SpeechModelsPanel
+        catalog={{ ...catalog, modelsAvailable: false, models: models.map((m) => ({ ...m, supported: false, lanes: ["cuda"] })) }}
+        runtime={pc}
+        availability="all"
+        onAvailabilityChange={() => {}}
+        onOpenStudio={() => {}}
+      />,
+    );
+    const kokoroPick = kokoro.slice(kokoro.indexOf("data-speech-pick"), kokoro.indexOf(">All models<"));
+    expect(kokoroPick).toContain("<strong>Kokoro</strong>: 2 quick voices in 2 languages, fast on any machine");
+    expect(kokoroPick).toContain("about 0.9 GB GPU memory.");
+    expect(kokoroPick).toContain("Needs the speech GPU add-on.");
+    expect(kokoroPick).toContain("Browse voices");
+  });
+
+  it("shows a failed download as a plain sentence with the raw text under Details", () => {
+    const failed = wrap(
+      <SpeechModelsPanel
+        catalog={{
+          ...catalog,
+          models: [model("only-row", "Only row", { kind: "custom", capabilities: { ...caps, style: true }, download: { state: "failed", error: "401 Client Error", errorInfo: { code: "download_blocked", message: "x", action: "add-hf-token", extra: null } } })],
+        }}
+        runtime={runtime()}
+        availability="all"
+        onAvailabilityChange={() => {}}
+      />,
+    );
+    expect(failed).toContain("The download was refused; the model may need a Hugging Face sign-in.");
+    expect(failed).toContain("<summary>Details</summary>");
+    expect(failed).toContain("401 Client Error");
   });
 });
 
 describe("Dictation models (D-73 M1)", () => {
   const html = wrap(<DictationModelsPanel runtime={runtime()} onChanged={() => {}} />);
-  it("has the dictation language in its header and a row menu with Delete on a downloaded model", () => {
-    expect(html).toContain("Dictation models");
-    expect(html).toContain("Detect automatically");
+  it("is called Speech to text, has no language select (Transcribe owns it) and a row menu with Delete on a downloaded model", () => {
+    expect(html).toContain("<h2>Speech to text</h2>");
+    expect(html).not.toContain("Dictation models");
+    expect(html).not.toContain("<select");
+    expect(html).not.toContain("Detect automatically");
     const parakeet = html.slice(html.indexOf('data-stt-model="parakeet"'), html.indexOf('data-stt-model="whisper-turbo"'));
     expect(parakeet).toContain("Delete model (2.5 GB)");
     expect(parakeet).toContain("More actions for Parakeet TDT 0.6B v3");
     const whisper = html.slice(html.indexOf('data-stt-model="whisper-turbo"'));
     expect(whisper).toContain("Download 0.8 GB");
     expect(whisper).not.toContain("Delete model");
-    expect(html).toContain("fetched the first time you dictate");
-    expect(html).not.toContain("Downloads on first use if you skip this");
+    expect(html).toContain("downloads before the first file you transcribe or dictate");
+    expect(html).toContain("Use as default");
+    expect(html).not.toContain("Use for dictation");
   });
 
   it("does not offer a GPU row this GPU cannot run, and says which GPU row becomes the default once downloaded", () => {
@@ -200,7 +274,7 @@ describe("Dictation models (D-73 M1)", () => {
     expect(card).not.toContain("Download 67.5 GB");
     expect(card).toMatch(/<input[^>]*disabled=""[^>]*name="voice-stt-model"|<input[^>]*name="voice-stt-model"[^>]*disabled=""/);
     expect(html).toContain("Download 4.09 GB");
-    expect(html).toContain("Qwen3-ASR 1.7B becomes the dictation model once it is downloaded, unless you pick another.");
+    expect(html).toContain("Qwen3-ASR 1.7B becomes the default speech to text model once it is downloaded, unless you pick another.");
     expect(gpuDefaultPending([gpu("q", "Q", { installed: true }), whisper])).toBeUndefined();
     expect(gpuDefaultPending([big, whisper])).toBeUndefined();
     expect(gpuDefaultPending([whisper])).toBeUndefined();
@@ -257,8 +331,44 @@ describe("Dictation models (D-73 M1)", () => {
     expect(licenceLabel("CC-BY-4.0")).toBe("Creative Commons BY 4.0 (credit the author)");
     expect(licenceLabel("Some-Other")).toBe("Some-Other");
     expect(licenceLabel(null)).toBeNull();
-    // The footer says which models use the Language setting.
-    expect(html).toContain("Whisper, Qwen3-ASR and Nemotron 3.5 ASR use the Language above");
+    // Each card says whether the model finds the language itself or uses the choice (here: Detect, so itself).
+    expect(card).toContain("Language: finds the language itself");
+  });
+
+  it("opens with the one model recommended for this machine and lists the rest under All models", () => {
+    const whisper = { id: "org/whisper", key: "whisper-large-v3-turbo", name: "Whisper Large v3 Turbo", languages: "99 languages", sizeGb: 1.6, installed: false, default: true, backend: "faster-whisper" };
+    const qwen = {
+      id: "Qwen/Qwen3-ASR-1.7B-hf", key: "qwen3-asr-1.7b", name: "Qwen3-ASR 1.7B", languages: "30 languages", sizeGb: 4.09, installed: false,
+      default: false, backend: "transformers-asr", licence: "Apache-2.0", minVramGb: 5, vramBasis: "measured" as const, gpuFacts: null,
+    };
+    const html = wrap(<DictationModelsPanel runtime={runtime({ lane: "portable", sttModels: [whisper, qwen] })} onChanged={() => {}} />);
+    const recommended = html.slice(html.indexOf("Recommended for this machine"), html.indexOf(">All models<"));
+    expect(recommended).toContain('data-stt-model="qwen3-asr-1.7b"');
+    expect(recommended).toContain("Download 4.09 GB");
+    expect(recommended).toContain("Fits · 5 GB GPU memory");
+    expect(recommended).not.toContain("whisper");
+    const rest = html.slice(html.indexOf(">All models<"));
+    expect(rest).toContain('data-stt-model="whisper-large-v3-turbo"');
+    expect(rest).not.toContain('data-stt-model="qwen3-asr-1.7b"');
+    // One model only: no "All models" heading to open.
+    expect(wrap(<DictationModelsPanel runtime={runtime({ sttModels: [whisper] })} onChanged={() => {}} />)).not.toContain(">All models<");
+  });
+
+  it("picks the recommended speech to text model: the GPU row to come, else the default, else one that can run", () => {
+    const row = (key: string, over: Partial<VoiceRuntime["sttModels"][number]> = {}) => ({
+      id: `org/${key}`, key, name: key, sizeGb: 1, installed: false, default: false, backend: "faster-whisper", ...over,
+    });
+    const gpu = row("qwen3-asr-1.7b", { backend: "transformers-asr", minVramGb: 5 });
+    const whisper = row("whisper-large-v3-turbo", { default: true });
+    expect(recommendedSttModel([gpu, whisper])?.key).toBe("qwen3-asr-1.7b");
+    // The GPU row cannot run here: Whisper, the default.
+    expect(recommendedSttModel([{ ...gpu, gpuFacts: { kind: "memory", need: 72, have: 24 } }, whisper])?.key).toBe("whisper-large-v3-turbo");
+    // Downloaded GPU row is the default.
+    expect(recommendedSttModel([{ ...gpu, installed: true, default: true }, whisper])?.key).toBe("qwen3-asr-1.7b");
+    expect(recommendedSttModel([])).toBeUndefined();
+    expect(sttGpuMemoryText({ minVramGb: 5, gpuFacts: null })).toBe("about 5 GB GPU memory");
+    expect(sttGpuMemoryText({ gpuFacts: null })).toBeNull();
+    expect(sttGpuMemoryText({ minVramGb: 72, gpuFacts: { kind: "memory", need: 72, have: 24 } })).toBeNull();
   });
 
   it("offers the forced aligner as its own Word timings download, and Delete once it is there (D-101)", () => {
@@ -410,7 +520,19 @@ describe("Voice Models rules", () => {
     expect(speechDeleteConfirmText({ key: "k", name: "X", remove: [], kept: [], watermark: false, sizeGb: 0 }, 1.2)).toContain("(1.20 GB)");
     expect(sttDeleteConfirmText("Parakeet", 2.5)).toContain("Delete Parakeet (2.50 GB)");
     expect(runtimeRemoveConfirmText(2.3)).toContain("Remove the voice runtime (2.3 GB)?");
-    expect(runtimeRemoveConfirmText(2.3)).toContain("Downloaded dictation and speech models, cloned voices and the Library stay.");
+    expect(runtimeRemoveConfirmText(2.3)).toContain("Downloaded speech to text and speech models, cloned voices and the Library stay.");
+  });
+
+  it("words the recommended card from the catalogue's own figures", () => {
+    expect(pickSizeText(4.5)).toBe("4.5");
+    expect(pickSizeText(5)).toBe("5");
+    expect(pickSizeText(0.33)).toBe("0.33");
+    expect(makesSentence(["Natural voices", "Style", "Sound tags"])).toBe("Natural voices, style, sound tags");
+    expect(speechGpuMemoryText(4.66)).toBe("about 4.7 GB GPU memory");
+    expect(speechGpuMemoryText(null)).toBeNull();
+    expect(speechGpuMemoryText(0)).toBeNull();
+    expect(recommendedSpeechPick(models)).toEqual({ kind: "model", row: models[0] });
+    expect(recommendedSpeechPick(models.map((m) => ({ ...m, supported: false })))).toEqual({ kind: "kokoro" });
   });
 
   it("opens a family heading once, on its first row, however often it is asked", () => {

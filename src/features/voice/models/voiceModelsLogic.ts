@@ -5,7 +5,7 @@ import { fitSortRank, statusSortRank, type ModelSortOption } from "../../../comp
 import { isKokoro, voiceFamilyRank, type VoiceModelEntry } from "../../../components/models/adapters/voice";
 import type { SttModel, VoiceEntry, VoiceModelRow, VoiceRuntime } from "../../../types";
 import type { SpeechModelDeletePlan } from "../clone/cloneApi";
-import { DESIGN_VOICE_ID, bestNaturalVoice } from "../speak/speakLogic";
+import { DESIGN_VOICE_ID, bestNaturalVoice, recommendedNaturalModel } from "../speak/speakLogic";
 import type { StudioMode } from "../voiceStudioMode";
 
 /**
@@ -136,6 +136,52 @@ export function gpuDefaultPending(models: SttModel[]): SttModel | undefined {
   return first && !first.installed && !first.gpuFacts ? first : undefined;
 }
 
+/**
+ * The one speech to text model to start from on this machine: the GPU row that becomes the default once it is
+ * downloaded, else the model that is the default now, else the first one that can run here.
+ */
+export function recommendedSttModel(models: SttModel[]): SttModel | undefined {
+  return (
+    gpuDefaultPending(models) ??
+    models.find((m) => m.default) ??
+    models.find((m) => m.backendInstalled !== false && !m.gpuFacts) ??
+    models[0]
+  );
+}
+
+/** "about 5 GB GPU memory" for a GPU speech to text row with a figure; null for Whisper, the Mac and rows this GPU cannot run. */
+export function sttGpuMemoryText(model: Pick<SttModel, "minVramGb" | "gpuFacts">, t: T = tStudio): string | null {
+  if (model.minVramGb == null || model.gpuFacts) return null;
+  return t("voice.models.pick.gpuMemory", { defaultValue: "about {gb} GB GPU memory", gb: model.minVramGb });
+}
+
+/** The speech model the Models page opens with: the natural voice model that runs here, else the Kokoro quick voices. */
+export type SpeechPick = { kind: "model"; row: VoiceModelRow } | { kind: "kokoro" };
+
+export function recommendedSpeechPick(models: VoiceModelRow[]): SpeechPick {
+  const row = recommendedNaturalModel(models);
+  return row ? { kind: "model", row } : { kind: "kokoro" };
+}
+
+/**
+ * "about 4.7 GB GPU memory" from the measured peak of a speech model (or Kokoro); null while there is no figure. The
+ * catalogue's own numbers only: an unmeasured model says nothing rather than a guess.
+ */
+export function speechGpuMemoryText(peakGb: number | null | undefined, t: T = tStudio): string | null {
+  if (peakGb == null || !(peakGb > 0)) return null;
+  return t("voice.models.pick.gpuMemory", { defaultValue: "about {gb} GB GPU memory", gb: Math.round(peakGb * 10) / 10 });
+}
+
+/** A download size for the recommended card: "4.5" above 1 GB, "0.33" below. */
+export function pickSizeText(gb: number): string {
+  return String(Number(gb >= 1 ? gb.toFixed(1) : gb.toFixed(2)));
+}
+
+/** "Natural voices, style, clone" from the Makes labels of a row: the first as given, the rest in lower case. */
+export function makesSentence(labels: string[], locale?: string): string {
+  return labels.map((label, index) => (index === 0 ? label : label.toLocaleLowerCase(locale))).join(", ");
+}
+
 // i18n-extract: voice.models.licenceName.Apache-2_0
 // i18n-extract: voice.models.licenceName.MIT
 // i18n-extract: voice.models.licenceName.CC-BY-4_0
@@ -202,10 +248,10 @@ export function sttFitText(model: Pick<SttModel, "minVramGb" | "vramBasis" | "gp
   };
 }
 
-/** The confirm before a dictation model is deleted. */
+/** The confirm before a speech to text model is deleted. */
 export function sttDeleteConfirmText(name: string, sizeGb: number, t: T = tStudio): string {
-  return t("voice.models.delete.confirmStt", {
-    defaultValue: "Delete {name} ({gb} GB) from this computer? If it is the dictation model, it downloads again the next time you dictate.",
+  return t("voice.models.delete.confirmSttDefault", {
+    defaultValue: "Delete {name} ({gb} GB) from this computer? If it is the default speech to text model, it downloads again the next time you use it.",
     name,
     gb: sizeGb.toFixed(2),
   });
@@ -213,9 +259,9 @@ export function sttDeleteConfirmText(name: string, sizeGb: number, t: T = tStudi
 
 /** The confirm before the voice runtime is removed. */
 export function runtimeRemoveConfirmText(sizeGb: number | null, t: T = tStudio): string {
-  return t("voice.runtime.removeConfirm", {
+  return t("voice.runtime.removeConfirmSetup", {
     defaultValue:
-      "Remove the voice runtime{size}? Dictation, read-aloud, voice calls and Voice Studio stop working until it is installed again. Downloaded dictation and speech models, cloned voices and the Library stay.",
+      "Remove the voice runtime{size}? Dictate, read-aloud, voice calls and Voice Studio stop working until it is installed again. Downloaded speech to text and speech models, cloned voices and the Library stay.",
     size: sizeGb ? ` (${sizeGb.toFixed(1)} GB)` : "",
   });
 }

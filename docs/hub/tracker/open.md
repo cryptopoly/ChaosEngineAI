@@ -1,13 +1,22 @@
 ---
 title: Open and live follow-ups
 order: 2
-summary: 276 rows with work, decisions or watch items still open, newest first.
+summary: 277 rows with work, decisions or watch items still open, newest first.
 ---
 
 # Open and live follow-ups
 
 Generated from the Follow-Ups Tracker in `FOLLOW_UPS.md` by `tools/hub_tracker.py`; edit the row there, not here. Rows with open work, a pending decision, a watch-list entry, or a shipped item that still lists open points. Newest first; open a row for the full note.
 
+
+<details>
+<summary>FU-617 · Video upscale fast tier: what the backend-only first cut left out — Before the fast tier ships in a release</summary>
+
+**Status or trigger:** Before the fast tier ships in a release
+
+**Notes:** Backend landed on a worktree branch 2026-11-25 (`backend_service/video_upscale/`, `catalog/video_upscale_models.py`, `/api/video/upscale`, `/api/setup/install-video-upscale`, Storyboard `export.upscaleMethod`), all stub-tested with a pixel-doubling fake; no real model has run. Still to do: (1) the 4090 run in `docs/research/video-upscale-fast-tier-test-plan.md` (speed, peak VRAM, PSNR/SSIM) and the catalog memory numbers replaced with measured ones; (2) pin the SHA-256 of both Real-ESRGAN `.pth` files (the add-on records the hash it saw in `weights.json`; `audit-catalog-repos.py` fails until pinned); (3) frontend: Video Upscale tool tab, Gallery action, the method choice in the Storyboard export tab, Setup row, i18n keys; (4) an E2E phase in `scripts/e2e_test_suite.py`; (5) the `upscale_video` agent tool; (6) pre-steps beyond `bwdif` deinterlace (denoise, SD colour) and a check of the pinned LGPL build's filter list; (7) Mac (MPS) run; (8) upstream-table row for spandrel.
+
+</details>
 
 <details>
 <summary>FU-616 · llama.cpp b12675: 4090 run before merge — Next free GPU slot, before bump-llamacpp merges</summary>

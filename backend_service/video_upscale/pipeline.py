@@ -86,7 +86,29 @@ def probe_source(exe: str, path: Path) -> SourceInfo:
 def probe_details(exe: str, path: Path) -> tuple[SourceInfo, bool | None]:
     """The source and whether its first video stream is interlaced (``None`` when ffmpeg names no field order)."""
     info, text = _probe(exe, path)
-    return info, interlaced_from_probe(text)
+    flagged = interlaced_from_probe(text)
+    return info, flagged if flagged is not None else interlaced_from_idet(exe, path)
+
+
+_IDET = re.compile(r"Multi frame detection:\s*TFF:\s*(\d+)\s*BFF:\s*(\d+)\s*Progressive:\s*(\d+)")
+IDET_FRAMES = 150
+IDET_SHARE = 0.8  # combed frames needed, out of those it could classify, before the file is called interlaced
+
+
+def interlaced_from_idet(exe: str, path: Path) -> bool | None:
+    """For a file that names no field order: ffmpeg's ``idet`` looks at the first frames (``None`` when it cannot tell)."""
+    try:
+        run = subprocess.run([exe, "-hide_banner", "-nostdin", "-protocol_whitelist", PROTOCOLS, "-i", str(path), "-an",
+                              "-vf", "idet", "-frames:v", str(IDET_FRAMES), "-f", "null", "-"],
+                             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    found = _IDET.findall(run.stderr)  # the last match is the whole run
+    if not found:
+        return None
+    tff, bff, progressive = (int(n) for n in found[-1])
+    seen = tff + bff + progressive
+    return None if seen == 0 else (tff + bff) / seen >= IDET_SHARE
 
 
 def interlaced_from_probe(stderr: str) -> bool | None:

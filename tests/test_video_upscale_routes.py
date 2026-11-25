@@ -185,6 +185,30 @@ class FieldOrderTests(unittest.TestCase):
         self.assertIsNone(pipeline.interlaced_from_probe("Duration: 00:00:01.00"))
 
 
+class IdetFallbackTests(unittest.TestCase):
+    def run_idet(self, stderr):
+        with mock.patch.object(pipeline.subprocess, "run", return_value=mock.Mock(stderr=stderr)):
+            return pipeline.interlaced_from_idet("ffmpeg", Path("x.avi"))
+
+    def test_reads_the_last_count_line(self):
+        line = "[Parsed_idet_0 @ 0x1] Multi frame detection: TFF: %d BFF: %d Progressive: %d Undetermined: 0"
+        self.assertIs(self.run_idet(line % (0, 0, 0) + "\n" + line % (70, 5, 10)), True)
+        self.assertIs(self.run_idet(line % (3, 0, 90)), False)
+        self.assertIsNone(self.run_idet(line % (0, 0, 0)))
+        self.assertIsNone(self.run_idet("no counts here"))
+
+    def test_an_unflagged_file_is_asked_to_idet(self):
+        info = mock.Mock()
+        with mock.patch.object(pipeline, "_probe", return_value=(info, "Video: x, yuv420p, 1x1")), \
+                mock.patch.object(pipeline, "interlaced_from_idet", return_value=True) as idet:
+            self.assertEqual(pipeline.probe_details("ffmpeg", Path("x.avi")), (info, True))
+        idet.assert_called_once()
+        with mock.patch.object(pipeline, "_probe", return_value=(info, "Video: x, yuv420p(progressive), 1x1")), \
+                mock.patch.object(pipeline, "interlaced_from_idet") as idet:
+            self.assertEqual(pipeline.probe_details("ffmpeg", Path("x.avi")), (info, False))
+        idet.assert_not_called()
+
+
 class DeinterlaceFlagTests(_Routes):
     def models(self):
         return self.client.get("/api/video/upscale/models").json()

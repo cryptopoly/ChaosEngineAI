@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { pickDefaultSttModel } from "./VoiceStudioTab";
 import type { SttModel } from "../../types";
-import { STUDIO_MODE_KEY, readStudioMode, requestedMode, writeStudioMode } from "./voiceStudioMode";
+import { STUDIO_MODES, STUDIO_MODE_KEY, readStudioMode, requestedMode, toStudioTask, writeStudioMode } from "./voiceStudioMode";
 
 function fakeStorage(initial: Record<string, string> = {}) {
   const data = new Map(Object.entries(initial));
@@ -26,8 +26,17 @@ describe("Voice Studio mode", () => {
     writeStudioMode("transcribe");
     expect(storage.data.get(STUDIO_MODE_KEY)).toBe("transcribe");
     expect(readStudioMode()).toBe("transcribe");
-    writeStudioMode("voices");
-    expect(readStudioMode()).toBe("voices");
+    writeStudioMode("clone");
+    expect(readStudioMode()).toBe("clone");
+  });
+
+  it("reads the old Voices mode as Clone a voice, from storage and from callers", () => {
+    vi.stubGlobal("window", { localStorage: fakeStorage({ [STUDIO_MODE_KEY]: "voices" }) });
+    expect(readStudioMode()).toBe("clone");
+    expect(toStudioTask("voices")).toBe("clone");
+    expect(toStudioTask("speak")).toBe("speak");
+    expect(toStudioTask(null)).toBeNull();
+    expect(STUDIO_MODES).toEqual(["speak", "clone", "transcribe"]);
   });
 
   it("falls back to Speak for a stored value it does not know, or when storage is blocked", () => {
@@ -43,13 +52,14 @@ describe("Voice Studio mode", () => {
     };
     vi.stubGlobal("window", { localStorage: blocked });
     expect(readStudioMode()).toBe("speak");
-    expect(() => writeStudioMode("voices")).not.toThrow();
+    expect(() => writeStudioMode("clone")).not.toThrow();
   });
 
-  it("a Library transcript opens Transcribe; Use in Speak opens Speak; Browse voices opens Voices", () => {
+  it("a Library transcript opens Transcribe; Use in Speak opens Speak; Browse voices opens Clone a voice", () => {
     expect(requestedMode({ id: "t-1", nonce: 1 })).toBe("transcribe");
     expect(requestedMode({ mode: "speak", voice: "qwen3:Ryan", nonce: 2 })).toBe("speak");
-    expect(requestedMode({ mode: "voices", nonce: 3 })).toBe("voices");
+    expect(requestedMode({ mode: "voices", nonce: 3 })).toBe("clone");
+    expect(requestedMode({ mode: "clone", nonce: 3 })).toBe("clone");
     expect(requestedMode({ nonce: 4 })).toBeNull();
   });
 });

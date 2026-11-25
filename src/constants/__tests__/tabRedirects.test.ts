@@ -120,8 +120,12 @@ describe("persisted sidebar ids", () => {
   it("migrates lastChildByGroup", () => {
     expect(
       migrateLastChildByGroup({ chat: "online-models", images: "image-discover", video: "video-discover", voice: "voice-studio", tools: 7 }),
-    ).toEqual({ chat: "chat-models", images: "image-models", video: "video-models", voice: "voice-studio" });
+    ).toEqual({ chat: "chat-models", images: "image-models", video: "video-models" });
     expect(migrateLastChildByGroup(null)).toEqual({});
+  });
+
+  it("forgets Voice's last sub-tab, so a new session opens Voice on its Studio", () => {
+    expect(migrateLastChildByGroup({ voice: "voice-models", music: "music-studio" })).toEqual({ music: "music-studio" });
   });
 
   it("migrates what useSidebarPrefs reads from localStorage", () => {

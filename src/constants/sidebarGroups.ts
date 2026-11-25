@@ -15,7 +15,8 @@ export const sidebarGroups: SidebarGroup[] = [
   { id: "chat", label: "Chat", caption: "Chat, compare, and language models", defaultChild: "chat" },
   { id: "images", label: "Images", caption: "Image generation", defaultChild: "image-models", section: "make" },
   { id: "video", label: "Video", caption: "Video generation", defaultChild: "video-models", section: "make" },
-  { id: "voice", label: "Voice", caption: "Dictation, speech and voice chat", defaultChild: "voice-models", readyChild: "voice-studio", section: "make" },
+  // Voice always opens on the Studio: its setup card installs what is missing in place (voice studio UX audit, change 10).
+  { id: "voice", label: "Voice", caption: "Dictation, speech and voice chat", defaultChild: "voice-studio", section: "make" },
   { id: "music", label: "Music and Audio", caption: "Music and sound effects", defaultChild: "music-models", readyChild: "music-studio", section: "make" },
   { id: "benchmarks", label: "Benchmarks", caption: "Performance tests", defaultChild: "benchmarks", section: "run" },
   { id: "tools", label: "Tools", caption: "Conversion and fine-tuning", defaultChild: "conversion", section: "run" },

@@ -1,26 +1,34 @@
-/** Which Voice Studio mode opens: Speak the first time, then the last one used (kept in localStorage). Shown in the
- * order Speak, Voices, Transcribe (D-73): Voices is where the main voices are chosen. */
+/** Which Voice Studio task opens: Speak the first time, then the last one used (kept in localStorage). Shown in the
+ * order Speak, Clone a voice, Transcribe (voice studio UX audit, change 3): tasks, not tools. */
 
-export type StudioMode = "speak" | "transcribe" | "voices";
+/** The three Studio tasks. */
+export type StudioTask = "speak" | "clone" | "transcribe";
 
-export const STUDIO_MODES: StudioMode[] = ["speak", "voices", "transcribe"];
-export const DEFAULT_STUDIO_MODE: StudioMode = "speak";
+/**
+ * What a caller may ask for. ``voices`` is the old name of ``clone`` (the Voices screen before the tasks were
+ * renamed); it is still accepted from callers and from storage and always means ``clone``.
+ */
+export type StudioMode = StudioTask | "voices";
+
+export const STUDIO_MODES: StudioTask[] = ["speak", "clone", "transcribe"];
+export const DEFAULT_STUDIO_MODE: StudioTask = "speak";
 export const STUDIO_MODE_KEY = "chaos.studio.voice-studio.mode";
 
-function isMode(value: unknown): value is StudioMode {
-  return typeof value === "string" && (STUDIO_MODES as string[]).includes(value);
+/** A mode name, old or new, as one of the three tasks; null for anything else. */
+export function toStudioTask(value: unknown): StudioTask | null {
+  if (value === "voices") return "clone";
+  return typeof value === "string" && (STUDIO_MODES as string[]).includes(value) ? (value as StudioTask) : null;
 }
 
-export function readStudioMode(): StudioMode {
+export function readStudioMode(): StudioTask {
   try {
-    const stored = window.localStorage.getItem(STUDIO_MODE_KEY);
-    return isMode(stored) ? stored : DEFAULT_STUDIO_MODE;
+    return toStudioTask(window.localStorage.getItem(STUDIO_MODE_KEY)) ?? DEFAULT_STUDIO_MODE;
   } catch {
     return DEFAULT_STUDIO_MODE;
   }
 }
 
-export function writeStudioMode(mode: StudioMode): void {
+export function writeStudioMode(mode: StudioTask): void {
   try {
     window.localStorage.setItem(STUDIO_MODE_KEY, mode);
   } catch {
@@ -41,7 +49,7 @@ export interface VoiceStudioRequest {
   nonce: number;
 }
 
-export function requestedMode(request: VoiceStudioRequest): StudioMode | null {
+export function requestedMode(request: VoiceStudioRequest): StudioTask | null {
   if (request.id) return "transcribe";
-  return request.mode ?? null;
+  return toStudioTask(request.mode);
 }

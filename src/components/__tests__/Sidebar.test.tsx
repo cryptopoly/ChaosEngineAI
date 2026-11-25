@@ -55,7 +55,8 @@ describe("home studio visibility", () => {
     expect(resolveGroupTarget("music", children, {}, new Set(["music"]))).toBe("music-studio");
     expect(resolveGroupTarget("music", children, { music: "music-library" }, new Set(["music"]))).toBe("music-library");
     const voice = tabs.filter((t) => t.group === "voice");
-    expect(resolveGroupTarget("voice", voice, {})).toBe("voice-models");
+    // Voice always opens on the Studio, ready or not (voice studio UX audit, change 10).
+    expect(resolveGroupTarget("voice", voice, {})).toBe("voice-studio");
     expect(resolveGroupTarget("voice", voice, {}, new Set(["voice"]))).toBe("voice-studio");
   });
 });

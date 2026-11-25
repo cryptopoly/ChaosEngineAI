@@ -108,6 +108,28 @@ def cancel_paused(store: ProjectStore, project_id: str, batch_id: str) -> bool:
     return True
 
 
+def superseded(project: Project, record: BatchRecord) -> bool:
+    """A paused record whose remaining steps need no one: each queued step's shot is gone, is an upload, or already
+    has what the step would make (a later finished step of the same kind, or an active take with that half that is
+    final, or any take for a draft batch). Such a record is not paused work to resume: the rail and the Storyboard
+    show only a paused batch that still has something to make. A record with no queued step is superseded too."""
+    index = next((i for i, b in enumerate(project.batches) if b.id == record.id), len(project.batches))
+    later = [b for b in project.batches[index + 1:]]
+    for step in (r for r in record.results if r.state == "queued"):
+        shot = project.shot(step.shotId)
+        if shot is None or shot.startFrom == "upload" or shot.status == "missing":
+            continue
+        if any(r.state == "done" and r.shotId == step.shotId and r.kind == step.kind
+               for b in later if record.draft or not b.draft for r in b.results):
+            continue
+        take = shot.active()
+        if (take is not None and bool(getattr(take, step.kind)) and (record.draft or take.renderPass == "final")
+                and not shot.redo and shot.status not in ("stale", "failed")):
+            continue
+        return False
+    return True
+
+
 def paused_progress(project: Project, record: BatchRecord) -> dict[str, Any]:
     """The batch bar data of a paused batch: steps finished and left, and the time left when there is a basis.
 

@@ -30,7 +30,12 @@ def _n(count: int, one: str, many: str) -> str:
 
 
 def _batch_state(project: Project) -> str | None:
-    live = [b.state for b in project.batches if b.state in ("queued", "running", "paused")]
+    """The state of the newest batch that still counts: queued or running, or paused with steps nobody has made
+    since (a paused batch that a later batch or the shots' own takes cover is left behind, ``batch_queue.superseded``)."""
+    from backend_service.storyboard.batch_queue import superseded
+
+    live = [b.state for b in project.batches if b.state in ("queued", "running")
+            or (b.state == "paused" and not superseded(project, b))]
     return live[-1] if live else None
 
 
@@ -134,13 +139,17 @@ def stages(project: Project, timeline: Any, cov: dict[str, Any] | None, qual: di
         out.append(_stage("sound", "not-started", "Add voice, music or effects (optional).", "open-mixer",
                           optional=True))
     final_done = next(s for s in out if s["id"] == "final")["status"] == "done"
-    if ready["stops"] or ready["worthFixing"]:
-        count = len(ready["stops"]) + len(ready["worthFixing"])
-        status = "needs-attention" if final_done else "not-started"
-        out.append(_stage("check", status, f"{_n(count, 'point is', 'points are')} worth a look before you export.",
-                          "open-check"))
+    stops, worth = ready["stops"], ready["worthFixing"]
+    if stops:
+        # Something that stops the export is not "worth a look": say so. After an export it is a new stop.
+        out.append(_stage("check", "needs-attention" if final_done or exported else "not-started",
+                          f"{_n(len(stops), 'point stops', 'points stop')} the export.", "open-check"))
+    elif worth:
+        out.append(_stage("check", "done" if exported else "needs-attention" if final_done else "not-started",
+                          f"{_n(len(worth), 'point is', 'points are')} worth a look before you export.", "open-check"))
     else:
-        out.append(_stage("check", "done" if final_done else "not-started", "Nothing stops the export.", "open-check"))
+        out.append(_stage("check", "done" if final_done or exported else "not-started", "Nothing stops the export.",
+                          "open-check"))
     out.append(_stage("export", "done" if exported else "not-started",
                       "The film is exported." if exported else "Export the film.", "export"))
     current = next((s["id"] for s in out if s["applies"] and s["status"] != "done"

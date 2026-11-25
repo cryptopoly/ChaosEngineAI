@@ -403,6 +403,7 @@ export const VOICE_ERROR_CODES = [
   "permission_required",
   "cloning_not_allowed",
   "voice_not_found",
+  "no_backup_voice",
   "download_blocked",
   "download_failed",
   "worker_busy",

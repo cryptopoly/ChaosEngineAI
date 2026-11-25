@@ -82,6 +82,10 @@ export function voiceErrorSentence(code: VoiceErrorCode): string {
       return i18next.t("studio:voice.errors.voice_not_found", {
         defaultValue: "That voice no longer exists.",
       });
+    case "no_backup_voice":
+      return i18next.t("studio:voice.errors.no_backup_voice", {
+        defaultValue: "The chosen voice could not speak and no backup voice is set.",
+      });
     case "download_blocked":
       return i18next.t("studio:voice.errors.download_blocked", {
         defaultValue: "The download was refused; the model may need a Hugging Face sign-in.",

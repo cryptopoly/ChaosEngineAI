@@ -71,6 +71,7 @@ _TABLE: dict[str, tuple[str, str]] = {
     "permission_required": ("Permission to clone this voice has not been confirmed.", "confirm-permission"),
     "cloning_not_allowed": ("Cloned voices can only be used from the app window unless agent access is on.", "none"),
     "voice_not_found": ("That voice no longer exists.", "none"),
+    "no_backup_voice": ("The chosen voice could not speak and no backup voice is set.", "none"),
     "download_blocked": ("The download was refused; the model may need a Hugging Face sign-in.", "add-hf-token"),
     "download_failed": ("The download did not finish.", "retry"),
     "worker_busy": ("Another voice job is running.", "retry"),
@@ -161,6 +162,8 @@ def classify(raw: object, status: int | None = None) -> VoiceErrorInfo:
         return _info("language_unsupported")
 
     # Cloning consent and ownership.
+    if "no fallback voice is set" in low:
+        return _info("no_backup_voice")
     if "cloned voice not found" in low:
         return _info("voice_not_found")
     if "cloned voices can only be used from" in low:

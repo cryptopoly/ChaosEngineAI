@@ -12,7 +12,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from backend_service import voice_client, voice_clone, voice_clone_safety, voice_env, voice_errors, voice_runtime, voice_speak
+from backend_service import voice_chat, voice_client, voice_clone, voice_clone_safety, voice_env, voice_errors, voice_runtime, voice_speak
 from backend_service.voice_errors import ACTIONS, classify
 
 
@@ -61,6 +61,7 @@ CASES = [
     ("Confirm that this is your own voice or that the speaker gave permission.", "permission_required", "confirm-permission", None),
     (voice_clone_safety.REFUSED_MESSAGE, "cloning_not_allowed", "none", None),
     ("Cloned voice not found. Its permission record is missing or it was deleted.", "voice_not_found", "none", None),
+    (voice_chat.NO_FALLBACK, "no_backup_voice", "none", None),
     ("Downloading Qwen3-TTS failed: 401 Client Error: Unauthorized for url: https://huggingface.co/x", "download_blocked", "add-hf-token", None),
     ("Downloading Chatterbox failed: Cannot access gated repo for url https://huggingface.co/y", "download_blocked", "add-hf-token", None),
     ("Downloading Orpheus failed: HTTPSConnectionPool(host='huggingface.co'): Max retries exceeded", "download_failed", "retry", None),

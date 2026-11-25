@@ -550,13 +550,13 @@
     "sameAsChat": "(wie im Chat)",
     "title": "Stimme im Chat: welche Stimme liest, anruft und diktiert",
     "noFallback": "Nicht festgelegt",
-    "changeFor": null,
-    "openStudio": null,
-    "voicesInChat": null,
-    "readAloud": null,
-    "calls": null,
-    "backup": null,
-    "dictate": null
+    "changeFor": "{use} ändern",
+    "openStudio": "Sprachstudio öffnen",
+    "voicesInChat": "Stimmen im Chat",
+    "readAloud": "Vorlesen",
+    "calls": "Anrufe",
+    "backup": "Ersatzstimme",
+    "dictate": "Diktieren"
   },
   "keepGoing": {
     "label": "Weitermachen",

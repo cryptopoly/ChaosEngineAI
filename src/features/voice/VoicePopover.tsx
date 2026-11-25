@@ -4,7 +4,7 @@
  * auto-send, reading speed, the call pause, interrupt); and what a voice call still needs, with one button to fix
  * it. Same settings keys as before. The Voice Studio no longer holds these choices.
  */
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import { useVoice } from "./VoiceContext";
 import { callVoiceOf } from "./conversation/useVoiceCall";
@@ -31,6 +31,26 @@ function VoiceIcon() {
   );
 }
 
+/** Gap kept under the button and above the window's bottom edge. */
+const POPOVER_GAP = 6;
+const POPOVER_MARGIN = 12;
+/** Below this width the stylesheet pins the panel to the window's sides (phone layout). */
+const POPOVER_NARROW_PX = 760;
+
+/**
+ * Where the open popover goes: fixed under its button, as tall as the window leaves room for (it scrolls inside), so
+ * the chat panel's clipping cannot cut it off. ``right`` is left to the stylesheet in the narrow layout.
+ */
+export function popoverPlacement(
+  button: { bottom: number; right: number },
+  viewport: { width: number; height: number },
+): CSSProperties {
+  const top = Math.round(button.bottom + POPOVER_GAP);
+  const placement: CSSProperties = { top, maxHeight: Math.max(160, viewport.height - top - POPOVER_MARGIN) };
+  if (viewport.width > POPOVER_NARROW_PX) placement.right = Math.max(POPOVER_MARGIN, Math.round(viewport.width - button.right));
+  return placement;
+}
+
 export function VoicePopover({ requirements, initialOpen = false }: { requirements: VoiceRequirement[]; initialOpen?: boolean }) {
   const { t } = useTranslation("chat");
   const { t: ts, i18n } = useTranslation("studio");
@@ -40,10 +60,23 @@ export function VoicePopover({ requirements, initialOpen = false }: { requiremen
   // The voice picker that Change opens (read-aloud, calls or backup); null while closed.
   const [choosing, setChoosing] = useState<ChatVoiceUse | null>(null);
   const root = useRef<HTMLDivElement | null>(null);
+  const button = useRef<HTMLButtonElement | null>(null);
+  const [placement, setPlacement] = useState<CSSProperties | undefined>(undefined);
   const panelId = useId();
   // The voices (names, kinds) and, for the picker, the speech models; loaded while the popover is open.
   const catalog = useVoiceCatalog(open && Boolean(runtime?.installed), runtime?.lane);
   const voices = catalog.voices;
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const rect = button.current?.getBoundingClientRect();
+      if (rect) setPlacement(popoverPlacement(rect, { width: window.innerWidth, height: window.innerHeight }));
+    };
+    place();
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -103,6 +136,7 @@ export function VoicePopover({ requirements, initialOpen = false }: { requiremen
     <div className="voice-popover" ref={root}>
       <button
         type="button"
+        ref={button}
         className="secondary-button voice-popover__button"
         aria-expanded={open}
         aria-controls={panelId}
@@ -112,7 +146,7 @@ export function VoicePopover({ requirements, initialOpen = false }: { requiremen
         <VoiceIcon /> {t("voicePopover.button", { defaultValue: "Voice" })}
       </button>
       {open ? (
-        <div id={panelId} className="voice-popover__panel" role="dialog" aria-label={t("voicePopover.button", { defaultValue: "Voice" })}>
+        <div id={panelId} className="voice-popover__panel" style={placement} role="dialog" aria-label={t("voicePopover.button", { defaultValue: "Voice" })}>
           <div className="voice-popover__head">
             <strong>{t("voicePopover.button", { defaultValue: "Voice" })}</strong>
             <button type="button" className="link-button" onClick={changeVoices}>

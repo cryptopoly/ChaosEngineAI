@@ -10,7 +10,7 @@ import { FallbackNote } from "../speak/FallbackNote";
 import { VOICE_USE_SETTING } from "../speak/speakLogic";
 import type { VoiceCatalog } from "../speak/useVoiceCatalog";
 import { VoiceProvider } from "../VoiceContext";
-import { VoicePopover, type VoiceRequirement } from "../VoicePopover";
+import { VoicePopover, popoverPlacement, type VoiceRequirement } from "../VoicePopover";
 
 const settings: VoiceSettings = {
   sttModel: "parakeet", language: "", ttsVoice: "qwen3:Ryan", callVoice: "", speakVoice: "", speed: 1.3, autoSend: true, autoRead: false,
@@ -182,5 +182,17 @@ describe("Drawer", () => {
     expect(html).toContain("Pick one.");
     expect(html).toContain(">Close<");
     expect(html).toContain("drawer-backdrop");
+  });
+});
+
+describe("where the Voice popover opens (it was cut to ~190 px at 900x800)", () => {
+  it("sits under the button and is only as tall as the window leaves room for", () => {
+    expect(popoverPlacement({ bottom: 180, right: 880 }, { width: 1280, height: 800 })).toEqual({ top: 186, maxHeight: 602, right: 400 });
+    // A short window never makes it shorter than a readable strip.
+    expect((popoverPlacement({ bottom: 700, right: 880 }, { width: 1280, height: 800 }) as { maxHeight: number }).maxHeight).toBe(160);
+  });
+
+  it("leaves the sides to the stylesheet in the narrow layout", () => {
+    expect(popoverPlacement({ bottom: 100, right: 300 }, { width: 375, height: 812 })).toEqual({ top: 106, maxHeight: 694 });
   });
 });

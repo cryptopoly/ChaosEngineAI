@@ -9,7 +9,8 @@ reports
 
   * repos (or pinned revisions) that cannot be reached, and
   * pinned files (GGUF quants, LoRAs, distill weights, sd.cpp companion files,
-    speech-model companion files) that are not in their repo.
+    speech-model companion files) that are not in their repo, and
+  * video upscale weights (GitHub release assets) that have no SHA-256 pin.
 
 No token is ever sent (``token=False``): every repo here must be readable
 without a login, and the owner's token must never be read by this script.
@@ -111,6 +112,11 @@ def find_problems(
     return dead, missing
 
 
+def find_unpinned_files(rows: list[dict[str, Any]]) -> list[str]:
+    """Rows that download a file from outside the Hub (a GitHub release asset) without a SHA-256 pin. Offline."""
+    return [f"{row.get('id')}: {row.get('url')}" for row in rows if row.get("url") and not row.get("sha256")]
+
+
 def fetch_listings(targets: list[tuple[str, str | None]]) -> dict[tuple[str, str | None], set[str] | None]:
     from huggingface_hub import HfApi
 
@@ -134,6 +140,7 @@ def main() -> int:
     from backend_service.catalog.music_models import MUSIC_MODEL_FAMILIES
     from backend_service.catalog.text_models import MODEL_FAMILIES
     from backend_service.catalog.video_models import VIDEO_MODEL_FAMILIES
+    from backend_service.catalog.video_upscale_models import VIDEO_UPSCALE_MODELS
     from backend_service.catalog.voice_models import VOICE_MODELS
 
     refs = collect_refs({"text": MODEL_FAMILIES, "image": IMAGE_MODEL_FAMILIES, "video": VIDEO_MODEL_FAMILIES})
@@ -149,10 +156,13 @@ def main() -> int:
             print(f"    <- [{ref.catalog}] {ref.variant} ({ref.role})")
     for ref in missing:
         print(f"MISSING FILE  [{ref.catalog}] {ref.variant}: {ref.repo} / {ref.filename} ({ref.role})")
-    if not dead and not missing:
+    unpinned = find_unpinned_files(VIDEO_UPSCALE_MODELS)
+    for line in unpinned:
+        print(f"UNPINNED FILE  [video-upscale] {line} (no sha256)")
+    if not dead and not missing and not unpinned:
         print("All catalog repos and pinned files exist.")
         return 0
-    print(f"{len(dead)} dead repos, {len(missing)} missing files.")
+    print(f"{len(dead)} dead repos, {len(missing)} missing files, {len(unpinned)} unpinned files.")
     return 1
 
 

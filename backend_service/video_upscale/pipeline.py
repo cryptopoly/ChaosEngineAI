@@ -41,6 +41,7 @@ DEINTERLACE_FILTER = "bwdif"
 _NTSC = ((23.976, "24000/1001"), (29.97, "30000/1001"), (47.952, "48000/1001"), (59.94, "60000/1001"),
          (119.88, "120000/1001"))
 _SAR = re.compile(r"\[SAR (\d+):(\d+) DAR")
+_FIELD_ORDER = re.compile(r"[(,]\s*(progressive|(?:top|bottom)(?: coded)? first|tt|bb|tb|bt)(?=[,)\s])", re.IGNORECASE)
 _TBR = re.compile(r"Video: .*?, (\d+(?:\.\d+)?) tbr")
 
 
@@ -79,6 +80,28 @@ class SourceInfo:
 
 
 def probe_source(exe: str, path: Path) -> SourceInfo:
+    return _probe(exe, path)[0]
+
+
+def probe_details(exe: str, path: Path) -> tuple[SourceInfo, bool | None]:
+    """The source and whether its first video stream is interlaced (``None`` when ffmpeg names no field order)."""
+    info, text = _probe(exe, path)
+    return info, interlaced_from_probe(text)
+
+
+def interlaced_from_probe(stderr: str) -> bool | None:
+    """Field order from the video stream line of ``ffmpeg -i`` (``top first``, ``bottom coded first``, ``progressive``)."""
+    for line in stderr.splitlines():
+        if "Video:" not in line or "(attached pic)" in line:
+            continue
+        match = _FIELD_ORDER.search(line)
+        if match:
+            return match.group(1).lower() != "progressive"
+        return None
+    return None
+
+
+def _probe(exe: str, path: Path) -> tuple[SourceInfo, str]:
     from backend_service.storyboard.ffmpeg_bin import parse_probe  # noqa: PLC0415
 
     run = subprocess.run([exe, "-hide_banner", "-nostdin", "-protocol_whitelist", PROTOCOLS, "-i", str(path)],
@@ -95,9 +118,10 @@ def probe_source(exe: str, path: Path) -> SourceInfo:
     tbr = _TBR.search(run.stderr)
     base = float(tbr.group(1)) if tbr and 1.0 <= float(tbr.group(1)) <= 240.0 else float(info["fps"])
     rate = fps_text(base)
-    return SourceInfo(width=int(info["width"]), height=int(info["height"]), fps=rate, duration=float(info["duration"]),
-                      frames=max(1, round(float(info["duration"]) * fps_value(rate))), has_audio=bool(info["has_audio"]),
-                      sar=f"{sar.group(1)}/{sar.group(2)}" if sar and sar.group(1) != "0" else "1/1")
+    source = SourceInfo(width=int(info["width"]), height=int(info["height"]), fps=rate, duration=float(info["duration"]),
+                        frames=max(1, round(float(info["duration"]) * fps_value(rate))), has_audio=bool(info["has_audio"]),
+                        sar=f"{sar.group(1)}/{sar.group(2)}" if sar and sar.group(1) != "0" else "1/1")
+    return source, run.stderr
 
 
 # ---------------------------------------------------------------------------

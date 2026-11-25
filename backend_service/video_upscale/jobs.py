@@ -245,9 +245,27 @@ class UpscaleJobs:
         state = data.get("state") or "interrupted"
         job.state = "interrupted" if state == "running" else state
         job.error = data.get("error")
+        try:
+            job.started_at = (self.root() / job_id / "manifest.json").stat().st_mtime  # when it last wrote progress
+        except OSError:
+            pass
         done = [s for s in data["segments"] if s.get("done")]
         job.frames_done, job.segments = sum(int(s.get("made", 0)) for s in done), len(data["segments"])
         return job
+
+    def recent(self, limit: int = 20) -> list[UpscaleJob]:
+        """This process's jobs plus unfinished ones left on disk by an earlier run, newest first."""
+        with self._lock:
+            found = dict(self._jobs)
+        try:
+            folders = [p.name for p in self.root().iterdir() if p.is_dir() and p.name not in found]
+        except OSError:
+            folders = []
+        for name in folders:
+            job = self.get(name)
+            if job is not None:
+                found[name] = job
+        return sorted(found.values(), key=lambda j: j.started_at, reverse=True)[:limit]
 
     def cancel(self, job_id: str) -> bool:
         with self._lock:

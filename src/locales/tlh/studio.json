@@ -771,6 +771,7 @@
       "kokoroLineAddon": null,
       "kokoroNotInstalled": null,
       "kokoroAddHint": null,
+      "naturalNeedsGpu": null,
       "macOnlySummary": null,
       "macOnlyNote": null,
       "macOnlyNoteVoices": null,

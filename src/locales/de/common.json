@@ -76,9 +76,9 @@
     "musicStudio": "Tracks und Soundeffekte erstellen",
     "musicLibrary": "Deine erstellten Tracks und Sounds",
     "storyProjects": "Deine Filme, je ein Ordner",
-    "storyBoard": "Einstellungen, Takes und Prompts",
+    "storyBoard": "Shots, Takes und Prompts",
     "storyMixer": "Bild, Ton und Export",
-    "projects": "Storyboard-Filme: Einstellungen, Ton, Export",
+    "projects": "Storyboard-Filme: Shots, Ton, Export",
     "videoUpscale": "Ein Video schärfer und größer machen"
   },
   "tabShortLabels": {
@@ -919,7 +919,7 @@
     "speedMeasuredTitle": "Median deiner letzten eigenen Läufe dieses Modells mit dieser Cache-Strategie.",
     "speedEstimateTitle": "Geschätzt aus der Speicherbandbreite ({bandwidth}) und den pro Token gelesenen Gewichten. Deine eigenen Läufe ersetzen den Wert, sobald du das Modell benutzt hast.",
     "speedMeasured": "gemessen",
-    "speedEstimate": "gesch.",
+    "speedEstimate": "geschätzt",
     "sourceModel": "Cache-Größe nach den Angaben des Modells selbst ({source}) berechnet.",
     "sourceHub": "Cache-Größe nach der Konfiguration des Modells auf Hugging Face berechnet.",
     "sourceEstimate": "Grobe Cache-Schätzung anhand der Parameteranzahl; sie wird genau, sobald das Modell heruntergeladen ist."

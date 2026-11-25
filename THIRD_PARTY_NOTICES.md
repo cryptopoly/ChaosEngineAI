@@ -275,6 +275,23 @@ and kept only when its SHA-256 is
 ``64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff``. numpy, scipy, soundfile,
 Pillow and packaging come from the backend.
 
+### Video upscale, fast tier (optional add-on, installed on demand, never bundled)
+
+"Install video upscale (fast)" in Setup puts these into ``~/.chaosengine/addons/video-upscale``
+(``backend_service/video_upscale/addon.py``); the model runs in its own worker process
+(``backend_service/video_upscale/worker.py``) on the backend's PyTorch. Pinned versions, wheels only:
+
+| Package | Version | Licence |
+|---|---|---|
+| spandrel (chaiNNer-org) | 0.4.2 | MIT |
+| einops | 0.8.2 | MIT |
+
+Weights, downloaded from the ``xinntao/Real-ESRGAN`` GitHub releases on the user's request:
+``realesr-general-x4v3.pth`` (v0.2.5.0, 4,885,111 bytes) and ``RealESRGAN_x4plus.pth`` (v0.1.0,
+67,040,989 bytes). Real-ESRGAN (Xintao Wang et al.) is BSD-3-Clause; the weights carry no separate
+licence statement and are distributed in the repo's releases under it. The SHA-256 of each file is
+not pinned yet (the release audit fails until it is).
+
 ### Nunchaku and vLLM in WSL (optional, installed by the user, never bundled)
 
 - **Nunchaku** (<https://github.com/nunchaku-ai/nunchaku>, MIT HAN Lab) - Apache-2.0. The FLUX.1 Schnell and Dev

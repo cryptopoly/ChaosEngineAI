@@ -694,6 +694,14 @@
           ],
           "type": "string"
         },
+        "upscale_method": {
+          "description": "How the export upscales: lanczos (default) or fast (AI, per shot; needs the video upscale add-on from Setup).",
+          "enum": [
+            "lanczos",
+            "fast"
+          ],
+          "type": "string"
+        },
         "video_model": {
           "description": "create, edit: video model id for clips (list_models video). Unset: the best installed fit.",
           "maxLength": 200,

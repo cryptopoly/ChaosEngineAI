@@ -14,6 +14,7 @@ The pure graph builders and timing maths live in ``assemble_graphs`` (re-exporte
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import json
 import math
 import os
@@ -257,8 +258,68 @@ def _required_filters(plan: RenderPlan, has_voice_duck: bool) -> set[str]:
 
 
 def intermediate_names(plan: RenderPlan) -> list[str]:
-    """The cached per-shot file name of every shot, in order (the resume manifest lists these)."""
-    return [f"shot-{shot_cache_key(s, plan)[:32]}.mov" for s in plan.shots]
+    """The cached per-shot file name of every shot, in order (the resume manifest lists these); with the fast
+    upscale, each shot's upscaled file follows the list."""
+    names = [f"shot-{shot_cache_key(s, plan)[:32]}.mov" for s in plan.shots]
+    if _fast_upscale_size(plan) is not None:
+        names += [_fast_name(name, _fast_upscale_size(plan)) for name in names]  # type: ignore[arg-type]
+    return names
+
+
+# A shot upscaler: (shot intermediate, file to write, (width, height), cancel event, report(fraction)) -> None.
+ShotUpscaler = Callable[[Path, Path, tuple[int, int], "threading.Event | None", Callable[[float], None]], None]
+FAST_UPSCALE_VERSION = 1  # bump to redo every upscaled shot
+
+
+def _fast_upscale_size(plan: RenderPlan) -> tuple[int, int] | None:
+    """The size each shot is upscaled to with the fast method, or None when the film is not upscaled that way."""
+    return plan.upscale_to if plan.upscale_method == "fast" and plan.upscale_to and not plan.preview else None
+
+
+def _fast_name(name: str, size: tuple[int, int]) -> str:
+    from backend_service.catalog.video_upscale_models import DEFAULT_MODEL_ID
+
+    payload = json.dumps([FAST_UPSCALE_VERSION, name, DEFAULT_MODEL_ID, list(size)], separators=(",", ":"))
+    return f"shot-{hashlib.sha256(payload.encode()).hexdigest()[:32]}.mov"
+
+
+def _default_shot_upscaler() -> ShotUpscaler:
+    from backend_service.video_upscale.engine import UpscaleError
+    from backend_service.video_upscale.storyboard_hook import shot_upscaler
+
+    try:
+        return shot_upscaler()
+    except UpscaleError as exc:  # the add-on is not installed: say which install step, in the render's status
+        raise RenderError(str(exc)) from exc
+
+
+def _fast_upscale(plan: RenderPlan, names: list[str], work: Path, run_id: str, scratch: list[Path],
+                  upscaler: ShotUpscaler | None, progress: ProgressCb, cancel_event: threading.Event | None) -> list[str]:
+    """Each shot intermediate through the AI upscaler to the final size (cached by name, model and size)."""
+    size = _fast_upscale_size(plan)
+    assert size is not None
+    out: list[str] = []
+    for index, name in enumerate(names):
+        target = work / _fast_name(name, size)
+        out.append(target.name)
+        if target.is_file() and target.stat().st_size > 0:
+            progress("upscale", (index + 1) / len(names))
+            continue
+        if upscaler is None:
+            upscaler = _default_shot_upscaler()
+        tmp = work / f"{run_id}-{target.name}"
+        scratch.append(tmp)
+        try:
+            upscaler(work / name, tmp, size, cancel_event,
+                     lambda f, i=index: progress("upscale", (i + max(0.0, min(1.0, f))) / len(names)))
+        except Exception as exc:
+            if cancel_event is not None and cancel_event.is_set():
+                raise RenderCancelled() from exc
+            raise RenderError(f"The fast upscale stopped on shot {index + 1}: {exc}") from exc
+        if cancel_event is not None and cancel_event.is_set():
+            raise RenderCancelled()
+        os.replace(tmp, target)
+    return out
 
 
 STEMS = (("voice", "voice"), ("music", "music"), ("sfx", "sfx"), ("import", "import"))
@@ -379,7 +440,7 @@ def _render_card(card: CardInput, which: str, plan: RenderPlan, work: Path, run_
 
 
 def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
-           cancel_event: threading.Event | None = None) -> RenderResult:
+           cancel_event: threading.Event | None = None, shot_upscaler: ShotUpscaler | None = None) -> RenderResult:
     plan = plan.validate()
     progress = progress_cb or (lambda stage, fraction: None)
     warnings: list[str] = []
@@ -451,6 +512,12 @@ def render(plan: RenderPlan, progress_cb: ProgressCb | None = None,
                  cancel_event=cancel_event)
             os.replace(tmp, target)
             rendered += 1
+        if _fast_upscale_size(plan) is not None:
+            # Stage 1a: the fast AI upscale per shot; from here on the film is made at the final size, so cards,
+            # the logo and burnt-in captions are drawn sharp at that size and no lanczos pass follows.
+            names = _fast_upscale(plan, names, work, run_id, scratch, shot_upscaler, progress, cancel_event)
+            width, height = plan.upscale_to  # type: ignore[misc]
+            plan = dataclasses.replace(plan, width=width, height=height, upscale_to=None)
         transitions = [s.transition_in for s in plan.shots]
         fade_frames = [0] + [_fade_frames(t, plan.fps) for t in transitions[1:]]
 

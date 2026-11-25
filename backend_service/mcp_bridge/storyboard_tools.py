@@ -69,6 +69,9 @@ STORYBOARD_TOOLS: list[dict[str, Any]] = [
             "voice": {"type": "string", "maxLength": 200,
                       "description": "create, edit: the project's default narration voice id (list_voices)."},
             "upscale": {"type": "string", "enum": ["none", "1440p", "2160p"], "description": "Export upscale; none keeps the project size."},
+            "upscale_method": {"type": "string", "enum": ["lanczos", "fast"],
+                               "description": "How the export upscales: lanczos (default) or fast (AI, per shot; needs the "
+                               "video upscale add-on from Setup)."},
             "path": {"type": "string", "description": "Path of a .chaosfilm file in a storyboard exports folder (import)."},
             "file": {"type": "string", "description": "Bundle file name an export returned, with its project_id (import)."},
         }, ["action"]),
@@ -318,6 +321,8 @@ def _format_fields(args: dict[str, Any]) -> dict[str, Any]:
         fields["defaults"] = defaults
     if args.get("upscale") is not None:
         fields["export"] = {**(fields.get("export") or {}), "upscale": args["upscale"]}
+    if args.get("upscale_method") is not None:
+        fields["export"] = {**(fields.get("export") or {}), "upscaleMethod": args["upscale_method"]}
     return fields
 
 

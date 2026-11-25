@@ -216,7 +216,40 @@ export interface StoryboardBatchResult {
   kind: "still" | "clip";
   state: "queued" | "running" | "done" | "failed" | "skipped" | "cancelled";
   takeId: string | null;
+  /** The raw error text (Technical details). */
   error: string | null;
+  /** Why a failed step failed (`backend_service/storyboard/failure.py`); absent or null before codes were stored. */
+  code?: StoryboardFailureCode | null;
+}
+
+/** A failed step's stable code. A newer backend may send a code this list lacks: treat it as "unknown". */
+export type StoryboardFailureCode =
+  | "out-of-memory"
+  | "model-missing"
+  | "lipsync-model"
+  | "download-blocked"
+  | "video-tools-missing"
+  | "size-over-cap"
+  | "references-unsupported"
+  | "no-prompt"
+  | "disk-full"
+  | "cancelled"
+  | "unknown";
+
+/** The one button a failure offers. */
+export type StoryboardFailureAction = "smaller-size" | "open-models" | "install-video-tools" | "edit-shot" | "free-disk" | "retry";
+
+/** A failed step for the app (`GET .../batches/{id}` `failures`, and `guide.failures` with `batchId`). */
+export interface StoryboardFailure {
+  shotId: string;
+  kind: "still" | "clip";
+  code: StoryboardFailureCode;
+  /** One plain English sentence (the app shows its own translated text for the code). */
+  message: string;
+  action: StoryboardFailureAction;
+  /** The raw error text. */
+  error: string | null;
+  batchId?: string;
 }
 
 export interface StoryboardBatchRecord {
@@ -275,6 +308,172 @@ export interface StoryboardSong {
   rough: boolean;
   note: string;
   analysedAt: number;
+  /** The last "Give each shot its vocal" run, per shot (audit change 3); absent or null before one. */
+  coverage?: StoryboardVocalCoverage | null;
+}
+
+/** Why a shot is not lip-synced (`backend_service/storyboard/coverage.py` `SKIP_CODES`). */
+export type StoryboardLipSyncReason =
+  | "other-speed"
+  | "locked"
+  | "outside-song"
+  | "too-short"
+  | "too-long"
+  | "no-singing"
+  | "not-assigned";
+
+/** The fix a coverage row offers (null: nothing to fix, the shot plays as an ordinary clip). */
+export type StoryboardLipSyncFix = "real-speed" | "unlock" | "lengthen" | "shorten" | "assign-vocals" | "make-lipsync";
+
+/** synced: the clip follows the vocal; waiting: it has a vocal, no current clip; skipped: a reason code; unassigned: no vocal given yet. */
+export type StoryboardLipSyncState = "synced" | "waiting" | "skipped" | "unassigned";
+
+/** The stored record of one lip-sync run (`project.song.coverage`). */
+export interface StoryboardVocalCoverage {
+  source: "stem" | "song";
+  at: number;
+  shots: { shotId: string; code: StoryboardLipSyncReason | null; message: string; songStart: number; length: number }[];
+}
+
+/** One row of the coverage table (`guide.coverage.shots`). */
+export interface StoryboardLipSyncRow {
+  shotId: string;
+  number: number;
+  /** Song seconds the shot covers. */
+  songStart: number;
+  songEnd: number;
+  seconds: number;
+  state: StoryboardLipSyncState;
+  /** null when the shot has a vocal. */
+  code: StoryboardLipSyncReason | null;
+  message: string;
+  fix: StoryboardLipSyncFix | null;
+  /** The lip-sync length rule for this shot: at least 2 s, at most 8 s less its lead-in. */
+  minSeconds: number;
+  maxSeconds: number;
+}
+
+/** Lip-sync coverage, read live from the shots and the stored record (null without a song). */
+export interface StoryboardLipSyncCoverage {
+  source: "stem" | "song" | null;
+  at: number | null;
+  counts: Record<StoryboardLipSyncState, number> & { total: number; sings: number };
+  shots: StoryboardLipSyncRow[];
+}
+
+export interface StoryboardSize {
+  width: number;
+  height: number;
+}
+
+/** What one take was made at (audit change 2). Sizes are null when not recorded (uploads, old takes). */
+export interface StoryboardTakeQuality {
+  pass: StoryboardRenderPass;
+  draft: boolean;
+  still: StoryboardSize | null;
+  clip: (StoryboardSize & { fps?: number }) | null;
+  /** The half no longer matches the project's format (a final at another size or rate, a draft at another shape). */
+  stillStale: boolean;
+  clipStale: boolean;
+}
+
+export interface StoryboardQuality {
+  /** The film's size and rate. */
+  target: StoryboardSize & { fps: number };
+  /** Half size before a model's minimum side; a draft take records its real size. */
+  draftSize: StoryboardSize;
+  /** Shots whose active take is a draft. */
+  draftShots: string[];
+  /** Shots whose active take no longer matches the format. */
+  staleShots: string[];
+  /** takes[shotId][takeId]. */
+  takes: Record<string, Record<string, StoryboardTakeQuality>>;
+}
+
+export type StoryboardReadinessCode =
+  | "no-shots"
+  | "no-clips"
+  | "failed-shots"
+  | "missing-clips"
+  | "drafts"
+  | "stale-shots"
+  | "lipsync-waiting"
+  | "lipsync-gap"
+  | "song-length"
+  | "clip-sound-audible"
+  | "format"
+  | "lipsync-coverage"
+  | "lipsync-no-singing"
+  | "clip-sound-muted";
+
+/** An action code a readiness item or a stage maps to its button. */
+export type StoryboardGuideAction =
+  | "attach-song"
+  | "open-cast"
+  | "cut-plan"
+  | "plan-shots"
+  | "open-storyboard"
+  | "watch-batch"
+  | "resume-batch"
+  | "retry-failed"
+  | "make-drafts"
+  | "make-missing"
+  | "make-final"
+  | "choose-final"
+  | "make-clips"
+  | "remake-stale"
+  | "assign-vocals"
+  | "make-lipsync"
+  | "open-coverage"
+  | "open-mixer"
+  | "open-check"
+  | "export"
+  | StoryboardLipSyncFix;
+
+export interface StoryboardReadinessItem {
+  code: StoryboardReadinessCode;
+  message: string;
+  shotIds: string[];
+  action: StoryboardGuideAction | null;
+  /** Numbers behind the sentence (sizes, seconds, counts, `reason` of a lip-sync gap). */
+  data: Record<string, number | string>;
+}
+
+/** Ready to export? (audit change 6). `ready` is false only when something stops the export. */
+export interface StoryboardReadiness {
+  ready: boolean;
+  stops: StoryboardReadinessItem[];
+  worthFixing: StoryboardReadinessItem[];
+  forInfo: StoryboardReadinessItem[];
+}
+
+export type StoryboardStageId = "song" | "look" | "shots" | "drafts" | "final" | "lipsync" | "sound" | "check" | "export";
+export type StoryboardStageStatus = "not-started" | "in-progress" | "done" | "needs-attention";
+
+export interface StoryboardStage {
+  id: StoryboardStageId;
+  /** false: hidden for this project (no song: song and lipsync). */
+  applies: boolean;
+  optional: boolean;
+  status: StoryboardStageStatus;
+  /** The one-sentence next step. */
+  message: string;
+  action: StoryboardGuideAction | null;
+}
+
+/** The stage rail (audit changes 1 and 9); `current` is null when every stage is done. */
+export interface StoryboardStages {
+  current: StoryboardStageId | null;
+  stages: StoryboardStage[];
+}
+
+/** The guide block on every project payload and `GET .../guide` (`backend_service/storyboard/guide.py`). */
+export interface StoryboardGuide {
+  quality: StoryboardQuality;
+  coverage: StoryboardLipSyncCoverage | null;
+  failures: StoryboardFailure[];
+  readiness: StoryboardReadiness;
+  stages: StoryboardStages;
 }
 
 /** Where one card sits on the freestyle board, in board pixels at zoom 1 (S-M2). */
@@ -340,10 +539,12 @@ export interface StoryboardTimeline {
   problems: string[];
 }
 
-/** What every project route answers: the project and its computed timeline. */
+/** What every project route answers: the project, its computed timeline and the guide block. */
 export interface StoryboardProjectPayload {
   project: StoryboardProject;
   timeline: StoryboardTimeline;
+  /** Optional only so older fixtures type-check; the backend always sends it. */
+  guide?: StoryboardGuide;
 }
 
 export type StoryboardListRow =
@@ -359,6 +560,8 @@ export interface StoryboardBatchStatus {
   /** Where the run is, elapsed seconds, and time left when earlier steps give a basis; a paused batch gives its
    *  remaining steps instead (S-M1). */
   progress?: import("./chat").JobProgress | StoryboardPausedProgress | null;
+  /** Each failed step as a code, a sentence, an action and the raw text (audit change 5). */
+  failures?: StoryboardFailure[];
 }
 
 export type StoryboardRenderState = "running" | "done" | "failed" | "cancelled" | "interrupted";
@@ -525,7 +728,12 @@ export interface StoryboardSongAnalysis {
 export interface StoryboardSongVocals {
   source: "stem" | "song";
   attached: number;
-  skipped: { shotId: string; number: number; reason: string }[];
+  /** `reason` is the plain sentence, `code` the machine-readable reason. */
+  skipped: { shotId: string; number: number; code: StoryboardLipSyncReason; reason: string; songStart: number; length: number }[];
+  /** Cuts moved to phrase starts (with a stem). */
+  snapped?: number;
+  /** The coverage table after the run (also in the payload's `guide.coverage`). */
+  coverage?: StoryboardLipSyncCoverage | null;
 }
 
 export interface StoryboardPlanChanges {

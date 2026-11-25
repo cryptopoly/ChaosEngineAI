@@ -41,7 +41,8 @@
     "storyProjects": "Qu'",
     "storyBoard": "'echlet",
     "storyMixer": "DuDwI'",
-    "projects": "Qu'"
+    "projects": "Qu'",
+    "videoUpscale": null
   },
   "tabCaptions": {
     "dashboard": "pat Dotlh naQ",
@@ -77,7 +78,8 @@
     "storyProjects": "lutlIj; Hoch nav ghom wa'",
     "storyBoard": "'ay', nID, QIn je",
     "storyMixer": "mIllogh, wab, ngeH je",
-    "projects": "lut 'echlet lut: 'ay', wab, ngeH"
+    "projects": "lut 'echlet lut: 'ay', wab, ngeH",
+    "videoUpscale": null
   },
   "tabShortLabels": {
     "chat": "ja'chuq",
@@ -104,7 +106,8 @@
     "musicLibrary": "ghom",
     "storyProjects": "Qu'",
     "storyBoard": "'echlet",
-    "storyMixer": "DuDwI'"
+    "storyMixer": "DuDwI'",
+    "videoUpscale": null
   },
   "tabGroups": {
     "chat": "ja'chuq",

@@ -41,7 +41,8 @@
     "storyProjects": "Proyectos",
     "storyBoard": "Tablero",
     "storyMixer": "Mezclador",
-    "projects": "Proyectos"
+    "projects": "Proyectos",
+    "videoUpscale": null
   },
   "tabCaptions": {
     "dashboard": "Resumen del sistema",
@@ -77,7 +78,8 @@
     "storyProjects": "Tus películas, una carpeta cada una",
     "storyBoard": "Planos, tomas y prompts",
     "storyMixer": "Imagen, sonido y exportación",
-    "projects": "Películas de storyboard: planos, sonido, exportación"
+    "projects": "Películas de storyboard: planos, sonido, exportación",
+    "videoUpscale": null
   },
   "tabShortLabels": {
     "chat": "Chat",
@@ -104,7 +106,8 @@
     "musicLibrary": "Biblioteca",
     "storyProjects": "Proyectos",
     "storyBoard": "Tablero",
-    "storyMixer": "Mezclador"
+    "storyMixer": "Mezclador",
+    "videoUpscale": null
   },
   "tabGroups": {
     "chat": "Chat",

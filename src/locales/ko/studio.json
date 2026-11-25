@@ -670,7 +670,8 @@
       "revealFile": "파일 위치 표시",
       "delete": "삭제",
       "soundOn": "소리 켜기",
-      "soundOff": "음소거"
+      "soundOff": "음소거",
+      "upscale": null
     }
   },
   "voice": {
@@ -3057,5 +3058,78 @@
     "step": "{total}단계 중 {step}단계",
     "elapsed": "{minutes}분 {seconds}초 경과",
     "hint": "스토리보드 배치처럼 다른 화면에서 시작되었습니다. 끝날 때까지 기다린 뒤 다른 작업을 시작하세요."
+  },
+  "videoUpscale": {
+    "statusFailed": null,
+    "install": {
+      "title": null,
+      "body": null,
+      "licence": null,
+      "phasePackages": null,
+      "phaseWeights": null,
+      "phaseCheck": null,
+      "step": null,
+      "button": null,
+      "retry": null,
+      "failed": null,
+      "unknownError": null
+    },
+    "source": {
+      "label": null,
+      "placeholder": null,
+      "browse": null,
+      "browseTitle": null,
+      "filterName": null,
+      "browseFailed": null,
+      "hint": null,
+      "chosenSized": null
+    },
+    "quality": {
+      "label": null,
+      "notInstalled": null,
+      "wontFit": null,
+      "downloadMissing": null
+    },
+    "size": {
+      "label": null,
+      "x2": null,
+      "x4": null,
+      "target": null,
+      "result": null,
+      "limit": null,
+      "needsSize": null,
+      "notBigger": null
+    },
+    "deinterlace": null,
+    "start": null,
+    "oneAtATime": null,
+    "job": {
+      "target": null,
+      "queued": null,
+      "running": null,
+      "done": null,
+      "failed": null,
+      "cancelled": null,
+      "interrupted": null,
+      "frames": null,
+      "speed": null,
+      "etaSeconds": null,
+      "etaMinutes": null,
+      "etaHours": null,
+      "progressLabel": null,
+      "parts": null,
+      "savedAs": null,
+      "cancel": null,
+      "resume": null,
+      "open": null,
+      "reveal": null,
+      "dismiss": null
+    },
+    "compare": {
+      "before": null,
+      "beforeMissing": null,
+      "after": null,
+      "afterOpen": null
+    }
   }
 }

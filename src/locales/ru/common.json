@@ -41,7 +41,8 @@
     "storyProjects": "Проекты",
     "storyBoard": "Доска",
     "storyMixer": "Микшер",
-    "projects": "Проекты"
+    "projects": "Проекты",
+    "videoUpscale": null
   },
   "tabCaptions": {
     "dashboard": "Обзор системы",
@@ -77,7 +78,8 @@
     "storyProjects": "Ваши фильмы, по папке на каждый",
     "storyBoard": "Шоты, дубли и промпты",
     "storyMixer": "Изображение, звук и экспорт",
-    "projects": "Фильмы-раскадровки: планы, звук, экспорт"
+    "projects": "Фильмы-раскадровки: планы, звук, экспорт",
+    "videoUpscale": null
   },
   "tabShortLabels": {
     "chat": "Чат",
@@ -104,7 +106,8 @@
     "musicLibrary": "Библиотека",
     "storyProjects": "Проекты",
     "storyBoard": "Доска",
-    "storyMixer": "Микшер"
+    "storyMixer": "Микшер",
+    "videoUpscale": null
   },
   "tabGroups": {
     "chat": "Чат",

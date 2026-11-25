@@ -41,7 +41,8 @@
     "storyProjects": "專案",
     "storyBoard": "分鏡板",
     "storyMixer": "混音台",
-    "projects": "專案"
+    "projects": "專案",
+    "videoUpscale": null
   },
   "tabCaptions": {
     "dashboard": "系統概覽",
@@ -77,7 +78,8 @@
     "storyProjects": "你的影片，每部一個資料夾",
     "storyBoard": "鏡頭、版本和提示詞",
     "storyMixer": "畫面、聲音和匯出",
-    "projects": "分鏡影片：鏡頭、聲音、匯出"
+    "projects": "分鏡影片：鏡頭、聲音、匯出",
+    "videoUpscale": null
   },
   "tabShortLabels": {
     "chat": "對話",
@@ -104,7 +106,8 @@
     "musicLibrary": "庫",
     "storyProjects": "專案",
     "storyBoard": "分鏡板",
-    "storyMixer": "混音台"
+    "storyMixer": "混音台",
+    "videoUpscale": null
   },
   "tabGroups": {
     "chat": "對話",

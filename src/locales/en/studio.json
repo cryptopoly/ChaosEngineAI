@@ -670,7 +670,8 @@
       "revealFile": "Reveal File",
       "delete": "Delete",
       "soundOn": "Turn sound on",
-      "soundOff": "Mute"
+      "soundOff": "Mute",
+      "upscale": "Upscale this"
     }
   },
   "voice": {
@@ -3057,5 +3058,78 @@
     "step": "step {step} of {total}",
     "elapsed": "{minutes} min {seconds} s elapsed",
     "hint": "Started from another screen, such as a Storyboard batch. Wait for it to finish before starting another."
+  },
+  "videoUpscale": {
+    "statusFailed": "Could not read the upscaler status: {error}",
+    "install": {
+      "title": "Install the video upscaler",
+      "body": "This adds two upscaling models (Real-ESRGAN, by xinntao) and the small library that runs them, in their own folder. About {size} MB, downloaded once. Nothing else on your computer changes.",
+      "licence": "Model licence: {licence}.",
+      "phasePackages": "Installing the library that runs the models…",
+      "phaseWeights": "Downloading the upscaling models…",
+      "phaseCheck": "Checking the install…",
+      "step": "Step {step} of 3: {phase}",
+      "button": "Install (about {size} MB)",
+      "retry": "Try the install again",
+      "failed": "The install failed: {error}",
+      "unknownError": "No reason was given."
+    },
+    "source": {
+      "label": "Video",
+      "placeholder": "Full path of a video file on this computer",
+      "browse": "Browse…",
+      "browseTitle": "Choose a video to upscale",
+      "filterName": "Videos",
+      "browseFailed": "The file picker is not available here. Paste the full path of the video instead.",
+      "hint": "Or use Upscale this on a clip in the Video Gallery. The new film is saved in your video folder, under upscaled.",
+      "chosenSized": "{name}, {width} × {height}"
+    },
+    "quality": {
+      "label": "Quality",
+      "notInstalled": "Not downloaded yet",
+      "wontFit": "Needs more graphics memory than this computer has",
+      "downloadMissing": "Download the missing models"
+    },
+    "size": {
+      "label": "Size",
+      "x2": "2x",
+      "x4": "4x",
+      "target": "{height}p",
+      "result": "The result will be {width} × {height}.",
+      "limit": "The result would be {width}x{height}; the limit is {max} pixels on a side. Choose a smaller scale or a smaller target size.",
+      "needsSize": "The target sizes need the size of the video, which the app only knows for Video Gallery clips. Choose 2x or 4x for other files.",
+      "notBigger": "The video is already this tall or taller."
+    },
+    "deinterlace": "Deinterlace first (for TV or tape recordings that show comb-like lines on movement)",
+    "start": "Start upscaling",
+    "oneAtATime": "One upscale at a time: wait for this one or cancel it.",
+    "job": {
+      "target": "to {width} × {height}",
+      "queued": "Waiting for another job on the GPU to finish.",
+      "running": "Upscaling…",
+      "done": "Done.",
+      "failed": "Stopped with an error: {error}",
+      "cancelled": "Cancelled. The finished parts are kept, so Resume carries on from there.",
+      "interrupted": "Stopped when the app closed. Resume carries on from where it stopped.",
+      "frames": "{done, number} of {total, number} frames",
+      "speed": "{fps} frames a second",
+      "etaSeconds": "about {count} s left",
+      "etaMinutes": "about {count} min left",
+      "etaHours": "about {hours} h {minutes} min left",
+      "progressLabel": "Upscale progress",
+      "parts": "The film is made in {segments} parts; each finished part is kept if the job stops.",
+      "savedAs": "Saved as {path}",
+      "cancel": "Cancel",
+      "resume": "Resume",
+      "open": "Open the result",
+      "reveal": "Show in folder",
+      "dismiss": "Close"
+    },
+    "compare": {
+      "before": "Before",
+      "beforeMissing": "No preview of this file in the app.",
+      "after": "After ({width} × {height})",
+      "afterOpen": "Open the result to compare it at full size."
+    }
   }
 }

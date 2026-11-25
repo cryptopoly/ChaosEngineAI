@@ -1,0 +1,158 @@
+/* The stage rail (audit change 1) and the Board's "More" menu (audit change 12). */
+.stage-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0 10px;
+}
+.stage-rail__list {
+  display: flex;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.stage-rail__step {
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-rows: auto auto;
+  column-gap: 6px;
+  align-items: center;
+  flex: 0 0 auto;
+  padding: 5px 10px 5px 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.stage-rail__step:hover {
+  color: var(--text);
+}
+.stage-rail__step:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.stage-rail__step.is-shown {
+  border-color: var(--accent-storyboard);
+  color: var(--text);
+}
+.stage-rail__mark {
+  grid-row: 1 / span 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.72rem;
+}
+.stage-rail__name {
+  font-size: 0.86rem;
+}
+.stage-rail__look {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+.stage-rail__step--done .stage-rail__mark {
+  border-color: var(--success);
+  color: var(--success);
+}
+.stage-rail__step--current .stage-rail__mark {
+  border-color: var(--accent-storyboard);
+  background: var(--accent-storyboard);
+  color: var(--surface);
+}
+.stage-rail__step.is-current .stage-rail__name {
+  color: var(--text);
+  font-weight: 600;
+}
+.stage-rail__step--attention .stage-rail__mark,
+.stage-rail__panel--attention .stage-rail__message strong {
+  border-color: var(--warning);
+  color: var(--warning);
+}
+.stage-rail__step--progress .stage-rail__mark {
+  border-style: dashed;
+  border-color: var(--accent-storyboard);
+}
+.stage-rail__step--skipped .stage-rail__name {
+  text-decoration: line-through;
+}
+.stage-rail__panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.stage-rail__message {
+  flex: 1 1 260px;
+  margin: 0;
+  font-size: 0.9rem;
+}
+.stage-rail__note {
+  flex-basis: 100%;
+  margin: 0;
+}
+.stage-rail__button {
+  flex: 0 0 auto;
+}
+
+.project-shell__tabrow {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--border);
+}
+.project-shell__tabrow .project-shell__tabs {
+  flex: 0 1 auto;
+  min-width: 0;
+  border-bottom: 0;
+}
+.project-shell__more {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+.project-shell__more-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  margin: 0;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  list-style: none;
+}
+.project-shell__more-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.project-shell__more-item:hover,
+.project-shell__more-item:focus-visible {
+  background: color-mix(in srgb, var(--accent-storyboard) 18%, transparent);
+  outline: none;
+}
+.project-shell__more-hint {
+  color: var(--muted);
+  font-size: 0.78rem;
+}

@@ -550,13 +550,13 @@
     "sameAsChat": "(identique à la discussion)",
     "title": "Voix dans la discussion : quelle voix lit, appelle et dicte",
     "noFallback": "Aucune définie",
-    "changeFor": null,
-    "openStudio": null,
-    "voicesInChat": null,
-    "readAloud": null,
-    "calls": null,
-    "backup": null,
-    "dictate": null
+    "changeFor": "Modifier {use}",
+    "openStudio": "Ouvrir le Studio vocal",
+    "voicesInChat": "Voix dans la discussion",
+    "readAloud": "Lecture à voix haute",
+    "calls": "Appels",
+    "backup": "Voix de secours",
+    "dictate": "Dicter"
   },
   "keepGoing": {
     "label": "Continuer",

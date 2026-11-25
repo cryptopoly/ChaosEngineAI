@@ -305,7 +305,10 @@ class ExportSettings(_Model):
     captionsSrt: bool = False  # write the captions as an .srt next to the film
     captionsBurn: bool = False  # draw the captions into the picture
     stems: bool = False  # also write each audio lane as its own .wav
-    upscale: Literal["none", "1440p", "2160p"] = "none"  # scale the final film up (lanczos); never below the project size
+    upscale: Literal["none", "1440p", "2160p"] = "none"  # scale the final film up; never below the project size
+    # How: "lanczos" scales the finished film (the default, as before); "fast" runs each shot through the fast AI
+    # upscaler (video upscale add-on) before the film is joined at the final size. A default, so no format change.
+    upscaleMethod: Literal["lanczos", "fast"] = "lanczos"
     # The brand kit on the film (S15): the logo in its corner, a title card first and an end card last.
     showLogo: bool = True  # draw brand.logo in brand.logoCorner when there is one
     titleCard: bool = False

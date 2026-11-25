@@ -77,6 +77,12 @@ class FpsAndPlanTests(unittest.TestCase):
         self.assertEqual(pipeline.fps_text(25.0), "25")
         self.assertAlmostEqual(pipeline.fps_value("30000/1001"), 29.97, places=2)
 
+    def test_base_rate_is_read_from_tbr(self):
+        line = ("  Stream #0:0[0x1]: Video: h264 (High) (avc1 / 0x31637661), yuv420p(progressive), 160x90 "
+                "[SAR 1:1 DAR 16:9], 52 kb/s, 25.04 fps, 24 tbr, 1000k tbn (default)")
+        self.assertEqual(pipeline._TBR.search(line).group(1), "24")
+        self.assertEqual(pipeline._SAR.search(line).groups(), ("1", "1"))
+
     def test_segments(self):
         segs = pipeline.plan_segments(23, 10)
         self.assertEqual([(s["start"], s["last"]) for s in segs], [(0, False), (10, False), (20, True)])

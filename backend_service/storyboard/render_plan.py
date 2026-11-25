@@ -19,6 +19,7 @@ from typing import Any
 
 AUDIO_KINDS = ("music", "sfx", "voice", "import")
 TRANSITION_TYPES = ("cut", "crossfade")
+UPSCALE_METHODS = ("lanczos", "fast")
 
 _ID = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")
 # A URL or protocol prefix ("http:", "concat:", "file:"). One letter is a Windows drive ("C:\\").
@@ -336,6 +337,8 @@ class RenderPlan:
     captions_style: dict[str, str] | None = None  # the burnt-in look (captions.check_look fields)
     stems_base: str | None = None  # write each audio lane as ``<stems_base>-stem-<lane>.wav`` (a full render only)
     upscale_to: tuple[int, int] | None = None  # scale the finished film to this size (lanczos) at the final encode
+    # "fast": each shot goes through the AI upscaler to ``upscale_to`` and the film is joined at that size instead
+    upscale_method: str = "lanczos"
     title_card: CardInput | None = None  # before the first shot (S15)
     end_card: CardInput | None = None  # after the last shot
     logo: LogoInput | None = None  # in a corner of every shot
@@ -398,6 +401,9 @@ class RenderPlan:
             upscale_to = (_int(upscale_raw[0], "upscale_to", 16, 7680), _int(upscale_raw[1], "upscale_to", 16, 7680))
             if upscale_to[0] % 2 or upscale_to[1] % 2:
                 raise _fail("upscale_to", "must be even (yuv420p)")
+        upscale_method = data.get("upscale_method", "lanczos")
+        if upscale_method not in UPSCALE_METHODS:
+            raise _fail("upscale_method", f"must be one of {', '.join(UPSCALE_METHODS)}")
         cards = {key: CardInput.from_dict(data[key], key) if data.get(key) is not None else None
                  for key in ("title_card", "end_card")}
         logo = LogoInput.from_dict(data["logo"]) if data.get("logo") is not None else None
@@ -416,6 +422,7 @@ class RenderPlan:
             captions_style=captions_style,
             stems_base=stems_base,
             upscale_to=upscale_to,
+            upscale_method=upscale_method,
             title_card=cards["title_card"],
             end_card=cards["end_card"],
             logo=logo,
@@ -432,6 +439,7 @@ class RenderPlan:
             "captions_style": dict(self.captions_style) if self.captions_style else None,
             "stems_base": self.stems_base,
             "upscale_to": list(self.upscale_to) if self.upscale_to else None,
+            "upscale_method": self.upscale_method,
             "title_card": self.title_card.to_dict() if self.title_card else None,
             "end_card": self.end_card.to_dict() if self.end_card else None,
             "logo": self.logo.to_dict() if self.logo else None,

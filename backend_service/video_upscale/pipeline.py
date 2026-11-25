@@ -41,6 +41,7 @@ DEINTERLACE_FILTER = "bwdif"
 _NTSC = ((23.976, "24000/1001"), (29.97, "30000/1001"), (47.952, "48000/1001"), (59.94, "60000/1001"),
          (119.88, "120000/1001"))
 _SAR = re.compile(r"\[SAR (\d+):(\d+) DAR")
+_TBR = re.compile(r"Video: .*?, (\d+(?:\.\d+)?) tbr")
 
 
 class Cancelled(Exception):
@@ -89,7 +90,11 @@ def probe_source(exe: str, path: Path) -> SourceInfo:
     if not info["has_video"] or not info["width"] or not info["fps"]:
         raise UpscaleError(f"{path.name} has no video stream ffmpeg can read (size and frame rate are needed).")
     sar = _SAR.search(run.stderr)
-    rate = fps_text(float(info["fps"]))
+    # The stream's base rate (tbr) over its average (fps): an edit list or a variable-rate phone clip skews the
+    # average (a 24 fps Storyboard shot reads "25.04 fps, 24 tbr"), and the fps filter makes the output constant anyway.
+    tbr = _TBR.search(run.stderr)
+    base = float(tbr.group(1)) if tbr and 1.0 <= float(tbr.group(1)) <= 240.0 else float(info["fps"])
+    rate = fps_text(base)
     return SourceInfo(width=int(info["width"]), height=int(info["height"]), fps=rate, duration=float(info["duration"]),
                       frames=max(1, round(float(info["duration"]) * fps_value(rate))), has_audio=bool(info["has_audio"]),
                       sar=f"{sar.group(1)}/{sar.group(2)}" if sar and sar.group(1) != "0" else "1/1")

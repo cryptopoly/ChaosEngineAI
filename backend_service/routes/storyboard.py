@@ -172,6 +172,11 @@ def start_render(project_id: str, revision: int | None, preview: bool, notify: b
     from backend_service.storyboard import ffmpeg_bin
 
     ffmpeg_bin.ffmpeg_exe()  # FfmpegMissing now, so the app can offer the install before a job exists
+    if plan.get("upscale_method") == "fast" and plan.get("upscale_to"):
+        from backend_service.video_upscale import addon
+
+        if not addon.installed():  # refuse before a job exists, naming the install step
+            raise store_module.StoreError(addon.NOT_INSTALLED + " Or set the export's upscale method to Lanczos.")
     return RENDERS.start(project_id, plan, notify)
 
 

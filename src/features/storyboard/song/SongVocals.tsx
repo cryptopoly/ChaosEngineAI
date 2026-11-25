@@ -1,108 +1,76 @@
 /**
- * Song to lip-sync shots (FU-371), under the song on the Plan tab: cut the song into sung shots of 3 to 5 s, then
- * give each shot its slice of the vocal (a stem if one is given, else the song), with a 0.4 s lead-in and the
- * singing switch on (FU-380). The slices go in as one op, so one Undo takes them all off.
+ * The song's lip-sync section on the Plan tab (FU-371, audit change 3): the coverage table, kept with the project,
+ * the last run's summary, and "Give each shot its vocal" to run the vocal cut again (a stem if one is given, else
+ * the song; a 0.4 s lead-in and the singing switch on, FU-380). The slices go in as one op, so one Undo takes them
+ * all off. Running it is the parent's job, since "Yes, lip-sync" chains it after the cut.
  */
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { attachStoryboardSongVocals } from "../../../api/storyboard";
-import type { StoryboardSongVocals } from "../../../types";
-import { PathField } from "../PathField";
-import type { UseStoryboardResult } from "../useStoryboard";
-
-export const SUNG_SHOT_MIN_SECONDS = 3;
-export const SUNG_SHOT_MAX_SECONDS = 5;
+import type { StoryboardLipSyncCoverage, StoryboardShot, StoryboardSongVocals } from "../../../types";
+import { LIP_SYNC_RANGE, type FixAction } from "./coverageLogic";
+import { LipSyncCoverage } from "./LipSyncCoverage";
 
 export interface SongVocalsProps {
-  story: UseStoryboardResult;
+  coverage: StoryboardLipSyncCoverage | null;
+  shots: StoryboardShot[];
+  /** The last run's answer in this session (the table itself comes from the project). */
+  result: StoryboardSongVocals | null;
+  problem: string | null;
   disabled: boolean;
-  onCutForSinging: () => void;
+  working: boolean;
+  batchRunning: boolean;
+  canOpenShot?: boolean;
+  onAssign: () => void;
+  onFix: (action: FixAction) => void;
 }
 
-export function SongVocals({ story, disabled, onCutForSinging }: SongVocalsProps) {
+export function SongVocals({ coverage, shots, result, problem, disabled, working, batchRunning, canOpenShot, onAssign, onFix }: SongVocalsProps) {
   const { t } = useTranslation("studio");
-  const [stem, setStem] = useState<string | null>(null);
-  const [working, setWorking] = useState(false);
-  const [result, setResult] = useState<StoryboardSongVocals | null>(null);
-  const [problem, setProblem] = useState<string | null>(null);
-
-  async function attach() {
-    if (!story.call) return;
-    setWorking(true);
-    setProblem(null);
-    setResult(null);
-    try {
-      await story.call(async (id, revision) => {
-        const out = await attachStoryboardSongVocals(id, { revision, ...(stem ? { stemPath: stem } : {}) });
-        setResult(out.vocals);
-        return out;
-      });
-    } catch (err) {
-      setProblem(err instanceof Error ? err.message : String(err));
-    } finally {
-      setWorking(false);
-    }
-  }
-
   const busy = disabled || working;
+  const unassigned = coverage?.counts.unassigned ?? 0;
   return (
     <div className="song-vocals">
       <h4>{t("board.song.vocals.title", { defaultValue: "Lip-sync the song" })}</h4>
       <p className="muted-text">
-        {t("board.song.vocals.hint", {
+        {t("board.song.vocals.hintEach", {
           defaultValue:
-            "1. Cut the song into sung shots of {min} to {max} s. 2. Give each shot its part of the vocal: it starts 0.4 s before the shot, is marked sung and makes 3 takes. A vocal stem (the voice alone) follows best; without one the song itself is used.",
-          min: SUNG_SHOT_MIN_SECONDS,
-          max: SUNG_SHOT_MAX_SECONDS,
-        })}
+            "Each shot gets its part of the vocal: it starts 0.4 s before the shot, is marked sung and makes 3 takes.",
+        })}{" "}
+        {t(LIP_SYNC_RANGE.key, { defaultValue: LIP_SYNC_RANGE.defaultValue, ...LIP_SYNC_RANGE.values })}
       </p>
+      {result ? (
+        <p className="muted-text" role="status">
+          {t("board.song.vocals.done", {
+            defaultValue:
+              "{attached, plural, =0 {No shot got a vocal} one {# shot got its vocal} other {# shots got their vocal}} from the {source, select, stem {stem} other {song}}.",
+            attached: result.attached,
+            source: result.source,
+          })}
+        </p>
+      ) : null}
+      {coverage ? (
+        <LipSyncCoverage coverage={coverage} shots={shots} busy={busy} batchRunning={batchRunning} canOpenShot={canOpenShot} onFix={onFix} />
+      ) : null}
       <div className="song-panel__actions">
-        <button type="button" className="secondary-button" disabled={busy} onClick={onCutForSinging}>
-          {t("board.song.vocals.cut", { defaultValue: "Cut for singing ({min} to {max} s shots)", min: SUNG_SHOT_MIN_SECONDS, max: SUNG_SHOT_MAX_SECONDS })}
-        </button>
-      </div>
-      {stem ? (
-        <div className="lip-sync-picker__file">
-          <code title={stem}>{stem}</code>
-          <button type="button" className="secondary-button" disabled={busy} onClick={() => setStem(null)}>
-            {t("board.song.vocals.stemRemove", { defaultValue: "Use the song instead" })}
-          </button>
-        </div>
-      ) : (
-        <PathField
-          label={t("board.song.vocals.stem", { defaultValue: "Vocal stem (optional, WAV or FLAC)" })}
-          buttonLabel={t("board.song.vocals.stemUse", { defaultValue: "Use this stem" })}
-          extensions={["wav", "flac"]}
-          disabled={busy}
-          onSubmit={setStem}
-        />
-      )}
-      <div className="song-panel__actions">
-        <button type="button" className="primary-button" disabled={busy} onClick={() => void attach()}>
+        <button type="button" className="secondary-button" disabled={busy} onClick={onAssign}>
           {working
             ? t("board.song.vocals.working", { defaultValue: "Cutting the vocal…" })
             : t("board.song.vocals.attach", { defaultValue: "Give each shot its vocal" })}
         </button>
-      </div>
-      {result ? (
-        <div role="status">
-          <p className="muted-text">
-            {t("board.song.vocals.done", {
-              defaultValue:
-                "{attached, plural, =0 {No shot got a vocal} one {# shot got its vocal} other {# shots got their vocal}} from the {source, select, stem {stem} other {song}}.",
-              attached: result.attached,
-              source: result.source,
+        {coverage && coverage.counts.sings > 0 ? (
+          <span className="muted-text">
+            {t("board.song.vocals.again", {
+              defaultValue: "Runs again for every shot, including shots you took the vocal off.",
             })}
-          </p>
-          {result.skipped.length ? (
-            <ul className="muted-text">
-              {result.skipped.map((item) => (
-                <li key={item.shotId}>{item.reason}</li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-      ) : null}
+          </span>
+        ) : unassigned > 0 ? (
+          <span className="muted-text">
+            {t("board.song.vocals.unassigned", {
+              defaultValue: "{n, plural, one {# shot has no vocal yet.} other {# shots have no vocal yet.}}",
+              n: unassigned,
+            })}
+          </span>
+        ) : null}
+      </div>
       {problem ? <p className="plan-error" role="alert">{problem}</p> : null}
     </div>
   );

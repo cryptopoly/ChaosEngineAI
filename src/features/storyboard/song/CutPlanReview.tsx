@@ -2,7 +2,8 @@
  * A proposed cut plan for review (S-M2): the shots the backend cut from the song's sections and beats, grouped by
  * section, with the total, the longest shot the video model allows and the backend's note. Nothing is written until
  * "Use these N shots", which replaces the shots with the ordinary `apply_plan` op (one Undo); when shots with takes
- * would leave the board, a confirm says so first. Locked shots keep Replace off, as on the Plan tab.
+ * would leave the board, a confirm says so first. Locked shots keep Replace off, as on the Plan tab. A singing cut
+ * (audit change 8) says that each shot then gets its part of the vocal.
  */
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -15,11 +16,13 @@ export interface CutPlanReviewProps {
   plan: StoryboardCutPlan;
   project: StoryboardProject;
   busy: boolean;
+  /** The answer was "Yes, lip-sync": using the cut also gives each shot its vocal. */
+  singing?: boolean;
   onUse: () => void;
   onDiscard: () => void;
 }
 
-export function CutPlanReview({ plan, project, busy, onUse, onDiscard }: CutPlanReviewProps) {
+export function CutPlanReview({ plan, project, busy, singing = false, onUse, onDiscard }: CutPlanReviewProps) {
   const { t } = useTranslation("studio");
   const [confirm, setConfirm] = useState(false);
   const locked = lockedCount(project);
@@ -72,7 +75,12 @@ export function CutPlanReview({ plan, project, busy, onUse, onDiscard }: CutPlan
           title={locked > 0 ? t("board.plan.proposal.lockedHint", { defaultValue: "Unlock the locked shots to replace them." }) : undefined}
           onClick={() => (withTakes > 0 ? setConfirm(true) : onUse())}
         >
-          {t("board.song.cut.use", { defaultValue: "{n, plural, one {Use this shot} other {Use these # shots}}", n })}
+          {singing
+            ? t("board.song.cut.useSinging", {
+                defaultValue: "{n, plural, one {Use this shot and give it its vocal} other {Use these # shots and give each its vocal}}",
+                n,
+              })
+            : t("board.song.cut.use", { defaultValue: "{n, plural, one {Use this shot} other {Use these # shots}}", n })}
         </button>
         <button type="button" className="secondary-button" onClick={onDiscard}>
           {t("board.song.cut.discard", { defaultValue: "Discard" })}

@@ -1,6 +1,7 @@
 import { useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { VoiceEntry, VoiceModelRow } from "../../../types";
+import { cloneActionBlock } from "../clone/cloneLogic";
 import { speechGpuAddonMissing, speechGpuAddonText } from "../models/voiceModelsLogic";
 import { useVoice } from "../VoiceContext";
 import { useCostText } from "./costText";
@@ -25,7 +26,7 @@ export interface VoicePickerProps {
   /** A sample is being made (a preset loads a model first). */
   isLoading?: (id: string) => boolean;
   onSample: (voice: VoiceEntry) => void;
-  /** Open the new cloned voice form (Voices tab). */
+  /** Open the Clone a voice screen. */
   onNewClone?: () => void;
   /** Open Models at the speech models. */
   onGetMore?: () => void;
@@ -175,6 +176,8 @@ export function VoicePicker({
     />
   );
 
+  // Greyed "Clone a voice" says why in words; the picker does not know whether agents may reach clones, so only the models count.
+  const cloneBlock = cloneActionBlock("clone", { modelsAvailable, cloneAllowed: true, runtime }, t as unknown as (key: string, options?: Record<string, unknown>) => string);
   const appleOnly = !modelsAvailable
     ? speechGpuAddonMissing(runtime)
       ? speechGpuAddonText()
@@ -239,19 +242,31 @@ export function VoicePicker({
         </section>
       ) : null}
 
-      {groups.clones.length > 0 || (modelsAvailable && onNewClone) ? (
+      {groups.clones.length > 0 || onNewClone ? (
         <section className="voice-picker__group voice-picker__group--clones">
           <GroupHead title={t("voice.picker.cloned", { defaultValue: "Cloned" })} />
           <div className="voice-cards">
             {groups.clones.map((v) => card(v, "clones"))}
-            {modelsAvailable && onNewClone ? (
+            {onNewClone ? (
               <ActionCard
-                title={t("voice.picker.newClone", { defaultValue: "New cloned voice" })}
-                detail={t("voice.picker.newCloneDetail", { defaultValue: "From a 10 to 20 s recording. Opens the consent form." })}
+                title={t("voice.picker.cloneVoice", { defaultValue: "Clone a voice" })}
+                detail={
+                  cloneBlock
+                    ? cloneBlock.reason
+                    : t("voice.picker.cloneVoiceDetail", { defaultValue: "From a 10 to 20 s recording. You confirm permission first." })
+                }
               >
-                <button type="button" className="secondary-button" onClick={onNewClone}>
-                  {t("voice.picker.newCloneOpen", { defaultValue: "Open the form" })}
-                </button>
+                {cloneBlock ? (
+                  cloneBlock.fix === "setup" && onGetMore ? (
+                    <button type="button" className="secondary-button" onClick={onGetMore}>
+                      {t("voice.clone.openSetup", { defaultValue: "Open Voice setup" })}
+                    </button>
+                  ) : null
+                ) : (
+                  <button type="button" className="secondary-button" onClick={onNewClone}>
+                    {t("voice.picker.cloneVoiceOpen", { defaultValue: "Open Clone a voice" })}
+                  </button>
+                )}
               </ActionCard>
             ) : null}
           </div>
@@ -260,7 +275,13 @@ export function VoicePicker({
 
       {groups.design ? (
         <section className="voice-picker__group voice-picker__group--designed">
-          <GroupHead title={t("voice.picker.designed", { defaultValue: "Designed" })} note={appleOnly ?? t("voice.picker.designedNote", { defaultValue: "A voice made from a description." })} />
+          <GroupHead title={t("voice.picker.designed", { defaultValue: "Designed" })} note={appleOnly ?? t("voice.picker.designedNote", { defaultValue: "A voice made from a description." })}>
+            {!modelsAvailable && speechGpuAddonMissing(runtime) && onGetMore ? (
+              <button type="button" className="secondary-button" onClick={onGetMore}>
+                {t("voice.clone.openSetup", { defaultValue: "Open Voice setup" })}
+              </button>
+            ) : null}
+          </GroupHead>
           <div className="voice-cards">{card(groups.design, "design")}</div>
         </section>
       ) : null}

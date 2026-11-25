@@ -1,5 +1,7 @@
 /** Pure rules for the Clone a voice panel, kept apart so they can be tested without a DOM. */
 
+import type { VoiceErrorAction, VoiceRuntime } from "../../../types";
+import { speechGpuAddonMissing, speechGpuAddonText } from "../models/voiceModelsLogic";
 import type { CloneModel } from "./cloneApi";
 
 export type CloneBasis = "own" | "permission";
@@ -59,4 +61,68 @@ export function pickCloneModel(models: CloneModel[]): CloneModel | null {
 export function modelToDownload(models: CloneModel[]): CloneModel | null {
   const usable = models.filter((m) => m.supported);
   return usable.find((m) => m.default) ?? usable[0] ?? null;
+}
+
+/** The id Speak and the voice list use for a cloned voice the backend just made. */
+export function clonedVoiceId(voice: { id: string }): string {
+  return `clone:${voice.id}`;
+}
+
+type T = (key: string, options?: Record<string, unknown>) => string;
+
+/** Why "Clone a voice" or "Design a voice" is greyed, and the one button that fixes it (null: nothing to press). */
+export interface ActionBlock {
+  reason: string;
+  fix: "setup" | null;
+}
+
+/**
+ * The reason a voice action is unavailable, as text (not a tooltip), or null when it can be used. A PC without the
+ * speech GPU add-on gets the add-on's words and a button to Voice setup; a Mac-only model gets the plain note; a
+ * cloned voice that agents may not reach says so.
+ */
+export function cloneActionBlock(
+  kind: "clone" | "design",
+  state: { modelsAvailable: boolean; cloneAllowed: boolean; runtime: Pick<VoiceRuntime, "lane" | "extras"> | null | undefined },
+  t: T,
+): ActionBlock | null {
+  if (!state.modelsAvailable) {
+    if (speechGpuAddonMissing(state.runtime)) return { reason: speechGpuAddonText(t), fix: "setup" };
+    return {
+      reason:
+        kind === "clone"
+          ? t("voice.clone.macOnly", { defaultValue: "Voice cloning runs on Apple Silicon Macs for now." })
+          : t("voice.voices.designMacOnly", { defaultValue: "Designing a voice runs on Apple Silicon Macs for now." }),
+      fix: null,
+    };
+  }
+  if (kind === "clone" && !state.cloneAllowed) {
+    return { reason: t("voice.clone.notHere", { defaultValue: "Cloned voices can only be used from the ChaosEngineAI window on this computer." }), fix: null };
+  }
+  return null;
+}
+
+/** What the one error button does inside the Clone a voice form; null when the form has nothing to do for it. */
+export type CloneErrorFix = "retry" | "sample" | "permission" | "model" | "setup";
+
+export function cloneErrorFix(action: VoiceErrorAction): CloneErrorFix | null {
+  switch (action) {
+    case "retry":
+      return "retry";
+    case "change-sample":
+      return "sample";
+    case "confirm-permission":
+      return "permission";
+    case "download-model":
+    case "smaller-model":
+    case "pick-another-model":
+      return "model";
+    case "install-voice-runtime":
+    case "install-addon":
+    case "install-ffmpeg":
+    case "add-hf-token":
+      return "setup";
+    default:
+      return null;
+  }
 }

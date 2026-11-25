@@ -1,15 +1,16 @@
 /**
- * Chat's Voice button and popover (D-73 S3): which voice reads replies, which answers calls and which model takes
- * dictation, each with Change; how Chat reads and calls (auto-read, auto-send, reading speed, the call pause,
- * interrupt); and what a voice call still needs, with one button to fix it. Same settings keys as before.
+ * Chat's Voice button and popover (D-73 S3, D0142): "Voices in Chat" (Read-aloud, Calls, Backup, each with Change,
+ * which opens the voice picker here), the model that takes dictation; how Chat reads and calls (auto-read,
+ * auto-send, reading speed, the call pause, interrupt); and what a voice call still needs, with one button to fix
+ * it. Same settings keys as before. The Voice Studio no longer holds these choices.
  */
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { getVoices } from "../../api";
-import type { VoiceEntry } from "../../types";
 import { useVoice } from "./VoiceContext";
 import { callVoiceOf } from "./conversation/useVoiceCall";
-import { chatVoiceName, effectiveFallback, fallbackSetting } from "./speak/speakLogic";
+import { ChatVoiceDrawer, type ChatVoiceUse } from "./ChatVoiceDrawer";
+import { VOICE_USE_SETTING, chatVoiceName, effectiveFallback, fallbackSetting } from "./speak/speakLogic";
+import { useVoiceCatalog } from "./speak/useVoiceCatalog";
 import { voiceKindLabel } from "./speak/VoiceRow";
 import { FallbackNote } from "./speak/FallbackNote";
 import { VOICE_LANGUAGES, voiceLanguageName } from "./voiceLanguages";
@@ -36,22 +37,13 @@ export function VoicePopover({ requirements, initialOpen = false }: { requiremen
   const tf = ts as unknown as (key: string, options?: Record<string, unknown>) => string;
   const { runtime, settings, saveSettings, openVoiceModels, openVoices } = useVoice();
   const [open, setOpen] = useState(initialOpen);
-  const [voices, setVoices] = useState<VoiceEntry[]>([]);
+  // The voice picker that Change opens (read-aloud, calls or backup); null while closed.
+  const [choosing, setChoosing] = useState<ChatVoiceUse | null>(null);
   const root = useRef<HTMLDivElement | null>(null);
   const panelId = useId();
-
-  useEffect(() => {
-    if (!open || !runtime?.installed) return;
-    let live = true;
-    void getVoices()
-      .then((list) => {
-        if (live) setVoices(list);
-      })
-      .catch(() => {});
-    return () => {
-      live = false;
-    };
-  }, [open, runtime?.installed]);
+  // The voices (names, kinds) and, for the picker, the speech models; loaded while the popover is open.
+  const catalog = useVoiceCatalog(open && Boolean(runtime?.installed), runtime?.lane);
+  const voices = catalog.voices;
 
   useEffect(() => {
     if (!open) return;
@@ -59,7 +51,8 @@ export function VoicePopover({ requirements, initialOpen = false }: { requiremen
       if (root.current && !root.current.contains(event.target as Node)) setOpen(false);
     };
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      // Escape closes the picker first (its drawer handles the key itself), the popover next.
+      if (event.key === "Escape" && !choosing) setOpen(false);
     };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
@@ -67,7 +60,7 @@ export function VoicePopover({ requirements, initialOpen = false }: { requiremen
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [open, choosing]);
 
   const quick = runtime?.ttsVoices ?? [];
   const nameOf = (id: string) => voices.find((v) => v.id === id)?.name ?? chatVoiceName(id, quick, ts("voice.voices.kindClone", { defaultValue: "Cloned voice" }));
@@ -89,7 +82,7 @@ export function VoicePopover({ requirements, initialOpen = false }: { requiremen
     (openVoices ?? openVoiceModels)();
   };
 
-  const voiceLine = (label: string, id: string, note?: string) => {
+  const voiceLine = (label: string, use: ChatVoiceUse, id: string, note?: string) => {
     const entry = kindOf(id);
     return (
       <div className="voice-popover__line">
@@ -99,7 +92,7 @@ export function VoicePopover({ requirements, initialOpen = false }: { requiremen
           {entry ? <span className="badge">{voiceKindLabel(entry, tf)}</span> : null}
           {note ? <span className="muted-text">{note}</span> : null}
         </span>
-        <button type="button" className="link-button" onClick={changeVoices}>
+        <button type="button" className="link-button" aria-label={t("voicePopover.changeFor", { defaultValue: "Change {use}", use: label })} onClick={() => setChoosing(use)}>
           {t("voicePopover.change", { defaultValue: "Change" })}
         </button>
       </div>
@@ -123,19 +116,27 @@ export function VoicePopover({ requirements, initialOpen = false }: { requiremen
           <div className="voice-popover__head">
             <strong>{t("voicePopover.button", { defaultValue: "Voice" })}</strong>
             <button type="button" className="link-button" onClick={changeVoices}>
-              {t("voicePopover.openVoices", { defaultValue: "Open Voices" })}
+              {t("voicePopover.openStudio", { defaultValue: "Open Voice Studio" })}
             </button>
           </div>
           {runtime?.installed ? (
             <>
-              {voiceLine(t("voicePopover.read", { defaultValue: "Chat read-aloud" }), settings.ttsVoice)}
+              <strong className="voice-popover__section">{t("voicePopover.voicesInChat", { defaultValue: "Voices in Chat" })}</strong>
+              {voiceLine(t("voicePopover.readAloud", { defaultValue: "Read-aloud" }), "read", settings.ttsVoice)}
               {voiceLine(
-                t("voicePopover.call", { defaultValue: "Voice calls" }),
+                t("voicePopover.calls", { defaultValue: "Calls" }),
+                "call",
                 callId,
                 settings.callVoice ? undefined : t("voicePopover.sameAsChat", { defaultValue: "(same as Chat)" }),
               )}
+              {voiceLine(t("voicePopover.backup", { defaultValue: "Backup" }), "fallback", fallbackId)}
+              {voices.length > 0 ? (
+                <p className="muted-text voice-popover__fallback">
+                  <FallbackNote voice={fallback} />
+                </p>
+              ) : null}
               <div className="voice-popover__line">
-                <span className="voice-popover__what">{t("voicePopover.dictation", { defaultValue: "Dictation" })}</span>
+                <span className="voice-popover__what">{t("voicePopover.dictate", { defaultValue: "Dictate" })}</span>
                 <span className="voice-popover__who">
                   <strong>{sttModel?.name ?? "—"}</strong>
                   <span className="muted-text">{voiceLanguageName(settings.language, languageLabel, i18n.language)}</span>
@@ -151,12 +152,6 @@ export function VoicePopover({ requirements, initialOpen = false }: { requiremen
                   {t("voicePopover.change", { defaultValue: "Change" })}
                 </button>
               </div>
-              {voiceLine(t("voicePopover.fallback", { defaultValue: "Fallback" }), fallbackId)}
-              {voices.length > 0 ? (
-                <p className="muted-text voice-popover__fallback">
-                  <FallbackNote voice={fallback} />
-                </p>
-              ) : null}
               <label className="checkbox-label">
                 <input type="checkbox" checked={settings.autoRead} onChange={(e) => void saveSettings({ autoRead: e.target.checked })} />
                 {ts("voice.settings.autoRead", { defaultValue: "Read every chat reply aloud when it finishes" })}
@@ -220,6 +215,21 @@ export function VoicePopover({ requirements, initialOpen = false }: { requiremen
             ) : null}
           </div>
         </div>
+      ) : null}
+      {choosing && runtime?.installed ? (
+        <ChatVoiceDrawer
+          use={choosing}
+          catalog={catalog}
+          currentId={choosing === "read" ? settings.ttsVoice : choosing === "call" ? callId : fallbackId}
+          speed={speed}
+          onAssign={(id) => saveSettings({ [VOICE_USE_SETTING[choosing]]: id })}
+          onClose={() => setChoosing(null)}
+          onGetMore={() => {
+            setChoosing(null);
+            setOpen(false);
+            openVoiceModels();
+          }}
+        />
       ) : null}
     </div>
   );

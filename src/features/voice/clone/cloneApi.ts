@@ -1,6 +1,6 @@
 /** Voice cloning endpoints (``/api/voice/clone/*``). */
 
-import { apiFetch, fetchJson, postJson, readErrorDetail } from "../../../api";
+import { apiFetch, fetchJson, postJson, readVoiceError } from "../../../api";
 import type { VoiceLibraryItem, VoiceModelRow } from "../../../types";
 
 export interface CloneModel {
@@ -99,13 +99,14 @@ export async function createClonedVoice(fields: {
   if (fields.referenceText) form.append("referenceText", fields.referenceText);
   if (fields.model) form.append("model", fields.model);
   const response = await apiFetch("/api/voice/clone/voices", { method: "POST", body: form });
-  if (!response.ok) throw new Error(await readErrorDetail(response, `Saving the voice failed with status ${response.status}`));
+  // A VoiceApiError: the message is the raw text, ``info`` the code and action the form shows in plain words.
+  if (!response.ok) throw await readVoiceError(response, `Saving the voice failed with status ${response.status}`);
   return (await response.json()) as ClonedVoice;
 }
 
 export async function deleteClonedVoice(id: string): Promise<void> {
   const response = await apiFetch(`/api/voice/clone/voices/${id}`, { method: "DELETE" });
-  if (!response.ok) throw new Error(await readErrorDetail(response, `Deleting failed with status ${response.status}`));
+  if (!response.ok) throw await readVoiceError(response, `Deleting failed with status ${response.status}`);
 }
 
 export async function speakCloned(voiceId: string, text: string, model: string): Promise<VoiceLibraryItem> {

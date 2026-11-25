@@ -1,43 +1,29 @@
 /**
- * Voice Studio > Voices (D-73 S2): the main voice for Speak, Chat read-aloud and voice calls, and the Fallback voice
- * (D-75), at the top (each with Change, which opens the picker in a drawer for that use; Fallback also offers none), then every voice grouped like the picker (Natural, Quick
- * shortlist with an expander, Cloned, Designed), each with a sample, one "Use for" menu and Delete for cloned voices.
- * The chat behaviour settings live in Chat's Voice popover; agent cloning stays in Settings > Agent access.
+ * The voice catalogue (voice studio UX audit, change 3; D0142): every voice on this computer grouped like the picker
+ * (Natural, Quick shortlist with an expander, Cloned, Designed), each with a sample, "Use in Speak" and Delete for
+ * cloned voices. Chat's voice choices (read-aloud, calls, backup) are no longer here: they live in Chat's Voice
+ * popover. "New cloned voice" and "Design a voice" say in words why they are greyed, with the button that fixes it.
+ * Agent cloning stays in Settings > Agent access.
  */
-import { useMemo, useState, type MouseEvent, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Drawer } from "../../../components/Drawer";
 import { Panel } from "../../../components/Panel";
 import type { VoiceChatCost, VoiceEntry } from "../../../types";
 import { useVoice } from "../VoiceContext";
-import { speechGpuAddonMissing, speechGpuAddonText, unsupportedModelText } from "../models/voiceModelsLogic";
+import { unsupportedModelText } from "../models/voiceModelsLogic";
 import { deleteClonedVoice } from "../clone/cloneApi";
-import { NewVoiceForm } from "../clone/NewVoiceForm";
+import { CloneVoiceScreen } from "../clone/CloneVoiceScreen";
+import { cloneActionBlock, type ActionBlock } from "../clone/cloneLogic";
+import { VoiceErrorNotice } from "../clone/VoiceErrorNotice";
 import { chineseAddonPending, kokoroInstalled } from "../voicePackState";
 import { callVoiceOf } from "../conversation/useVoiceCall";
+import { describeVoiceError, type VoiceErrorView } from "../voiceErrorText";
 import { useCostText } from "./costText";
-import { FallbackNote } from "./FallbackNote";
 import { MandarinCard } from "./MandarinCard";
-import {
-  VOICE_USE_SETTING,
-  chooseModel,
-  costLabel,
-  effectiveFallback,
-  managerVoices,
-  matchesFilter,
-  quickLanguage,
-  quickShortlist,
-  topQuickVoice,
-  useBlockReason,
-  usesOf,
-  voicesForUse,
-  type VoiceFilter,
-  type VoiceUse,
-} from "./speakLogic";
+import { chooseModel, costLabel, fallbackSetting, managerVoices, matchesFilter, quickLanguage, quickShortlist, topQuickVoice, usesOf, type VoiceFilter, type VoiceUse } from "./speakLogic";
 import type { VoiceCatalog } from "./useVoiceCatalog";
 import { canPlaySample, useVoiceSample } from "./useVoiceSample";
 import { SampleIcon } from "./VoiceCard";
-import { VoicePicker } from "./VoicePicker";
 import { voiceAbout, voiceKindLabel } from "./VoiceRow";
 
 const FILTERS: VoiceFilter[] = ["all", "natural", "quick", "cloned", "designed"];
@@ -49,38 +35,14 @@ const FILTER_LABELS: Record<VoiceFilter, string> = {
   cloned: "Cloned",
   designed: "Designed",
 };
-// i18n-extract: voice.voices.use.speak
-// i18n-extract: voice.voices.use.read
-// i18n-extract: voice.voices.use.call
 // i18n-extract: voice.voices.badge.speak
 // i18n-extract: voice.voices.badge.read
 // i18n-extract: voice.voices.badge.call
-// i18n-extract: voice.voices.use.fallback
-// i18n-extract: voice.voices.badge.fallback
-const USES: VoiceUse[] = ["speak", "read", "call", "fallback"];
-const USE_LABELS: Record<VoiceUse, string> = { speak: "Speak", read: "Chat read-aloud", call: "Voice calls", fallback: "Fallback" };
-const USE_BADGES: Record<VoiceUse, string> = { speak: "Speak", read: "Chat", call: "Calls", fallback: "Fallback" };
+// i18n-extract: voice.voices.badge.backup
+const USE_BADGES: Record<VoiceUse, string> = { speak: "Speak", read: "Chat", call: "Calls", fallback: "Backup" };
+const USE_BADGE_KEYS: Record<VoiceUse, string> = { speak: "speak", read: "read", call: "call", fallback: "backup" };
 
 type T = (key: string, options?: Record<string, unknown>) => string;
-
-function useLabel(use: VoiceUse, t: T): string {
-  return t(`voice.voices.use.${use}`, { defaultValue: USE_LABELS[use] });
-}
-
-function blockText(voice: VoiceEntry, use: VoiceUse, t: T): string | null {
-  switch (useBlockReason(voice, use)) {
-    case "design":
-      return t("voice.voices.designNotInChat", { defaultValue: "Describe a voice needs a description each time, so it cannot be the chat voice." });
-    case "clone":
-      return t("voice.voices.cloneNotInCalls", { defaultValue: "Cloned voices are not used in voice calls." });
-    case "unavailable":
-      return voice.needs ?? t("voice.voices.notReady", { defaultValue: "Its model is not downloaded yet." });
-    case "notAllowed":
-      return t("voice.voices.notForChat", { defaultValue: "This voice cannot speak in Chat here." });
-    default:
-      return null;
-  }
-}
 
 /** Measured first-audio time of a voice in Chat, and a label when it is slow for calls. */
 export function ChatCost({ cost }: { cost?: VoiceChatCost | null }) {
@@ -99,51 +61,6 @@ export function ChatCost({ cost }: { cost?: VoiceChatCost | null }) {
   );
 }
 
-function closeMenu(event: MouseEvent<HTMLElement>) {
-  event.currentTarget.closest("details")?.removeAttribute("open");
-}
-
-/** One menu per row: make this the main voice for Speak, Chat read-aloud or voice calls; greyed with W6's reason. */
-function UseForMenu({ voice, current, onUse }: { voice: VoiceEntry; current: VoiceUse[]; onUse: (use: VoiceUse) => void }) {
-  const { t } = useTranslation("studio");
-  const tf = t as unknown as T;
-  const name = voice.kind === "design" ? t("voice.voices.designCard", { defaultValue: "Design a voice" }) : voice.name;
-  return (
-    <details className="model-action-menu voice-use-menu">
-      <summary className="secondary-button" aria-label={t("voice.voices.useForLabel", { defaultValue: "Use {name} for", name })}>
-        {t("voice.voices.useFor", { defaultValue: "Use for…" })}
-      </summary>
-      <div className="model-action-menu__list" role="menu">
-        {USES.map((use) => {
-          const reason = blockText(voice, use, tf);
-          const slow = use === "call" && !reason && voice.chatCost?.slowForCalls;
-          const on = current.includes(use);
-          return (
-            <button
-              key={use}
-              type="button"
-              role="menuitemradio"
-              aria-checked={on}
-              className="model-action-menu__item"
-              disabled={Boolean(reason) || on}
-              title={reason ?? undefined}
-              onClick={(event) => {
-                closeMenu(event);
-                onUse(use);
-              }}
-            >
-              {useLabel(use, tf)}
-              {on ? ` (${t("voice.voices.inUse", { defaultValue: "in use" })})` : ""}
-              {slow ? ` (${t("voice.voices.slowFor", { defaultValue: "slow: {s} s", s: voice.chatCost?.firstAudioS })})` : ""}
-              {reason ? <small className="voice-use-menu__reason">{reason}</small> : null}
-            </button>
-          );
-        })}
-      </div>
-    </details>
-  );
-}
-
 export interface VoicesScreenProps {
   catalog: VoiceCatalog;
   /** The voice Speak starts on (the Studio's current Speak voice). */
@@ -152,22 +69,41 @@ export interface VoicesScreenProps {
   onUseInSpeak: (id: string) => void;
   /** Jump to Speak with the design voice. */
   onDesign: () => void;
-  /** Open Voice Models at the speech models. */
+  /** Open Voice Models at the speech models (the fix for a missing speech part). */
   onGetMore: () => void;
+  /** After a cloned voice is saved, "Speak with it"; ``onUseInSpeak`` when not given. */
+  onSpeakWith?: (voiceId: string) => void;
 }
 
-export function VoicesScreen({ catalog, speakVoiceId, onUseInSpeak, onDesign, onGetMore }: VoicesScreenProps) {
+/** One greyed action's reason as text, with the button that fixes it. */
+function BlockedNote({ label, block, onFix }: { label: string; block: ActionBlock; onFix: () => void }) {
+  const { t } = useTranslation("studio");
+  return (
+    <p className="muted-text voice-voices__reason">
+      <strong>{label}</strong> {block.reason}
+      {block.fix === "setup" ? (
+        <>
+          {" "}
+          <button type="button" className="secondary-button" onClick={onFix}>
+            {t("voice.clone.openSetup", { defaultValue: "Open Voice setup" })}
+          </button>
+        </>
+      ) : null}
+    </p>
+  );
+}
+
+export function VoicesScreen({ catalog, speakVoiceId, onUseInSpeak, onDesign, onGetMore, onSpeakWith }: VoicesScreenProps) {
   const { t, i18n } = useTranslation("studio");
   const tf = t as unknown as T;
   const costs = useCostText();
-  const { settings, saveSettings, runtime } = useVoice();
+  const { settings, runtime } = useVoice();
   const sample = useVoiceSample(settings.speed);
   const [filter, setFilter] = useState<VoiceFilter>("all");
   const [language, setLanguage] = useState("");
   const [adding, setAdding] = useState(false);
-  const [choosingFor, setChoosingFor] = useState<VoiceUse | null>(null);
   const [showAllQuick, setShowAllQuick] = useState<Set<string>>(() => new Set());
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<VoiceErrorView | null>(null);
 
   const callId = callVoiceOf(settings);
   const listed = useMemo(() => managerVoices(catalog.voices), [catalog.voices]);
@@ -176,16 +112,7 @@ export function VoicesScreen({ catalog, speakVoiceId, onUseInSpeak, onDesign, on
   const shown = listed.filter((v) => matchesFilter(v, filter) && (!language || anyLanguage(v) || (v.languageLabel ?? v.language) === language));
   // Mandarin voices are Kokoro voices: offered only while Kokoro is installed.
   const addonPending = kokoroInstalled(runtime?.extras ?? [], runtime?.ttsModelInstalled ?? true) && chineseAddonPending(runtime?.extras ?? []);
-  const byId = (id: string) => catalog.voices.find((v) => v.id === id) ?? null;
-
-  const fallback = effectiveFallback(catalog.voices, settings);
   const kokoroReady = kokoroInstalled(runtime?.extras ?? [], runtime?.ttsModelInstalled ?? true);
-
-  const assign = (use: VoiceUse, id: string) => {
-    setError(null);
-    if (use === "speak") onUseInSpeak(id);
-    else void saveSettings({ [VOICE_USE_SETTING[use]]: id }).catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
-  };
 
   const remove = async (voice: VoiceEntry) => {
     const ask = t("voice.clone.deleteConfirm", {
@@ -197,31 +124,15 @@ export function VoicesScreen({ catalog, speakVoiceId, onUseInSpeak, onDesign, on
       await deleteClonedVoice(voice.id.replace(/^clone:/, ""));
       await catalog.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(describeVoiceError(err));
     }
   };
 
-  const cloneNote = !catalog.modelsAvailable
-    ? speechGpuAddonMissing(runtime)
-      ? speechGpuAddonText(tf)
-      : t("voice.clone.macOnly", { defaultValue: "Voice cloning runs on Apple Silicon Macs for now." })
-    : t("voice.clone.notHere", { defaultValue: "Cloned voices can only be used from the ChaosEngineAI window on this computer." });
-
-  // --- the main-voices strip -------------------------------------------------------------------------------------
-  const slotNote = (use: VoiceUse, voice: VoiceEntry | null): string => {
-    if (use === "speak") return t("voice.voices.slotSpeak", { defaultValue: "Starts selected on the Speak screen." });
-    const first = voice?.chatCost?.firstAudioS;
-    const timing = first != null ? t("voice.voices.firstWords", { defaultValue: "First words after {s} s.", s: first }) : "";
-    if (use === "read") return `${t("voice.voices.slotRead", { defaultValue: "Replies and the speaker button." })} ${timing}`.trim();
-    if (use === "fallback") {
-      return voice?.kind === "clone"
-        ? t("voice.voices.slotFallbackClone", { defaultValue: "Reads when the chat voice cannot. Not used in calls." })
-        : t("voice.voices.slotFallback", { defaultValue: "Reads when the chat or call voice cannot." });
-    }
-    return `${timing} ${t("voice.voices.slotCall", { defaultValue: "Cloned voices are not used in calls." })}`.trim();
-  };
-  // The fallback slot shows the fallback in effect: a set voice that is not installed (Kokoro removed) counts as none.
-  const slotVoice: Record<VoiceUse, string> = { speak: speakVoiceId, read: settings.ttsVoice, call: callId, fallback: fallback?.id ?? "" };
+  const state = { modelsAvailable: catalog.modelsAvailable, cloneAllowed: catalog.cloneAllowed, runtime };
+  // Until the catalogue has loaded nothing is known: the buttons wait, no reason is shown yet.
+  const cloneBlock = catalog.loaded ? cloneActionBlock("clone", state, tf) : null;
+  const designBlock = catalog.loaded ? cloneActionBlock("design", state, tf) : null;
+  const waiting = !catalog.loaded;
 
   // --- the grouped list -----------------------------------------------------------------------------------------
   const natural = shown.filter((v) => v.kind === "preset");
@@ -231,7 +142,8 @@ export function VoicesScreen({ catalog, speakVoiceId, onUseInSpeak, onDesign, on
   const quickLanguages = [...new Set(quick.map(quickLanguage))];
   const uiQuick = topQuickVoice(quick, i18n.language);
   const orderedQuickLanguages = uiQuick ? [quickLanguage(uiQuick), ...quickLanguages.filter((l) => l !== quickLanguage(uiQuick))] : quickLanguages;
-  const assigned = new Set(Object.values(slotVoice));
+  // A voice in use anywhere stays on the quick shortlist, even when it is not one of the best graded.
+  const inUse = new Set<string>([speakVoiceId, settings.ttsVoice, callId, fallbackSetting(settings)]);
 
   const row = (voice: VoiceEntry) => {
     const uses = usesOf(voice.id, settings, speakVoiceId, callId);
@@ -260,7 +172,7 @@ export function VoicesScreen({ catalog, speakVoiceId, onUseInSpeak, onDesign, on
           <span className="badge">{voiceKindLabel(voice, tf)}</span>
           {uses.map((use) => (
             <span key={use} className="badge success">
-              {t(`voice.voices.badge.${use}`, { defaultValue: USE_BADGES[use] })}
+              {t(`voice.voices.badge.${USE_BADGE_KEYS[use]}`, { defaultValue: USE_BADGES[use] })}
             </span>
           ))}
           <span className="muted-text voice-list__about">
@@ -283,11 +195,21 @@ export function VoicesScreen({ catalog, speakVoiceId, onUseInSpeak, onDesign, on
             )
           ) : null}
           {voice.kind === "design" ? (
-            <button type="button" className="secondary-button" disabled={!catalog.modelsAvailable} onClick={onDesign}>
+            <button type="button" className="secondary-button" disabled={waiting || designBlock !== null} onClick={onDesign}>
               {t("voice.voices.useInSpeak", { defaultValue: "Use in Speak" })}
             </button>
           ) : (
-            <UseForMenu voice={voice} current={uses} onUse={(use) => assign(use, voice.id)} />
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={voice.id === speakVoiceId}
+              aria-label={t("voice.voices.useNameInSpeak", { defaultValue: "Use {name} in Speak", name })}
+              onClick={() => onUseInSpeak(voice.id)}
+            >
+              {voice.id === speakVoiceId
+                ? t("voice.voices.inSpeak", { defaultValue: "In use in Speak" })
+                : t("voice.voices.useInSpeak", { defaultValue: "Use in Speak" })}
+            </button>
           )}
           {voice.kind === "clone" ? (
             <button
@@ -343,7 +265,7 @@ export function VoicesScreen({ catalog, speakVoiceId, onUseInSpeak, onDesign, on
               const inLanguage = quick.filter((v) => quickLanguage(v) === lang);
               const short = quickShortlist(inLanguage);
               const open = showAllQuick.has(lang);
-              const visible = open ? inLanguage : inLanguage.filter((v) => short.includes(v) || assigned.has(v.id));
+              const visible = open ? inLanguage : inLanguage.filter((v) => short.includes(v) || inUse.has(v.id));
               return (
                 <div key={lang} className="voice-voices__quick-language">
                   {orderedQuickLanguages.length > 1 ? <h5 className="voice-voices__language">{lang}</h5> : null}
@@ -379,26 +301,17 @@ export function VoicesScreen({ catalog, speakVoiceId, onUseInSpeak, onDesign, on
         )
       : null;
 
-  const drawerUse = choosingFor;
-  const drawerVoices = drawerUse ? voicesForUse(catalog.voices, drawerUse) : [];
-
   return (
     <Panel
       title={t("voice.voices.listTitle", { defaultValue: "Voices" })}
-      subtitle={t("voice.voices.subtitleUses", { defaultValue: "Every voice on this computer, and which one each part of the app uses." })}
+      subtitle={t("voice.voices.subtitleCatalogue", { defaultValue: "Every voice on this computer. Chat's voices are chosen in Chat, under Voice." })}
       className="span-2"
       actions={
         <div className="button-row voice-voices__actions">
-          <button
-            type="button"
-            className="secondary-button"
-            disabled={!catalog.cloneAllowed || adding}
-            title={catalog.cloneAllowed ? undefined : cloneNote}
-            onClick={() => setAdding(true)}
-          >
+          <button type="button" className="secondary-button" disabled={waiting || cloneBlock !== null || adding} onClick={() => setAdding(true)}>
             {t("voice.clone.new", { defaultValue: "New cloned voice" })}
           </button>
-          <button type="button" className="secondary-button" disabled={!catalog.modelsAvailable} onClick={onDesign}>
+          <button type="button" className="secondary-button" disabled={waiting || designBlock !== null} onClick={onDesign}>
             {t("voice.voices.designCard", { defaultValue: "Design a voice" })}
           </button>
           <button type="button" className="secondary-button" onClick={onGetMore}>
@@ -408,55 +321,18 @@ export function VoicesScreen({ catalog, speakVoiceId, onUseInSpeak, onDesign, on
       }
     >
       <div className="voice-studio voice-voices">
+        {cloneBlock ? <BlockedNote label={t("voice.clone.new", { defaultValue: "New cloned voice" })} block={cloneBlock} onFix={onGetMore} /> : null}
+        {designBlock ? <BlockedNote label={t("voice.voices.designCard", { defaultValue: "Design a voice" })} block={designBlock} onFix={onGetMore} /> : null}
         {adding ? (
-          <NewVoiceForm
-            onCancel={() => setAdding(false)}
-            onCreated={() => {
-              setAdding(false);
-              void catalog.refresh();
-            }}
-          />
+          <>
+            <CloneVoiceScreen catalog={catalog} onSpeakWith={(id) => (onSpeakWith ?? onUseInSpeak)(id)} onOpenSetup={onGetMore} />
+            <div className="button-row">
+              <button type="button" className="secondary-button" onClick={() => setAdding(false)}>
+                {t("voice.voices.closeClone", { defaultValue: "Close" })}
+              </button>
+            </div>
+          </>
         ) : null}
-
-        <section className="voice-main" aria-label={t("voice.voices.mainTitle", { defaultValue: "Main voices" })}>
-          <div className="voice-main__slots">
-            {USES.map((use) => {
-              const voice = byId(slotVoice[use]);
-              return (
-                <div key={use} className="voice-main__slot" data-use={use}>
-                  <span className="voice-main__label">{useLabel(use, tf)}</span>
-                  <span className="voice-main__voice">
-                    <strong>
-                      {voice
-                        ? voice.kind === "design"
-                          ? t("voice.voices.designCard", { defaultValue: "Design a voice" })
-                          : voice.name
-                        : use === "fallback"
-                          ? t("voice.voices.fallbackNone", { defaultValue: "None set" })
-                          : slotVoice[use] || "—"}
-                    </strong>
-                    {voice ? <span className="badge">{voiceKindLabel(voice, tf)}</span> : null}
-                    {use === "call" && !settings.callVoice ? (
-                      <span className="muted-text">{t("voice.voices.sameAsChat", { defaultValue: "(same as Chat)" })}</span>
-                    ) : null}
-                  </span>
-                  <span className="muted-text voice-main__note">{slotNote(use, voice)}</span>
-                  <button
-                    type="button"
-                    className="secondary-button voice-main__change"
-                    aria-label={t("voice.voices.changeFor", { defaultValue: "Change the voice for {use}", use: useLabel(use, tf) })}
-                    onClick={() => setChoosingFor(use)}
-                  >
-                    {t("voice.voices.change", { defaultValue: "Change" })}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-          <p className="muted-text voice-main__fallback">
-            <FallbackNote voice={fallback} />
-          </p>
-        </section>
 
         <div className="voice-studio__row voice-voices__filters">
           <div className="segmented" role="tablist" aria-label={t("voice.voices.filter", { defaultValue: "Show" })}>
@@ -476,11 +352,7 @@ export function VoicesScreen({ catalog, speakVoiceId, onUseInSpeak, onDesign, on
           </select>
         </div>
 
-        {error ? (
-          <p className="voice-error" role="alert">
-            {error}
-          </p>
-        ) : null}
+        {error ? <VoiceErrorNotice view={error} /> : null}
         {catalog.error ? <p className="voice-error" role="alert">{catalog.error}</p> : null}
         {shown.length === 0 && catalog.loaded && !((addonPending || !kokoroReady) && filter === "quick") ? (
           <p className="muted-text">
@@ -524,54 +396,6 @@ export function VoicesScreen({ catalog, speakVoiceId, onUseInSpeak, onDesign, on
           </p>
         ) : null}
       </div>
-
-      {drawerUse ? (
-        <Drawer
-          title={t("voice.voices.chooseFor", { defaultValue: "Choose the voice for {use}", use: useLabel(drawerUse, tf) })}
-          subtitle={
-            drawerUse === "call"
-              ? t("voice.voices.chooseCallHint", { defaultValue: "Voices that can answer calls. Cloned voices are not used in calls." })
-              : drawerUse === "read"
-                ? t("voice.voices.chooseReadHint", { defaultValue: "Voices that can read chat replies aloud." })
-                : drawerUse === "fallback"
-                  ? t("voice.voices.chooseFallbackHint", {
-                      defaultValue: "Installed voices that read when the chosen chat or call voice cannot. A cloned voice is used for read-aloud only.",
-                    })
-                  : t("voice.picker.drawerHint", { defaultValue: "Click a voice to use it in Speak. The sample button plays a short line." })
-          }
-          onClose={() => setChoosingFor(null)}
-          className="voice-drawer"
-        >
-          {drawerUse === "fallback" ? (
-            <div className="button-row voice-drawer__none">
-              <button
-                type="button"
-                className="secondary-button"
-                aria-pressed={!fallback}
-                onClick={() => {
-                  assign("fallback", "");
-                  setChoosingFor(null);
-                }}
-              >
-                {t("voice.voices.noFallback", { defaultValue: "No fallback voice" })}
-              </button>
-            </div>
-          ) : null}
-          <VoicePicker
-            voices={drawerVoices}
-            models={catalog.models}
-            selectedId={slotVoice[drawerUse]}
-            onSelect={(id) => assign(drawerUse, id)}
-            onChoose={() => setChoosingFor(null)}
-            modelsAvailable={catalog.modelsAvailable}
-            isPlaying={sample.isPlaying}
-            isLoading={sample.isLoading}
-            onSample={(entry) => void sample.play(entry)}
-            onGetMore={onGetMore}
-            onAddonInstalled={() => void catalog.refresh()}
-          />
-        </Drawer>
-      ) : null}
     </Panel>
   );
 }

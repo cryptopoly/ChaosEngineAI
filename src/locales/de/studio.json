@@ -1699,7 +1699,6 @@
       "useClip": "Als Clip verwenden",
       "noCast": "Keine Besetzung in diesem Projekt. Das ist in Ordnung: Ein Shot kann allein stehen. Füge auf dem Reiter „Besetzung“ Figuren oder Orte hinzu, um einen Look beizubehalten.",
       "vocal": "Gesang für Lippensynchronisation",
-      "vocalHint": "Eine WAV- oder FLAC-Datei, der der Mund folgt: Der Clip startet vom Standbild dieser Einstellung, dauert 3 bis 8 s und behält diesen Ton. Braucht LTX-2.3 als Videomodell (das 4-Bit-NVIDIA-Modell verlangt eine 24-GB-Karte).",
       "vocalFile": "Gesangsdatei (WAV oder FLAC)",
       "vocalChange": "Gesang ändern",
       "vocalAttach": "Gesang anhängen",
@@ -1764,8 +1763,6 @@
     "removeTitle": "Diese Einstellung löschen?",
     "shot": {
       "drag": "Zum Umsortieren ziehen",
-      "failedNote": "Die Einstellung wurde nicht gerendert. Versuche es erneut oder bearbeite die Prompts.",
-      "keep": "Behalten",
       "lock": "Diese Einstellung sperren",
       "lockedNote": "Gesperrte Einstellungen werden beim Erstellen übersprungen.",
       "menu": {
@@ -1819,10 +1816,6 @@
       "makeClip": "Clip erstellen",
       "makeClipTitle": "Den Clip dieser Einstellung aus ihrem Standbild erstellen.",
       "referenceAdded": "{name} wurde mit diesem Standbild zur Besetzung hinzugefügt.",
-      "draft": "Entwurf",
-      "draftTitle": "Ein schneller Entwurf. Behalte diesen Shot und starte den finalen Durchlauf für den Take in voller Qualität.",
-      "keepForFinal": "Für den Finalen behalten",
-      "keepForFinalTitle": "Der finale Durchlauf auf behaltenen Shots erzeugt diesen Shot mit dem Qualitätsmodell neu.",
       "tagsLabel": null,
       "hideStaleTitle": null,
       "hideStale": null,
@@ -1846,13 +1839,7 @@
     "passes": {
       "draft": "Entwürfe erzeugen",
       "draftTimed": "Entwürfe erzeugen · etwa {time}",
-      "final": "Finaler Durchlauf für {n, plural, one {# behaltenen Shot} other {# behaltene Shots}}",
-      "finalTimed": "Finaler Durchlauf für {n, plural, one {# behaltenen Shot} other {# behaltene Shots}} · etwa {time}",
-      "draftTitle": "Schnelle Standbilder mit {model} bei {width} x {height}. Markiere die Shots, die dir gefallen, mit Behalten, und starte dann den finalen Durchlauf.",
-      "finalTitle": "Erzeugt jeden behaltenen Shot mit {model} bei {width} x {height} neu, dann seinen Clip aus dem neuen Standbild.",
-      "label": "Entwurfs- und Finaldurchläufe",
       "withClips": "Entwürfe mit Clips",
-      "keepHint": "Markiere Shots mit „Für den Finalen behalten“, um sie für den finalen Durchlauf auszuwählen.",
       "draftPer": "Etwa {time} pro Entwurf.",
       "draftTitleChoose": null,
       "finalChosenTimed": null,
@@ -1885,7 +1872,6 @@
       "legend": "Was die Markierungen bedeuten",
       "keys": "Leertaste oder K: abspielen / Pause · J und L: 5 s · Pfeile: 1 s (Umschalt 10 s) · Bild auf / Bild ab: Shot · Pos1 / Ende · C: Untertitel · Esc: schließen",
       "missingNote": "{n, plural, one {# Shot hat noch keinen Clip. Hier hält er sein Standbild (oder eine Karte) für seine geplante Länge; der Export lässt ihn weg.} other {# Shots haben noch keinen Clip. Hier halten sie ihre Standbilder (oder eine Karte) für ihre geplante Länge; der Export lässt sie weg.}}",
-      "draftNote": "{n, plural, one {# Shot spielt einen Entwurfs-Take ab.} other {# Shots spielen einen Entwurfs-Take ab.}} Starte den finalen Durchlauf für behaltene Shots, um volle Qualität zu erhalten.",
       "failed": "{n, plural, one {# Datei konnte nicht gelesen werden; ihr Teil spielt leer oder stumm ab.} other {# Dateien konnten nicht gelesen werden; ihre Teile spielen leer oder stumm ab.}}",
       "noSound": "Dieses Fenster kann keinen Ton abspielen, daher läuft der Grobschnitt ohne Ton.",
       "titleCard": "Titelkarte",
@@ -2250,7 +2236,6 @@
         "use": "{n, plural, one {Diesen Shot verwenden} other {Diese # Shots verwenden}}",
         "useSinging": null
       },
-      "cutPlan": "Schnittplan erstellen",
       "cutting": "Schnitt zur Musik …",
       "fromFile": "Oder eine Audiodatei (WAV, FLAC, MP3, OGG, M4A)",
       "fromLibrary": "Aus der Musikbibliothek",
@@ -2283,8 +2268,6 @@
       "longerThanFilm": "Der Song dauert {song}; die Shots ergeben zusammen {film}. Zeilen nach {film} werden erst angezeigt, wenn der Film so lang ist.",
       "vocals": {
         "title": "Lippensynchronisation für den Song",
-        "hint": "1. Schneide den Song in Gesangs-Shots von {min} bis {max} s. 2. Gib jedem Shot seinen Teil des Gesangs: Er beginnt 0,4 s vor dem Shot, wird als gesungen markiert und erzeugt 3 Takes. Mit einem Gesangs-Stem (nur die Stimme) klappt es am besten; ohne ihn wird der Song selbst verwendet.",
-        "cut": "Für Gesang schneiden (Shots von {min} bis {max} s)",
         "stemRemove": "Stattdessen den Song verwenden",
         "stem": "Gesangs-Stem (optional, WAV oder FLAC)",
         "stemUse": "Diesen Stem verwenden",
@@ -2893,71 +2876,12 @@
     "openMixer": "Mixer öffnen"
   },
   "overview": {
-    "addCast": "Besetzung hinzufügen (optional)",
     "cast": "{n, plural, =0 {keine Besetzung} one {# in der Besetzung} other {# in der Besetzung}}",
     "noSound": "noch kein Ton",
-    "progress": "{shots, plural, one {# Shot} other {# Shots}} · {made} erzeugt · {stale} veraltet · {seconds} s",
     "settingsTitle": "Projekteinstellungen",
     "sheet": "Einstellungen",
     "sound": "{n, plural, one {# Tonclip} other {# Tonclips}}",
     "staleBadge": "Veraltet",
-    "startBody": "Schreibe deine Shots, eine Zeile pro Shot. Eine Besetzung ist optional: Füge Figuren oder Orte nur hinzu, wenn Shots denselben Look behalten sollen.",
-    "startTitle": "Hier beginnen",
-    "writeShots": "Einstellungen schreiben",
-    "check": {
-      "cast": "Besetzung (optional)",
-      "doneLabel": "erledigt",
-      "export": "Export",
-      "format": "Name und Format",
-      "preview": "Vorschau",
-      "shots": "Einstellungen",
-      "sound": "Ton (optional)",
-      "takes": "Ein Clip für jede Einstellung",
-      "todoLabel": "offen"
-    },
-    "checklist": "Schritte",
-    "next": {
-      "addSound": {
-        "body": "Optional. Lege Sprache, Effekte oder Musik im Mischer ab oder springe direkt zu einer Vorschau.",
-        "button": "Mixer öffnen",
-        "title": "Stimme oder Musik hinzufügen"
-      },
-      "done": {
-        "body": "Nach einer Änderung erneut exportieren oder eine neue Aufnahme einer Einstellung machen.",
-        "button": "Export öffnen",
-        "title": "Fertig"
-      },
-      "export": {
-        "body": "Schreibe den fertigen MP4, mit Untertiteln und einer KI-Kennzeichnung, wenn du sie willst.",
-        "button": "Export öffnen",
-        "title": "Film exportieren"
-      },
-      "makeClips": {
-        "body": "{n, plural, one {# Shot hat ein Standbild, aber keinen Clip, daher lässt der Film ihn weg.} other {# Shots haben ein Standbild, aber keinen Clip, daher lässt der Film sie weg.}}",
-        "button": "Storyboard öffnen",
-        "title": "Standbilder zu Clips machen"
-      },
-      "makeMissing": {
-        "body": "{n, plural, one {# Shot hat noch keinen Take.} other {# Shots haben noch keinen Take.}} Erzeugen fügt für jeden ein Standbild und dann einen Clip hinzu.",
-        "button": "{n, plural, one {# fehlenden erzeugen} other {# fehlende erzeugen}}",
-        "title": "{n, plural, one {# Shot erzeugen} other {# Shots erzeugen}}",
-        "bodyStills": "{none, plural, =0 {} one {# Shot hat keinen Take; } other {# Shots haben keinen Take; }}{stills, plural, one {# hat ein Standbild, aber keinen Clip.} other {# haben ein Standbild, aber keinen Clip.}} Erzeugen ergänzt, was fehlt: ein Standbild und einen Clip oder nur den Clip.",
-        "draftsHint": "Das Standbild-Modell ist langsam. Erzeuge zuerst schnelle Entwürfe, markiere die Shots, die dir gefallen, mit Behalten, und starte dann den finalen Durchlauf."
-      },
-      "making": "Einstellungen werden erstellt",
-      "makingProgress": "Shot {n} von {total}",
-      "renderPreview": {
-        "body": "Sieh und höre den ganzen Film, bevor du ihn exportierst.",
-        "button": "Mixer öffnen",
-        "title": "Vorschau rendern"
-      },
-      "writeShots": {
-        "body": "Füge deine Shots hinzu und gib jedem eine Zeile Prompt. Eine Besetzung ist optional: Eine Straße oder eine Menschenmenge funktioniert allein.",
-        "button": "Einstellungen schreiben",
-        "title": "Einstellungen schreiben"
-      }
-    },
-    "nextStep": "Nächster Schritt",
     "progressClips": "{shots, plural, one {# Shot} other {# Shots}} · {clips} mit Clip · {stills} nur Standbild · {stale} veraltet · {seconds} s",
     "activity": {
       "cancelled": "Durchlauf abgebrochen · {when}",

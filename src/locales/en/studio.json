@@ -1699,7 +1699,6 @@
       "useClip": "Use as clip",
       "noCast": "No cast in this project. That is fine: a shot can stand alone. Add characters or places on the Cast tab to keep a look.",
       "vocal": "Vocal for lip sync",
-      "vocalHint": "A WAV or FLAC the mouth follows: the clip starts from this shot's still, lasts 3 to 8 s and keeps this sound. Needs LTX-2.3 as the video model (the 4-bit NVIDIA model wants a 24 GB card).",
       "vocalFile": "Vocal file (WAV or FLAC)",
       "vocalChange": "Change vocal",
       "vocalAttach": "Attach vocal",
@@ -1764,8 +1763,6 @@
     "removeTitle": "Delete this shot?",
     "shot": {
       "drag": "Drag to reorder",
-      "failedNote": "The shot did not render. Try again or edit the prompts.",
-      "keep": "Keep as is",
       "lock": "Lock this shot",
       "lockedNote": "Locked shots are skipped by Make shots.",
       "menu": {
@@ -1819,10 +1816,6 @@
       "makeClip": "Make clip",
       "makeClipTitle": "Make the clip of this shot from its still.",
       "referenceAdded": "{name} was added to the Cast with this still.",
-      "draft": "Draft",
-      "draftTitle": "A quick draft. Keep this shot and run the final pass for the full-quality take.",
-      "keepForFinal": "Keep for final",
-      "keepForFinalTitle": "Final pass on kept shots makes this shot again with the quality model.",
       "tagsLabel": "Lip sync and cast",
       "hideStaleTitle": "Hides this warning. The shot stays as it is and nothing is made again.",
       "hideStale": "Hide this warning",
@@ -1846,13 +1839,7 @@
     "passes": {
       "draft": "Make drafts",
       "draftTimed": "Make drafts · about {time}",
-      "final": "Final pass on {n, plural, one {# kept shot} other {# kept shots}}",
-      "finalTimed": "Final pass on {n, plural, one {# kept shot} other {# kept shots}} · about {time}",
-      "draftTitle": "Quick stills with {model} at {width} x {height}. Mark the shots you like with Keep, then run the final pass.",
-      "finalTitle": "Makes each kept shot again with {model} at {width} x {height}, then its clip from the new still.",
-      "label": "Draft and final passes",
       "withClips": "Drafts with clips",
-      "keepHint": "Mark shots with Keep for final to choose them for the final pass.",
       "draftPer": "About {time} per draft.",
       "draftTitleChoose": "Quick stills with {model} at {width} x {height}. Choose the shots you like for final, then run the final pass.",
       "finalChosenTimed": "Final pass on {n, plural, one {# chosen shot} other {# chosen shots}} · about {time}",
@@ -1885,7 +1872,6 @@
       "legend": "What the markers mean",
       "keys": "Space or K: play / pause · J and L: 5 s · arrows: 1 s (Shift 10 s) · Page Up / Down: shot · Home / End · C: captions · Esc: close",
       "missingNote": "{n, plural, one {# shot has no clip yet. It holds its still here (or a card) for its planned length; the export leaves it out.} other {# shots have no clip yet. They hold their still here (or a card) for their planned length; the export leaves them out.}}",
-      "draftNote": "{n, plural, one {# shot plays a draft take.} other {# shots play a draft take.}} Run the final pass on kept shots for full quality.",
       "failed": "{n, plural, one {# file could not be read; its part plays blank or silent.} other {# files could not be read; their parts play blank or silent.}}",
       "noSound": "This window cannot play sound, so the rough cut plays without it.",
       "titleCard": "Title card",
@@ -2250,7 +2236,6 @@
         "use": "{n, plural, one {Use this shot} other {Use these # shots}}",
         "useSinging": "{n, plural, one {Use this shot and give it its vocal} other {Use these # shots and give each its vocal}}"
       },
-      "cutPlan": "Make a cut plan",
       "cutting": "Cutting to the music…",
       "fromFile": "Or an audio file (WAV, FLAC, MP3, OGG, M4A)",
       "fromLibrary": "From the Music library",
@@ -2283,8 +2268,6 @@
       "longerThanFilm": "The song runs {song}; the shots add up to {film}. Lines after {film} do not show until the film is that long.",
       "vocals": {
         "title": "Lip-sync the song",
-        "hint": "1. Cut the song into sung shots of {min} to {max} s. 2. Give each shot its part of the vocal: it starts 0.4 s before the shot, is marked sung and makes 3 takes. A vocal stem (the voice alone) follows best; without one the song itself is used.",
-        "cut": "Cut for singing ({min} to {max} s shots)",
         "stemRemove": "Use the song instead",
         "stem": "Vocal stem (optional, WAV or FLAC)",
         "stemUse": "Use this stem",
@@ -2893,71 +2876,12 @@
     "openMixer": "Open the Mixer"
   },
   "overview": {
-    "addCast": "Add a cast (optional)",
     "cast": "{n, plural, =0 {no cast} one {# in the cast} other {# in the cast}}",
     "noSound": "no sound yet",
-    "progress": "{shots, plural, one {# shot} other {# shots}} · {made} made · {stale} stale · {seconds} s",
     "settingsTitle": "Project settings",
     "sheet": "Shots",
     "sound": "{n, plural, one {# sound clip} other {# sound clips}}",
     "staleBadge": "Stale",
-    "startBody": "Write your shots, one line each. A cast is optional: add characters or places only when shots should keep the same look.",
-    "startTitle": "Start here",
-    "writeShots": "Write your shots",
-    "check": {
-      "cast": "Cast (optional)",
-      "doneLabel": "done",
-      "export": "Export",
-      "format": "Name and format",
-      "preview": "Preview",
-      "shots": "Shots",
-      "sound": "Sound (optional)",
-      "takes": "A clip for every shot",
-      "todoLabel": "to do"
-    },
-    "checklist": "Steps",
-    "next": {
-      "addSound": {
-        "body": "Optional. Place voice, effects or music in the Mixer, or go straight to a preview.",
-        "button": "Open the Mixer",
-        "title": "Add voice or music"
-      },
-      "done": {
-        "body": "Export again after a change, or make a new take of any shot.",
-        "button": "Open Export",
-        "title": "Done"
-      },
-      "export": {
-        "body": "Write the finished MP4, with captions and an AI tag if you want them.",
-        "button": "Open Export",
-        "title": "Export the film"
-      },
-      "makeClips": {
-        "body": "{n, plural, one {# shot has a still but no clip, so the film leaves it out.} other {# shots have a still but no clip, so the film leaves them out.}}",
-        "button": "Open the Storyboard",
-        "title": "Turn the stills into clips"
-      },
-      "makeMissing": {
-        "body": "{n, plural, one {# shot has no take yet.} other {# shots have no take yet.}} Making them adds a still, then a clip, for each.",
-        "button": "{n, plural, one {Make # missing} other {Make # missing}}",
-        "title": "{n, plural, one {Make # shot} other {Make # shots}}",
-        "bodyStills": "{none, plural, =0 {} one {# shot has no take; } other {# shots have no take; }}{stills, plural, one {# has a still but no clip.} other {# have a still but no clip.}} Making them adds what is missing: a still and a clip, or just the clip.",
-        "draftsHint": "The still model is slow. Make quick drafts first, mark the shots you like with Keep, then run the final pass."
-      },
-      "making": "Making shots",
-      "makingProgress": "Shot {n} of {total}",
-      "renderPreview": {
-        "body": "Watch and hear the whole film before you export it.",
-        "button": "Open the Mixer",
-        "title": "Render a preview"
-      },
-      "writeShots": {
-        "body": "Add your shots and give each a line of prompt. A cast is optional: a street or a crowd works on its own.",
-        "button": "Write your shots",
-        "title": "Write your shots"
-      }
-    },
-    "nextStep": "Next step",
     "progressClips": "{shots, plural, one {# shot} other {# shots}} · {clips} with a clip · {stills} still only · {stale} stale · {seconds} s",
     "activity": {
       "cancelled": "Batch cancelled · {when}",

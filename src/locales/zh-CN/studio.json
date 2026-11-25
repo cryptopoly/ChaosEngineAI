@@ -1699,7 +1699,6 @@
       "useClip": "用作视频片段",
       "noCast": "此项目中没有角色。没关系：镜头可以独立存在。在“角色表”标签中添加人物或场景，即可保持统一风格。",
       "vocal": "用于口型同步的人声",
-      "vocalHint": "口型会跟随的 WAV 或 FLAC：片段从此镜头的静帧开始，时长 3 至 8 秒，并保留此声音。需要将 LTX-2.3 作为视频模型（4-bit NVIDIA 模型需要 24 GB 显卡）。",
       "vocalFile": "人声文件（WAV 或 FLAC）",
       "vocalChange": "更换人声",
       "vocalAttach": "添加人声",
@@ -1764,8 +1763,6 @@
     "removeTitle": "删除这个镜头？",
     "shot": {
       "drag": "拖动以重新排序",
-      "failedNote": "该镜头未能渲染。请重试或编辑提示词。",
-      "keep": "保留",
       "lock": "锁定此镜头",
       "lockedNote": "“制作镜头”会跳过已锁定的镜头。",
       "menu": {
@@ -1819,10 +1816,6 @@
       "makeClip": "生成片段",
       "makeClipTitle": "用此镜头的静帧生成片段。",
       "referenceAdded": "已用此静帧将 {name} 加入角色。",
-      "draft": "草稿",
-      "draftTitle": "快速草稿。保留此镜头，并运行定稿渲染以获得全质量版本。",
-      "keepForFinal": "保留用于定稿",
-      "keepForFinalTitle": "对保留的镜头进行定稿渲染，会使用高质量模型重新制作此镜头。",
       "tagsLabel": null,
       "hideStaleTitle": null,
       "hideStale": null,
@@ -1846,13 +1839,7 @@
     "passes": {
       "draft": "制作草稿",
       "draftTimed": "制作草稿 · 约 {time}",
-      "final": "对 {n, plural, other {# 个保留的镜头}}进行定稿渲染",
-      "finalTimed": "对 {n, plural, other {# 个保留的镜头}}进行定稿渲染 · 约 {time}",
-      "draftTitle": "使用 {model} 以 {width} x {height} 快速生成静帧。用“保留”标记喜欢的镜头，然后运行定稿渲染。",
-      "finalTitle": "使用 {model} 以 {width} x {height} 重新制作每个保留的镜头，然后根据新静帧生成其片段。",
-      "label": "草稿与定稿渲染",
       "withClips": "带片段的草稿",
-      "keepHint": "用“保留用于定稿”标记镜头，即可将其选入定稿渲染。",
       "draftPer": "每个草稿约 {time}。",
       "draftTitleChoose": null,
       "finalChosenTimed": null,
@@ -1885,7 +1872,6 @@
       "legend": "标记含义",
       "keys": "空格或 K：播放 / 暂停 · J 和 L：5 s · 方向键：1 s（Shift 为 10 s）· Page Up / Down：镜头 · Home / End · C：字幕 · Esc：关闭",
       "missingNote": "{n, plural, other {# 个镜头尚无片段。它会在此处保持静帧（或字幕卡），时长为计划长度；导出时会将其略去。}}",
-      "draftNote": "{n, plural, other {# 个镜头播放草稿版本。}}对保留的镜头运行定稿渲染可获得全质量。",
       "failed": "{n, plural, other {# 个文件无法读取；对应部分将播放为空白或无声。}}",
       "noSound": "此窗口无法播放声音，粗剪将以无声方式播放。",
       "titleCard": "片头字幕卡",
@@ -2250,7 +2236,6 @@
         "use": "{n, plural, other {使用这 # 个镜头}}",
         "useSinging": null
       },
-      "cutPlan": "制作剪辑计划",
       "cutting": "正在按音乐剪辑…",
       "fromFile": "或音频文件（WAV、FLAC、MP3、OGG、M4A）",
       "fromLibrary": "来自音乐库",
@@ -2283,8 +2268,6 @@
       "longerThanFilm": "歌曲时长为 {song}；镜头合计为 {film}。在影片达到此长度前，{film} 之后的歌词不会显示。",
       "vocals": {
         "title": "为歌曲做口型同步",
-        "hint": "1. 把歌曲剪成 {min} 至 {max} 秒的演唱镜头。2. 给每个镜头分配对应的人声部分：它在镜头开始前 0.4 秒起始，标记为演唱，并生成 3 个版本。人声分轨（只有人声）的跟随效果最好；没有分轨时会使用歌曲本身。",
-        "cut": "为演唱剪辑（{min} 至 {max} 秒的镜头）",
         "stemRemove": "改用歌曲",
         "stem": "人声分轨（可选，WAV 或 FLAC）",
         "stemUse": "使用此分轨",
@@ -2893,71 +2876,12 @@
     "openMixer": "打开混音器"
   },
   "overview": {
-    "addCast": "添加角色（可选）",
     "cast": "{n, plural, =0 {没有角色} other {角色表中有 # 个}}",
     "noSound": "还没有声音",
-    "progress": "{shots, plural, other {# 个镜头}} · 已制作 {made} · 过期 {stale} · {seconds} s",
     "settingsTitle": "项目设置",
     "sheet": "镜头",
     "sound": "{n, plural, other {# 个音效片段}}",
     "staleBadge": "已过时",
-    "startBody": "每行写一个镜头。角色表是可选的：只有当镜头需要保持相同外观时，才添加人物或场景。",
-    "startTitle": "从这里开始",
-    "writeShots": "写下你的镜头",
-    "check": {
-      "cast": "角色（可选）",
-      "doneLabel": "完成",
-      "export": "导出",
-      "format": "名称和格式",
-      "preview": "预览",
-      "shots": "镜头",
-      "sound": "声音（可选）",
-      "takes": "每个镜头都有片段",
-      "todoLabel": "待办"
-    },
-    "checklist": "步骤",
-    "next": {
-      "addSound": {
-        "body": "可选。在混音台中加入语音、音效或音乐，或直接进行预览。",
-        "button": "打开混音器",
-        "title": "添加人声或音乐"
-      },
-      "done": {
-        "body": "修改后再次导出，或为任意镜头新拍一条。",
-        "button": "打开导出",
-        "title": "完成"
-      },
-      "export": {
-        "body": "输出完成的 MP4，如需要可加入字幕和 AI 标记。",
-        "button": "打开导出",
-        "title": "导出影片"
-      },
-      "makeClips": {
-        "body": "{n, plural, other {# 个镜头有静帧但没有片段，因此影片会将其略去。}}",
-        "button": "打开故事板",
-        "title": "把静帧变成片段"
-      },
-      "makeMissing": {
-        "body": "{n, plural, other {# 个镜头还没有版本。}}制作它们时，会为每个镜头生成静帧，然后生成片段。",
-        "button": "制作缺失的 {n} 个",
-        "title": "制作 {n, plural, other {# 个镜头}}",
-        "bodyStills": "{none, plural, =0 {} other {# 个镜头没有版本；}}{stills, plural, other {# 个镜头有静帧但没有片段。}}制作时会补齐缺失的部分：静帧和片段，或仅补片段。",
-        "draftsHint": "静帧模型较慢。请先制作快速草稿，用“保留”标记喜欢的镜头，然后运行定稿渲染。"
-      },
-      "making": "正在制作镜头",
-      "makingProgress": "第 {n} 个镜头，共 {total} 个",
-      "renderPreview": {
-        "body": "导出前先完整地看一遍、听一遍。",
-        "button": "打开混音器",
-        "title": "渲染预览"
-      },
-      "writeShots": {
-        "body": "添加镜头，并为每个镜头写一行提示词。角色表是可选的：街景或人群本身即可成片。",
-        "button": "写下你的镜头",
-        "title": "写下你的镜头"
-      }
-    },
-    "nextStep": "下一步",
     "progressClips": "{shots, plural, other {# 个镜头}} · {clips} 个有片段 · {stills} 个仅有静帧 · {stale} 个过期 · {seconds} s",
     "activity": {
       "cancelled": "批量已取消 · {when}",

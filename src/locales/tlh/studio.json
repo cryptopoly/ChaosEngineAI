@@ -1699,7 +1699,6 @@
       "useClip": "mIllogh vIH yIlo'",
       "noCast": "Qu'vamDaq ghot ghom tu'lu'be'. qay'be': nIteb QaplaH 'ay'. chen polmeH ghot ghom 'echletDaq ghot pagh Daq tIchel.",
       "vocal": null,
-      "vocalHint": null,
       "vocalFile": null,
       "vocalChange": null,
       "vocalAttach": null,
@@ -1764,8 +1763,6 @@
     "removeTitle": "'ay'vam DaQaw''a'?",
     "shot": {
       "drag": "mIr choHmeH yIluH",
-      "failedNote": "chenbe' 'ay'. yInIDqa' pagh QIn yIchoH.",
-      "keep": "yIpol",
       "lock": "'ay'vam yIngaQmoH",
       "lockedNote": "'ay' ngaQ chenmoHbe' 'ay' yIchenmoH leQ.",
       "menu": {
@@ -1819,10 +1816,6 @@
       "makeClip": "mIllogh vIH yIchenmoH",
       "makeClipTitle": "mIlloghvo' 'ay'vam mIllogh vIH chenmoH.",
       "referenceAdded": "mIlloghvam lo'taHvIS, ghot ghomDaq chellu'ta' {name}.",
-      "draft": null,
-      "draftTitle": null,
-      "keepForFinal": null,
-      "keepForFinalTitle": null,
       "tagsLabel": null,
       "hideStaleTitle": null,
       "hideStale": null,
@@ -1846,13 +1839,7 @@
     "passes": {
       "draft": null,
       "draftTimed": null,
-      "final": null,
-      "finalTimed": null,
-      "draftTitle": null,
-      "finalTitle": null,
-      "label": null,
       "withClips": null,
-      "keepHint": null,
       "draftPer": null,
       "draftTitleChoose": null,
       "finalChosenTimed": null,
@@ -1885,7 +1872,6 @@
       "legend": null,
       "keys": null,
       "missingNote": null,
-      "draftNote": null,
       "failed": null,
       "noSound": null,
       "titleCard": null,
@@ -2250,7 +2236,6 @@
         "use": null,
         "useSinging": null
       },
-      "cutPlan": null,
       "cutting": null,
       "fromFile": null,
       "fromLibrary": null,
@@ -2283,8 +2268,6 @@
       "longerThanFilm": null,
       "vocals": {
         "title": null,
-        "hint": null,
-        "cut": null,
         "stemRemove": null,
         "stem": null,
         "stemUse": null,
@@ -2893,71 +2876,12 @@
     "openMixer": "DuDwI' yIpoSmoH"
   },
   "overview": {
-    "addCast": "ghot ghom yIchel (wIvlaH)",
     "cast": "{n, plural, =0 {ghot ghom Hutlh} other {ghot ghomDaq #}}",
     "noSound": "wej wab",
-    "progress": "{shots, plural, other {# 'ay''}} · {made} chenmoHlu'ta' · {stale} ngo' · {seconds} lup",
     "settingsTitle": "Qu' wIv",
     "sheet": "'ay'",
     "sound": "{n, plural, other {# wab}}",
     "staleBadge": "ngo'",
-    "startBody": "'ay'lIj tIghItlh, Hoch wa' mu'tlhegh. wIvlaH ghot ghom: chen rap polnISchugh 'ay' neH, ghot pagh Daq tIchel.",
-    "startTitle": "naDev yItagh",
-    "writeShots": "'ay'lIj tIghItlh",
-    "check": {
-      "cast": "ghot ghom (wIvlaH)",
-      "doneLabel": "rIn",
-      "export": "ngeH",
-      "format": "pong 'ej chen",
-      "preview": "legh nung",
-      "shots": "'ay'",
-      "sound": "wab (wIvlaH)",
-      "takes": "Hoch 'ay'vaD mIllogh vIH",
-      "todoLabel": "wej rIn"
-    },
-    "checklist": "mIw",
-    "next": {
-      "addSound": {
-        "body": "wIvlaH. DuDwI'Daq ghogh, wab pagh QoQ yIlan, pagh legh nungDaq yIghoS SIbI'.",
-        "button": "DuDwI' yIpoSmoH",
-        "title": "ghogh pagh QoQ yIchel"
-      },
-      "done": {
-        "body": "choHDI' vay', yIngeHqa', pagh 'ay' nID chu' yIchenmoH.",
-        "button": "ngeH yIpoSmoH",
-        "title": "rIn"
-      },
-      "export": {
-        "body": "MP4 rIn yIghItlh; DaneHchugh ghItlh 'ej AI per je.",
-        "button": "ngeH yIpoSmoH",
-        "title": "lut yIngeH"
-      },
-      "makeClips": {
-        "body": "{n, plural, other {mIllogh ghaj 'ach mIllogh vIH ghajbe' # 'ay', vaj teq lut.}}",
-        "button": "lut 'echlet yIpoSmoH",
-        "title": "mIlloghvo' mIllogh vIH tIchenmoH"
-      },
-      "makeMissing": {
-        "body": "{n, plural, other {wej nID ghaj # 'ay'.}} chenmoHlu'DI', Hoch mIllogh chel, ghIq mIllogh vIH.",
-        "button": "{n, plural, other {Hutlhbogh # tIchenmoH}}",
-        "title": "{n, plural, other {# 'ay' tIchenmoH}}",
-        "bodyStills": "{none, plural, =0 {} other {nID ghajbe' # 'ay'; }}{stills, plural, other {mIllogh ghaj 'ach mIllogh vIH ghajbe' #.}} chenmoHlu'DI', Hutlhbogh Doch chellu': mIllogh 'ej mIllogh vIH, pagh mIllogh vIH neH.",
-        "draftsHint": null
-      },
-      "making": "'ay' chenmoHlI'",
-      "makingProgress": "'ay' {n}, Hoch {total}",
-      "renderPreview": {
-        "body": "bIngeHpa' lut naQ yIbej 'ej yIQoy.",
-        "button": "DuDwI' yIpoSmoH",
-        "title": "legh nung yIchenmoH"
-      },
-      "writeShots": {
-        "body": "'ay'lIj tIchel 'ej Hoch wa' QIn mu'tlhegh yInob. wIvlaH ghot ghom: He pagh ghom nIteb QaplaH.",
-        "button": "'ay'lIj tIghItlh",
-        "title": "'ay'lIj tIghItlh"
-      }
-    },
-    "nextStep": "mIw veb",
     "progressClips": "{shots, plural, other {# 'ay''}} · {clips} mIllogh vIH ghaj · {stills} mIllogh neH · {stale} ngo' · {seconds} lup",
     "activity": {
       "cancelled": "ghom Qu' qIllu'ta' · {when}",

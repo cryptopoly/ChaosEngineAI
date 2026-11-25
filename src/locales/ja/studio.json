@@ -1699,7 +1699,6 @@
       "useClip": "クリップとして使う",
       "noCast": "このプロジェクトにはキャストがありません。ショットは単独でも使えるので問題ありません。雰囲気を統一したい場合は、キャストタブでキャラクターや場所を追加してください。",
       "vocal": "リップシンク用ボーカル",
-      "vocalHint": "口の動きが追従する WAV または FLAC: クリップはこのショットの静止画から始まり、3〜8 秒の長さで、この音を保持します。ビデオモデルとして LTX-2.3 が必要です (4 ビットの NVIDIA モデルには 24 GB のカードが必要)。",
       "vocalFile": "ボーカルファイル (WAV または FLAC)",
       "vocalChange": "ボーカルを変更",
       "vocalAttach": "ボーカルを添付",
@@ -1764,8 +1763,6 @@
     "removeTitle": "このショットを削除しますか？",
     "shot": {
       "drag": "ドラッグして並べ替え",
-      "failedNote": "このショットはレンダリングされませんでした。もう一度試すか、プロンプトを編集してください。",
-      "keep": "残す",
       "lock": "このショットをロック",
       "lockedNote": "ロックされたショットは「ショットを作成」の対象外になります。",
       "menu": {
@@ -1819,10 +1816,6 @@
       "makeClip": "クリップを作る",
       "makeClipTitle": "このショットのクリップを静止画から作ります。",
       "referenceAdded": "{name} をこの静止画でキャストに追加しました。",
-      "draft": "ドラフト",
-      "draftTitle": "簡易ドラフトです。このショットを残して最終パスを実行すると、最高品質のテイクになります。",
-      "keepForFinal": "最終用に残す",
-      "keepForFinalTitle": "残したショットの最終パスは、高品質モデルでこのショットを作り直します。",
       "tagsLabel": null,
       "hideStaleTitle": null,
       "hideStale": null,
@@ -1846,13 +1839,7 @@
     "passes": {
       "draft": "ドラフトを作成",
       "draftTimed": "ドラフトを作成 · 約 {time}",
-      "final": "{n, plural, other {残した # ショット}} の最終パス",
-      "finalTimed": "{n, plural, other {残した # ショット}} の最終パス · 約 {time}",
-      "draftTitle": "{model} で {width} x {height} の簡易静止画を作成します。気に入ったショットは「最終用に残す」で選び、最終パスを実行してください。",
-      "finalTitle": "残したショットを {model} で {width} x {height} に作り直し、その新しい静止画からクリップを作成します。",
-      "label": "ドラフトと最終パス",
       "withClips": "クリップ付きのドラフト",
-      "keepHint": "「最終用に残す」でショットを選ぶと、最終パスの対象になります。",
       "draftPer": "ドラフト 1 件あたり約 {time}。",
       "draftTitleChoose": null,
       "finalChosenTimed": null,
@@ -1885,7 +1872,6 @@
       "legend": "マーカーの意味",
       "keys": "Space または K: 再生 / 一時停止 · J と L: 5 秒 · 矢印: 1 秒（Shift で 10 秒） · Page Up / Down: ショット · Home / End · C: 字幕 · Esc: 閉じる",
       "missingNote": "{n, plural, other {# 件のショットはまだクリップがありません。ここでは計画された長さの間、静止画（またはカード）を表示します。書き出しでは除外されます。}}",
-      "draftNote": "{n, plural, other {# 件のショットはドラフトのテイクを再生します。}} 最高品質にするには、残したショットで最終パスを実行してください。",
       "failed": "{n, plural, other {# 件のファイルを読み取れませんでした。その部分は空白または無音で再生されます。}}",
       "noSound": "このウィンドウは音声を再生できないため、ラフカットは音声なしで再生されます。",
       "titleCard": "タイトルカード",
@@ -2250,7 +2236,6 @@
         "use": "{n, plural, other {これら # ショットを使う}}",
         "useSinging": null
       },
-      "cutPlan": "カットプランを作成",
       "cutting": "曲に合わせてカット中…",
       "fromFile": "または音声ファイル（WAV、FLAC、MP3、OGG、M4A）",
       "fromLibrary": "ミュージックライブラリから",
@@ -2283,8 +2268,6 @@
       "longerThanFilm": "曲は {song} です。ショットの合計は {film} です。映画が {film} になるまで、{film} 以降の歌詞は表示されません。",
       "vocals": {
         "title": "曲にリップシンクを付ける",
-        "hint": "1. 曲を {min}〜{max} 秒の歌唱ショットにカットします。2. 各ショットにボーカルの該当部分を割り当てます。ショットの 0.4 秒前から始まり、歌唱としてマークされ、3 テイクを作ります。ボーカルステム (声だけのトラック) が最もよく追従します。ない場合は曲そのものを使います。",
-        "cut": "歌唱用にカット ({min}〜{max} 秒のショット)",
         "stemRemove": "代わりに曲を使う",
         "stem": "ボーカルステム (任意、WAV または FLAC)",
         "stemUse": "このステムを使う",
@@ -2893,71 +2876,12 @@
     "openMixer": "ミキサーを開く"
   },
   "overview": {
-    "addCast": "キャストを追加 (任意)",
     "cast": "{n, plural, =0 {キャストなし} other {キャスト # 件}}",
     "noSound": "まだ音声なし",
-    "progress": "{shots, plural, other {# ショット}} · 作成済み {made} · 古い {stale} 件 · {seconds} 秒",
     "settingsTitle": "プロジェクト設定",
     "sheet": "ショット",
     "sound": "{n, plural, other {# 件の効果音クリップ}}",
     "staleBadge": "古い",
-    "startBody": "ショットを 1 行ずつ書いてください。キャストは任意です。雰囲気を統一したいショットがある場合だけ、キャラクターや場所を追加してください。",
-    "startTitle": "ここから始める",
-    "writeShots": "ショットを書く",
-    "check": {
-      "cast": "キャスト (任意)",
-      "doneLabel": "完了",
-      "export": "書き出し",
-      "format": "名前と形式",
-      "preview": "プレビュー",
-      "shots": "ショット",
-      "sound": "サウンド (任意)",
-      "takes": "すべてのショットにクリップ",
-      "todoLabel": "未完了"
-    },
-    "checklist": "手順",
-    "next": {
-      "addSound": {
-        "body": "任意。ミキサーで音声、効果音、音楽を配置するか、そのままプレビューに進んでください。",
-        "button": "ミキサーを開く",
-        "title": "声や音楽を追加"
-      },
-      "done": {
-        "body": "変更後にもう一度書き出すか、任意のショットの新しいテイクを作ってください。",
-        "button": "書き出しを開く",
-        "title": "完了"
-      },
-      "export": {
-        "body": "完成した MP4 を書き出します。必要に応じて字幕と AI 表示も入れられます。",
-        "button": "書き出しを開く",
-        "title": "映画を書き出す"
-      },
-      "makeClips": {
-        "body": "{n, plural, other {# 件のショットには静止画がありますがクリップがないため、映画からは除外されます。}}",
-        "button": "ストーリーボードを開く",
-        "title": "静止画をクリップにする"
-      },
-      "makeMissing": {
-        "body": "{n, plural, other {# 件のショットにはまだテイクがありません。}} 作成すると、それぞれに静止画とクリップが追加されます。",
-        "button": "{n, plural, other {未作成の # 件を作成}}",
-        "title": "{n, plural, other {# ショットを作成}}",
-        "bodyStills": "{none, plural, =0 {} other {# ショットにはテイクがありません。}}{stills, plural, other {# ショットには静止画がありますがクリップがありません。}} 作成すると不足分が追加されます: 静止画とクリップ、またはクリップのみ。",
-        "draftsHint": "静止画モデルは時間がかかります。まず簡易ドラフトを作り、気に入ったショットを「最終用に残す」で選んでから最終パスを実行してください。"
-      },
-      "making": "ショットを作成中",
-      "makingProgress": "ショット {n} / {total}",
-      "renderPreview": {
-        "body": "書き出す前に映画全体を見て聞いてください。",
-        "button": "ミキサーを開く",
-        "title": "プレビューをレンダリング"
-      },
-      "writeShots": {
-        "body": "ショットを追加し、それぞれに 1 行のプロンプトを書いてください。キャストは任意です。通りや群衆だけでも成立します。",
-        "button": "ショットを書く",
-        "title": "ショットを書く"
-      }
-    },
-    "nextStep": "次のステップ",
     "progressClips": "{shots, plural, other {# ショット}} · クリップあり {clips} · 静止画のみ {stills} · 古い {stale} 件 · {seconds} 秒",
     "activity": {
       "cancelled": "バッチをキャンセル · {when}",

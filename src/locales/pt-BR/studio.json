@@ -1699,7 +1699,6 @@
       "useClip": "Usar como clipe",
       "noCast": "Nenhum elenco neste projeto. Tudo bem: um plano pode existir sozinho. Adicione personagens ou lugares na aba Elenco para manter um visual.",
       "vocal": "Vocal para sincronia labial",
-      "vocalHint": "Um WAV ou FLAC que a boca acompanha: o clipe começa a partir do quadro fixo deste plano, dura de 3 a 8 s e mantém este som. Requer o LTX-2.3 como modelo de vídeo (o modelo NVIDIA de 4 bits exige uma placa de 24 GB).",
       "vocalFile": "Arquivo de vocal (WAV ou FLAC)",
       "vocalChange": "Trocar vocal",
       "vocalAttach": "Anexar vocal",
@@ -1764,8 +1763,6 @@
     "removeTitle": "Excluir este plano?",
     "shot": {
       "drag": "Arraste para reordenar",
-      "failedNote": "O plano não foi renderizado. Tente novamente ou edite os prompts.",
-      "keep": "Manter",
       "lock": "Bloquear este plano",
       "lockedNote": "Planos bloqueados são ignorados ao criar planos.",
       "menu": {
@@ -1819,10 +1816,6 @@
       "makeClip": "Criar o clipe",
       "makeClipTitle": "Criar o clipe desta cena a partir da sua imagem.",
       "referenceAdded": "{name} foi adicionado ao elenco com esta imagem.",
-      "draft": "Rascunho",
-      "draftTitle": "Um rascunho rápido. Mantenha este plano e rode a passagem final para a versão em qualidade total.",
-      "keepForFinal": "Manter para a final",
-      "keepForFinalTitle": "A passagem final dos planos mantidos refaz este plano com o modelo de qualidade.",
       "tagsLabel": null,
       "hideStaleTitle": null,
       "hideStale": null,
@@ -1846,13 +1839,7 @@
     "passes": {
       "draft": "Gerar rascunhos",
       "draftTimed": "Gerar rascunhos · cerca de {time}",
-      "final": "Passagem final em {n, plural, one {# plano mantido} other {# planos mantidos}}",
-      "finalTimed": "Passagem final em {n, plural, one {# plano mantido} other {# planos mantidos}} · cerca de {time}",
-      "draftTitle": "Imagens rápidas com {model} em {width} x {height}. Marque os planos de que gosta com Manter e depois rode a passagem final.",
-      "finalTitle": "Refaz cada plano mantido com {model} em {width} x {height}, depois seu clipe a partir da nova imagem.",
-      "label": "Passagens de rascunho e final",
       "withClips": "Rascunhos com clipes",
-      "keepHint": "Marque planos com Manter para a final para escolhê-los na passagem final.",
       "draftPer": "Cerca de {time} por rascunho.",
       "draftTitleChoose": null,
       "finalChosenTimed": null,
@@ -1885,7 +1872,6 @@
       "legend": "O que os marcadores significam",
       "keys": "Espaço ou K: reproduzir / pausar · J e L: 5 s · setas: 1 s (Shift 10 s) · Page Up / Down: plano · Home / End · C: legendas · Esc: fechar",
       "missingNote": "{n, plural, one {# plano ainda não tem clipe. Ele mantém a imagem aqui (ou um cartão) pela duração planejada; a exportação o deixa de fora.} other {# planos ainda não têm clipe. Eles mantêm a imagem aqui (ou um cartão) pela duração planejada; a exportação os deixa de fora.}}",
-      "draftNote": "{n, plural, one {# plano reproduz uma versão de rascunho.} other {# planos reproduzem uma versão de rascunho.}} Rode a passagem final nos planos mantidos para a qualidade total.",
       "failed": "{n, plural, one {# arquivo não pôde ser lido; sua parte reproduz em branco ou sem som.} other {# arquivos não puderam ser lidos; suas partes reproduzem em branco ou sem som.}}",
       "noSound": "Esta janela não pode reproduzir som, então o corte bruto roda sem ele.",
       "titleCard": "Cartão de título",
@@ -2250,7 +2236,6 @@
         "use": "{n, plural, one {Usar este plano} other {Usar estes # planos}}",
         "useSinging": null
       },
-      "cutPlan": "Criar um plano de corte",
       "cutting": "Cortando no ritmo da música…",
       "fromFile": "Ou um arquivo de áudio (WAV, FLAC, MP3, OGG, M4A)",
       "fromLibrary": "Da biblioteca de Música",
@@ -2283,8 +2268,6 @@
       "longerThanFilm": "A música tem {song}; os planos somam {film}. As linhas após {film} não aparecem até o filme ter esse tamanho.",
       "vocals": {
         "title": "Sincronia labial da música",
-        "hint": "1. Corte a música em planos cantados de {min} a {max} s. 2. Dê a cada plano a sua parte do vocal: ele começa 0,4 s antes do plano, é marcado como cantado e gera 3 versões. Um stem de vocal (só a voz) funciona melhor; sem ele, a própria música é usada.",
-        "cut": "Cortar para cantar (planos de {min} a {max} s)",
         "stemRemove": "Usar a música em vez disso",
         "stem": "Stem de vocal (opcional, WAV ou FLAC)",
         "stemUse": "Usar este stem",
@@ -2893,71 +2876,12 @@
     "openMixer": "Abrir o Mixer"
   },
   "overview": {
-    "addCast": "Adicionar elenco (opcional)",
     "cast": "{n, plural, =0 {sem elenco} one {# no elenco} other {# no elenco}}",
     "noSound": "ainda sem som",
-    "progress": "{shots, plural, one {# plano} other {# planos}} · {made} gerados · {stale} desatualizados · {seconds} s",
     "settingsTitle": "Configurações do projeto",
     "sheet": "Cenas",
     "sound": "{n, plural, one {# clipe de som} other {# clipes de som}}",
     "staleBadge": "Desatualizada",
-    "startBody": "Escreva seus planos, uma linha cada. O elenco é opcional: adicione personagens ou lugares só quando os planos devem manter o mesmo visual.",
-    "startTitle": "Comece aqui",
-    "writeShots": "Escreva suas cenas",
-    "check": {
-      "cast": "Elenco (opcional)",
-      "doneLabel": "feito",
-      "export": "Exportar",
-      "format": "Nome e formato",
-      "preview": "Prévia",
-      "shots": "Cenas",
-      "sound": "Som (opcional)",
-      "takes": "Um clipe para cada cena",
-      "todoLabel": "a fazer"
-    },
-    "checklist": "Etapas",
-    "next": {
-      "addSound": {
-        "body": "Opcional. Coloque voz, efeitos ou música no Mixer, ou vá direto para uma pré-visualização.",
-        "button": "Abrir o Mixer",
-        "title": "Adicionar voz ou música"
-      },
-      "done": {
-        "body": "Exporte de novo após uma mudança, ou faça uma nova tomada de qualquer cena.",
-        "button": "Abrir Exportar",
-        "title": "Pronto"
-      },
-      "export": {
-        "body": "Gere o MP4 final, com legendas e uma tag de IA se quiser.",
-        "button": "Abrir Exportar",
-        "title": "Exportar o filme"
-      },
-      "makeClips": {
-        "body": "{n, plural, one {# plano tem imagem mas não tem clipe, então o filme o deixa de fora.} other {# planos têm imagem mas não têm clipe, então o filme os deixa de fora.}}",
-        "button": "Abrir o Storyboard",
-        "title": "Transformar as imagens em clipes"
-      },
-      "makeMissing": {
-        "body": "{n, plural, one {# plano ainda não tem versão.} other {# planos ainda não têm versão.}} Gerá-los adiciona uma imagem e depois um clipe para cada um.",
-        "button": "{n, plural, one {Gerar # faltante} other {Gerar # faltantes}}",
-        "title": "{n, plural, one {Gerar # plano} other {Gerar # planos}}",
-        "bodyStills": "{none, plural, =0 {} one {# plano não tem versão; } other {# planos não têm versão; }}{stills, plural, one {# tem imagem mas não clipe.} other {# têm imagem mas não clipe.}} Gerar adiciona o que falta: uma imagem e um clipe, ou só o clipe.",
-        "draftsHint": "O modelo de imagem é lento. Gere rascunhos rápidos primeiro, marque os planos de que gosta com Manter e depois rode a passagem final."
-      },
-      "making": "Criando cenas",
-      "makingProgress": "Plano {n} de {total}",
-      "renderPreview": {
-        "body": "Veja e ouça o filme inteiro antes de exportar.",
-        "button": "Abrir o Mixer",
-        "title": "Renderizar uma prévia"
-      },
-      "writeShots": {
-        "body": "Adicione seus planos e dê a cada um uma linha de prompt. O elenco é opcional: uma rua ou uma multidão funciona sozinha.",
-        "button": "Escreva suas cenas",
-        "title": "Escreva suas cenas"
-      }
-    },
-    "nextStep": "Próximo passo",
     "progressClips": "{shots, plural, one {# plano} other {# planos}} · {clips} com clipe · {stills} só com imagem · {stale} desatualizados · {seconds} s",
     "activity": {
       "cancelled": "Lote cancelado · {when}",

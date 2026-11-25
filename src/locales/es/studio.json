@@ -1699,7 +1699,6 @@
       "useClip": "Usar como clip",
       "noCast": "No hay reparto en este proyecto. No pasa nada: un plano puede ir solo. Añade personajes o lugares en la pestaña Reparto para mantener un mismo aspecto.",
       "vocal": "Voz para sincronía labial",
-      "vocalHint": "Un WAV o FLAC que la boca sigue: el clip parte del fotograma fijo de este plano, dura de 3 a 8 s y conserva este sonido. Requiere LTX-2.3 como modelo de vídeo (el modelo NVIDIA de 4 bits necesita una tarjeta de 24 GB).",
       "vocalFile": "Archivo de voz (WAV o FLAC)",
       "vocalChange": "Cambiar voz",
       "vocalAttach": "Adjuntar voz",
@@ -1764,8 +1763,6 @@
     "removeTitle": "¿Eliminar este plano?",
     "shot": {
       "drag": "Arrastra para reordenar",
-      "failedNote": "El plano no se renderizó. Inténtalo de nuevo o edita los prompts.",
-      "keep": "Conservar",
       "lock": "Bloquear este plano",
       "lockedNote": "Los planos bloqueados se omiten al crear planos.",
       "menu": {
@@ -1819,10 +1816,6 @@
       "makeClip": "Crear el clip",
       "makeClipTitle": "Crear el clip de este plano a partir de su imagen fija.",
       "referenceAdded": "{name} se añadió al reparto con esta imagen.",
-      "draft": "Borrador",
-      "draftTitle": "Un borrador rápido. Conserva este plano y ejecuta la pasada final para la toma de calidad completa.",
-      "keepForFinal": "Conservar para la final",
-      "keepForFinalTitle": "La pasada final sobre los planos conservados vuelve a generar este plano con el modelo de calidad.",
       "tagsLabel": null,
       "hideStaleTitle": null,
       "hideStale": null,
@@ -1846,13 +1839,7 @@
     "passes": {
       "draft": "Generar borradores",
       "draftTimed": "Generar borradores · unos {time}",
-      "final": "Pasada final sobre {n, plural, one {# plano conservado} other {# planos conservados}}",
-      "finalTimed": "Pasada final sobre {n, plural, one {# plano conservado} other {# planos conservados}} · unos {time}",
-      "draftTitle": "Imágenes fijas rápidas con {model} a {width} x {height}. Marca los planos que te gusten con Conservar y luego ejecuta la pasada final.",
-      "finalTitle": "Vuelve a generar cada plano conservado con {model} a {width} x {height}, y luego su clip a partir de la nueva imagen fija.",
-      "label": "Pasadas de borrador y final",
       "withClips": "Borradores con clips",
-      "keepHint": "Marca planos con Conservar para la final para elegirlos en la pasada final.",
       "draftPer": "Unos {time} por borrador.",
       "draftTitleChoose": null,
       "finalChosenTimed": null,
@@ -1885,7 +1872,6 @@
       "legend": "Qué significan los marcadores",
       "keys": "Espacio o K: reproducir / pausar · J y L: 5 s · flechas: 1 s (Mayús 10 s) · Re Pág / Av Pág: plano · Inicio / Fin · C: subtítulos · Esc: cerrar",
       "missingNote": "{n, plural, one {# plano aún no tiene clip. Aquí retiene su imagen fija (o una tarjeta) durante su duración prevista; la exportación lo omite.} other {# planos aún no tienen clip. Aquí retienen su imagen fija (o una tarjeta) durante su duración prevista; la exportación los omite.}}",
-      "draftNote": "{n, plural, one {# plano reproduce una toma de borrador.} other {# planos reproducen una toma de borrador.}} Ejecuta la pasada final sobre los planos conservados para la calidad completa.",
       "failed": "{n, plural, one {# archivo no se pudo leer; su parte se reproduce en blanco o sin sonido.} other {# archivos no se pudieron leer; sus partes se reproducen en blanco o sin sonido.}}",
       "noSound": "Esta ventana no puede reproducir sonido, así que el montaje preliminar se reproduce sin él.",
       "titleCard": "Tarjeta de título",
@@ -2250,7 +2236,6 @@
         "use": "{n, plural, one {Usar este plano} other {Usar estos # planos}}",
         "useSinging": null
       },
-      "cutPlan": "Crear un plan de corte",
       "cutting": "Cortando según la música…",
       "fromFile": "O un archivo de audio (WAV, FLAC, MP3, OGG, M4A)",
       "fromLibrary": "De la Biblioteca de música",
@@ -2283,8 +2268,6 @@
       "longerThanFilm": "La canción dura {song}; los planos suman {film}. Las líneas posteriores a {film} no se muestran hasta que la película tenga esa duración.",
       "vocals": {
         "title": "Sincronía labial de la canción",
-        "hint": "1. Corta la canción en planos cantados de {min} a {max} s. 2. Da a cada plano su parte de la voz: empieza 0,4 s antes del plano, se marca como cantada y crea 3 tomas. Un stem de voz (la voz sola) funciona mejor; sin él se usa la propia canción.",
-        "cut": "Cortar para cantar (planos de {min} a {max} s)",
         "stemRemove": "Usar la canción en su lugar",
         "stem": "Stem de voz (opcional, WAV o FLAC)",
         "stemUse": "Usar este stem",
@@ -2893,71 +2876,12 @@
     "openMixer": "Abrir el Mezclador"
   },
   "overview": {
-    "addCast": "Añadir reparto (opcional)",
     "cast": "{n, plural, =0 {sin reparto} one {# en el reparto} other {# en el reparto}}",
     "noSound": "aún sin sonido",
-    "progress": "{shots, plural, one {# plano} other {# planos}} · {made} generados · {stale} desactualizados · {seconds} s",
     "settingsTitle": "Ajustes del proyecto",
     "sheet": "Planos",
     "sound": "{n, plural, one {# clip de sonido} other {# clips de sonido}}",
     "staleBadge": "Desactualizado",
-    "startBody": "Escribe tus planos, uno por línea. El reparto es opcional: añade personajes o lugares solo cuando los planos deban mantener el mismo aspecto.",
-    "startTitle": "Empieza aquí",
-    "writeShots": "Escribe tus planos",
-    "check": {
-      "cast": "Reparto (opcional)",
-      "doneLabel": "hecho",
-      "export": "Exportar",
-      "format": "Nombre y formato",
-      "preview": "Vista previa",
-      "shots": "Planos",
-      "sound": "Sonido (opcional)",
-      "takes": "Un clip para cada plano",
-      "todoLabel": "pendiente"
-    },
-    "checklist": "Pasos",
-    "next": {
-      "addSound": {
-        "body": "Opcional. Coloca voz, efectos o música en el Mezclador, o ve directamente a una vista previa.",
-        "button": "Abrir el Mezclador",
-        "title": "Añadir voz o música"
-      },
-      "done": {
-        "body": "Exporta de nuevo tras un cambio, o haz una nueva toma de cualquier plano.",
-        "button": "Abrir Exportar",
-        "title": "Hecho"
-      },
-      "export": {
-        "body": "Genera el MP4 terminado, con subtítulos y una etiqueta de IA si los quieres.",
-        "button": "Abrir Exportar",
-        "title": "Exportar la película"
-      },
-      "makeClips": {
-        "body": "{n, plural, one {# plano tiene imagen fija pero no clip, así que la película lo omite.} other {# planos tienen imagen fija pero no clip, así que la película los omite.}}",
-        "button": "Abrir el Storyboard",
-        "title": "Convertir las imágenes fijas en clips"
-      },
-      "makeMissing": {
-        "body": "{n, plural, one {# plano aún no tiene toma.} other {# planos aún no tienen toma.}} Generarlos añade una imagen fija y luego un clip para cada uno.",
-        "button": "{n, plural, one {Generar # que falta} other {Generar # que faltan}}",
-        "title": "{n, plural, one {Generar # plano} other {Generar # planos}}",
-        "bodyStills": "{none, plural, =0 {} one {# plano no tiene toma; } other {# planos no tienen toma; }}{stills, plural, one {# tiene imagen fija pero no clip.} other {# tienen imagen fija pero no clip.}} Generarlos añade lo que falta: una imagen fija y un clip, o solo el clip.",
-        "draftsHint": "El modelo de imagen fija es lento. Genera primero borradores rápidos, marca los planos que te gusten con Conservar y luego ejecuta la pasada final."
-      },
-      "making": "Creando planos",
-      "makingProgress": "Plano {n} de {total}",
-      "renderPreview": {
-        "body": "Mira y escucha la película entera antes de exportarla.",
-        "button": "Abrir el Mezclador",
-        "title": "Renderizar una vista previa"
-      },
-      "writeShots": {
-        "body": "Añade tus planos y dale a cada uno una línea de prompt. El reparto es opcional: una calle o una multitud funcionan solos.",
-        "button": "Escribe tus planos",
-        "title": "Escribe tus planos"
-      }
-    },
-    "nextStep": "Siguiente paso",
     "progressClips": "{shots, plural, one {# plano} other {# planos}} · {clips} con clip · {stills} solo con imagen fija · {stale} desactualizados · {seconds} s",
     "activity": {
       "cancelled": "Lote cancelado · {when}",

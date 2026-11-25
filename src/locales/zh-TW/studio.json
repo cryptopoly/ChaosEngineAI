@@ -1699,7 +1699,6 @@
       "useClip": "用作影片片段",
       "noCast": "此專案沒有角色。沒關係:單一鏡頭可以獨立存在。若要保持風格一致,請在角色頁籤中新增人物或場景。",
       "vocal": "對嘴人聲",
-      "vocalHint": "嘴型會跟隨的 WAV 或 FLAC:片段從此鏡頭的靜態畫面開始,長度 3 至 8 秒,並保留此聲音。影片模型須為 LTX-2.3(4 位元 NVIDIA 模型需要 24 GB 的顯示卡)。",
       "vocalFile": "人聲檔案(WAV 或 FLAC)",
       "vocalChange": "更換人聲",
       "vocalAttach": "附加人聲",
@@ -1764,8 +1763,6 @@
     "removeTitle": "刪除這個鏡頭？",
     "shot": {
       "drag": "拖曳以重新排序",
-      "failedNote": "該鏡頭未能算繪。請重試或編輯提示詞。",
-      "keep": "保留",
       "lock": "鎖定此鏡頭",
       "lockedNote": "「製作鏡頭」會跳過已鎖定的鏡頭。",
       "menu": {
@@ -1819,10 +1816,6 @@
       "makeClip": "產生片段",
       "makeClipTitle": "用此鏡頭的靜態畫面產生片段。",
       "referenceAdded": "已用此靜態畫面將 {name} 加入角色。",
-      "draft": "草稿",
-      "draftTitle": "快速草稿。保留此鏡頭並執行最終輸出,以取得全品質版本。",
-      "keepForFinal": "保留作最終輸出",
-      "keepForFinalTitle": "對已保留的鏡頭進行最終輸出時,會以高品質模型重新製作此鏡頭。",
       "tagsLabel": null,
       "hideStaleTitle": null,
       "hideStale": null,
@@ -1846,13 +1839,7 @@
     "passes": {
       "draft": "製作草稿",
       "draftTimed": "製作草稿 · 約 {time}",
-      "final": "對 {n, plural, other {# 個已保留鏡頭}} 進行最終輸出",
-      "finalTimed": "對 {n, plural, other {# 個已保留鏡頭}} 進行最終輸出 · 約 {time}",
-      "draftTitle": "使用 {model} 以 {width} x {height} 快速製作靜態圖。請以「保留」標記您喜歡的鏡頭,再執行最終輸出。",
-      "finalTitle": "使用 {model} 以 {width} x {height} 重新製作每個已保留的鏡頭,再以新靜態圖產生其片段。",
-      "label": "草稿與最終輸出",
       "withClips": "草稿與片段",
-      "keepHint": "以「保留作最終輸出」標記鏡頭,即可將其選入最終輸出。",
       "draftPer": "每份草稿約 {time}。",
       "draftTitleChoose": null,
       "finalChosenTimed": null,
@@ -1885,7 +1872,6 @@
       "legend": "標記說明",
       "keys": "空白鍵或 K:播放/暫停 · J 與 L:5 秒 · 方向鍵:1 秒(Shift 為 10 秒)· Page Up / Down:鏡頭 · Home / End · C:字幕 · Esc:關閉",
       "missingNote": "{n, plural, other {# 個鏡頭尚無片段。此處會以其規劃長度保留靜態圖(或卡片);匯出時會略過。}}",
-      "draftNote": "{n, plural, other {# 個鏡頭使用草稿版本。}}請對已保留的鏡頭執行最終輸出以取得全品質。",
       "failed": "{n, plural, other {# 個檔案無法讀取;相應部分將以空白或無聲播放。}}",
       "noSound": "此視窗無法播放聲音,因此粗剪預覽將不含聲音播放。",
       "titleCard": "片頭卡",
@@ -2250,7 +2236,6 @@
         "use": "{n, plural, one {使用此鏡頭} other {使用這 # 個鏡頭}}",
         "useSinging": null
       },
-      "cutPlan": "製作剪輯計畫",
       "cutting": "依音樂剪輯中…",
       "fromFile": "或音訊檔案(WAV、FLAC、MP3、OGG、M4A)",
       "fromLibrary": "從音樂圖庫選取",
@@ -2283,8 +2268,6 @@
       "longerThanFilm": "歌曲長 {song};鏡頭合計 {film}。在影片長度達到 {film} 之前,超出 {film} 的歌詞行不會顯示。",
       "vocals": {
         "title": "為歌曲做嘴型同步",
-        "hint": "1. 把歌曲剪成 {min} 至 {max} 秒的演唱鏡頭。2. 為每個鏡頭配上對應的人聲部分：它會在鏡頭開始前 0.4 秒起始，標記為演唱，並產生 3 個版本。人聲分軌（僅有人聲）的跟隨效果最好；沒有分軌時會使用歌曲本身。",
-        "cut": "為演唱剪輯（{min} 至 {max} 秒的鏡頭）",
         "stemRemove": "改用歌曲",
         "stem": "人聲分軌（選填，WAV 或 FLAC）",
         "stemUse": "使用此分軌",
@@ -2893,71 +2876,12 @@
     "openMixer": "開啟混音器"
   },
   "overview": {
-    "addCast": "加入角色（選用）",
     "cast": "{n, plural, =0 {沒有角色} other {角色 # 個}}",
     "noSound": "還沒有聲音",
-    "progress": "{shots, plural, one {# 個鏡頭} other {# 個鏡頭}} · 已製作 {made} · 過期 {stale} · {seconds} 秒",
     "settingsTitle": "專案設定",
     "sheet": "鏡頭",
     "sound": "{n, plural, one {# 個音效片段} other {# 個音效片段}}",
     "staleBadge": "已過時",
-    "startBody": "每行寫一個鏡頭。角色為選用:只有在鏡頭需要保持相同外觀時,才需新增角色或場景。",
-    "startTitle": "從這裡開始",
-    "writeShots": "寫下你的鏡頭",
-    "check": {
-      "cast": "角色（選用）",
-      "doneLabel": "完成",
-      "export": "匯出",
-      "format": "名稱與格式",
-      "preview": "預覽",
-      "shots": "鏡頭",
-      "sound": "聲音（選用）",
-      "takes": "每個鏡頭都有片段",
-      "todoLabel": "待辦"
-    },
-    "checklist": "步驟",
-    "next": {
-      "addSound": {
-        "body": "選用。可在混音器中安排語音、音效或音樂,或直接進行預覽。",
-        "button": "開啟混音器",
-        "title": "加入人聲或音樂"
-      },
-      "done": {
-        "body": "修改後再次匯出，或為任一鏡頭新拍一條。",
-        "button": "開啟匯出",
-        "title": "完成"
-      },
-      "export": {
-        "body": "輸出完成的 MP4,如需要可加上字幕與 AI 標示。",
-        "button": "開啟匯出",
-        "title": "匯出影片"
-      },
-      "makeClips": {
-        "body": "{n, plural, one {# 個鏡頭有靜態圖但沒有片段,因此影片會略過它。} other {# 個鏡頭有靜態圖但沒有片段,因此影片會略過它們。}}",
-        "button": "開啟分鏡",
-        "title": "把靜態畫面變成片段"
-      },
-      "makeMissing": {
-        "body": "{n, plural, one {# 個鏡頭尚無版本。} other {# 個鏡頭尚無版本。}}製作後會為每個鏡頭先產生靜態圖,再產生片段。",
-        "button": "{n, plural, one {製作缺少的 # 個} other {製作缺少的 # 個}}",
-        "title": "{n, plural, one {製作 # 個鏡頭} other {製作 # 個鏡頭}}",
-        "bodyStills": "{none, plural, =0 {} one {# 個鏡頭尚無版本;} other {# 個鏡頭尚無版本;}}{stills, plural, one {# 個有靜態圖但沒有片段。} other {# 個有靜態圖但沒有片段。}}製作時會補上缺少的部分:靜態圖與片段,或僅補片段。",
-        "draftsHint": "靜態圖模型速度較慢。請先製作快速草稿,以「保留」標記您喜歡的鏡頭,再執行最終輸出。"
-      },
-      "making": "正在製作鏡頭",
-      "makingProgress": "鏡頭 {n} / {total}",
-      "renderPreview": {
-        "body": "匯出前先完整看一遍、聽一遍。",
-        "button": "開啟混音器",
-        "title": "算出預覽"
-      },
-      "writeShots": {
-        "body": "新增鏡頭,並為每個鏡頭寫一行提示詞。角色為選用:一條街道或一群人即可獨立成立。",
-        "button": "寫下你的鏡頭",
-        "title": "寫下你的鏡頭"
-      }
-    },
-    "nextStep": "下一步",
     "progressClips": "{shots, plural, one {# 個鏡頭} other {# 個鏡頭}} · {clips} 個有片段 · {stills} 個僅有靜態圖 · {stale} 個過期 · {seconds} 秒",
     "activity": {
       "cancelled": "批次已取消 · {when}",

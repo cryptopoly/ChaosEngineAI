@@ -1699,7 +1699,6 @@
       "useClip": "Utiliser comme clip",
       "noCast": "Aucun personnage dans ce projet. Ce n'est pas un problème : un plan peut exister seul. Ajoutez des personnages ou des lieux dans l'onglet Distribution pour conserver un style.",
       "vocal": "Voix pour la synchro labiale",
-      "vocalHint": "Un WAV ou FLAC que la bouche suit : le clip part de l'image fixe de ce plan, dure de 3 à 8 s et conserve ce son. Nécessite LTX-2.3 comme modèle vidéo (le modèle NVIDIA 4 bits demande une carte de 24 Go).",
       "vocalFile": "Fichier vocal (WAV ou FLAC)",
       "vocalChange": "Changer la voix",
       "vocalAttach": "Joindre une voix",
@@ -1764,8 +1763,6 @@
     "removeTitle": "Supprimer ce plan ?",
     "shot": {
       "drag": "Faites glisser pour réorganiser",
-      "failedNote": "Le plan n'a pas été rendu. Réessayez ou modifiez les prompts.",
-      "keep": "Garder",
       "lock": "Verrouiller ce plan",
       "lockedNote": "Les plans verrouillés sont ignorés lors de la création des plans.",
       "menu": {
@@ -1819,10 +1816,6 @@
       "makeClip": "Créer le clip",
       "makeClipTitle": "Créer le clip de ce plan à partir de son image fixe.",
       "referenceAdded": "{name} a été ajouté à la distribution avec cette image.",
-      "draft": "Brouillon",
-      "draftTitle": "Un brouillon rapide. Gardez ce plan et lancez la passe finale pour la prise en pleine qualité.",
-      "keepForFinal": "Garder pour le final",
-      "keepForFinalTitle": "La passe finale sur les plans gardés refait ce plan avec le modèle de qualité.",
       "tagsLabel": null,
       "hideStaleTitle": null,
       "hideStale": null,
@@ -1846,13 +1839,7 @@
     "passes": {
       "draft": "Créer des brouillons",
       "draftTimed": "Créer des brouillons · environ {time}",
-      "final": "Passe finale sur {n, plural, one {# plan gardé} other {# plans gardés}}",
-      "finalTimed": "Passe finale sur {n, plural, one {# plan gardé} other {# plans gardés}} · environ {time}",
-      "draftTitle": "Images fixes rapides avec {model} en {width} x {height}. Marquez les plans que vous aimez avec Garder, puis lancez la passe finale.",
-      "finalTitle": "Refait chaque plan gardé avec {model} en {width} x {height}, puis son clip à partir de la nouvelle image fixe.",
-      "label": "Passes brouillon et finale",
       "withClips": "Brouillons avec clips",
-      "keepHint": "Marquez des plans avec Garder pour le final pour les choisir pour la passe finale.",
       "draftPer": "Environ {time} par brouillon.",
       "draftTitleChoose": null,
       "finalChosenTimed": null,
@@ -1885,7 +1872,6 @@
       "legend": "Signification des repères",
       "keys": "Space ou K : lecture / pause · J et L : 5 s · flèches : 1 s (Shift 10 s) · Page Up / Page Down : plan · Home / End · C : sous-titres · Esc : fermer",
       "missingNote": "{n, plural, one {# plan n'a pas encore de clip. Il garde ici son image fixe (ou un carton) pour sa durée prévue ; l'export l'omet.} other {# plans n'ont pas encore de clip. Ils gardent ici leur image fixe (ou un carton) pour leur durée prévue ; l'export les omet.}}",
-      "draftNote": "{n, plural, one {# plan lit une prise brouillon.} other {# plans lisent une prise brouillon.}} Lancez la passe finale sur les plans gardés pour la pleine qualité.",
       "failed": "{n, plural, one {# fichier n'a pas pu être lu ; sa partie est jouée vide ou muette.} other {# fichiers n'ont pas pu être lus ; leurs parties sont jouées vides ou muettes.}}",
       "noSound": "Cette fenêtre ne peut pas lire le son : le montage provisoire est joué sans son.",
       "titleCard": "Carton de titre",
@@ -2250,7 +2236,6 @@
         "use": "{n, plural, one {Utiliser ce plan} other {Utiliser ces # plans}}",
         "useSinging": null
       },
-      "cutPlan": "Créer un plan de coupe",
       "cutting": "Découpage sur la musique…",
       "fromFile": "Ou un fichier audio (WAV, FLAC, MP3, OGG, M4A)",
       "fromLibrary": "Depuis la bibliothèque Musique",
@@ -2283,8 +2268,6 @@
       "longerThanFilm": "La chanson dure {song} ; les plans totalisent {film}. Les lignes après {film} ne s'affichent pas tant que le film n'a pas cette durée.",
       "vocals": {
         "title": "Synchro labiale de la chanson",
-        "hint": "1. Découpez la chanson en plans chantés de {min} à {max} s. 2. Donnez à chaque plan sa part de voix : elle commence 0,4 s avant le plan, est marquée comme chantée et produit 3 prises. Un stem vocal (la voix seule) donne les meilleurs résultats ; sans stem, la chanson elle-même est utilisée.",
-        "cut": "Découper pour le chant (plans de {min} à {max} s)",
         "stemRemove": "Utiliser la chanson à la place",
         "stem": "Stem vocal (facultatif, WAV ou FLAC)",
         "stemUse": "Utiliser ce stem",
@@ -2893,71 +2876,12 @@
     "openMixer": "Ouvrir le Mixeur"
   },
   "overview": {
-    "addCast": "Ajouter une distribution (facultatif)",
     "cast": "{n, plural, =0 {aucune distribution} one {# dans la distribution} other {# dans la distribution}}",
     "noSound": "pas encore de son",
-    "progress": "{shots, plural, one {# plan} other {# plans}} · {made} faits · {stale} obsolètes · {seconds} s",
     "settingsTitle": "Réglages du projet",
     "sheet": "Plans",
     "sound": "{n, plural, one {# clip sonore} other {# clips sonores}}",
     "staleBadge": "Périmé",
-    "startBody": "Écrivez vos plans, une ligne chacun. Une distribution est facultative : ajoutez des personnages ou des lieux seulement quand les plans doivent garder le même rendu.",
-    "startTitle": "Commencer ici",
-    "writeShots": "Écrire vos plans",
-    "check": {
-      "cast": "Distribution (facultatif)",
-      "doneLabel": "fait",
-      "export": "Export",
-      "format": "Nom et format",
-      "preview": "Aperçu",
-      "shots": "Plans",
-      "sound": "Son (facultatif)",
-      "takes": "Un clip pour chaque plan",
-      "todoLabel": "à faire"
-    },
-    "checklist": "Étapes",
-    "next": {
-      "addSound": {
-        "body": "Facultatif. Placez la voix, les effets ou la musique dans le mixeur, ou allez directement à un aperçu.",
-        "button": "Ouvrir le Mixeur",
-        "title": "Ajouter une voix ou de la musique"
-      },
-      "done": {
-        "body": "Exportez à nouveau après un changement, ou faites une nouvelle prise d'un plan.",
-        "button": "Ouvrir l'Export",
-        "title": "Terminé"
-      },
-      "export": {
-        "body": "Exportez le MP4 final, avec les sous-titres et une balise IA si vous le souhaitez.",
-        "button": "Ouvrir l'Export",
-        "title": "Exporter le film"
-      },
-      "makeClips": {
-        "body": "{n, plural, one {# plan a une image fixe mais pas de clip, le film l'omet donc.} other {# plans ont une image fixe mais pas de clip, le film les omet donc.}}",
-        "button": "Ouvrir le Storyboard",
-        "title": "Transformer les images fixes en clips"
-      },
-      "makeMissing": {
-        "body": "{n, plural, one {# plan n'a pas encore de prise.} other {# plans n'ont pas encore de prise.}} Les créer ajoute une image fixe, puis un clip, pour chacun.",
-        "button": "{n, plural, one {Créer # manquant} other {Créer # manquants}}",
-        "title": "{n, plural, one {Créer # plan} other {Créer # plans}}",
-        "bodyStills": "{none, plural, =0 {} one {# plan n'a pas de prise ; } other {# plans n'ont pas de prise ; }}{stills, plural, one {# a une image fixe mais pas de clip.} other {# ont une image fixe mais pas de clip.}} Les créer ajoute ce qui manque : une image fixe et un clip, ou seulement le clip.",
-        "draftsHint": "Le modèle d'image fixe est lent. Créez d'abord des brouillons rapides, marquez les plans que vous aimez avec Garder, puis lancez la passe finale."
-      },
-      "making": "Création des plans",
-      "makingProgress": "Plan {n} sur {total}",
-      "renderPreview": {
-        "body": "Regardez et écoutez tout le film avant de l'exporter.",
-        "button": "Ouvrir le Mixeur",
-        "title": "Rendre un aperçu"
-      },
-      "writeShots": {
-        "body": "Ajoutez vos plans et donnez à chacun une ligne de consigne. Une distribution est facultative : une rue ou une foule suffit seule.",
-        "button": "Écrire vos plans",
-        "title": "Écrire vos plans"
-      }
-    },
-    "nextStep": "Étape suivante",
     "progressClips": "{shots, plural, one {# plan} other {# plans}} · {clips} avec clip · {stills} image fixe seulement · {stale} obsolètes · {seconds} s",
     "activity": {
       "cancelled": "Lot annulé · {when}",

@@ -1699,7 +1699,6 @@
       "useClip": "클립으로 사용",
       "noCast": "이 프로젝트에는 출연진이 없습니다. 괜찮습니다. 컷은 단독으로도 존재할 수 있습니다. 분위기를 유지하려면 출연진 탭에서 인물이나 장소를 추가하세요.",
       "vocal": "립싱크용 보컬",
-      "vocalHint": "입이 따라 움직일 WAV 또는 FLAC: 클립은 이 샷의 스틸에서 시작해 3~8초 길이로 이어지며 이 소리를 유지합니다. 비디오 모델로 LTX-2.3이 필요합니다(4비트 NVIDIA 모델은 24 GB 카드가 필요).",
       "vocalFile": "보컬 파일 (WAV 또는 FLAC)",
       "vocalChange": "보컬 변경",
       "vocalAttach": "보컬 첨부",
@@ -1764,8 +1763,6 @@
     "removeTitle": "이 샷을 삭제할까요?",
     "shot": {
       "drag": "끌어서 순서 바꾸기",
-      "failedNote": "샷이 렌더링되지 않았습니다. 다시 시도하거나 프롬프트를 수정하세요.",
-      "keep": "유지",
       "lock": "이 샷 잠그기",
       "lockedNote": "잠긴 샷은 '샷 만들기'에서 건너뜁니다.",
       "menu": {
@@ -1819,10 +1816,6 @@
       "makeClip": "클립 만들기",
       "makeClipTitle": "이 샷의 스틸로 클립을 만듭니다.",
       "referenceAdded": "{name}을(를) 이 스틸로 등장인물에 추가했습니다.",
-      "draft": "초안",
-      "draftTitle": "빠른 초안입니다. 이 컷을 유지하고 최종 패스를 실행하면 최고 품질 테이크가 만들어집니다.",
-      "keepForFinal": "최종용으로 유지",
-      "keepForFinalTitle": "유지한 컷에 대한 최종 패스는 고품질 모델로 이 컷을 다시 만듭니다.",
       "tagsLabel": null,
       "hideStaleTitle": null,
       "hideStale": null,
@@ -1846,13 +1839,7 @@
     "passes": {
       "draft": "초안 만들기",
       "draftTimed": "초안 만들기 · 약 {time}",
-      "final": "유지한 컷 {n, plural, other {#개}}에 대한 최종 패스",
-      "finalTimed": "유지한 컷 {n, plural, other {#개}}에 대한 최종 패스 · 약 {time}",
-      "draftTitle": "{width} x {height}에서 {model}로 만드는 빠른 정지 이미지입니다. 마음에 드는 컷에 유지를 표시한 뒤 최종 패스를 실행하세요.",
-      "finalTitle": "{width} x {height}에서 {model}로 유지한 각 컷을 다시 만든 뒤, 새 정지 이미지로 클립을 만듭니다.",
-      "label": "초안 및 최종 패스",
       "withClips": "클립이 있는 초안",
-      "keepHint": "최종 패스에 쓸 컷은 최종용으로 유지를 표시하세요.",
       "draftPer": "초안 1개당 약 {time}.",
       "draftTitleChoose": null,
       "finalChosenTimed": null,
@@ -1885,7 +1872,6 @@
       "legend": "표시의 의미",
       "keys": "스페이스 또는 K: 재생 / 일시 정지 · J와 L: 5초 · 화살표: 1초 (Shift 10초) · Page Up / Down: 컷 이동 · Home / End · C: 자막 · Esc: 닫기",
       "missingNote": "{n, plural, other {컷 #개에는 아직 클립이 없습니다. 여기서는 정지 이미지(또는 카드)를 계획된 길이만큼 유지하며, 내보내기에서는 제외됩니다.}}",
-      "draftNote": "{n, plural, other {컷 #개가 초안 테이크를 재생합니다.}} 최고 품질을 원하면 유지한 컷에 대해 최종 패스를 실행하세요.",
       "failed": "{n, plural, other {파일 #개를 읽을 수 없어 해당 부분은 빈 화면이나 무음으로 재생됩니다.}}",
       "noSound": "이 창에서는 소리를 재생할 수 없어 러프 컷은 소리 없이 재생됩니다.",
       "titleCard": "타이틀 카드",
@@ -2250,7 +2236,6 @@
         "use": "{n, plural, other {컷 #개 사용}}",
         "useSinging": null
       },
-      "cutPlan": "컷 계획 만들기",
       "cutting": "음악에 맞춰 컷을 나누는 중…",
       "fromFile": "또는 오디오 파일 (WAV, FLAC, MP3, OGG, M4A)",
       "fromLibrary": "음악 라이브러리에서",
@@ -2283,8 +2268,6 @@
       "longerThanFilm": "노래 길이는 {song}이고, 컷의 합계는 {film}입니다. 영상이 {film}이 되기 전까지 {film} 이후의 가사는 표시되지 않습니다.",
       "vocals": {
         "title": "노래에 립싱크 적용",
-        "hint": "1. 노래를 {min}~{max}초 길이의 노래 컷으로 나눕니다. 2. 각 컷에 해당하는 보컬 부분을 지정합니다. 컷보다 0.4초 앞에서 시작하고, 노래로 표시되며, 3개의 테이크를 만듭니다. 보컬 스템(목소리만 있는 트랙)이 가장 잘 맞고, 없으면 노래 자체를 사용합니다.",
-        "cut": "노래용으로 컷 나누기({min}~{max}초 컷)",
         "stemRemove": "대신 노래 사용",
         "stem": "보컬 스템(선택 사항, WAV 또는 FLAC)",
         "stemUse": "이 스템 사용",
@@ -2893,71 +2876,12 @@
     "openMixer": "믹서 열기"
   },
   "overview": {
-    "addCast": "등장인물 추가(선택)",
     "cast": "{n, plural, =0 {출연진 없음} other {출연진 #명}}",
     "noSound": "아직 소리 없음",
-    "progress": "{shots, plural, other {컷 #개}} · 완성 {made} · 오래됨 {stale} · {seconds}초",
     "settingsTitle": "프로젝트 설정",
     "sheet": "샷",
     "sound": "{n, plural, other {효과음 클립 #개}}",
     "staleBadge": "오래됨",
-    "startBody": "컷을 한 줄씩 쓰세요. 출연진은 선택 사항입니다. 같은 분위기를 유지해야 하는 컷에만 인물이나 장소를 추가하세요.",
-    "startTitle": "여기서 시작",
-    "writeShots": "샷 작성",
-    "check": {
-      "cast": "등장인물(선택)",
-      "doneLabel": "완료",
-      "export": "내보내기",
-      "format": "이름과 형식",
-      "preview": "미리보기",
-      "shots": "샷",
-      "sound": "소리(선택)",
-      "takes": "모든 샷에 클립",
-      "todoLabel": "남음"
-    },
-    "checklist": "단계",
-    "next": {
-      "addSound": {
-        "body": "선택 사항입니다. 믹서에서 음성, 효과음, 음악을 배치하거나 바로 미리보기로 가세요.",
-        "button": "믹서 열기",
-        "title": "음성이나 음악 추가"
-      },
-      "done": {
-        "body": "변경한 뒤 다시 내보내거나 원하는 샷의 새 테이크를 만드세요.",
-        "button": "내보내기 열기",
-        "title": "완료"
-      },
-      "export": {
-        "body": "완성된 MP4를 작성합니다. 원하면 자막과 AI 표시도 넣을 수 있습니다.",
-        "button": "내보내기 열기",
-        "title": "영상 내보내기"
-      },
-      "makeClips": {
-        "body": "{n, plural, other {컷 #개에는 정지 이미지는 있지만 클립이 없어서 영상에서 제외됩니다.}}",
-        "button": "스토리보드 열기",
-        "title": "스틸을 클립으로 만들기"
-      },
-      "makeMissing": {
-        "body": "{n, plural, other {테이크가 아직 없는 컷 #개입니다.}} 만들면 각 컷에 정지 이미지와 클립이 추가됩니다.",
-        "button": "{n, plural, other {누락된 컷 #개 만들기}}",
-        "title": "{n, plural, other {컷 #개 만들기}}",
-        "bodyStills": "{none, plural, =0 {} other {테이크가 없는 컷 #개. }}{stills, plural, =0 {} other {정지 이미지는 있지만 클립이 없는 컷 #개. }}만들면 부족한 항목을 채웁니다: 정지 이미지와 클립, 또는 클립만.",
-        "draftsHint": "정지 이미지 모델은 느립니다. 먼저 빠른 초안을 만들고, 마음에 드는 컷에 유지를 표시한 뒤 최종 패스를 실행하세요."
-      },
-      "making": "샷 만드는 중",
-      "makingProgress": "컷 {total}개 중 {n}번째",
-      "renderPreview": {
-        "body": "내보내기 전에 영상 전체를 보고 들어 보세요.",
-        "button": "믹서 열기",
-        "title": "미리보기 렌더링"
-      },
-      "writeShots": {
-        "body": "컷을 추가하고 각 컷에 프롬프트 한 줄씩 적으세요. 출연진은 선택 사항입니다. 거리나 군중만으로도 충분합니다.",
-        "button": "샷 작성",
-        "title": "샷 작성"
-      }
-    },
-    "nextStep": "다음 단계",
     "progressClips": "{shots, plural, other {컷 #개}} · 클립 있음 {clips} · 정지 이미지만 {stills} · 오래됨 {stale} · {seconds}초",
     "activity": {
       "cancelled": "일괄 작업 취소 · {when}",

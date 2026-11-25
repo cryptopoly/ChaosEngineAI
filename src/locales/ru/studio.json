@@ -671,7 +671,7 @@
       "delete": "Удалить",
       "soundOn": "Включить звук",
       "soundOff": "Выключить звук",
-      "upscale": null
+      "upscale": "Увеличить"
     }
   },
   "voice": {
@@ -1487,7 +1487,7 @@
       "stepsNumber": "Количество шагов",
       "stepsNote": "Меньше шагов работает быстрее, но звучит хуже. {n} — настройка автора модели.",
       "summarySteps": "шагов: {n}",
-      "random": null
+      "random": "Случайный"
     },
     "artistWarning": "Если назвать исполнителя, может получиться копия его стиля. Лучше опишите звучание.",
     "cancel": "Отмена",
@@ -1645,7 +1645,7 @@
       "title": "Создание шотов",
       "titleDraft": "Создание черновиков",
       "titleFinal": "Финальный проход",
-      "failedSoFar": null
+      "failedSoFar": "{n, plural, one {# шот не создан. На его карточке написано, почему и что делать.} few {# шота не создано. На их карточках написано, почему и что делать.} many {# шотов не создано. На их карточках написано, почему и что делать.} other {# шота не создано. На их карточках написано, почему и что делать.}}"
     },
     "conflictNotice": "Изменено в другом месте; показана последняя версия",
     "defaults": {
@@ -1709,23 +1709,23 @@
       "vocalTakesDefault": "По умолчанию ({count})",
       "vocalTakesBest": "4 (лучшее качество)",
       "vocalTakesHint": "Для пения: используйте вокальный стем, фронтальный крупный план с закрытым ртом в качестве неподвижного кадра и начинайте примерно за 0,4 с до фразы. Каждый дубль использует свой сид; оценка синхронизации оставляет лучший, остальные остаются в Галерее видео.",
-      "castInShot": null,
-      "castNone": null,
-      "castEveryShot": null,
-      "leaveOut": null,
-      "lipSyncSeparate": null,
-      "clipSound": null,
-      "clipSoundOn": null,
-      "clipSoundOff": null,
-      "endFrame": null,
-      "endFrameHint": null,
-      "endFrameAlt": null,
-      "endFrameChange": null,
-      "endFramePick": null,
-      "endFrameRemove": null,
-      "endFramePickerTitle": null,
-      "vocalHintShot": null,
-      "vocalOptional": null
+      "castInShot": "В этом шоте: {names}",
+      "castNone": "В этом шоте нет персонажей.",
+      "castEveryShot": "Во всех шотах",
+      "leaveOut": "Убрать из этого шота",
+      "lipSyncSeparate": "Персонаж в шоте не обязан петь. Синхронизация губ настраивается для каждого шота отдельно, в разделе «Вокал для синхронизации губ».",
+      "clipSound": "Включить звук клипа",
+      "clipSoundOn": "Собственный звук этого клипа играет поверх песни.",
+      "clipSoundOff": "Без звука под песней.",
+      "endFrame": "Конечный кадр",
+      "endFrameHint": "Картинка, на которой должен закончиться клип. Её используют только видеомодели LTX-2; остальные попросят её убрать.",
+      "endFrameAlt": "Конечный кадр шота {number}",
+      "endFrameChange": "Заменить конечный кадр",
+      "endFramePick": "Выбрать конечный кадр",
+      "endFrameRemove": "Убрать конечный кадр",
+      "endFramePickerTitle": "Конечный кадр для шота {number}",
+      "vocalHintShot": "Файл WAV или FLAC, под который двигается рот: клип начинается со стоп-кадра этого шота и сохраняет этот звук. Нужна видеомодель LTX-2.3 (4-битной модели NVIDIA нужна видеокарта на 24 ГБ).",
+      "vocalOptional": "Шот не обязан петь: уберите его вокал, и он будет играть как обычный клип."
     },
     "empty": "Шотов пока нет. Добавьте шот, затем задайте ему промпт или импортируйте материал.",
     "estimate": {
@@ -1816,11 +1816,11 @@
       "makeClip": "Сделать клип",
       "makeClipTitle": "Сделать клип этого плана из его кадра.",
       "referenceAdded": "{name} добавлен в персонажи с этим кадром.",
-      "tagsLabel": null,
-      "hideStaleTitle": null,
-      "hideStale": null,
-      "chooseForFinalTitle": null,
-      "chooseForFinal": null
+      "tagsLabel": "Синхронизация губ и персонажи",
+      "hideStaleTitle": "Скрывает это предупреждение. Шот остаётся как есть, ничего не создаётся заново.",
+      "hideStale": "Скрыть предупреждение",
+      "chooseForFinalTitle": "Финальный проход заново создаёт выбранные вами шоты качественной моделью в полном размере фильма.",
+      "chooseForFinal": "Выбрать для финала"
     },
     "shots": "Шоты",
     "subtitle": "{shots, plural, one {# шот} few {# шота} many {# шотов} other {# шота}} · {seconds} с · устарело: {stale}",
@@ -1841,11 +1841,11 @@
       "draftTimed": "Создать черновики · примерно {time}",
       "withClips": "Черновики с клипами",
       "draftPer": "Примерно {time} на черновик.",
-      "draftTitleChoose": null,
-      "finalChosenTimed": null,
-      "finalChosen": null,
-      "finalChosenTitle": null,
-      "chooseHint": null
+      "draftTitleChoose": "Быстрые стоп-кадры моделью {model} в размере {width} x {height}. Выберите понравившиеся шоты для финала, затем запустите финальный проход.",
+      "finalChosenTimed": "Финальный проход для {n, plural, one {# выбранного шота} few {# выбранных шотов} many {# выбранных шотов} other {# выбранного шота}} · примерно {time}",
+      "finalChosen": "Финальный проход для {n, plural, one {# выбранного шота} few {# выбранных шотов} many {# выбранных шотов} other {# выбранного шота}}",
+      "finalChosenTitle": "Заново создаёт каждый выбранный шот моделью {model} в размере {width} x {height}, а затем его клип из нового стоп-кадра.",
+      "chooseHint": "Нажмите «Выбрать для финала» у шота, чтобы включить его в финальный проход."
     },
     "exportDrafts": "{n, plural, one {# кадр использует дубль-черновик.} few {# кадра используют дубль-черновик.} many {# кадров используют дубль-черновик.} other {# кадра используют дубль-черновик.}} Оставьте их и запустите финальный проход для полного качества или экспортируйте черновики как есть.",
     "preview": {
@@ -1877,7 +1877,7 @@
       "titleCard": "Титульная карточка",
       "endCard": "Финальная карточка",
       "legendCard": "Титульная или финальная карточка (фирменный набор)",
-      "draftNoteSized": null
+      "draftNoteSized": "{n, plural, one {# шот играет дубль-черновик.} few {# шота играют дубль-черновик.} many {# шотов играют дубль-черновик.} other {# шота играют дубль-черновик.}} Черновики меньше фильма. Выберите их для финала и запустите финальный проход, чтобы получить полный размер."
     },
     "captions": {
       "toggle": "Показать субтитры (C)",
@@ -1933,7 +1933,7 @@
       "open": "Сравнить дубли",
       "openTitle": "Два дубля рядом с указанием того, что создало каждый из них.",
       "short": "Сравнить",
-      "noClipYet": null
+      "noClipYet": "В этом дубле пока нет клипа."
     },
     "remake": {
       "clip": "Переделать только клип",
@@ -2234,7 +2234,7 @@
         "replaceNote": "Они заменят {n, plural, one {# кадр} few {# кадра} many {# кадров} other {# кадра}} на доске; при запросах «Сохранить» кадр 1 сохраняет запросы сегодняшнего кадра 1 и так далее. «Отменить» вернёт старые кадры.",
         "title": "План монтажа: {n, plural, one {# кадр} few {# кадра} many {# кадров} other {# кадра}} за {time}",
         "use": "{n, plural, one {Использовать этот кадр} few {Использовать эти # кадра} many {Использовать эти # кадров} other {Использовать эти # кадра}}",
-        "useSinging": null
+        "useSinging": "{n, plural, one {Использовать этот шот и дать ему вокал} few {Использовать эти # шота и дать каждому вокал} many {Использовать эти # шотов и дать каждому вокал} other {Использовать эти # шота и дать каждому вокал}}"
       },
       "cutting": "Монтаж под музыку…",
       "fromFile": "Или аудиофайл (WAV, FLAC, MP3, OGG, M4A)",
@@ -2274,38 +2274,38 @@
         "working": "Нарезка вокала…",
         "attach": "Дать каждому кадру его вокал",
         "done": "{attached, plural, =0 {Ни один кадр не получил вокал} one {# кадр получил свой вокал} few {# кадра получили свой вокал} many {# кадров получили свой вокал} other {# кадра получили свой вокал}} из {source, select, stem {стема} other {песни}}.",
-        "hintEach": null,
-        "again": null,
-        "unassigned": null
+        "hintEach": "Каждый шот получает свою часть вокала: она начинается за 0,4 с до шота, помечается как поющая и создаёт 3 дубля.",
+        "again": "Запускается заново для каждого шота, включая те, у которых вы убрали вокал.",
+        "unassigned": "{n, plural, one {У # шота пока нет вокала.} few {У # шотов пока нет вокала.} many {У # шотов пока нет вокала.} other {У # шота пока нет вокала.}}"
       },
       "coverage": {
-        "title": null,
-        "source": null,
-        "counts": null,
-        "empty": null,
+        "title": "Синхронизация губ: поют {sings} из {total, plural, one {# шота} few {# шотов} many {# шотов} other {# шота}}",
+        "source": "{source, select, stem {Вокал из стема} other {Вокал из песни}}",
+        "counts": "{synced} синхронизировано · {waiting} ждут клипа · {skipped} без синхронизации губ · {unassigned} без вокала",
+        "empty": "Шотов пока нет.",
         "col": {
-          "shot": null,
-          "time": null,
-          "length": null,
-          "state": null
+          "shot": "Шот",
+          "time": "Время в песне",
+          "length": "Длина",
+          "state": "Синхронизация губ"
         },
-        "makeAll": null,
-        "batchRunning": null
+        "makeAll": "{n, plural, one {Создать # клип с синхронизацией губ} few {Создать # клипа с синхронизацией губ} many {Создать # клипов с синхронизацией губ} other {Создать # клипа с синхронизацией губ}}",
+        "batchRunning": "Ждёт шоты, которые создаются сейчас."
       },
       "sing": {
-        "question": null,
-        "yes": null,
-        "yesHint": null,
-        "stemHint": null,
-        "perShot": null,
-        "no": null,
-        "noHint": null,
-        "cut": null,
-        "keepShots": null,
-        "choose": null,
-        "review": null
+        "question": "Кто-нибудь поёт на экране?",
+        "yes": "Да, синхронизировать губы с пением",
+        "yesHint": "Нарезает песню на шоты длиной от {min} до {max} с, затем даёт каждому шоту его часть вокала.",
+        "stemHint": "Лучше всего работает вокальный стем (один голос); без него используется сама песня.",
+        "perShot": "Не каждый шот обязан петь: шот без пения играет как обычный клип, а любому шоту можно убрать вокал в его редакторе.",
+        "no": "Нет, только картинки",
+        "noHint": "Нарезает по ритму, без синхронизации губ.",
+        "cut": "Нарезать песню на шоты",
+        "keepShots": "Оставить мои шоты и дать каждому вокал",
+        "choose": "Сначала выберите ответ.",
+        "review": "Сначала вы проверите нарезку; пока ничего не создаётся."
       },
-      "cutSongIntoShots": null
+      "cutSongIntoShots": "Нарезать песню на шоты"
     },
     "unsaved": {
       "title": "Ваш текст не сохранён",
@@ -2318,56 +2318,56 @@
       "discard": "Отбросить мой текст"
     },
     "chip": {
-      "noCharacterTitle": null,
-      "noCharacter": null,
-      "reasonSpeed": null,
-      "reasonLocked": null,
-      "reasonOutside": null,
-      "reasonShort": null,
-      "reasonLong": null,
-      "reasonNoSinging": null,
-      "reasonNoVocal": null,
-      "titleSpeed": null,
-      "titleLocked": null,
-      "titleOutside": null,
-      "titleShort": null,
-      "titleLong": null,
-      "titleNoSinging": null,
-      "titleNoVocal": null,
-      "sings": null,
-      "singsTitle": null,
-      "willSing": null,
-      "willSingTitle": null,
-      "noLipSync": null,
-      "plainClip": null
+      "noCharacterTitle": "В этом шоте нет персонажа, поэтому его картинка создаётся без персонажа. Откройте шот, чтобы добавить его.",
+      "noCharacter": "Без персонажа",
+      "reasonSpeed": "другая скорость",
+      "reasonLocked": "заблокирован",
+      "reasonOutside": "вне песни",
+      "reasonShort": "слишком короткий",
+      "reasonLong": "слишком длинный",
+      "reasonNoSinging": "здесь нет пения",
+      "reasonNoVocal": "вокала пока нет",
+      "titleSpeed": "Этот шот идёт с другой скоростью. Для синхронизации губ нужна обычная скорость.",
+      "titleLocked": "Этот шот заблокирован, поэтому синхронизация губ его не трогает.",
+      "titleOutside": "Этот шот находится вне песни, петь нечего.",
+      "titleShort": "Этот шот слишком короткий для синхронизации губ. Нужно не меньше {min} с.",
+      "titleLong": "Этот шот слишком длинный для синхронизации губ. Он может длиться не больше {max} с.",
+      "titleNoSinging": "В вокале на этом участке песни нет пения.",
+      "titleNoVocal": "У этого шота пока нет вокала. Дайте каждому шоту его вокал, чтобы синхронизировать губы.",
+      "sings": "Поёт",
+      "singsTitle": "Клип этого шота синхронизирован с песней.",
+      "willSing": "Будет петь",
+      "willSingTitle": "У этого шота есть вокал. Создайте клип с синхронизацией губ, чтобы увидеть, как он поёт.",
+      "noLipSync": "Без синхронизации губ: {reason}",
+      "plainClip": "Играет как обычный клип."
     },
     "failure": {
-      "details": null,
-      "outOfMemory": null,
-      "modelMissing": null,
-      "lipsyncModel": null,
-      "downloadBlocked": null,
-      "videoToolsMissing": null,
-      "sizeOverCap": null,
-      "referencesUnsupported": null,
-      "noPrompt": null,
-      "diskFull": null,
-      "cancelled": null,
-      "unknown": null,
-      "actionEdit": null,
-      "actionSmallerSized": null,
-      "actionSmaller": null,
-      "actionSmallerTitle": null,
-      "actionVideoModels": null,
-      "actionImageModels": null,
-      "actionVideoTools": null
+      "details": "Подробности",
+      "outOfMemory": "Не хватило свободной памяти, чтобы создать этот шот в таком размере.",
+      "modelMissing": "Модель, нужная для этого шота, не установлена.",
+      "lipsyncModel": "Видеомодель этого проекта не умеет синхронизировать губы с вокалом этого шота.",
+      "downloadBlocked": "Не удалось загрузить модель. Возможно, нужно принять её лицензию, или пропало подключение.",
+      "videoToolsMissing": "Видеоинструменты не установлены.",
+      "sizeOverCap": "Этот шот больше, чем может создать модель.",
+      "referencesUnsupported": "Модель не принимает картинки этого шота (начальную, конечную или референсную).",
+      "noPrompt": "Для этого шота нет описания, по которому его можно создать. Сначала напишите промпт.",
+      "diskFull": "Диск заполнен, поэтому шот не удалось сохранить. Освободите место и повторите попытку.",
+      "cancelled": "Шот остановили до завершения.",
+      "unknown": "Шот не создан.",
+      "actionEdit": "Изменить промпты",
+      "actionSmallerSized": "Создать в размере черновика ({size})",
+      "actionSmaller": "Создать в размере черновика",
+      "actionSmallerTitle": "Заново создаёт этот шот в меньшем размере, которому нужно меньше памяти. Он станет черновиком; позже выберите его для финала.",
+      "actionVideoModels": "Открыть модели видео",
+      "actionImageModels": "Открыть модели изображений",
+      "actionVideoTools": "Установить видеоинструменты"
     },
     "quality": {
-      "tag": null,
-      "tagNoSize": null,
-      "titleSized": null,
-      "titleDraftOnly": null,
-      "titleNoSize": null
+      "tag": "Черновик {size}",
+      "tagNoSize": "Черновик",
+      "titleSized": "Черновик в размере {size}, примерно вдвое меньше фильма, чтобы быстро выбирать шоты. Размер фильма — {film}: выберите этот шот для финала, чтобы создать его в таком размере.",
+      "titleDraftOnly": "Черновик в размере {size}, меньше фильма, чтобы быстро выбирать шоты. Выберите этот шот для финала, чтобы создать его в полном размере.",
+      "titleNoSize": "Черновик меньше фильма, чтобы быстро выбирать шоты. Выберите этот шот для финала, чтобы создать его в полном размере."
     }
   },
   "storyProjects": {
@@ -2531,12 +2531,12 @@
       "more": "Ещё",
       "whyBusy": "Выполняется создание. Экспорт начнётся после его окончания или если вы его отмените.",
       "whyEmpty": "Пока нечего экспортировать: ни у одного кадра нет клипа. Создайте клипы на вкладке «Раскадровка».",
-      "methodSharp": null,
-      "methodStandard": null,
-      "method": null,
-      "methodNeedsAddon": null,
-      "methodOpenUpscale": null,
-      "anyway": null
+      "methodSharp": "Чётче (ИИ, нужно дополнение «Увеличение»)",
+      "methodStandard": "Обычное растяжение",
+      "method": "Способ увеличения",
+      "methodNeedsAddon": "Дополнение «Увеличение» не установлено, поэтому экспорт с таким выбором не запустится. Установите его или выберите «Обычное растяжение».",
+      "methodOpenUpscale": "Открыть вкладку «Увеличение»",
+      "anyway": "Всё равно экспортировать"
     },
     "importAudio": "Импортировать аудио",
     "importAudioPath": "Путь к аудиофайлу",
@@ -2613,10 +2613,10 @@
       "render": "Готовый предпросмотр"
     },
     "clipSound": {
-      "muted": null,
-      "playing": null,
-      "mixed": null,
-      "switch": null
+      "muted": "Без звука под песней",
+      "playing": "Звучит поверх песни",
+      "mixed": "Звучит в некоторых шотах",
+      "switch": "Включить звук клипа"
     }
   },
   "aiLabel": {
@@ -2845,8 +2845,8 @@
     "unnamed": "Без имени",
     "usedBy": "{n, plural, =0 {Пока не используется в кадрах} one {Используется в # кадре} few {Используется в # кадрах} many {Используется в # кадрах} other {Используется в # кадре}}",
     "noneShort": "Пока нет.",
-    "inEveryShot": null,
-    "inEveryShotHint": null
+    "inEveryShot": "Во всех шотах",
+    "inEveryShotHint": "Ставит этого персонажа в каждый шот, сейчас и потом. В редакторе шота его всё равно можно убрать."
   },
   "exportTab": {
     "bundleBody": "Один файл .chaosfilm с кадрами, дублями, изображениями актёров и звуком: для резервной копии проекта или открытия на другом компьютере.",
@@ -2949,8 +2949,8 @@
       "storyboard": "Раскадровка"
     },
     "tabsLabel": "Проект",
-    "more": null,
-    "boardHint": null
+    "more": "Ещё",
+    "boardHint": "Свободно раскладывайте шоты и персонажей"
   },
   "templates": {
     "ad30": "Реклама 30 с",
@@ -3034,8 +3034,8 @@
     "metaFormat": "{aspect} · {resolution} · {fps} fps · {shots, plural, one {# кадр} few {# кадра} many {# кадров} other {# кадра}}",
     "sets": "{name} задал формат {aspect}, {resolution}, {fps} к/с. Измените его ниже.",
     "sample": "Пример фильма",
-    "musicVideoMeta": null,
-    "musicVideoNote": null
+    "musicVideoMeta": "Начинается с песни",
+    "musicVideoNote": "Открывается на этапе «Песня»: добавьте песню, затем нарежьте её на шоты. Формат {aspect}, {resolution}, {fps} к/с; измените его ниже."
   },
   "voicePicker": {
     "automatic": "Без голоса (автоматически)",
@@ -3068,15 +3068,15 @@
     "needStills": "{n, plural, one {# кадру нужна доработка} few {# кадрам нужна доработка} many {# кадрам нужна доработка} other {# кадру нужна доработка}}: {stills, plural, one {у # есть стоп-кадр, нужен клип} few {у # есть стоп-кадры, нужны клипы} many {у # есть стоп-кадров, нужны клипы} other {у # есть стоп-кадр, нужен клип}}",
     "stale": "устарело: {n}",
     "choice": {
-      "finalPass": null,
-      "label": null,
-      "draft": null,
-      "about": null,
-      "draftWhy": null,
-      "final": null,
-      "peak": null
+      "finalPass": "Финальный проход заново создаёт выбранные шоты в размере {size}, затем их клипы.",
+      "label": "Черновики или финал",
+      "draft": "Сначала черновики: {size}",
+      "about": "около {time}",
+      "draftWhy": "половинный размер, чтобы выбрать понравившиеся шоты. Их вы затем создаёте в полном размере.",
+      "final": "Сразу финал: {size}",
+      "peak": "пик {peak} из {total}"
     },
-    "more": null
+    "more": "Другие способы создания"
   },
   "slowRow": {
     "label": "Медленно на этом компьютере",
@@ -3120,161 +3120,161 @@
     "hint": "Запущено с другого экрана, например пакет из раскадровки. Дождитесь его окончания, прежде чем запускать другой."
   },
   "videoUpscale": {
-    "statusFailed": null,
+    "statusFailed": "Не удалось прочитать состояние средства увеличения: {error}",
     "install": {
-      "title": null,
-      "body": null,
-      "licence": null,
-      "phasePackages": null,
-      "phaseWeights": null,
-      "phaseCheck": null,
-      "step": null,
-      "button": null,
-      "retry": null,
-      "failed": null,
-      "unknownError": null
+      "title": "Установить средство увеличения видео",
+      "body": "Добавляет две модели увеличения (Real-ESRGAN, автор xinntao) и небольшую библиотеку, которая их запускает, в отдельную папку. Около {size} МБ, загружается один раз. Больше ничего на вашем компьютере не меняется.",
+      "licence": "Лицензия моделей: {licence}.",
+      "phasePackages": "Установка библиотеки, которая запускает модели…",
+      "phaseWeights": "Загрузка моделей увеличения…",
+      "phaseCheck": "Проверка установки…",
+      "step": "Шаг {step} из 3: {phase}",
+      "button": "Установить (около {size} МБ)",
+      "retry": "Повторить установку",
+      "failed": "Установка не удалась: {error}",
+      "unknownError": "Причина не указана."
     },
     "source": {
-      "label": null,
-      "placeholder": null,
-      "browse": null,
-      "browseTitle": null,
-      "filterName": null,
-      "browseFailed": null,
-      "hint": null,
-      "chosenSized": null
+      "label": "Видео",
+      "placeholder": "Полный путь к видеофайлу на этом компьютере",
+      "browse": "Обзор…",
+      "browseTitle": "Выберите видео для увеличения",
+      "filterName": "Видео",
+      "browseFailed": "Выбор файла здесь недоступен. Вставьте вместо него полный путь к видео.",
+      "hint": "Или нажмите «Увеличить» у клипа в Галерее видео. Новый фильм сохраняется в вашей папке видео, в подпапке upscaled.",
+      "chosenSized": "{name}, {width} × {height}"
     },
     "quality": {
-      "label": null,
-      "notInstalled": null,
-      "wontFit": null,
-      "downloadMissing": null
+      "label": "Качество",
+      "notInstalled": "Ещё не загружено",
+      "wontFit": "Нужно больше видеопамяти, чем есть на этом компьютере",
+      "downloadMissing": "Загрузить недостающие модели"
     },
     "size": {
-      "label": null,
-      "x2": null,
-      "x4": null,
-      "target": null,
-      "result": null,
-      "limit": null,
-      "needsSize": null,
-      "notBigger": null
+      "label": "Размер",
+      "x2": "2x",
+      "x4": "4x",
+      "target": "{height}p",
+      "result": "Результат будет {width} × {height}.",
+      "limit": "Результат был бы {width}x{height}, а предел — {max} пикселей по стороне. Выберите меньший масштаб или меньший целевой размер.",
+      "needsSize": "Для целевых размеров нужен размер видео, он считывается при выборе файла. Пока он не считан, выбирайте 2x или 4x.",
+      "notBigger": "Видео уже такой высоты или выше."
     },
-    "deinterlace": null,
-    "start": null,
-    "oneAtATime": null,
+    "deinterlace": "Сначала убрать чересстрочность (для записей с ТВ или кассет, где при движении видны гребёнчатые полосы)",
+    "start": "Начать увеличение",
+    "oneAtATime": "Одно увеличение за раз: дождитесь этого или отмените его.",
     "job": {
-      "target": null,
-      "queued": null,
-      "running": null,
-      "done": null,
-      "failed": null,
-      "cancelled": null,
-      "interrupted": null,
-      "frames": null,
-      "speed": null,
-      "etaSeconds": null,
-      "etaMinutes": null,
-      "etaHours": null,
-      "progressLabel": null,
-      "parts": null,
-      "savedAs": null,
-      "cancel": null,
-      "resume": null,
-      "open": null,
-      "reveal": null,
-      "dismiss": null,
-      "play": null,
-      "playLoading": null
+      "target": "до {width} × {height}",
+      "queued": "Ждёт, пока другая задача освободит GPU.",
+      "running": "Идёт увеличение…",
+      "done": "Готово.",
+      "failed": "Остановлено из-за ошибки: {error}",
+      "cancelled": "Отменено. Готовые части сохранены, поэтому «Продолжить» продолжит с этого места.",
+      "interrupted": "Остановлено при закрытии приложения. «Продолжить» продолжит с места остановки.",
+      "frames": "{done, number} из {total, number} кадров",
+      "speed": "{fps} кадров в секунду",
+      "etaSeconds": "осталось около {count} с",
+      "etaMinutes": "осталось около {count} мин",
+      "etaHours": "осталось около {hours} ч {minutes} мин",
+      "progressLabel": "Ход увеличения",
+      "parts": "Фильм создаётся по частям (всего {segments}); каждая готовая часть сохраняется, если задача остановится.",
+      "savedAs": "Сохранено: {path}",
+      "cancel": "Отмена",
+      "resume": "Продолжить",
+      "open": "Открыть результат",
+      "reveal": "Показать в папке",
+      "dismiss": "Закрыть",
+      "play": "Воспроизвести результат",
+      "playLoading": "Загрузка фильма…"
     },
     "compare": {
-      "before": null,
-      "beforeMissing": null,
-      "after": null,
-      "afterOpen": null,
-      "beforeAlt": null,
-      "afterAlt": null,
-      "loading": null,
-      "playMissing": null,
-      "playFailed": null
+      "before": "До",
+      "beforeMissing": "Предпросмотра этого файла в приложении нет.",
+      "after": "После ({width} × {height})",
+      "afterOpen": "Откройте результат, чтобы сравнить его в полном размере.",
+      "beforeAlt": "Первый кадр исходного видео",
+      "afterAlt": "Первый кадр увеличенного видео",
+      "loading": "Загрузка первого кадра…",
+      "playMissing": "Приложение больше не может само воспроизвести этот фильм (после этого оно было перезапущено). Используйте «Открыть результат» или «Показать в папке».",
+      "playFailed": "Не удалось загрузить фильм: {error}"
     },
-    "deinterlaceUnavailable": null,
+    "deinterlaceUnavailable": "Устранение чересстрочности недоступно: видеоинструменты на этом компьютере этого не умеют.",
     "probe": {
-      "line": null,
-      "withSound": null,
-      "noSound": null,
-      "reading": null,
-      "interlaced": null
+      "line": "{name}: {width} × {height}, {fps} кадров в секунду, {duration}, {audio}",
+      "withSound": "со звуком",
+      "noSound": "без звука",
+      "reading": "Чтение видео…",
+      "interlaced": "Это видео выглядит чересстрочным, поэтому флажок установлен."
     },
     "recent": {
-      "label": null,
-      "queued": null,
-      "running": null,
-      "done": null,
-      "failed": null,
-      "cancelled": null,
-      "interrupted": null
+      "label": "Недавние увеличения",
+      "queued": "Ожидает",
+      "running": "Идёт увеличение",
+      "done": "Готово",
+      "failed": "Не удалось",
+      "cancelled": "Отменено",
+      "interrupted": "Остановлено"
     }
   },
   "guide": {
     "stage": {
-      "song": null,
-      "look": null,
-      "shots": null,
-      "drafts": null,
-      "final": null,
-      "lipsync": null,
-      "sound": null,
-      "check": null,
-      "export": null
+      "song": "Песня",
+      "look": "Образ",
+      "shots": "Шоты",
+      "drafts": "Черновики",
+      "final": "Финал",
+      "lipsync": "Синхронизация губ",
+      "sound": "Звук",
+      "check": "Проверка",
+      "export": "Экспорт"
     },
     "look": {
-      "done": null,
-      "current": null,
-      "attention": null,
-      "progress": null,
-      "skipped": null,
-      "todo": null
+      "done": "Готово",
+      "current": "Сейчас",
+      "attention": "Нужно проверить",
+      "progress": "В процессе",
+      "skipped": "Пропущено",
+      "todo": "Предстоит"
     },
     "action": {
-      "attachSong": null,
-      "openCast": null,
-      "cutPlan": null,
-      "planShots": null,
-      "openStoryboard": null,
-      "watchBatch": null,
-      "resumeBatch": null,
-      "retryFailed": null,
-      "makeDrafts": null,
-      "makeMissing": null,
-      "makeFinal": null,
-      "chooseFinal": null,
-      "makeClips": null,
-      "remakeStale": null,
-      "assignVocals": null,
-      "makeLipsync": null,
-      "openCoverage": null,
-      "openMixer": null,
-      "openCheck": null,
-      "export": null
+      "attachSong": "Добавить песню",
+      "openCast": "Открыть «Персонажи»",
+      "cutPlan": "Нарезать песню на шоты",
+      "planShots": "Спланировать шоты",
+      "openStoryboard": "Открыть «Раскадровку»",
+      "watchBatch": "Следить за ходом",
+      "resumeBatch": "Продолжить",
+      "retryFailed": "Повторить попытку",
+      "makeDrafts": "Создать черновики",
+      "makeMissing": "Создать недостающие шоты",
+      "makeFinal": "Создать в полном размере",
+      "chooseFinal": "Выбрать шоты",
+      "makeClips": "Создать клипы",
+      "remakeStale": "Создать заново",
+      "assignVocals": "Дать каждому шоту вокал",
+      "makeLipsync": "Создать клипы с синхронизацией губ",
+      "openCoverage": "Посмотреть, какие шоты поют",
+      "openMixer": "Открыть «Микшер»",
+      "openCheck": "Проверить перед экспортом",
+      "export": "Открыть «Экспорт»"
     },
-    "label": null
+    "label": "Этапы фильма"
   },
   "exportCheck": {
     "line": {
-      "upscaleSharp": null
+      "upscaleSharp": "В конце он увеличивается до {size} с помощью ИИ."
     },
-    "stops": null,
-    "worthFixing": null,
-    "forInfo": null,
-    "stopsNone": null,
-    "worthFixingNone": null,
+    "stops": "Останавливает экспорт",
+    "worthFixing": "Стоит исправить",
+    "forInfo": "К сведению",
+    "stopsNone": "Ничто не мешает экспорту.",
+    "worthFixingNone": "Исправлять нечего.",
     "fix": {
-      "plan": null,
-      "song": null,
-      "cast": null,
-      "shot": null
+      "plan": "Открыть «План»",
+      "song": "Открыть этап «Песня»",
+      "cast": "Открыть «Персонажи»",
+      "shot": "Открыть шот {n}"
     },
-    "title": null
+    "title": "Готово к экспорту?"
   }
 }

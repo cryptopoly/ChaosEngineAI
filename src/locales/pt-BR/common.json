@@ -42,7 +42,7 @@
     "storyBoard": "Quadro",
     "storyMixer": "Mixer",
     "projects": "Projetos",
-    "videoUpscale": null
+    "videoUpscale": "Ampliar"
   },
   "tabCaptions": {
     "dashboard": "Visão geral do sistema",
@@ -79,7 +79,7 @@
     "storyBoard": "Planos, takes e prompts",
     "storyMixer": "Imagem, som e exportação",
     "projects": "Filmes de storyboard: cenas, som, exportação",
-    "videoUpscale": null
+    "videoUpscale": "Deixe um vídeo mais nítido e maior"
   },
   "tabShortLabels": {
     "chat": "Chat",
@@ -107,7 +107,7 @@
     "storyProjects": "Projetos",
     "storyBoard": "Quadro",
     "storyMixer": "Mixer",
-    "videoUpscale": null
+    "videoUpscale": "Ampliar"
   },
   "tabGroups": {
     "chat": "Chat",
@@ -1585,15 +1585,15 @@
     "note": "A chave fica oculta na tela. Copiar sempre copia a chave real."
   },
   "memoryBar": {
-    "aria": null,
-    "usedNow": null,
-    "weights": null,
-    "cache": null,
-    "summary": null,
-    "limitMetal": null,
-    "limitVram": null,
-    "limitRam": null,
-    "overLimit": null,
-    "overFree": null
+    "aria": "Memória: {used} GB em uso agora, {weights} GB de pesos do modelo, {cache} GB de cache, de um total de {total} GB",
+    "usedNow": "Em uso agora: {value} GB",
+    "weights": "Modelo: {value} GB",
+    "cache": "Cache: {value} GB",
+    "summary": "Precisa de {need} GB. {free} GB livres agora. {label}: {limit} GB.",
+    "limitMetal": "Limite da GPU",
+    "limitVram": "Memória da placa",
+    "limitRam": "RAM utilizável",
+    "overLimit": "Esta execução precisa de mais do que o permitido por “{label}”, então não vai iniciar como está configurada.",
+    "overFree": "Mais do que a memória livre agora. Pode iniciar, mas outros apps serão tirados da RAM e o computador pode usar o disco como memória. Fechar apps antes ajuda."
   }
 }

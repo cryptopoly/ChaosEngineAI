@@ -42,7 +42,7 @@
     "storyBoard": "보드",
     "storyMixer": "믹서",
     "projects": "프로젝트",
-    "videoUpscale": null
+    "videoUpscale": "업스케일"
   },
   "tabCaptions": {
     "dashboard": "시스템 개요",
@@ -79,7 +79,7 @@
     "storyBoard": "샷, 테이크, 프롬프트",
     "storyMixer": "화면, 소리, 내보내기",
     "projects": "스토리보드 영상: 샷, 소리, 내보내기",
-    "videoUpscale": null
+    "videoUpscale": "비디오를 더 선명하고 크게 만들기"
   },
   "tabShortLabels": {
     "chat": "채팅",
@@ -107,7 +107,7 @@
     "storyProjects": "프로젝트",
     "storyBoard": "보드",
     "storyMixer": "믹서",
-    "videoUpscale": null
+    "videoUpscale": "업스케일"
   },
   "tabGroups": {
     "chat": "채팅",
@@ -1585,15 +1585,15 @@
     "note": "키는 화면에서 숨겨져 있습니다. 복사하면 항상 실제 키가 복사됩니다."
   },
   "memoryBar": {
-    "aria": null,
-    "usedNow": null,
-    "weights": null,
-    "cache": null,
-    "summary": null,
-    "limitMetal": null,
-    "limitVram": null,
-    "limitRam": null,
-    "overLimit": null,
-    "overFree": null
+    "aria": "메모리: 현재 {used} GB 사용 중, 모델 가중치 {weights} GB, 캐시 {cache} GB, 전체 {total} GB",
+    "usedNow": "현재 사용 중 {value} GB",
+    "weights": "모델 {value} GB",
+    "cache": "캐시 {value} GB",
+    "summary": "{need} GB가 필요합니다. 지금 {free} GB가 비어 있습니다. {label} {limit} GB.",
+    "limitMetal": "GPU 한도",
+    "limitVram": "그래픽 카드 메모리",
+    "limitRam": "사용 가능한 RAM",
+    "overLimit": "이 실행에 필요한 메모리가 {label}의 허용치를 넘어서 설정대로 시작되지 않습니다.",
+    "overFree": "지금 비어 있는 메모리보다 많습니다. 시작은 할 수 있지만 다른 앱이 RAM에서 밀려나고 스왑이 발생할 수 있습니다. 먼저 앱을 닫으면 도움이 됩니다."
   }
 }

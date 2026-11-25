@@ -177,9 +177,9 @@
     "addGrammar": "Добавить структурированный вывод",
     "exclusiveLabel": "Примечание:",
     "exclusiveBody": "Ни один другой движок в приложении не может загрузить эту модель, поэтому она всегда работает на TensorFold; флажок включает и выключает только генерацию черновиков.",
-    "contextCapped": null,
-    "cacheNote": null,
-    "contextCappedVram": null
+    "contextCapped": "TensorFold использует собственные кэши. Лимит GPU этого Mac — {limitGb} ГБ; модель на {weightsGb} ГБ и запас {marginGb} ГБ оставляют {budgetGb} ГБ, а полному окну контекста понадобилось бы {needGb} ГБ. Окно ограничено до {maxContext}, чтобы TensorFold запустился.",
+    "cacheNote": "TensorFold держит здесь около {cacheGb} ГБ кэша (собственные кэши и кэши черновой модели), это больше показанной стандартной оценки.",
+    "contextCappedVram": "TensorFold нужно около {needGb} ГБ памяти GPU при полном окне контекста, а на видеокарте свободно {freeGb} ГБ. Окно ограничено до {maxContext}, чтобы TensorFold запустился."
   },
   "strategyRole": {
     "memorySaverTitle": "Уменьшает KV cache, чтобы длинные контексты умещались в меньшем объёме памяти. Генерация медленнее, чем при стратегии «Нативный».",

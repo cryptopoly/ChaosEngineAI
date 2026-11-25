@@ -671,7 +671,7 @@
       "delete": "삭제",
       "soundOn": "소리 켜기",
       "soundOff": "음소거",
-      "upscale": null
+      "upscale": "업스케일"
     }
   },
   "voice": {
@@ -1487,7 +1487,7 @@
       "stepsNumber": "단계 수",
       "stepsNote": "단계가 적으면 빠르지만 품질이 떨어질 수 있습니다. {n}은(는) 모델 제작자가 설정한 값입니다.",
       "summarySteps": "{n}단계",
-      "random": null
+      "random": "랜덤"
     },
     "artistWarning": "아티스트 이름을 넣으면 그 스타일을 베낀 결과가 나올 수 있습니다. 대신 소리를 묘사하세요.",
     "cancel": "취소",
@@ -1645,7 +1645,7 @@
       "title": "샷 만드는 중",
       "titleDraft": "초안 만들기",
       "titleFinal": "최종 패스",
-      "failedSoFar": null
+      "failedSoFar": "{n, plural, other {컷 #개를 만들지 못했습니다. 각 카드에 이유와 해결 방법이 나와 있습니다.}}"
     },
     "conflictNotice": "다른 곳에서 변경됨. 최신 내용을 표시합니다",
     "defaults": {
@@ -1709,23 +1709,23 @@
       "vocalTakesDefault": "기본값({count})",
       "vocalTakesBest": "4(최고 품질)",
       "vocalTakesHint": "노래 보컬: 보컬 스템과 입을 다문 정면 클로즈업 스틸을 사용하고, 프레이즈보다 약 0.4초 앞에서 시작하세요. 각 테이크는 자체 시드를 사용하며, 싱크 점수가 가장 좋은 것을 남기고 나머지는 비디오 갤러리에 남습니다.",
-      "castInShot": null,
-      "castNone": null,
-      "castEveryShot": null,
-      "leaveOut": null,
-      "lipSyncSeparate": null,
-      "clipSound": null,
-      "clipSoundOn": null,
-      "clipSoundOff": null,
-      "endFrame": null,
-      "endFrameHint": null,
-      "endFrameAlt": null,
-      "endFrameChange": null,
-      "endFramePick": null,
-      "endFrameRemove": null,
-      "endFramePickerTitle": null,
-      "vocalHintShot": null,
-      "vocalOptional": null
+      "castInShot": "이 컷의 등장인물: {names}",
+      "castNone": "이 컷에는 등장인물이 없습니다.",
+      "castEveryShot": "모든 컷에 출연",
+      "leaveOut": "이 컷에서 제외",
+      "lipSyncSeparate": "컷에 나오는 인물이 꼭 노래해야 하는 것은 아닙니다. 립싱크는 ‘립싱크용 보컬’에서 컷마다 따로 설정합니다.",
+      "clipSound": "클립 소리 재생",
+      "clipSoundOn": "이 클립의 소리가 노래 위에 재생됩니다.",
+      "clipSoundOff": "노래 아래에서 음소거됩니다.",
+      "endFrame": "마지막 프레임",
+      "endFrameHint": "클립이 끝나야 하는 이미지입니다. LTX-2 비디오 모델만 사용하며, 다른 모델은 제거하라고 안내합니다.",
+      "endFrameAlt": "컷 {number}의 마지막 프레임",
+      "endFrameChange": "마지막 프레임 변경",
+      "endFramePick": "마지막 프레임 선택",
+      "endFrameRemove": "마지막 프레임 제거",
+      "endFramePickerTitle": "컷 {number}의 마지막 프레임",
+      "vocalHintShot": "입이 따라 움직이는 WAV 또는 FLAC 파일입니다. 클립은 이 컷의 정지 이미지에서 시작하며 이 소리를 그대로 유지합니다. 비디오 모델로 LTX-2.3이 필요합니다(4비트 NVIDIA 모델은 24 GB 카드가 필요합니다).",
+      "vocalOptional": "컷이 꼭 노래해야 하는 것은 아닙니다. 보컬을 제거하면 일반 클립으로 재생됩니다."
     },
     "empty": "아직 샷이 없습니다. 샷을 추가한 뒤 프롬프트를 입력하거나 영상을 가져오세요.",
     "estimate": {
@@ -1816,11 +1816,11 @@
       "makeClip": "클립 만들기",
       "makeClipTitle": "이 샷의 스틸로 클립을 만듭니다.",
       "referenceAdded": "{name}을(를) 이 스틸로 등장인물에 추가했습니다.",
-      "tagsLabel": null,
-      "hideStaleTitle": null,
-      "hideStale": null,
-      "chooseForFinalTitle": null,
-      "chooseForFinal": null
+      "tagsLabel": "립싱크와 등장인물",
+      "hideStaleTitle": "이 경고를 숨깁니다. 컷은 그대로 두며 아무것도 다시 만들지 않습니다.",
+      "hideStale": "이 경고 숨기기",
+      "chooseForFinalTitle": "최종 패스는 선택한 컷을 고품질 모델로 영상 원래 크기에서 다시 만듭니다.",
+      "chooseForFinal": "최종용으로 선택"
     },
     "shots": "샷",
     "subtitle": "{shots, plural, other {샷 #개}} · {seconds}초 · 오래됨 {stale}개",
@@ -1841,11 +1841,11 @@
       "draftTimed": "초안 만들기 · 약 {time}",
       "withClips": "클립이 있는 초안",
       "draftPer": "초안 1개당 약 {time}.",
-      "draftTitleChoose": null,
-      "finalChosenTimed": null,
-      "finalChosen": null,
-      "finalChosenTitle": null,
-      "chooseHint": null
+      "draftTitleChoose": "{model} 모델을 사용해 {width} x {height} 크기의 빠른 정지 이미지를 만듭니다. 마음에 드는 컷을 최종용으로 선택한 다음 최종 패스를 실행하세요.",
+      "finalChosenTimed": "선택한 {n, plural, other {컷 #개}} 최종 패스 · 약 {time}",
+      "finalChosen": "선택한 {n, plural, other {컷 #개}} 최종 패스",
+      "finalChosenTitle": "선택한 각 컷을 {model} 모델을 사용해 {width} x {height} 크기로 다시 만든 다음, 새 정지 이미지로 클립을 만듭니다.",
+      "chooseHint": "컷에서 ‘최종용으로 선택’을 사용하면 최종 패스에 포함됩니다."
     },
     "exportDrafts": "{n, plural, other {컷 #개}}가 초안 테이크를 사용합니다. 최고 품질을 위해 유지하고 최종 패스를 실행하거나, 초안을 그대로 내보내세요.",
     "preview": {
@@ -1877,7 +1877,7 @@
       "titleCard": "타이틀 카드",
       "endCard": "엔드 카드",
       "legendCard": "타이틀 또는 엔드 카드 (브랜드 킷)",
-      "draftNoteSized": null
+      "draftNoteSized": "{n, plural, other {컷 #개가 초안 테이크를 재생합니다.}} 초안은 영상보다 작습니다. 전체 크기가 필요하면 최종용으로 선택하고 최종 패스를 실행하세요."
     },
     "captions": {
       "toggle": "자막 표시 (C)",
@@ -1933,7 +1933,7 @@
       "open": "테이크 비교",
       "openTitle": "두 테이크를 나란히 보고, 각각을 만든 설정을 확인합니다.",
       "short": "비교",
-      "noClipYet": null
+      "noClipYet": "이 테이크에는 아직 클립이 없습니다."
     },
     "remake": {
       "clip": "클립만 다시 만들기",
@@ -2234,7 +2234,7 @@
         "replaceNote": "이 항목은 보드의 {n, plural, other {컷 #개}}를 대체합니다. 프롬프트 유지를 선택하면 1번 컷은 현재 1번 컷의 프롬프트를 유지하는 식으로 이어집니다. 실행 취소하면 이전 컷이 돌아옵니다.",
         "title": "컷 계획: {time} 동안 {n, plural, other {컷 #개}}",
         "use": "{n, plural, other {컷 #개 사용}}",
-        "useSinging": null
+        "useSinging": "{n, plural, other {컷 #개를 사용하고 각 컷에 보컬 지정}}"
       },
       "cutting": "음악에 맞춰 컷을 나누는 중…",
       "fromFile": "또는 오디오 파일 (WAV, FLAC, MP3, OGG, M4A)",
@@ -2274,38 +2274,38 @@
         "working": "보컬을 자르는 중…",
         "attach": "각 컷에 보컬 지정",
         "done": "{attached, plural, =0 {보컬을 받은 컷이 없습니다} other {컷 #개에 보컬을 지정했습니다}}({source, select, stem {스템} other {노래}} 기준).",
-        "hintEach": null,
-        "again": null,
-        "unassigned": null
+        "hintEach": "각 컷이 보컬의 해당 부분을 받습니다. 컷보다 0.4초 앞에서 시작하고, 노래하는 컷으로 표시되며, 테이크 3개를 만듭니다.",
+        "again": "보컬을 제거한 컷을 포함해 모든 컷에 대해 다시 실행됩니다.",
+        "unassigned": "{n, plural, other {컷 #개에 아직 보컬이 없습니다.}}"
       },
       "coverage": {
-        "title": null,
-        "source": null,
-        "counts": null,
-        "empty": null,
+        "title": "립싱크: {total, plural, other {컷 #개}} 중 {sings}개가 노래함",
+        "source": "{source, select, stem {스템의 보컬} other {노래의 보컬}}",
+        "counts": "{synced}개 싱크 완료 · {waiting}개 클립 대기 중 · {skipped}개 립싱크 안 함 · {unassigned}개 보컬 없음",
+        "empty": "아직 컷이 없습니다.",
         "col": {
-          "shot": null,
-          "time": null,
-          "length": null,
-          "state": null
+          "shot": "컷",
+          "time": "노래 시간",
+          "length": "길이",
+          "state": "립싱크"
         },
-        "makeAll": null,
-        "batchRunning": null
+        "makeAll": "{n, plural, other {립싱크 클립 #개 만들기}}",
+        "batchRunning": "지금 만드는 컷이 끝나기를 기다립니다."
       },
       "sing": {
-        "question": null,
-        "yes": null,
-        "yesHint": null,
-        "stemHint": null,
-        "perShot": null,
-        "no": null,
-        "noHint": null,
-        "cut": null,
-        "keepShots": null,
-        "choose": null,
-        "review": null
+        "question": "화면에서 누군가 노래하나요?",
+        "yes": "예, 노래에 립싱크 적용",
+        "yesHint": "노래를 {min}~{max}초 길이의 컷으로 나눈 다음 각 컷에 보컬의 해당 부분을 지정합니다.",
+        "stemHint": "보컬 스템(목소리만 있는 파일)이 가장 잘 맞습니다. 없으면 노래 자체를 사용합니다.",
+        "perShot": "모든 컷이 노래할 필요는 없습니다. 노래하지 않는 컷은 일반 클립으로 재생되며, 어느 컷이든 편집기에서 보컬을 뺄 수 있습니다.",
+        "no": "아니요, 이미지만",
+        "noHint": "비트에 맞춰 자르며 립싱크는 없습니다.",
+        "cut": "노래를 컷으로 나누기",
+        "keepShots": "내 컷을 유지하고 각 컷에 보컬 지정",
+        "choose": "먼저 답을 선택하세요.",
+        "review": "먼저 나눈 결과를 검토합니다. 아직 아무것도 만들지 않습니다."
       },
-      "cutSongIntoShots": null
+      "cutSongIntoShots": "노래를 컷으로 나누기"
     },
     "unsaved": {
       "title": "입력한 텍스트가 저장되지 않았습니다",
@@ -2318,56 +2318,56 @@
       "discard": "입력한 텍스트 버리기"
     },
     "chip": {
-      "noCharacterTitle": null,
-      "noCharacter": null,
-      "reasonSpeed": null,
-      "reasonLocked": null,
-      "reasonOutside": null,
-      "reasonShort": null,
-      "reasonLong": null,
-      "reasonNoSinging": null,
-      "reasonNoVocal": null,
-      "titleSpeed": null,
-      "titleLocked": null,
-      "titleOutside": null,
-      "titleShort": null,
-      "titleLong": null,
-      "titleNoSinging": null,
-      "titleNoVocal": null,
-      "sings": null,
-      "singsTitle": null,
-      "willSing": null,
-      "willSingTitle": null,
-      "noLipSync": null,
-      "plainClip": null
+      "noCharacterTitle": "이 컷에는 등장인물이 없어서 인물 없이 이미지를 만듭니다. 컷을 열어 추가하세요.",
+      "noCharacter": "등장인물 없음",
+      "reasonSpeed": "다른 속도",
+      "reasonLocked": "잠김",
+      "reasonOutside": "노래 범위 밖",
+      "reasonShort": "너무 짧음",
+      "reasonLong": "너무 김",
+      "reasonNoSinging": "노래 없음",
+      "reasonNoVocal": "보컬 아직 없음",
+      "titleSpeed": "이 컷은 다른 속도로 재생됩니다. 립싱크에는 실제 속도가 필요합니다.",
+      "titleLocked": "이 컷은 잠겨 있어서 립싱크가 건드리지 않습니다.",
+      "titleOutside": "이 컷은 노래 범위 밖이라 부를 노래가 없습니다.",
+      "titleShort": "이 컷은 립싱크하기에 너무 짧습니다. 최소 {min}초가 필요합니다.",
+      "titleLong": "이 컷은 립싱크하기에 너무 깁니다. 최대 {max}초까지 가능합니다.",
+      "titleNoSinging": "노래의 이 부분 보컬에는 노래가 없습니다.",
+      "titleNoVocal": "이 컷에는 아직 보컬이 없습니다. 립싱크하려면 각 컷에 보컬을 지정하세요.",
+      "sings": "노래함",
+      "singsTitle": "이 컷의 클립은 노래에 맞춰 립싱크되어 있습니다.",
+      "willSing": "노래 예정",
+      "willSingTitle": "이 컷에는 보컬이 있습니다. 립싱크 클립을 만들면 노래하는 모습을 볼 수 있습니다.",
+      "noLipSync": "립싱크 없음: {reason}",
+      "plainClip": "일반 클립으로 재생됩니다."
     },
     "failure": {
-      "details": null,
-      "outOfMemory": null,
-      "modelMissing": null,
-      "lipsyncModel": null,
-      "downloadBlocked": null,
-      "videoToolsMissing": null,
-      "sizeOverCap": null,
-      "referencesUnsupported": null,
-      "noPrompt": null,
-      "diskFull": null,
-      "cancelled": null,
-      "unknown": null,
-      "actionEdit": null,
-      "actionSmallerSized": null,
-      "actionSmaller": null,
-      "actionSmallerTitle": null,
-      "actionVideoModels": null,
-      "actionImageModels": null,
-      "actionVideoTools": null
+      "details": "자세히",
+      "outOfMemory": "이 크기로 이 컷을 만들기에는 여유 메모리가 부족했습니다.",
+      "modelMissing": "이 컷에 필요한 모델이 설치되어 있지 않습니다.",
+      "lipsyncModel": "이 프로젝트의 비디오 모델은 이 컷의 보컬에 립싱크할 수 없습니다.",
+      "downloadBlocked": "모델을 다운로드하지 못했습니다. 라이선스 동의가 필요하거나 연결이 끊겼을 수 있습니다.",
+      "videoToolsMissing": "비디오 도구가 설치되어 있지 않습니다.",
+      "sizeOverCap": "이 컷은 모델이 만들 수 있는 크기보다 큽니다.",
+      "referencesUnsupported": "모델이 이 컷의 이미지(시작, 마지막 또는 참조 이미지)를 받을 수 없습니다.",
+      "noPrompt": "이 컷을 만들 내용이 없습니다. 먼저 프롬프트를 작성하세요.",
+      "diskFull": "디스크가 가득 차서 컷을 저장하지 못했습니다. 공간을 확보한 뒤 다시 시도하세요.",
+      "cancelled": "컷이 끝나기 전에 중지되었습니다.",
+      "unknown": "컷을 만들지 못했습니다.",
+      "actionEdit": "프롬프트 편집",
+      "actionSmallerSized": "초안 크기로 만들기({size})",
+      "actionSmaller": "초안 크기로 만들기",
+      "actionSmallerTitle": "메모리를 덜 쓰는 더 작은 크기로 이 컷을 다시 만듭니다. 초안이 되므로 나중에 최종용으로 선택하세요.",
+      "actionVideoModels": "비디오 모델 열기",
+      "actionImageModels": "이미지 모델 열기",
+      "actionVideoTools": "비디오 도구 설치"
     },
     "quality": {
-      "tag": null,
-      "tagNoSize": null,
-      "titleSized": null,
-      "titleDraftOnly": null,
-      "titleNoSize": null
+      "tag": "초안 {size}",
+      "tagNoSize": "초안",
+      "titleSized": "{size}로 만든 초안으로, 영상 크기의 약 절반이라 컷을 빠르게 고를 수 있습니다. 영상 크기는 {film}입니다. 이 컷을 최종용으로 선택하면 그 크기로 만듭니다.",
+      "titleDraftOnly": "{size}로 만든 초안으로, 영상보다 작아서 컷을 빠르게 고를 수 있습니다. 이 컷을 최종용으로 선택하면 전체 크기로 만듭니다.",
+      "titleNoSize": "영상보다 작게 만든 초안이라 컷을 빠르게 고를 수 있습니다. 이 컷을 최종용으로 선택하면 전체 크기로 만듭니다."
     }
   },
   "storyProjects": {
@@ -2531,12 +2531,12 @@
       "more": "더 보기",
       "whyBusy": "렌더링이 진행 중입니다. 끝나거나 취소하면 내보내기가 시작됩니다.",
       "whyEmpty": "아직 내보낼 항목이 없습니다. 클립이 있는 컷이 없습니다. 스토리보드 탭에서 클립을 만드세요.",
-      "methodSharp": null,
-      "methodStandard": null,
-      "method": null,
-      "methodNeedsAddon": null,
-      "methodOpenUpscale": null,
-      "anyway": null
+      "methodSharp": "더 선명하게(AI, 업스케일 추가 기능 필요)",
+      "methodStandard": "표준 늘리기",
+      "method": "확대 방법",
+      "methodNeedsAddon": "업스케일 추가 기능이 설치되어 있지 않아 이 선택으로는 내보내기가 시작되지 않습니다. 설치하거나 ‘표준 늘리기’를 선택하세요.",
+      "methodOpenUpscale": "업스케일 탭 열기",
+      "anyway": "그래도 내보내기"
     },
     "importAudio": "오디오 가져오기",
     "importAudioPath": "오디오 파일 경로",
@@ -2613,10 +2613,10 @@
       "render": "렌더링 미리보기"
     },
     "clipSound": {
-      "muted": null,
-      "playing": null,
-      "mixed": null,
-      "switch": null
+      "muted": "노래 아래에서 음소거",
+      "playing": "노래 위에 재생",
+      "mixed": "일부 컷에서 재생",
+      "switch": "클립 소리 재생"
     }
   },
   "aiLabel": {
@@ -2845,8 +2845,8 @@
     "unnamed": "이름 없음",
     "usedBy": "{n, plural, =0 {아직 어떤 컷에서도 사용하지 않음} other {컷 #개에서 사용 중}}",
     "noneShort": "아직 없습니다.",
-    "inEveryShot": null,
-    "inEveryShotHint": null
+    "inEveryShot": "모든 컷에 출연",
+    "inEveryShotHint": "이 인물을 지금과 앞으로의 모든 컷에 넣습니다. 컷 편집기에서 특정 컷만 제외할 수 있습니다."
   },
   "exportTab": {
     "bundleBody": "컷, 테이크, 출연진 사진, 소리가 들어 있는 .chaosfilm 파일 하나입니다. 프로젝트를 백업하거나 다른 컴퓨터에서 열 때 사용합니다.",
@@ -2949,8 +2949,8 @@
       "storyboard": "스토리보드"
     },
     "tabsLabel": "프로젝트",
-    "more": null,
-    "boardHint": null
+    "more": "더보기",
+    "boardHint": "컷과 등장인물을 자유롭게 배치하세요"
   },
   "templates": {
     "ad30": "30초 광고",
@@ -3034,8 +3034,8 @@
     "metaFormat": "{aspect} · {resolution} · {fps} fps · {shots, plural, other {컷 #개}}",
     "sets": "{name}이(가) 형식을 {aspect}, {resolution}, {fps}fps로 설정했습니다. 아래에서 바꿀 수 있습니다.",
     "sample": "샘플 영상",
-    "musicVideoMeta": null,
-    "musicVideoNote": null
+    "musicVideoMeta": "노래로 시작",
+    "musicVideoNote": "노래 단계에서 시작합니다. 노래를 추가한 다음 컷으로 나누세요. 형식은 {aspect}, {resolution}, {fps} fps이며 아래에서 변경할 수 있습니다."
   },
   "voicePicker": {
     "automatic": "음성 없음(자동)",
@@ -3068,15 +3068,15 @@
     "needStills": "{n, plural, other {컷 #개 작업 필요}}: {stills, plural, other {#개는 정지 이미지가 있고 클립이 필요합니다}}",
     "stale": "{n}개 오래됨",
     "choice": {
-      "finalPass": null,
-      "label": null,
-      "draft": null,
-      "about": null,
-      "draftWhy": null,
-      "final": null,
-      "peak": null
+      "finalPass": "최종 패스는 선택한 컷을 {size} 크기로 다시 만든 다음 해당 클립을 만듭니다.",
+      "label": "초안 또는 최종",
+      "draft": "초안 먼저: {size}",
+      "about": "약 {time}",
+      "draftWhy": "절반 크기로, 마음에 드는 컷을 고르기 위한 것입니다. 이후 고른 컷을 전체 크기로 만듭니다.",
+      "final": "바로 최종: {size}",
+      "peak": "최대 {peak} / {total}"
     },
-    "more": null
+    "more": "다른 만들기 방법"
   },
   "slowRow": {
     "label": "이 컴퓨터에서 느림",
@@ -3120,161 +3120,161 @@
     "hint": "스토리보드 배치처럼 다른 화면에서 시작되었습니다. 끝날 때까지 기다린 뒤 다른 작업을 시작하세요."
   },
   "videoUpscale": {
-    "statusFailed": null,
+    "statusFailed": "업스케일러 상태를 읽지 못했습니다: {error}",
     "install": {
-      "title": null,
-      "body": null,
-      "licence": null,
-      "phasePackages": null,
-      "phaseWeights": null,
-      "phaseCheck": null,
-      "step": null,
-      "button": null,
-      "retry": null,
-      "failed": null,
-      "unknownError": null
+      "title": "비디오 업스케일러 설치",
+      "body": "업스케일 모델 2개(xinntao의 Real-ESRGAN)와 이를 실행하는 작은 라이브러리를 전용 폴더에 추가합니다. 약 {size} MB이며 한 번만 다운로드합니다. 컴퓨터의 다른 부분은 바뀌지 않습니다.",
+      "licence": "모델 라이선스: {licence}.",
+      "phasePackages": "모델을 실행하는 라이브러리 설치 중…",
+      "phaseWeights": "업스케일 모델 다운로드 중…",
+      "phaseCheck": "설치 확인 중…",
+      "step": "3단계 중 {step}단계: {phase}",
+      "button": "설치(약 {size} MB)",
+      "retry": "설치 다시 시도",
+      "failed": "설치에 실패했습니다: {error}",
+      "unknownError": "이유가 제공되지 않았습니다."
     },
     "source": {
-      "label": null,
-      "placeholder": null,
-      "browse": null,
-      "browseTitle": null,
-      "filterName": null,
-      "browseFailed": null,
-      "hint": null,
-      "chosenSized": null
+      "label": "비디오",
+      "placeholder": "이 컴퓨터에 있는 비디오 파일의 전체 경로",
+      "browse": "찾아보기…",
+      "browseTitle": "업스케일할 비디오 선택",
+      "filterName": "비디오",
+      "browseFailed": "여기서는 파일 선택기를 사용할 수 없습니다. 대신 비디오의 전체 경로를 붙여넣으세요.",
+      "hint": "또는 비디오 갤러리에서 클립의 ‘업스케일’을 사용하세요. 새 영상은 비디오 폴더의 upscaled 안에 저장됩니다.",
+      "chosenSized": "{name}, {width} × {height}"
     },
     "quality": {
-      "label": null,
-      "notInstalled": null,
-      "wontFit": null,
-      "downloadMissing": null
+      "label": "품질",
+      "notInstalled": "아직 다운로드하지 않음",
+      "wontFit": "이 컴퓨터가 가진 것보다 더 많은 그래픽 메모리가 필요합니다",
+      "downloadMissing": "없는 모델 다운로드"
     },
     "size": {
-      "label": null,
-      "x2": null,
-      "x4": null,
-      "target": null,
-      "result": null,
-      "limit": null,
-      "needsSize": null,
-      "notBigger": null
+      "label": "크기",
+      "x2": "2x",
+      "x4": "4x",
+      "target": "{height}p",
+      "result": "결과는 {width} × {height}가 됩니다.",
+      "limit": "결과가 {width}x{height}가 되어 한 변의 한도인 {max}픽셀을 넘습니다. 더 작은 배율이나 더 작은 목표 크기를 선택하세요.",
+      "needsSize": "목표 크기를 쓰려면 비디오 크기가 필요하며, 파일을 선택하면 읽어 옵니다. 읽기 전까지는 2x나 4x를 선택하세요.",
+      "notBigger": "비디오가 이미 이 높이이거나 더 큽니다."
     },
-    "deinterlace": null,
-    "start": null,
-    "oneAtATime": null,
+    "deinterlace": "먼저 디인터레이스(움직일 때 빗살 무늬 줄이 보이는 TV나 테이프 녹화용)",
+    "start": "업스케일 시작",
+    "oneAtATime": "업스케일은 한 번에 하나만 가능합니다. 이 작업이 끝나기를 기다리거나 취소하세요.",
     "job": {
-      "target": null,
-      "queued": null,
-      "running": null,
-      "done": null,
-      "failed": null,
-      "cancelled": null,
-      "interrupted": null,
-      "frames": null,
-      "speed": null,
-      "etaSeconds": null,
-      "etaMinutes": null,
-      "etaHours": null,
-      "progressLabel": null,
-      "parts": null,
-      "savedAs": null,
-      "cancel": null,
-      "resume": null,
-      "open": null,
-      "reveal": null,
-      "dismiss": null,
-      "play": null,
-      "playLoading": null
+      "target": "{width} × {height}로",
+      "queued": "GPU의 다른 작업이 끝나기를 기다리는 중입니다.",
+      "running": "업스케일 중…",
+      "done": "완료되었습니다.",
+      "failed": "오류로 중지됨: {error}",
+      "cancelled": "취소되었습니다. 완료된 부분은 보관되므로 ‘재개’하면 거기서부터 이어집니다.",
+      "interrupted": "앱이 닫히면서 중지되었습니다. ‘재개’하면 멈춘 곳부터 이어집니다.",
+      "frames": "프레임 {done, number} / {total, number}",
+      "speed": "초당 {fps}프레임",
+      "etaSeconds": "약 {count}초 남음",
+      "etaMinutes": "약 {count}분 남음",
+      "etaHours": "약 {hours}시간 {minutes}분 남음",
+      "progressLabel": "업스케일 진행률",
+      "parts": "영상은 {segments}개 부분으로 나뉘어 만들어지며, 작업이 중단되어도 완료된 부분은 보관됩니다.",
+      "savedAs": "{path}에 저장됨",
+      "cancel": "취소",
+      "resume": "재개",
+      "open": "결과 열기",
+      "reveal": "폴더에서 보기",
+      "dismiss": "닫기",
+      "play": "결과 재생",
+      "playLoading": "영상 불러오는 중…"
     },
     "compare": {
-      "before": null,
-      "beforeMissing": null,
-      "after": null,
-      "afterOpen": null,
-      "beforeAlt": null,
-      "afterAlt": null,
-      "loading": null,
-      "playMissing": null,
-      "playFailed": null
+      "before": "이전",
+      "beforeMissing": "이 파일은 앱에서 미리 볼 수 없습니다.",
+      "after": "이후({width} × {height})",
+      "afterOpen": "결과를 열어 원래 크기로 비교하세요.",
+      "beforeAlt": "원본 비디오의 첫 프레임",
+      "afterAlt": "업스케일된 비디오의 첫 프레임",
+      "loading": "첫 프레임 불러오는 중…",
+      "playMissing": "앱이 더 이상 이 영상을 직접 재생할 수 없습니다(그 뒤 다시 시작되었습니다). ‘결과 열기’ 또는 ‘폴더에서 보기’를 사용하세요.",
+      "playFailed": "영상을 불러오지 못했습니다: {error}"
     },
-    "deinterlaceUnavailable": null,
+    "deinterlaceUnavailable": "디인터레이스를 사용할 수 없습니다. 이 컴퓨터의 비디오 도구가 지원하지 않습니다.",
     "probe": {
-      "line": null,
-      "withSound": null,
-      "noSound": null,
-      "reading": null,
-      "interlaced": null
+      "line": "{name}: {width} × {height}, 초당 {fps}프레임, {duration}, {audio}",
+      "withSound": "소리 있음",
+      "noSound": "소리 없음",
+      "reading": "비디오 읽는 중…",
+      "interlaced": "이 비디오는 인터레이스로 보여서 확인란이 선택되어 있습니다."
     },
     "recent": {
-      "label": null,
-      "queued": null,
-      "running": null,
-      "done": null,
-      "failed": null,
-      "cancelled": null,
-      "interrupted": null
+      "label": "최근 업스케일",
+      "queued": "대기 중",
+      "running": "업스케일 중",
+      "done": "완료",
+      "failed": "실패",
+      "cancelled": "취소됨",
+      "interrupted": "중지됨"
     }
   },
   "guide": {
     "stage": {
-      "song": null,
-      "look": null,
-      "shots": null,
-      "drafts": null,
-      "final": null,
-      "lipsync": null,
-      "sound": null,
-      "check": null,
-      "export": null
+      "song": "노래",
+      "look": "스타일",
+      "shots": "컷",
+      "drafts": "초안",
+      "final": "최종",
+      "lipsync": "립싱크",
+      "sound": "소리",
+      "check": "점검",
+      "export": "내보내기"
     },
     "look": {
-      "done": null,
-      "current": null,
-      "attention": null,
-      "progress": null,
-      "skipped": null,
-      "todo": null
+      "done": "완료",
+      "current": "지금",
+      "attention": "확인 필요",
+      "progress": "진행 중",
+      "skipped": "건너뜀",
+      "todo": "할 일"
     },
     "action": {
-      "attachSong": null,
-      "openCast": null,
-      "cutPlan": null,
-      "planShots": null,
-      "openStoryboard": null,
-      "watchBatch": null,
-      "resumeBatch": null,
-      "retryFailed": null,
-      "makeDrafts": null,
-      "makeMissing": null,
-      "makeFinal": null,
-      "chooseFinal": null,
-      "makeClips": null,
-      "remakeStale": null,
-      "assignVocals": null,
-      "makeLipsync": null,
-      "openCoverage": null,
-      "openMixer": null,
-      "openCheck": null,
-      "export": null
+      "attachSong": "노래 추가",
+      "openCast": "등장인물 열기",
+      "cutPlan": "노래를 컷으로 나누기",
+      "planShots": "컷 계획하기",
+      "openStoryboard": "스토리보드 열기",
+      "watchBatch": "진행 상황 보기",
+      "resumeBatch": "재개",
+      "retryFailed": "다시 시도",
+      "makeDrafts": "초안 만들기",
+      "makeMissing": "빠진 컷 만들기",
+      "makeFinal": "전체 크기로 만들기",
+      "chooseFinal": "컷 선택",
+      "makeClips": "클립 만들기",
+      "remakeStale": "다시 만들기",
+      "assignVocals": "각 컷에 보컬 지정",
+      "makeLipsync": "립싱크 클립 만들기",
+      "openCoverage": "노래하는 컷 보기",
+      "openMixer": "믹서 열기",
+      "openCheck": "내보내기 전 점검",
+      "export": "내보내기 열기"
     },
-    "label": null
+    "label": "영상 단계"
   },
   "exportCheck": {
     "line": {
-      "upscaleSharp": null
+      "upscaleSharp": "마지막에 AI 업스케일러로 {size}까지 확대됩니다."
     },
-    "stops": null,
-    "worthFixing": null,
-    "forInfo": null,
-    "stopsNone": null,
-    "worthFixingNone": null,
+    "stops": "내보내기를 막음",
+    "worthFixing": "고치는 것이 좋음",
+    "forInfo": "참고 사항",
+    "stopsNone": "내보내기를 막는 항목이 없습니다.",
+    "worthFixingNone": "고칠 항목이 없습니다.",
     "fix": {
-      "plan": null,
-      "song": null,
-      "cast": null,
-      "shot": null
+      "plan": "계획 열기",
+      "song": "노래 단계 열기",
+      "cast": "등장인물 열기",
+      "shot": "컷 {n} 열기"
     },
-    "title": null
+    "title": "내보낼 준비가 되었나요?"
   }
 }

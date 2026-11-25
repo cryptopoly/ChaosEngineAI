@@ -42,7 +42,7 @@
     "storyBoard": "Доска",
     "storyMixer": "Микшер",
     "projects": "Проекты",
-    "videoUpscale": null
+    "videoUpscale": "Увеличение"
   },
   "tabCaptions": {
     "dashboard": "Обзор системы",
@@ -79,7 +79,7 @@
     "storyBoard": "Шоты, дубли и промпты",
     "storyMixer": "Изображение, звук и экспорт",
     "projects": "Фильмы-раскадровки: планы, звук, экспорт",
-    "videoUpscale": null
+    "videoUpscale": "Сделать видео чётче и больше"
   },
   "tabShortLabels": {
     "chat": "Чат",
@@ -107,7 +107,7 @@
     "storyProjects": "Проекты",
     "storyBoard": "Доска",
     "storyMixer": "Микшер",
-    "videoUpscale": null
+    "videoUpscale": "Увеличение"
   },
   "tabGroups": {
     "chat": "Чат",
@@ -1585,15 +1585,15 @@
     "note": "Ключ скрыт на экране. Копирование всегда копирует настоящий ключ."
   },
   "memoryBar": {
-    "aria": null,
-    "usedNow": null,
-    "weights": null,
-    "cache": null,
-    "summary": null,
-    "limitMetal": null,
-    "limitVram": null,
-    "limitRam": null,
-    "overLimit": null,
-    "overFree": null
+    "aria": "Память: сейчас занято {used} ГБ, веса модели {weights} ГБ, кэш {cache} ГБ, всего {total} ГБ",
+    "usedNow": "Занято сейчас: {value} ГБ",
+    "weights": "Модель: {value} ГБ",
+    "cache": "Кэш: {value} ГБ",
+    "summary": "Нужно {need} ГБ. Свободно сейчас: {free} ГБ. {label}: {limit} ГБ.",
+    "limitMetal": "Лимит GPU",
+    "limitVram": "Память видеокарты",
+    "limitRam": "Доступная RAM",
+    "overLimit": "Для этого запуска нужно больше, чем допускает параметр «{label}», поэтому он не запустится с такими настройками.",
+    "overFree": "Больше, чем свободно сейчас. Запуск возможен, но другие приложения будут выгружены из RAM, и может начаться подкачка. Лучше сначала закрыть лишние приложения."
   }
 }

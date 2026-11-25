@@ -177,9 +177,9 @@
     "addGrammar": "구조화된 출력 추가",
     "exclusiveLabel": "참고:",
     "exclusiveBody": "앱의 다른 엔진은 이 모델을 로드할 수 없으므로 항상 TensorFold에서 실행됩니다. 체크박스는 드래프팅만 켜고 끕니다.",
-    "contextCapped": null,
-    "cacheNote": null,
-    "contextCappedVram": null
+    "contextCapped": "TensorFold는 자체 캐시를 유지합니다. 이 Mac의 GPU 한도는 {limitGb} GB이고, {weightsGb} GB 모델과 {marginGb} GB 여유분을 빼면 {budgetGb} GB가 남지만 전체 컨텍스트 창에는 {needGb} GB가 필요합니다. TensorFold가 시작되도록 창을 {maxContext}로 제한했습니다.",
+    "cacheNote": "TensorFold는 여기서 약 {cacheGb} GB의 캐시(자체 캐시와 초안 모델의 캐시)를 사용하며, 표시된 표준 추정치보다 많습니다.",
+    "contextCappedVram": "TensorFold는 전체 컨텍스트 창에서 약 {needGb} GB의 GPU 메모리가 필요한데 카드의 여유는 {freeGb} GB입니다. TensorFold가 시작되도록 창을 {maxContext}로 제한했습니다."
   },
   "strategyRole": {
     "memorySaverTitle": "KV cache를 줄여 긴 컨텍스트가 더 적은 메모리에 들어가도록 합니다. 생성 속도는 네이티브보다 느립니다.",

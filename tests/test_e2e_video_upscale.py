@@ -43,7 +43,7 @@ class VideoUpscalePhaseTests(unittest.TestCase):
         phase = self.phase_mod.run(SimpleNamespace(backend_reachable=False), self.suite)
         report = [(c.name, c.status, c.reason) for c in phase.checks]
         self.assertEqual(phase.status, "pass", report)
-        self.assertEqual([c.status for c in phase.checks], ["pass", "skip"], report)
+        self.assertEqual([c.status for c in phase.checks], ["pass", "pass", "skip"], report)
         self.assertEqual(phase.checks[0].detail["frames"], self.phase_mod.SOURCE_FRAMES)
         self.suite._voice_http.assert_not_called()
 

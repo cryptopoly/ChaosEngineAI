@@ -8,6 +8,10 @@ the real ``/api/video/upscale`` routes and must come out with exactly the source
 * **against the running backend**, with the real model: skipped with its reason when no backend answers, the add-on
   is not installed or no upscale model is downloaded.
 
+A second in-process case (B1328) is an MPEG-TS clip whose timestamps start 1.4 s in (a broadcast capture), 520 frames at
+25 fps so the job has three segments: the segments after the first used to seek past frames and the film came back
+short with the job "done". It must come out with all 520 frames.
+
 Each run asserts: the job reaches ``done``; ``framesTotal`` and ``framesDone`` are the source's real frame count;
 the output decodes to the same number of frames as the source (the tail of the film is neither padded nor dropped);
 ``framesPerSecond`` is a number once done (and in every status seen while running); and both first-frame routes
@@ -32,6 +36,7 @@ from unittest import mock
 PHASE_KEY = 25
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE_FRAMES = 101  # 10 fps; a tail of one frame after a 100-frame segment is what once came back padded
+TS_FRAMES = 520  # 25 fps, 250-frame segments: three segments, the last of 20 frames
 SOUND_SECONDS = 12  # longer than the picture: duration x rate = 120, the real count is 101
 PNG = b"\x89PNG\r\n\x1a\n"
 Http = Callable[..., tuple[int, bytes]]  # (method, path, json_body=None) -> (status, body)
@@ -61,6 +66,13 @@ def _make_clip(exe: str, path: Path) -> None:
                    text=True, check=True)
 
 
+def _make_ts_clip(exe: str, path: Path) -> None:
+    """An MPEG-TS capture that starts 1.4 s in (the muxer's own 1.4 s start delay comes on top of that)."""
+    subprocess.run([exe, "-hide_banner", "-nostdin", "-loglevel", "error", "-y", "-f", "lavfi", "-i",
+                    "testsrc=size=64x48:rate=25", "-frames:v", str(TS_FRAMES), "-c:v", "mpeg2video", "-q:v", "3",
+                    "-output_ts_offset", "1.4", "-f", "mpegts", str(path)], capture_output=True, text=True, check=True)
+
+
 def _decoded_frames(exe: str, path: Path) -> int:
     """Frames a player would show: the video stream decoded at its constant rate, repeats included."""
     run = subprocess.run([exe, "-hide_banner", "-nostdin", "-i", str(path), "-map", "0:v:0", "-f", "null", "-"],
@@ -79,13 +91,15 @@ def _json(status: int, body: bytes) -> dict[str, Any]:
     return data
 
 
-def _upscale_and_verify(http: Http, exe: str, work: Path, start_body: dict[str, Any], timeout_s: float) -> dict[str, Any]:
+def _upscale_and_verify(http: Http, exe: str, work: Path, start_body: dict[str, Any], timeout_s: float,
+                        make: Callable[[str, Path], None] = _make_clip, name: str = "e2e-upscale-source.mp4",
+                        expected: int = SOURCE_FRAMES) -> dict[str, Any]:
     """Start a job on a fresh clip, wait for it, and assert everything in the module docstring. Returns the output."""
-    clip = work / "e2e-upscale-source.mp4"
-    _make_clip(exe, clip)
+    clip = work / name
+    make(exe, clip)
     source_frames = _decoded_frames(exe, clip)
-    if source_frames != SOURCE_FRAMES:
-        raise AssertionError(f"the test clip has {source_frames} frames, expected {SOURCE_FRAMES}")
+    if source_frames != expected:
+        raise AssertionError(f"the test clip has {source_frames} frames, expected {expected}")
 
     probed = _json(*http("POST", "/api/video/upscale/probe", {"inputPath": str(clip)}))
     if probed["frames"] != source_frames:  # the finished job's total is corrected at the end; the probe is not
@@ -105,8 +119,8 @@ def _upscale_and_verify(http: Http, exe: str, work: Path, start_body: dict[str, 
         raise AssertionError(f"framesTotal read {sorted(running_totals)} while running, the source has {source_frames}")
     if job["state"] != "done":
         raise AssertionError(f"the job ended {job['state']}: {job.get('error')}")
-    if (job["framesTotal"], job["framesDone"]) != (SOURCE_FRAMES, SOURCE_FRAMES):
-        raise AssertionError(f"frames {job['framesDone']} of {job['framesTotal']}, the source has {SOURCE_FRAMES}")
+    if (job["framesTotal"], job["framesDone"]) != (expected, expected):
+        raise AssertionError(f"frames {job['framesDone']} of {job['framesTotal']}, the source has {expected}")
     if not isinstance(job["framesPerSecond"], (int, float)) or isinstance(job["framesPerSecond"], bool):
         raise AssertionError(f"framesPerSecond is {job['framesPerSecond']!r} on a finished job")
     if any(rate is None for rate in running_rates):
@@ -124,7 +138,7 @@ def _upscale_and_verify(http: Http, exe: str, work: Path, start_body: dict[str, 
     return {"job": job_id, "frames": out_frames, "framesPerSecond": job["framesPerSecond"], "output": str(output)}
 
 
-def _in_process(exe: str) -> tuple[str, str, dict[str, Any]]:
+def _in_process(exe: str, *, transport_stream: bool = False) -> tuple[str, str, dict[str, Any]]:
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
@@ -157,7 +171,11 @@ def _in_process(exe: str) -> tuple[str, str, dict[str, Any]]:
             resp = client.request(method, path, json=body)
             return resp.status_code, resp.content
 
-        detail = _upscale_and_verify(http, exe, root, {"scale": 2.0}, timeout_s=120.0)
+        if transport_stream:
+            detail = _upscale_and_verify(http, exe, root, {"scale": 2.0}, timeout_s=180.0, make=_make_ts_clip,
+                                         name="e2e-upscale-capture.ts", expected=TS_FRAMES)
+        else:
+            detail = _upscale_and_verify(http, exe, root, {"scale": 2.0}, timeout_s=120.0)
         manager._jobs.clear()  # the threads are done; nothing outlives the temp folder
     return "pass", "", detail
 
@@ -201,6 +219,8 @@ def run(cap: Any, suite: Any):
     for name, fn in [
         ("an upscale job on a clip with a long sound track: done, the source's frame count, a frames-a-second number, "
          "PNG first frames (in process, pixel-doubling stand-in)", lambda: _in_process(exe)),
+        ("an MPEG-TS capture that starts 1.4 s in, three segments: every frame comes out and the job is done "
+         "(in process, pixel-doubling stand-in)", lambda: _in_process(exe, transport_stream=True)),
         ("the same job on the running backend with the real model", _live_check),
     ]:
         phase.checks.append(suite._check(name, fn))

@@ -150,7 +150,9 @@ VIDEO_UPSCALE_QUALITY_MODELS: list[dict[str, Any]] = [
         "runtimeFootprintCudaGb": QUALITY_SIZE_TIERS[0][2],
         "footprintBasis": "measured",
         "footprintMeasuredOn": "cuda",
-        "speedNote": ("Measured on an RTX 4090: 5.7 frames a second from 576p to 1280x1024, 3.8 to 1080p, 2.1 to "
+        # Through the app's worker with colour correction, whole jobs on the 4090 (2026-11-25): 5.0 frames a second
+        # from 576p to 1280x1024, 3.0 from 540p to 1920x1024, 1.4 to 2560x1440 (model alone).
+        "speedNote": ("Measured on an RTX 4090: about 5 frames a second from 576p to 1280x1024, 3 to 1080p, 1.4 to "
                       "1440p (the fast tier: 11 to 27)."),
         "notes": ("Invents believable texture (hair, fabric, water): best for AI footage. It can change faces and "
                   "mangles changing text such as a timecode; the fast tier stays the faithful choice for family tapes."),

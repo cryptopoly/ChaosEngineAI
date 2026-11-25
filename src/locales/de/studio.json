@@ -3301,7 +3301,7 @@
       "notCuda": "Auf diesem Computer nicht verfügbar: Der Qualitäts-Hochskalierer braucht eine NVIDIA-Grafikkarte mit eigenem Speicher.",
       "warningTitle": "Dieser Hochskalierer erfindet Details",
       "warningBody": "Er fügt Struktur hinzu, die das Original nie hatte: Haare, Haut, Stoff, Wasser. Das passt zu KI-Videos. Er kann Gesichter verändern und gibt wechselnden Text falsch wieder, etwa einen Timecode oder eine Einblendung. Für Familienvideos ist der schnelle Hochskalierer die originalgetreue Wahl.",
-      "speed": "Gemessen auf einer RTX 4090: etwa 6 Bilder pro Sekunde auf 1280 × 1024, 4 auf 1080p und 2 auf 1440p; der schnelle Hochskalierer schafft 11 bis 27. Eine Stunde Band dauert etwa 5 Stunden.",
+      "speed": "Gemessen auf einer RTX 4090: etwa 5 Bilder pro Sekunde auf 1280 × 1024, 3 auf 1080p und 1,4 auf 1440p; der schnelle Hochskalierer schafft 11 bis 27. Eine Stunde Band dauert etwa 5 Stunden.",
       "maxOutput": "Auf dieser Karte mit {card} GB macht er bis zu {width} × {height}. 4K wird nicht angeboten.",
       "installTitle": "Qualitäts-Hochskalierer installieren",
       "installBody": "Das fügt FlashVSR+ Turbo (von OpenImagingLab) mit eigenem Python und PyTorch hinzu, in einem eigenen Ordner. Etwa {size} GB zum Herunterladen und {free} GB freier Speicherplatz. Sonst ändert sich nichts auf deinem Computer.",

@@ -100,7 +100,7 @@ export function UpscaleQualityTier({ row, status, tier, onTier, requestError, on
           <p className="muted-text">
             {t("videoUpscale.qualityTier.speed", {
               defaultValue:
-                "Measured on an RTX 4090: about 6 frames a second to 1280 × 1024, 4 to 1080p and 2 to 1440p; the fast upscaler does 11 to 27. An hour of tape takes about 5 hours.",
+                "Measured on an RTX 4090: about 5 frames a second to 1280 × 1024, 3 to 1080p and 1.4 to 1440p; the fast upscaler does 11 to 27. An hour of tape takes about 5 hours.",
             })}
           </p>
           {fit.maxOutput ? (

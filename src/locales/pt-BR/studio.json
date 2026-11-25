@@ -3301,7 +3301,7 @@
       "notCuda": "Não disponível neste computador: o ampliador de qualidade precisa de uma placa de vídeo NVIDIA com memória própria.",
       "warningTitle": "Este ampliador inventa detalhes",
       "warningBody": "Ele acrescenta textura que o original nunca teve: cabelo, pele, tecido, água. Isso combina com vídeo feito por IA. Ele pode mudar rostos e erra texto que muda, como um timecode ou uma legenda gravada. Para fitas de família, o ampliador rápido é a escolha fiel.",
-      "speed": "Medido em uma RTX 4090: cerca de 6 quadros por segundo para 1280 × 1024, 4 para 1080p e 2 para 1440p; o ampliador rápido faz de 11 a 27. Uma hora de fita leva cerca de 5 horas.",
+      "speed": "Medido em uma RTX 4090: cerca de 5 quadros por segundo para 1280 × 1024, 3 para 1080p e 1,4 para 1440p; o ampliador rápido faz de 11 a 27. Uma hora de fita leva cerca de 5 horas.",
       "maxOutput": "Nesta placa de {card} GB ele vai até {width} × {height}. 4K não é oferecido.",
       "installTitle": "Instalar o ampliador de qualidade",
       "installBody": "Isto adiciona o FlashVSR+ Turbo (da OpenImagingLab) com sua própria cópia de Python e PyTorch, em sua própria pasta. Cerca de {size} GB para baixar e {free} GB de espaço livre em disco. Nada mais muda no seu computador.",

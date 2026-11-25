@@ -3301,7 +3301,7 @@
       "notCuda": "No disponible en este ordenador: el escalador de calidad necesita una tarjeta gráfica NVIDIA con memoria propia.",
       "warningTitle": "Este escalador inventa detalle",
       "warningBody": "Añade textura que el original nunca tuvo: pelo, piel, tela, agua. Eso va bien con vídeo hecho con IA. Puede cambiar caras y estropea el texto que cambia, como un código de tiempo o un rótulo. Para cintas familiares, el escalador rápido es la opción fiel.",
-      "speed": "Medido en una RTX 4090: unos 6 fotogramas por segundo a 1280 × 1024, 4 a 1080p y 2 a 1440p; el escalador rápido hace de 11 a 27. Una hora de cinta tarda unas 5 horas.",
+      "speed": "Medido en una RTX 4090: unos 5 fotogramas por segundo a 1280 × 1024, 3 a 1080p y 1,4 a 1440p; el escalador rápido hace de 11 a 27. Una hora de cinta tarda unas 5 horas.",
       "maxOutput": "En esta tarjeta de {card} GB llega hasta {width} × {height}. No se ofrece 4K.",
       "installTitle": "Instalar el escalador de calidad",
       "installBody": "Esto añade FlashVSR+ Turbo (de OpenImagingLab) con su propia copia de Python y PyTorch, en su propia carpeta. Unos {size} GB de descarga y {free} GB de espacio libre en disco. No cambia nada más en tu ordenador.",

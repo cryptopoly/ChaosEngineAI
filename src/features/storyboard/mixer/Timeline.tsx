@@ -11,6 +11,7 @@ import { WaveformCanvas } from "../../../components/WaveformCanvas";
 import { ProjectImage } from "../ProjectMedia";
 import { thumbnailOf } from "../storyboardLogic";
 import { usePeaks } from "./usePeaks";
+import { ClipSoundSwitch, type ClipSoundSwitchProps } from "./ClipSoundSwitch";
 import {
   AUDIO_LANES,
   bucketsFor,
@@ -311,6 +312,8 @@ export interface TimelineLaneProps {
   onAdd?: (lane: AudioLaneId) => void;
   /** Crossfade overlaps to mark on the picture row: start and length in seconds. */
   overlaps?: { start: number; seconds: number }[];
+  /** The Shot sound lane's "Muted under the song" header with its switch; only when the clips carry a song. */
+  clipSound?: ClipSoundSwitchProps;
 }
 
 const isAudioLane = (id: LaneId): id is AudioLaneId => (AUDIO_LANES as readonly string[]).includes(id);
@@ -318,10 +321,12 @@ const isAudioLane = (id: LaneId): id is AudioLaneId => (AUDIO_LANES as readonly 
 export function TimelineLane(props: TimelineLaneProps) {
   const { lane, label, pxPerSecond, selectedId, selectedType, onAdd, overlaps } = props;
   const { t } = useTranslation("studio");
+  const clipSound = lane.id === "native" ? props.clipSound : undefined;
   return (
-    <div className={`timeline__lane timeline__lane--${lane.id}`}>
+    <div className={`timeline__lane timeline__lane--${lane.id}${clipSound ? " timeline__lane--clip-sound" : ""}`}>
       <div className="timeline__lane-label">
         <span className="timeline__lane-name">{label}</span>
+        {clipSound ? <ClipSoundSwitch {...clipSound} /> : null}
         {isAudioLane(lane.id) && onAdd ? (
           <button
             type="button"
@@ -380,6 +385,8 @@ export interface TimelineProps {
   onAdd: (lane: AudioLaneId) => void;
   onSeek: (timeS: number) => void;
   onClearSelection: () => void;
+  /** Present when the clips carry a song: the Shot sound lane header says it is muted and offers the switch. */
+  clipSound?: ClipSoundSwitchProps;
   scrollRef?: Ref<HTMLDivElement>;
   /** The element that carries `--playhead-x`, so the playing screen can move the line without a render. */
   innerRef?: Ref<HTMLDivElement>;
@@ -431,6 +438,7 @@ export function Timeline(props: TimelineProps) {
               onKeyDown={props.onKeyDown}
               onAdd={props.onAdd}
               overlaps={lane.id === "picture" ? overlaps : undefined}
+              clipSound={props.clipSound}
             />
           ))}
           <div className="timeline__playhead" aria-hidden="true" />

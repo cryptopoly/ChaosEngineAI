@@ -8,7 +8,7 @@ Modelled on ``music_client.py``.
 Keep-warm policy, without settings:
 
 * idle stop after ``IDLE_MINUTES`` (10, as the music and voice workers);
-* before a heavy job of another kind takes the ``HEAVY_JOBS`` slot (image, video, music), every idle
+* before a heavy job of another kind takes the ``HEAVY_JOBS`` slot (image, video, music, upscale), every idle
   warm worker of a different kind stops, so a storyboard keeps one model for all stills, then one for
   all clips, and two big models never sit in memory together;
 * when free memory runs low while a worker idles, it stops;
@@ -35,7 +35,7 @@ from typing import Any, Callable
 IDLE_MINUTES = 10.0
 KEEP_WARM_MAX_FRACTION = 0.5
 LOW_MEMORY_AVAILABLE_GB = 6.0
-HEAVY_KINDS = frozenset({"image", "video", "music"})
+HEAVY_KINDS = frozenset({"image", "video", "music", "upscale"})
 _READY_TIMEOUT_S = 120.0
 _POLL_S = 0.2
 _WATCH_S = 30.0

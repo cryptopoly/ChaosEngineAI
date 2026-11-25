@@ -83,14 +83,14 @@ class FpsAndPlanTests(unittest.TestCase):
         self.assertEqual(len(pipeline.plan_segments(0, 10)), 1)
 
     def test_decode_seeks_half_a_frame_early_and_reads_whole_frames(self):
-        req = {"ffmpeg": "ff", "input": "in.mp4", "start": 20, "frames": 10, "last": False, "fps": "10",
+        req = {"ffmpeg": "ff", "input": "in.mp4", "first_frame": 20, "frames": 10, "last": False, "fps": "10",
                "deinterlace": True}
         cmd = pipeline.decode_command(req)
         self.assertEqual(cmd[cmd.index("-ss") + 1], "1.950000")
         self.assertEqual(cmd[cmd.index("-frames:v") + 1], "10")
         self.assertIn("bwdif=mode=send_frame,setpts=PTS-STARTPTS,fps=10", cmd)
         self.assertEqual(cmd[cmd.index("-protocol_whitelist") + 1], "file,pipe")
-        last = pipeline.decode_command({**req, "start": 0, "last": True, "deinterlace": False})
+        last = pipeline.decode_command({**req, "first_frame": 0, "last": True, "deinterlace": False})
         self.assertNotIn("-ss", last)
         self.assertNotIn("-frames:v", last)
 
@@ -105,6 +105,17 @@ class FpsAndPlanTests(unittest.TestCase):
         self.assertEqual(cmd[cmd.index("-framerate") + 1], "30000/1001")
         same = pipeline.encode_command(req, (300, 200), Path("o.mp4"))
         self.assertFalse(any(part.startswith("scale=") for part in same))
+
+    def test_segment_request_keys_do_not_collide_with_the_worker_client(self):
+        import inspect
+
+        from backend_service.warm_worker_client import WarmWorker
+
+        own = set(inspect.signature(WarmWorker.request).parameters) | {"cmd", "id"}
+        spec = pipeline.JobSpec(input="i", output="o", model_id="m", weights="w", tile=0, batch=1, width=4, height=4,
+                                source={"width": 2, "height": 2, "fps": "10", "frames": 1}, input_bytes=1, input_mtime=0)
+        req = pipeline.segment_request(spec, "ff", pipeline.plan_segments(1, 1)[0], Path("o.mp4"))
+        self.assertEqual(own & set(req), set())
 
     def test_concat_list_takes_only_segment_names(self):
         self.assertEqual(pipeline.concat_list(["seg-00000.mp4"]), "file 'seg-00000.mp4'\n")

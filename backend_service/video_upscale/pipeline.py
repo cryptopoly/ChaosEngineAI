@@ -219,7 +219,7 @@ def read_manifest(work: Path) -> dict[str, Any] | None:
 
 
 def decode_command(req: dict[str, Any]) -> list[str]:
-    fps, start = str(req["fps"]), int(req["start"])
+    fps, start = str(req["fps"]), int(req["first_frame"])
     # The first kept frame starts the clock at 0, so the fps grid (which makes a variable-rate source constant) lands
     # on the frames themselves and never repeats the first one.
     filters = ([f"{DEINTERLACE_FILTER}=mode=send_frame"] if req.get("deinterlace") else []) + [
@@ -347,7 +347,8 @@ def local_runner(upscaler: Callable[[np.ndarray], np.ndarray]) -> Callable[..., 
 
 def segment_request(spec: JobSpec, exe: str, seg: dict[str, Any], output: Path) -> dict[str, Any]:
     src = spec.source
-    return {"ffmpeg": exe, "input": spec.input, "start": seg["start"], "frames": seg["frames"], "last": seg["last"],
+    # Field names must not collide with ``WarmWorker.request``'s own keywords (``start``, ``timeout``, ``job``).
+    return {"ffmpeg": exe, "input": spec.input, "first_frame": seg["start"], "frames": seg["frames"], "last": seg["last"],
             "fps": src["fps"], "sar": src.get("sar") or "1/1", "src_width": src["width"], "src_height": src["height"],
             "width": spec.width, "height": spec.height, "deinterlace": spec.deinterlace, "batch": spec.batch,
             "codec_args": spec.codec_args, "output": str(output), "weights": spec.weights, "tile": spec.tile,

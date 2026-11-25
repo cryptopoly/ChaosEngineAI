@@ -51,7 +51,6 @@ import {
   recommendedSpeechPick,
   speechDeleteConfirmText,
   speechGpuAddonMissing,
-  speechGpuAddonText,
   speechGpuMemoryText,
   studioTargetFor,
   unsupportedModelText,
@@ -328,7 +327,7 @@ export function SpeechModelsPanel({ catalog, runtime, availability, onAvailabili
               <div className="media-model-actions model-download-controls">
                 {!source.installed ? (
                   <span className="muted-text">
-                    {t("voice.models.kokoroAddHint", { defaultValue: "Tick it under Voice runtime > Add-ons." })}
+                    {t("voice.models.kokoroAddHint", { defaultValue: "Tick it under Voice setup > Choose parts." })}
                   </span>
                 ) : onOpenStudio ? (
                   <button type="button" className="secondary-button" onClick={() => onOpenStudio({ mode: "voices" })}>
@@ -497,10 +496,10 @@ export function SpeechModelsPanel({ catalog, runtime, availability, onAvailabili
         })}
         sizeGb={null}
         memory={speechGpuMemoryText(catalog.kokoro?.peakGb, tf)}
-        notice={speechGpuAddonMissing(runtime) ? speechGpuAddonText(tf) : null}
+        notice={speechGpuAddonMissing(runtime) ? tf("voice.models.naturalNeedsGpu", { defaultValue: "The natural voices need the speech GPU part. Tick it under Voice setup > Choose parts." }) : null}
         actions={
           !runtime.ttsModelInstalled ? (
-            <span className="muted-text">{t("voice.models.kokoroAddHint", { defaultValue: "Tick it under Voice runtime > Add-ons." })}</span>
+            <span className="muted-text">{t("voice.models.kokoroAddHint", { defaultValue: "Tick it under Voice setup > Choose parts." })}</span>
           ) : onOpenStudio ? (
             <button type="button" className="secondary-button" onClick={() => onOpenStudio({ mode: "voices" })}>
               {t("voice.quickVoices.browse", { defaultValue: "Browse voices" })}

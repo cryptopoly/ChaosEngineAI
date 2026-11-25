@@ -104,7 +104,7 @@ describe("Speech models on the shared Models table (D-73 M3b)", () => {
     );
     const kokoro = out.slice(out.indexOf('data-model-id="kokoro"'), out.indexOf('data-model-id="qwen3-tts-custom-1.7b"'));
     expect(kokoro).toContain("Not installed");
-    expect(kokoro).toContain("Tick it under Voice runtime &gt; Add-ons.");
+    expect(kokoro).toContain("Tick it under Voice setup &gt; Choose parts.");
     expect(kokoro).not.toContain("Browse voices");
   });
 
@@ -160,7 +160,7 @@ describe("Speech models on the shared Models table (D-73 M3b)", () => {
       );
       return out.slice(out.indexOf(">All models<"));
     };
-    const addon = "Needs the speech GPU add-on. Tick it under Voice &gt; Models &gt; Voice runtime &gt; Add-ons.";
+    const addon = "Needs the speech GPU part. Tick it under Voice setup &gt; Choose parts.";
     expect(panel({ lanes: ["cuda"] })).toContain(addon);
     expect(panel({ lanes: ["mlx"] })).not.toContain(addon);
     expect(panel({ lanes: ["mlx"] })).toContain("Apple Silicon Macs only for now.");
@@ -222,7 +222,7 @@ describe("Speech models on the shared Models table (D-73 M3b)", () => {
     const kokoroPick = kokoro.slice(kokoro.indexOf("data-speech-pick"), kokoro.indexOf(">All models<"));
     expect(kokoroPick).toContain("<strong>Kokoro</strong>: 2 quick voices in 2 languages, fast on any machine");
     expect(kokoroPick).toContain("about 0.9 GB GPU memory.");
-    expect(kokoroPick).toContain("Needs the speech GPU add-on.");
+    expect(kokoroPick).toContain("The natural voices need the speech GPU part.");
     expect(kokoroPick).toContain("Browse voices");
   });
 

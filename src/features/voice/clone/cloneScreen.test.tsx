@@ -80,7 +80,7 @@ describe("CloneVoiceScreen", () => {
 
   it("replaces the form with the reason and the fix button on a PC without the speech GPU add-on", () => {
     const html = withVoice(<CloneVoiceScreen catalog={{ ...catalog, modelsAvailable: false, cloneAllowed: false }} onSpeakWith={() => {}} />, pc);
-    expect(html).toContain("Needs the speech GPU add-on.");
+    expect(html).toContain("Needs the speech GPU part.");
     expect(html).toContain(">Open Voice setup<");
     expect(html).not.toContain(">1. Permission<");
   });
@@ -114,7 +114,7 @@ describe("greyed actions give their reason as text (UX audit change 5)", () => {
     for (const kind of ["clone", "design"] as const) {
       const block = cloneActionBlock(kind, { modelsAvailable: false, cloneAllowed: false, runtime: pc }, t);
       expect(block?.fix).toBe("setup");
-      expect(block?.reason).toContain("speech GPU add-on");
+      expect(block?.reason).toContain("speech GPU part");
     }
   });
   it("gives the Mac-only and the window-only notes with no button", () => {

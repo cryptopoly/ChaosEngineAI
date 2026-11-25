@@ -45,7 +45,7 @@ describe("the picker's Clone a voice card (UX audit change 5)", () => {
     const html = render(false, { lane: "portable", extras: [{ id: "speech-gpu", label: "", installed: false }] } as Partial<VoiceRuntime>);
     expect(html).toContain("Clone a voice");
     expect(html).not.toContain(">Open Clone a voice<");
-    expect(html).toContain("Needs the speech GPU add-on.");
+    expect(html).toContain("Needs the speech GPU part.");
     // One fix on the clone card, one beside the designed voice.
     expect(html.match(/>Open Voice setup</g)).toHaveLength(2);
   });

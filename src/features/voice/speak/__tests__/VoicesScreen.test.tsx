@@ -119,7 +119,7 @@ describe("VoicesScreen as the voice catalogue (D-73 S2, D0142)", () => {
     const html = render(pc, "", { ...catalog, modelsAvailable: false, cloneAllowed: false });
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>New cloned voice/);
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Design a voice/);
-    expect(html.match(/Needs the speech GPU add-on\./g)).toHaveLength(2);
+    expect(html.match(/Needs the speech GPU part./g)).toHaveLength(2);
     expect(html.match(/>Open Voice setup</g)).toHaveLength(2);
     // The reason is text on the page, not only a tooltip.
     expect(html).not.toContain('title="Needs the speech GPU');

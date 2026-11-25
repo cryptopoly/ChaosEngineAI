@@ -244,7 +244,7 @@ export function VoicesScreen({ catalog, speakVoiceId, onUseInSpeak, onDesign, on
           "quick",
           t("voice.picker.quick", { defaultValue: "Quick" }),
           t("voice.voices.kokoroMissing", {
-            defaultValue: "The Kokoro quick voices are not installed. Tick them under Voice > Models > Voice runtime > Add-ons (about 330 MB).",
+            defaultValue: "The Kokoro quick voices are not installed. Tick them under Voice setup > Choose parts (about 330 MB).",
           }),
           <div className="button-row">
             <button type="button" className="secondary-button" onClick={onGetMore}>

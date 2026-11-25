@@ -36,7 +36,7 @@ export function speechGpuAddonMissing(runtime: Pick<VoiceRuntime, "lane" | "extr
 /** Where to get the speech GPU add-on, for a PC that lacks it. */
 export function speechGpuAddonText(t: T = tStudio): string {
   return t("voice.speak.needsSpeechGpu", {
-    defaultValue: "Needs the speech GPU add-on. Tick it under Voice > Models > Voice runtime > Add-ons.",
+    defaultValue: "Needs the speech GPU part. Tick it under Voice setup > Choose parts.",
   });
 }
 

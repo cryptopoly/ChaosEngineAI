@@ -1,8 +1,8 @@
 """The frame pipeline: decode with ffmpeg to a pipe, upscale in batches, encode segment files, then join and put the
 original sound back.
 
-A job is cut into segments of ``SEGMENT_SECONDS``. Each segment is decoded on its own (``-ss`` to just before its
-first frame, a whole number of frames), upscaled, scaled with lanczos to the exact target when the model's 4x is not
+A job is cut into segments of ``SEGMENT_SECONDS``. Each segment is decoded on its own (a seek to just before its
+first frame, then dropped to the exact frame by timestamp, a whole number of frames), upscaled, scaled with lanczos to the exact target when the model's 4x is not
 the size asked for, and encoded to ``seg-NNNNN.mp4`` (H.264 at the Storyboard's final quality, yuv420p, 8-bit, the
 source frame rate; the encoder is the one ``ffmpeg_bin`` picks, libx264 when the build has it). A JSON manifest in
 the job's work folder lists the finished segments, so a job that was cancelled, crashed or lost power restarts at the
@@ -47,7 +47,14 @@ _NTSC = ((23.976, "24000/1001"), (29.97, "30000/1001"), (47.952, "48000/1001"), 
 _SAR = re.compile(r"\[SAR (\d+):(\d+) DAR")
 _FIELD_ORDER = re.compile(r"[(,]\s*(progressive|(?:top|bottom)(?: coded)? first|tt|bb|tb|bt)(?=[,)\s])", re.IGNORECASE)
 _TBR = re.compile(r"Video: .*?, (\d+(?:\.\d+)?) tbr")
-_FRAME_COUNT = re.compile(r"frame=\s*(\d+)")
+_TIMEBASE = re.compile(r"^#tb 0:\s*(\d+)/(\d+)")
+# Decoding starts this far before a segment's first frame and the extra frames are dropped by timestamp: some demuxers
+# (MPEG-TS and program streams: no index) seek by guessing and may land on a keyframe after the target, which loses
+# the frames in between. Any keyframe interval up to this length is covered; it costs decoding only (about a
+# segment's worth), never upscaling.
+SEEK_MARGIN_SECONDS = 10.0
+# The base rate's grid must hold every frame this closely (in frame periods) for the source to count as constant rate.
+GRID_TOLERANCE = 0.25
 
 
 class Cancelled(Exception):
@@ -83,6 +90,10 @@ class SourceInfo:
     has_audio: bool
     sar: str = "1/1"
     frames_exact: bool = False  # ``frames`` was counted (the container's duration also covers a longer sound track)
+    # Every counted frame sits on the base-rate grid, so the fps filter must give one frame per source frame. ``False``:
+    # variable rate (or a clock that drifts from the nominal rate), where the filter drops or repeats frames and the
+    # output count may legitimately differ. ``None``: not measured.
+    constant_rate: bool | None = None
 
 
 def probe_source(exe: str, path: Path) -> SourceInfo:
@@ -129,18 +140,47 @@ def interlaced_from_probe(stderr: str) -> bool | None:
     return None
 
 
-def count_video_frames(exe: str, path: Path) -> int | None:
-    """The frames in the first video stream, counted from its packets (``-c copy`` to the null muxer: no decoding, so
-    it takes seconds, not the length of the film). ``None`` when ffmpeg gives no count. The app has no ffprobe."""
+def count_video_frames(exe: str, path: Path, times: list[float] | None = None) -> int | None:
+    """The frames in the first video stream, counted from its packets (``-c copy`` to ``framehash``: no decoding, so it
+    takes seconds, not the length of the film). ``None`` when ffmpeg gives no count. The app has no ffprobe. When
+    ``times`` is a list it receives every packet's presentation time in seconds (sorted), for ``on_frame_grid``."""
     try:
-        run = subprocess.run([exe, "-hide_banner", "-nostdin", "-protocol_whitelist", PROTOCOLS, "-i", str(path),
-                              "-map", "0:v:0", "-c", "copy", "-f", "null", "-"],
+        run = subprocess.run([exe, "-hide_banner", "-nostdin", "-loglevel", "error", "-protocol_whitelist", PROTOCOLS,
+                              "-i", str(path), "-map", "0:v:0", "-c", "copy", "-f", "framehash", "-hash", "adler32", "-"],
                              capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600)
     except (OSError, subprocess.SubprocessError):
         return None
-    found = _FRAME_COUNT.findall(run.stderr)  # the progress line repeats; the last one is the whole file
-    count = int(found[-1]) if run.returncode == 0 and found else 0
-    return count or None
+    if run.returncode != 0:
+        return None
+    num, den, stamps = 1, 90000, []
+    for line in run.stdout.splitlines():
+        if line.startswith("#"):
+            match = _TIMEBASE.match(line)
+            if match:
+                num, den = int(match.group(1)), int(match.group(2))
+        else:
+            cells = line.split(",")
+            if len(cells) >= 4:
+                try:
+                    dts, pts = int(cells[1]), int(cells[2])
+                except ValueError:
+                    continue
+                stamps.append(pts if abs(pts) < 1 << 60 else dts)
+    if times is not None:
+        times[:] = sorted(stamp * num / den for stamp in stamps)
+    return len(stamps) or None
+
+
+def on_frame_grid(times: list[float], fps: str) -> bool | None:
+    """Does every frame sit on the ``fps`` grid, to within ``GRID_TOLERANCE`` of a frame period, counting from the
+    first? Then the fps filter in ``decode_command`` gives exactly one output frame per source frame. A variable-rate
+    clip, or one whose clock runs a little off the nominal rate, fails: the filter repeats or drops frames there, so
+    the output count can legitimately differ from the packet count. ``None`` with no times to judge."""
+    if len(times) < 2:
+        return None
+    period = 1.0 / fps_value(fps)
+    arr = np.asarray(times, dtype=np.float64)
+    return bool(np.max(np.abs(arr - (arr[0] + np.arange(len(arr)) * period))) <= GRID_TOLERANCE * period)
 
 
 def _probe(exe: str, path: Path) -> tuple[SourceInfo, str]:
@@ -163,9 +203,11 @@ def _probe(exe: str, path: Path) -> tuple[SourceInfo, str]:
     source = SourceInfo(width=int(info["width"]), height=int(info["height"]), fps=rate, duration=float(info["duration"]),
                         frames=max(1, round(float(info["duration"]) * fps_value(rate))), has_audio=bool(info["has_audio"]),
                         sar=f"{sar.group(1)}/{sar.group(2)}" if sar and sar.group(1) != "0" else "1/1")
-    counted = count_video_frames(exe, path)
+    times: list[float] = []
+    counted = count_video_frames(exe, path, times)
     if counted:
         source.frames, source.frames_exact = counted, True
+        source.constant_rate = on_frame_grid(times, rate)
     return source, run.stderr
 
 
@@ -300,13 +342,21 @@ def read_manifest(work: Path) -> dict[str, Any] | None:
 
 def decode_command(req: dict[str, Any]) -> list[str]:
     fps, start = str(req["fps"]), int(req["first_frame"])
+    # Half a frame early: frame ``start`` is kept and the one before it dropped. Times count from the stream's first
+    # timestamp (a broadcast capture starts about 1.4 s in), not from zero.
+    seek = max(0.0, (start - 0.5) / fps_value(fps))
+    # B1328: ``-ss`` before ``-i`` is only as accurate as the demuxer, and MPEG-TS (no index) may land on a keyframe
+    # after the target, losing the frames in between. So that seek stops ``SEEK_MARGIN_SECONDS`` short and ``trim``
+    # drops what is left by timestamp (exact). An output-side ``-ss`` would not do: it trims after ``setpts`` has
+    # restarted the clock at the landing frame. Decoding the margin is cheap; a start never costs the file's length.
+    coarse = max(0.0, seek - SEEK_MARGIN_SECONDS)
     # The first kept frame starts the clock at 0, so the fps grid (which makes a variable-rate source constant) lands
     # on the frames themselves and never repeats the first one.
-    filters = ([f"{DEINTERLACE_FILTER}=mode=send_frame"] if req.get("deinterlace") else []) + [
-        "setpts=PTS-STARTPTS", f"fps={fps}"]
+    filters = ([f"{DEINTERLACE_FILTER}=mode=send_frame"] if req.get("deinterlace") else [])
+    filters += ([f"trim=start={seek - coarse:.6f}"] if seek > 0 else []) + ["setpts=PTS-STARTPTS", f"fps={fps}"]
     command = [str(req["ffmpeg"]), "-nostdin", "-hide_banner", "-loglevel", "error", "-protocol_whitelist", PROTOCOLS]
-    if start > 0:  # half a frame early: accurate seek keeps frame ``start`` and drops the one before it
-        command += ["-ss", f"{(start - 0.5) / fps_value(fps):.6f}"]
+    if coarse > 0:
+        command += ["-ss", f"{coarse:.6f}"]
     command += ["-i", str(req["input"]), "-map", "0:v:0", "-vf", ",".join(filters), "-an", "-sn", "-dn"]
     if not req.get("last"):
         command += ["-frames:v", str(int(req["frames"]))]
@@ -489,6 +539,10 @@ def run_job(spec: JobSpec, runner: Callable[..., dict[str, Any]], *, exe: str, w
 
             result = runner(segment_request(spec, exe, seg, part), on_frames, is_cancelled)
             made = int(result.get("frames") or 0)
+            if _must_match(spec) and made != int(seg["frames"]):  # stop now, not after the rest of the film
+                part.unlink(missing_ok=True)
+                raise UpscaleError(f"Part {seg['index'] + 1} of {Path(spec.input).name} gave {made} frames instead of "
+                                   f"{int(seg['frames'])}, so the result was not saved. {_ADVICE}")
             if made:
                 os.replace(part, manifest.segment_file(seg["index"]))
             manifest.mark(seg["index"], made)
@@ -498,7 +552,12 @@ def run_job(spec: JobSpec, runner: Callable[..., dict[str, Any]], *, exe: str, w
         names = [manifest.segment_file(s["index"]).name for s in segments if s.get("made")]
         if not names:
             raise UpscaleError(f"No frames could be read from {Path(spec.input).name}.")
+        if _must_match(spec) and frames_before != total:
+            raise UpscaleError(_short_message(spec, frames_before, total))
         notes = _mux(spec, exe, work, names)
+        if spec.source.get("frames_exact") and spec.source.get("constant_rate") is False and frames_before != total:
+            notes.append(f"The source has a variable frame rate, so the result has {frames_before} frames at a steady "
+                         f"rate where the source has {total}.")
     except Cancelled:
         manifest.set_state("cancelled")
         raise
@@ -510,6 +569,23 @@ def run_job(spec: JobSpec, runner: Callable[..., dict[str, Any]], *, exe: str, w
         progress(frames_before, frames_before, len(segments) - 1, len(segments))
     return {"output": spec.output, "frames": frames_before, "segments": len(segments), "resumedSegments": resumed,
             "notes": notes}
+
+
+def _must_match(spec: JobSpec) -> bool:
+    """Is the output required to have exactly the counted source frames? Yes when the count is a real packet count and
+    every frame sits on the base-rate grid (``SourceInfo.constant_rate``): the fps filter then yields one frame per
+    source frame, so any difference means frames were lost (B1328). On a variable-rate source (``False``), or one not
+    measured (``None``, e.g. a manifest from before the check), the filter repeats or drops frames by design and a
+    different count is not an error."""
+    return bool(spec.source.get("frames_exact")) and spec.source.get("constant_rate") is True
+
+
+_ADVICE = "Part of the video could not be read. Try again, or convert the file to MP4 first."
+
+
+def _short_message(spec: JobSpec, made: int, expected: int) -> str:
+    return (f"The upscaled video has {made} frames but {Path(spec.input).name} has {expected}, so the result was not "
+            f"saved. {_ADVICE}")
 
 
 def _mux(spec: JobSpec, exe: str, work: Path, names: list[str]) -> list[str]:

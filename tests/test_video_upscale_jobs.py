@@ -218,6 +218,20 @@ class JobTests(_Clip):
         job = _wait(self.manager(factory).start(self.spec()))
         self.assertEqual((job.state, job.error), ("failed", "the GPU fell over"))
 
+    def test_a_film_that_comes_out_short_ends_failed_not_done(self):
+        def factory():
+            inner = pipeline.local_runner(DoublePixels())
+
+            def run(req, on_frames, is_cancelled):
+                result = inner(req, on_frames, is_cancelled)
+                return {"frames": result["frames"] - 1} if req["first_frame"] == 15 else result
+            return run
+
+        job = _wait(self.manager(factory).start(self.spec()))
+        self.assertEqual(job.state, "failed")
+        self.assertIn("gave 4 frames instead of 5", job.error)
+        self.assertFalse((self.root / "up.mp4").exists())
+
 
 def _ticket(queue, ticket_id):
     with queue._cond:

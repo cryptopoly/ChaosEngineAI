@@ -10,6 +10,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import numpy as np
 
@@ -88,17 +89,30 @@ class FpsAndPlanTests(unittest.TestCase):
         self.assertEqual([(s["start"], s["last"]) for s in segs], [(0, False), (10, False), (20, True)])
         self.assertEqual(len(pipeline.plan_segments(0, 10)), 1)
 
-    def test_decode_seeks_half_a_frame_early_and_reads_whole_frames(self):
+    def test_decode_starts_half_a_frame_early_and_reads_whole_frames(self):
         req = {"ffmpeg": "ff", "input": "in.mp4", "first_frame": 20, "frames": 10, "last": False, "fps": "10",
                "deinterlace": True}
         cmd = pipeline.decode_command(req)
-        self.assertEqual(cmd[cmd.index("-ss") + 1], "1.950000")
+        self.assertIn("bwdif=mode=send_frame,trim=start=1.950000,setpts=PTS-STARTPTS,fps=10", cmd)
         self.assertEqual(cmd[cmd.index("-frames:v") + 1], "10")
-        self.assertIn("bwdif=mode=send_frame,setpts=PTS-STARTPTS,fps=10", cmd)
         self.assertEqual(cmd[cmd.index("-protocol_whitelist") + 1], "file,pipe")
         last = pipeline.decode_command({**req, "first_frame": 0, "last": True, "deinterlace": False})
         self.assertNotIn("-ss", last)
+        self.assertNotIn("trim", last[last.index("-vf") + 1])
         self.assertNotIn("-frames:v", last)
+
+    def test_decode_seeks_in_two_steps_so_a_late_demuxer_seek_cannot_lose_frames(self):
+        # B1328: a start far into the file is a coarse seek 10 s short before -i, then an exact one after it; both are
+        # relative to the stream's first timestamp.
+        req = {"ffmpeg": "ff", "input": "in.ts", "first_frame": 500, "frames": 250, "last": False, "fps": "25"}
+        cmd = pipeline.decode_command(req)
+        self.assertEqual(cmd.index("-ss"), cmd.index("-i") - 2)
+        self.assertEqual(cmd[cmd.index("-ss") + 1], "9.980000")
+        self.assertNotIn("-ss", cmd[cmd.index("-i"):])  # an output-side -ss would trim after setpts restarted the clock
+        self.assertEqual(cmd[cmd.index("-vf") + 1], "trim=start=10.000000,setpts=PTS-STARTPTS,fps=25")
+        near = pipeline.decode_command({**req, "first_frame": 100, "deinterlace": True})  # 3.98 s: inside the margin
+        self.assertNotIn("-ss", near)
+        self.assertEqual(near[near.index("-vf") + 1], "bwdif=mode=send_frame,trim=start=3.980000,setpts=PTS-STARTPTS,fps=25")
 
     def test_encode_scales_to_the_exact_target_and_keeps_the_rate(self):
         req = {"ffmpeg": "ff", "width": 300, "height": 200, "fps": "30000/1001", "sar": "16/15",
@@ -267,6 +281,110 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(result["frames"], 21)
         self.assertEqual(count_frames(FFMPEG, out), (21, 192, 128))
         self.assertTrue(all(total == 21 for _done, total in seen), seen)
+
+    def test_transport_stream_that_starts_1_4_seconds_in_keeps_every_frame(self):
+        # B1328: a broadcast capture's timestamps start about 1.4 s in; a seek by "frames / rate" then landed past the
+        # end for every segment after the first, and the film came back short with the job marked done.
+        for offset in (1.4, 0.0):
+            with self.subTest(offset=offset):
+                src = self.root / f"offset-{offset}.ts"
+                subprocess.run([FFMPEG, "-hide_banner", "-nostdin", "-loglevel", "error", "-y", "-f", "lavfi", "-i",
+                                "testsrc=size=96x64:rate=25:duration=9.52", "-c:v", "mpeg2video", "-q:v", "3",
+                                "-output_ts_offset", str(offset), "-f", "mpegts", str(src)], check=True)
+                self.assertEqual(pipeline.probe_source(FFMPEG, src).frames, 238)
+                out = self.root / f"up-{offset}.mp4"
+                spec = pipeline.make_spec(FFMPEG, src, out, model_id="fake", weights="none", size=(192, 128),
+                                          segment_seconds=2.0)
+                self.assertGreater(len(pipeline.plan_segments(238, spec.segment_frames, True)), 3)
+                result = pipeline.run_job(spec, pipeline.local_runner(DoublePixels()), exe=FFMPEG,
+                                          work=self.root / f"w-{offset}")
+                self.assertEqual(result["frames"], 238)
+                self.assertEqual(count_frames(FFMPEG, out), (238, 192, 128))
+
+    def _ts_clip(self, name: str, *, vfr: bool = False) -> Path:
+        src = self.root / name
+        picture = ["-f", "lavfi", "-i", "testsrc=size=96x64:rate=25:duration=9.52"]
+        if vfr:  # every 7th frame dropped, timestamps kept: the gaps make the rate variable
+            picture += ["-vf", "select='mod(n,7)'", "-fps_mode", "passthrough"]
+        subprocess.run([FFMPEG, "-hide_banner", "-nostdin", "-loglevel", "error", "-y", *picture, "-c:v", "mpeg2video",
+                        "-q:v", "3", "-output_ts_offset", "1.4", "-f", "mpegts", str(src)], check=True)
+        return src
+
+    def _run_ts(self, src: Path, work: str, runner=None):
+        out = self.root / f"up-{work}.mp4"
+        spec = pipeline.make_spec(FFMPEG, src, out, model_id="fake", weights="none", size=(192, 128), segment_seconds=2.0)
+        result = pipeline.run_job(spec, runner or pipeline.local_runner(DoublePixels()), exe=FFMPEG,
+                                  work=self.root / work)
+        return out, result
+
+    @staticmethod
+    def _drop_a_frame(req, on_frames, is_cancelled):  # the third segment reports one frame fewer than it was given
+        result = pipeline.local_runner(DoublePixels())(req, on_frames, is_cancelled)
+        return {"frames": result["frames"] - 1} if req["first_frame"] == 100 else result
+
+    def _manifest_state(self, work: str) -> str:
+        return json.loads((self.root / work / "manifest.json").read_text())["state"]
+
+    def _grey_means(self, path: Path, width: int, height: int) -> np.ndarray:
+        raw = subprocess.run([FFMPEG, "-hide_banner", "-nostdin", "-loglevel", "error", "-i", str(path), "-map", "0:v:0",
+                              "-f", "rawvideo", "-pix_fmt", "gray", "-"], capture_output=True, check=True).stdout
+        return np.frombuffer(raw, np.uint8).reshape(-1, height, width).mean(axis=(1, 2))
+
+    def test_every_frame_comes_out_once_and_in_order_across_the_seams(self):
+        # Each frame is a flat grey that steps by 4 levels per frame (a sawtooth of 50), so a repeated or skipped frame
+        # at a segment start shows against the source's own frames.
+        src = self.root / "ramp.ts"
+        subprocess.run([FFMPEG, "-hide_banner", "-nostdin", "-loglevel", "error", "-y", "-f", "lavfi", "-i",
+                        "color=c=black:size=64x48:rate=25,format=yuv420p,geq=lum='16+mod(N,50)*4':cb=128:cr=128",
+                        "-frames:v", "238", "-c:v", "mpeg2video", "-q:v", "2", "-output_ts_offset", "1.4",
+                        "-f", "mpegts", str(src)], check=True)
+        out, result = self._run_ts(src, "ramp")
+        self.assertEqual(result["frames"], 238)
+        want, got = self._grey_means(src, 64, 48), self._grey_means(out, 192, 128)
+        self.assertEqual((len(want), len(got)), (238, 238))
+        off = np.abs(want - got)
+        self.assertLess(off.max(), 3.0, np.nonzero(off >= 3.0)[0])  # encoder noise is about 2; a wrong frame is 4
+
+    def test_a_segment_that_comes_out_short_fails_the_job_at_once(self):
+        src = self._ts_clip("steady.ts")
+        info = pipeline.probe_source(FFMPEG, src)
+        self.assertEqual((info.frames, info.frames_exact, info.constant_rate), (238, True, True))
+        with self.assertRaises(engine.UpscaleError) as caught:
+            self._run_ts(src, "short", self._drop_a_frame)
+        self.assertIn("Part 3", str(caught.exception))
+        self.assertIn("49 frames instead of 50", str(caught.exception))
+        self.assertEqual(self._manifest_state("short"), "failed")
+        self.assertFalse((self.root / "up-short.mp4").exists())
+
+    def test_a_job_whose_total_is_short_fails_instead_of_saying_done(self):
+        src = self._ts_clip("steady2.ts")
+        real = pipeline.plan_segments
+        # A plan that stops 38 frames short: every segment is whole, but the film is not.
+        with mock.patch.object(pipeline, "plan_segments", lambda *a, **k: real(*a, **k)[:-1]):
+            with self.assertRaises(engine.UpscaleError) as caught:
+                self._run_ts(src, "total")
+        self.assertIn("200 frames", str(caught.exception))
+        self.assertIn("has 238", str(caught.exception))
+        self.assertEqual(self._manifest_state("total"), "failed")
+        self.assertFalse((self.root / "up-total.mp4").exists())
+
+    def test_a_variable_rate_source_is_not_failed_for_a_different_count(self):
+        # Frames dropped with their timestamps kept: the fps filter repeats frames to fill the gaps, so the output
+        # count can differ from the packet count. That is the constant-rate design, not data loss: no error, a note.
+        src = self._ts_clip("vfr.ts", vfr=True)
+        info = pipeline.probe_source(FFMPEG, src)
+        self.assertTrue(info.frames_exact)
+        self.assertIs(info.constant_rate, False)
+        out, result = self._run_ts(src, "vfr", self._drop_a_frame)
+        self.assertEqual(result["frames"], info.frames - 1)
+        self.assertTrue(out.is_file())
+        self.assertTrue(any("variable frame rate" in note for note in result["notes"]), result["notes"])
+
+    def test_grid_check(self):
+        self.assertTrue(pipeline.on_frame_grid([1.4 + i / 25 for i in range(100)], "25"))
+        self.assertTrue(pipeline.on_frame_grid([round(i * 1000 / 24) / 1000 for i in range(100)], "24"))  # ms rounding
+        self.assertFalse(pipeline.on_frame_grid([i / 25 + (0.04 if i > 50 else 0) for i in range(100)], "25"))  # a gap
+        self.assertIsNone(pipeline.on_frame_grid([0.0], "25"))
 
     def test_a_clip_without_sound(self):
         src = make_clip(FFMPEG, self.root / "silent.mp4", seconds=1.0, fps=10, audio=False)

@@ -4086,6 +4086,11 @@ from e2e_phases import video_upscale as _video_upscale  # noqa: E402
 # Video upscale (B1316): the real frame count, framesPerSecond as a number, PNG first frames; in process and live.
 PHASES[_video_upscale.PHASE_KEY] = lambda cap: _video_upscale.run(cap, sys.modules[__name__])
 
+from e2e_phases import storyboard_character_lock as _character_lock  # noqa: E402
+
+# Storyboard character lock on the NVIDIA lane (B1315): rules and request in process, three real stills when FLUX 3 Klein runs.
+PHASES[_character_lock.PHASE_KEY] = lambda cap: _character_lock.run(cap, sys.modules[__name__])
+
 
 def _write_reports(report_dir: Path, started: datetime, ended: datetime,
                     phases: list[PhaseResult], cap: Capability) -> tuple[Path, Path]:

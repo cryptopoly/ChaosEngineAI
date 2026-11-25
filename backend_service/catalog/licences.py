@@ -87,7 +87,7 @@ MINIMAX_M3 = licence(
     "Commercial use needs the \"Built with MiniMax\" line and a one-time notice; above US$20 million yearly revenue "
     "you need MiniMax's written authorisation.")
 KIMI_MODIFIED_MIT = licence(
-    "modified-mit", "Modified MIT", "yes", "https://huggingface.co/moonshotai/Kimi-K2.6",
+    "modified-mit", "Modified MIT", "limited", "https://huggingface.co/moonshotai/Kimi-K2.6",
     "MIT with one extra rule: a product above 100 million monthly users or US$20 million monthly revenue must show "
     "\"Kimi K2.6\" in its interface.")
 LFM_OPEN = licence(
@@ -101,7 +101,7 @@ SD_3_5_COMMUNITY = licence(
     "Free while you and your affiliates earn under US$1 million a year, then you need a licence from Stability AI; "
     "commercial use means registering with Stability AI.", gated=True)
 OPENRAIL_PP_M = licence(
-    "creativeml-openrail++-m", "CreativeML OpenRAIL++-M", "yes",
+    "creativeml-openrail++-m", "CreativeML OpenRAIL++-M", "limited",
     "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0",
     "Commercial use allowed, with use restrictions that pass on to anyone you share the model with.")
 FLUX_1_DEV_NC = licence(
@@ -116,7 +116,7 @@ FLUX_KOMMUNITY = licence(
     "Free for non-commercial use; commercial use of the outputs only below US$5 million annual revenue.", gated=True)
 
 LTXV_RAIL_M = licence(
-    "ltxv-rail-m", "LTXV RAIL-M", "yes", "https://huggingface.co/Lightricks/LTX-Video",
+    "ltxv-rail-m", "LTXV RAIL-M", "limited", "https://huggingface.co/Lightricks/LTX-Video",
     "Commercial use allowed, with use restrictions that pass on to anyone you share the model with.")
 LTX_2_COMMUNITY = licence(
     "ltx-2-community", "LTX-2 Community License", "limited", "https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2",

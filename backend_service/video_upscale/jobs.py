@@ -160,10 +160,10 @@ class UpscaleJob:
         return self.thread is not None and self.thread.is_alive()
 
     def to_dict(self) -> dict[str, Any]:
-        rate = None
-        if self.running_since and self._first_frames is not None and self.state == "running":
-            elapsed = time.time() - self.running_since
-            rate = round((self.frames_done - self._first_frames) / elapsed, 2) if elapsed > 1 else None
+        rate = None  # frames a second since the run began (resumed frames excluded), while running and once done
+        if self.running_since and self._first_frames is not None and self.state in ("running", "done"):
+            elapsed = max((self.finished_at or time.time()) - self.running_since, 1e-3)
+            rate = round(max(0, self.frames_done - self._first_frames) / elapsed, 2)
         return {
             "id": self.id, "state": self.state, "input": self.spec.input, "output": self.spec.output,
             "modelId": self.spec.model_id, "width": self.spec.width, "height": self.spec.height,

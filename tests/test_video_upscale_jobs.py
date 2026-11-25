@@ -103,6 +103,33 @@ class JobTests(_Clip):
         self.assertTrue((self.root / "up.mp4").is_file())
         self.assertIs(manager.get(job.id), job)
 
+    def test_frames_per_second_is_a_number_while_running_and_when_done(self):
+        gate = threading.Event()
+        base = pipeline.local_runner(DoublePixels())
+
+        def factory():
+            def run(req, on_frames, is_cancelled):
+                gate.wait(10)
+                return base(req, on_frames, is_cancelled)
+            return run
+
+        job = self.manager(factory).start(self.spec())
+        try:
+            for _ in range(200):
+                if job.state == "running" and job.to_dict()["framesPerSecond"] is not None:
+                    break
+                time.sleep(0.02)
+            running = job.to_dict()
+            self.assertEqual(running["state"], "running")
+            self.assertIsInstance(running["framesPerSecond"], float)
+        finally:
+            gate.set()
+        done = _wait(job).to_dict()
+        self.assertEqual(done["state"], "done", done["error"])
+        self.assertIsInstance(done["framesPerSecond"], float)
+        self.assertGreater(done["framesPerSecond"], 0)
+        self.assertEqual((done["framesDone"], done["framesTotal"]), (20, 20))
+
     def test_same_request_while_running_returns_the_running_job(self):
         gate = threading.Event()
         base = pipeline.local_runner(DoublePixels())

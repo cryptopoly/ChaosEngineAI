@@ -544,17 +544,19 @@
   },
   "voicePopover": {
     "button": "Stimme",
-    "call": "Sprachanrufe",
     "change": "Ändern",
-    "dictation": "Diktat",
     "fix": "Fehlendes installieren",
     "noRuntime": "Stimme im Chat braucht die Stimm-Laufzeit. Installiere sie einmal unter Stimme > Modelle.",
-    "openVoices": "Stimmen öffnen",
-    "read": "Chat-Vorlesen",
     "sameAsChat": "(wie im Chat)",
     "title": "Stimme im Chat: welche Stimme liest, anruft und diktiert",
-    "fallback": "Ersatz",
-    "noFallback": "Nicht festgelegt"
+    "noFallback": "Nicht festgelegt",
+    "changeFor": null,
+    "openStudio": null,
+    "voicesInChat": null,
+    "readAloud": null,
+    "calls": null,
+    "backup": null,
+    "dictate": null
   },
   "keepGoing": {
     "label": "Weitermachen",

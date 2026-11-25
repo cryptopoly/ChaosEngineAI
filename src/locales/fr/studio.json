@@ -679,7 +679,6 @@
       "installed": "Installé",
       "notInstalled": "Non installé",
       "cancel": "Annuler",
-      "done": "Pack vocal installé.",
       "log": "Journal d'installation",
       "checkedOk": "Installé, vérifié",
       "checkedOkAt": "Installé, vérifié ({time})",
@@ -688,11 +687,8 @@
     },
     "models": {
       "downloaded": "Téléchargé",
-      "use": "Utiliser pour la dictée",
       "download": "Télécharger",
       "title": "Voice",
-      "sttTitle": "Modèles de dictée",
-      "sttSubtitle": "Transformer la parole en texte : le micro de la discussion, les appels vocaux et Transcrire.",
       "ttsTitle": "Modèles de parole",
       "ttsNone": "Aucun modèle de parole n'est répertorié.",
       "cost": {
@@ -711,9 +707,9 @@
       },
       "delete": {
         "confirmSpeech": "Supprimer {name} ({gb} Go) de cet ordinateur ? Téléchargez-le à nouveau pour l'utiliser. Les voix clonées et les éléments de la Bibliothèque sont conservés.",
-        "confirmStt": "Supprimer {name} ({gb} Go) de cet ordinateur ? S'il s'agit du modèle de dictée, il sera de nouveau téléchargé à votre prochaine dictée.",
         "keptShared": "Conservé : {repo}, encore utilisé par {names}.",
-        "watermarkGoes": "Le composant de filigrane est supprimé aussi : aucun autre modèle téléchargé ne clone. Il reviendra avec le prochain modèle de clonage."
+        "watermarkGoes": "Le composant de filigrane est supprimé aussi : aucun autre modèle téléchargé ne clone. Il reviendra avec le prochain modèle de clonage.",
+        "confirmSttDefault": null
       },
       "deleteModel": "Supprimer le modèle ({gb} Go)",
       "deleting": "Suppression…",
@@ -775,7 +771,6 @@
       "kokoroLineAddon": "{count} voix rapides en {languages} langues. Rapide sur toute machine ; un module complémentaire du runtime vocal.",
       "kokoroNotInstalled": "Non installé",
       "kokoroAddHint": "Cochez-le dans Runtime vocal > Modules complémentaires.",
-      "gpuDefaultLine": "{name} devient le modèle de dictée une fois téléchargé, sauf si vous en choisissez un autre.",
       "macOnlySummary": "{count} modèles pour les Mac Apple Silicon",
       "macOnlyNote": "Ils ne fonctionnent pas sur ce PC, donc ils sont exclus de Parler et de Voix.",
       "macOnlyNoteVoices": "Ils ne fonctionnent pas sur ce PC, donc eux et leurs {voices} voix sont exclus de Parler et de Voix.",
@@ -804,12 +799,24 @@
       "sttDownloading": "{percent} % · {done} Go sur {total}",
       "sttDownloadingName": "Téléchargement de {name}",
       "defaultBadge": "Par défaut",
-      "defaultTitle": "La dictée utilise ce modèle sauf si vous en choisissez un autre.",
       "recommendedGpu": "Recommandé pour ce GPU",
       "recommendedGpuTitle": "Devient le modèle par défaut une fois téléchargé.",
       "wordTimings": "Horodatage des mots",
       "wordTimingsLine": "Horodate chaque mot (sous-titres, éditeur de transcription) pour Qwen3-ASR, Granite Speech et Nemotron Transcribe, qui n'ont pas d'horodatage des mots propre ; Nemotron ASR l'utilise aussi. Ajoute environ {vram} Go de mémoire GPU pendant l'utilisation.",
-      "firstUseLanguageLine": "Un modèle choisi mais pas encore téléchargé est récupéré à la première dictée. Whisper, Qwen3-ASR et Nemotron 3.5 ASR utilisent la Langue ci-dessus (ou la détectent si elle est réglée sur détection) ; Parakeet, Granite et Nemotron Transcribe la détectent toujours eux-mêmes."
+      "languageLine": null,
+      "defaultTitleSetup": null,
+      "useDefault": null,
+      "sttTitleSetup": null,
+      "sttSubtitleSetup": null,
+      "pick": {
+        "title": null,
+        "all": null,
+        "kokoro": null,
+        "download": null,
+        "gpuMemory": null
+      },
+      "firstUseLine": null,
+      "gpuDefaultLineSetup": null
     },
     "voices": {
       "addChinese": "Ajouter les voix en mandarin",
@@ -822,7 +829,6 @@
       "kindClone": "Clonée",
       "kindPreset": "Naturelle",
       "kindBuiltin": "Rapide",
-      "tab": "Voix",
       "filters": {
         "all": "Toutes",
         "quick": "Rapides",
@@ -835,59 +841,34 @@
       "noneCloned": "Aucune voix clonée pour l'instant. Utilisez Nouvelle voix clonée ci-dessus.",
       "stopSample": "Arrêter l'extrait de {name}",
       "useInSpeak": "Utiliser dans Parler",
-      "designNotInChat": "Décrire une voix demande une description à chaque fois, elle ne peut donc pas être la voix de la discussion.",
-      "cloneNotInCalls": "Les voix clonées ne sont pas utilisées dans les appels vocaux.",
       "badge": {
         "call": "Appels",
         "read": "Discussion",
         "speak": "Parler",
-        "fallback": "Secours"
+        "backup": null
       },
-      "change": "Modifier",
-      "changeFor": "Modifier la voix pour {use}",
       "chooseCallHint": "Voix capables de répondre aux appels. Les voix clonées ne sont pas utilisées dans les appels.",
-      "chooseFor": "Choisir la voix pour {use}",
       "chooseReadHint": "Voix capables de lire les réponses de la discussion à voix haute.",
       "clonedNote": "Votre voix, ou celle d'une personne qui l'a autorisé. Étiquetée comme générée par IA et filigranée.",
       "female": "féminine",
-      "firstWords": "Premiers mots après {s} s.",
       "groupNatural": "Naturelles",
-      "inUse": "utilisée",
-      "mainTitle": "Voix principales",
       "male": "masculine",
       "naturalNote": "Issues des modèles de parole que vous avez téléchargés. Le style, les balises ou l'expression dépendent du modèle.",
-      "notForChat": "Cette voix ne peut pas parler dans la discussion ici.",
-      "notReady": "Son modèle n'est pas encore téléchargé.",
-      "sameAsChat": "(identique à la discussion)",
-      "slotCall": "Les voix clonées ne sont pas utilisées dans les appels.",
-      "slotRead": "Réponses et bouton haut-parleur.",
-      "slotSpeak": "Commence sélectionnée dans l'écran Parler.",
-      "slowFor": "lente : {s} s",
-      "subtitleUses": "Chaque voix de cet ordinateur, et celle utilisée par chaque partie de l'application.",
-      "use": {
-        "call": "Appels vocaux",
-        "read": "Lecture à voix haute de la discussion",
-        "speak": "Parler",
-        "fallback": "Secours"
-      },
-      "useFor": "Utiliser pour…",
-      "useForLabel": "Utiliser {name} pour",
-      "slotFallback": "Lit lorsque la voix de la discussion ou d'appel ne le peut pas.",
-      "slotFallbackClone": "Lit lorsque la voix de la discussion ne le peut pas. Non utilisée dans les appels.",
-      "fallbackNone": "Aucune définie",
-      "noFallback": "Aucune voix de secours",
-      "chooseFallbackHint": "Voix installées qui lisent lorsque la voix choisie pour la discussion ou les appels ne le peut pas. Une voix clonée n'est utilisée que pour la lecture à voix haute.",
-      "fallbackNoteVoice": "Si une voix choisie ne peut pas parler (modèle non téléchargé, ou échec de chargement), la voix de secours {name} lit à la place et la discussion l'indique.",
-      "fallbackNoteNone": "Aucune voix de secours n'est définie : si une voix choisie ne peut pas parler, la lecture à voix haute et les appels affichent une erreur au lieu de changer de voix.",
       "quickNoteAddon": "Kokoro, un module complémentaire du runtime vocal. Rapide, moins de 1 Go, vitesse uniquement. Les mieux notées sont affichées en premier.",
       "kokoroMissing": "Les voix rapides Kokoro ne sont pas installées. Cochez-les dans Voix > Modèles > Runtime vocal > Modules complémentaires (environ 330 Mo).",
       "openModels": "Ouvrir les modèles de voix",
-      "macOnlyHidden": "{count} voix des modèles de parole pour Mac Apple Silicon ne sont pas listées : elles ne fonctionnent pas sur ce PC."
+      "macOnlyHidden": "{count} voix des modèles de parole pour Mac Apple Silicon ne sont pas listées : elles ne fonctionnent pas sur ce PC.",
+      "designMacOnly": null,
+      "backupNoteVoice": null,
+      "backupNoteNone": null,
+      "useNameInSpeak": null,
+      "inSpeak": null,
+      "subtitleCatalogue": null,
+      "closeClone": null
     },
     "settings": {
       "autoSend": "Envoyer le message dès que la dictée est terminée",
       "autoRead": "Lire à voix haute chaque réponse du chat une fois terminée",
-      "language": "Langue",
       "speed": "Vitesse de lecture",
       "idle": "Libérer la mémoire vocale après (minutes d'inactivité, 0 = jamais)",
       "unload": "Décharger",
@@ -896,17 +877,10 @@
     },
     "offline": "En attente du backend…",
     "copy": "Copier",
-    "save": "Enregistrer dans la galerie",
     "transcribe": {
       "title": "Transcrire",
-      "subtitle": "Enregistrez, ou déposez un fichier audio ou vidéo",
       "model": "Modèle",
       "language": "Langue",
-      "hint": "Cliquez sur le bouton pour enregistrer, ou déposez un fichier ici.",
-      "choose": "Choisir un fichier",
-      "took": "transcrit en {s} s",
-      "placeholder": "La transcription apparaît ici. Vous pouvez la modifier.",
-      "segments": "Horodatages ({n})",
       "tooBig": "{name} dépasse 500 Mo.",
       "recordingName": "Enregistrement",
       "speakers": "Identifier les locuteurs",
@@ -919,28 +893,26 @@
       "fileTypes": "WAV, MP3, M4A, FLAC, OGG, MP4, MOV et autres",
       "subtitleLibrary": "Enregistrez, ou déposez des fichiers audio et vidéo. Les transcriptions sont conservées dans la Bibliothèque.",
       "translateWhich": "Traduire en anglais (Whisper Small ou Base)",
-      "needsWordTimings": "{name} ne donne que des horodatages de segments tant que le téléchargement Horodatage des mots ({gb} Go) n'est pas installé."
+      "needsWordTimings": "{name} ne donne que des horodatages de segments tant que le téléchargement Horodatage des mots ({gb} Go) n'est pas installé.",
+      "modelOption": null,
+      "languageFixed": null,
+      "rememberTitle": null,
+      "remember": null,
+      "downloadsFirst": null,
+      "languageFindsItself": null,
+      "languageUsesChoice": null
     },
     "stopRecording": "Arrêter l'enregistrement",
     "record": "Enregistrer",
     "transcribing": "Transcription",
     "cancel": "Annuler",
-    "sendToChat": "Envoyer dans le chat",
-    "copied": "Copié",
-    "saved": "Enregistré",
     "speak": {
       "title": "Parler",
-      "subtitle": "Transformez du texte en parole",
       "placeholder": "Saisissez ou collez du texte. Le Markdown et le code sont nettoyés avant la lecture.",
       "voice": "Voix",
       "speed": "Vitesse",
-      "generating": "Génération…",
       "generate": "Générer l'audio",
-      "readNow": "Lire à voix haute maintenant",
-      "download": "Télécharger le WAV",
       "subtitleLong": "Transformez du texte en parole. Une ligne vide commence un nouveau paragraphe ; [pause] ajoute une pause.",
-      "preview": "Écouter cette voix",
-      "listen": "Écouter",
       "progress": "Partie {done} sur {total}",
       "generateParts": "Générer l'audio ({n} parties)",
       "encoding": "Encodage…",
@@ -956,11 +928,8 @@
       "pitch": "Hauteur",
       "advanced": "Avancé",
       "seed": "Graine (laisser vide pour une prise différente à chaque fois)",
-      "modelKokoro": "Fonctionne avec Kokoro, qui fait partie du pack vocal.",
-      "modelReady": "Fonctionne avec {name}.",
       "modelDownloading": "Téléchargement de {name}…",
       "modelNeeds": "Nécessite {name} ({gb} Go), pas encore téléchargé.",
-      "downloadForStyle": "Télécharger {name} pour le style",
       "cloneTooLong": "C'est trop long pour un seul clip de voix clonée. Raccourcissez à {max} caractères.",
       "describeFirst": "Décrivez la voix souhaitée avant de générer.",
       "appleOnly": "Mac Apple Silicon uniquement pour l'instant.",
@@ -971,11 +940,7 @@
       "sampleLoading": "Création d'un extrait de {name}. Cliquez pour arrêter.",
       "cloneModel": "Modèle de clonage",
       "cloneKind": "Votre voix clonée",
-      "yourVoices": "Vos voix",
-      "presets": "Voix naturelles",
       "designCard": "Créer une voix à partir d'une description",
-      "designDetail": "Décrivez l'âge, le ton et le rythme dans la zone de style.",
-      "quickVoices": "Voix rapides",
       "chips": {
         "neutral": "Neutre",
         "angry": "En colère",
@@ -990,8 +955,6 @@
       "manageInModels": "Gérer dans Modèles",
       "stylePlaceholderFree": "Ton, rythme, accent, dans vos propres mots. Par exemple : une voix douce et fatiguée pour l'heure du coucher, lente, avec un léger accent irlandais.",
       "describeHint": "Indiquez l'âge, le genre, la hauteur, le ton, l'accent et le rythme. La voix change à chaque exécution ; définissez une graine dans Avancé pour la conserver.",
-      "ffmpegPitch": "Modifier la hauteur nécessite ffmpeg. Installez-le depuis les Paramètres, ou remettez la hauteur à 0.",
-      "ffmpegSpeedPitch": "La vitesse et la hauteur de cette voix nécessitent ffmpeg. Installez-le depuis les Paramètres, ou réglez la vitesse sur 1.0 et la hauteur sur 0.",
       "autosaveFailed": "Le clip n'a pas pu être enregistré dans la Bibliothèque ({error}). Utilisez Enregistrer dans la Bibliothèque pour réessayer.",
       "tagChips": "Balises sonores",
       "styleTagChips": "Balises de style (non documentées)",
@@ -1062,14 +1025,33 @@
         "music": "En attente de la fin de la tâche musicale. La parole démarre juste après.",
         "other": "En attente de la fin d'une autre tâche. La parole démarre juste après."
       },
-      "needsSpeechGpu": "Nécessite le module GPU de parole. Cochez-le sous Voice > Modèles > Runtime vocal > Modules."
+      "needsSpeechGpu": "Nécessite le module GPU de parole. Cochez-le sous Voice > Modèles > Runtime vocal > Modules.",
+      "styleNeedsNatural": null,
+      "getNatural": null,
+      "downloadForStyleSized": null,
+      "chooseNatural": null,
+      "errorDetails": null,
+      "noFile": null,
+      "showFile": null,
+      "speedNeedsFfmpeg": null,
+      "pitchNeedsFfmpeg": null,
+      "recent": null,
+      "can": {
+        "speed": null,
+        "style": null,
+        "tags": null,
+        "anyLanguage": null,
+        "nLanguages": null,
+        "line": null,
+        "none": null,
+        "languages": null
+      }
     },
     "stop": "Arrêter",
     "studio": {
       "title": "Voice Studio",
       "openModels": "Ouvrir Modèles vocaux",
-      "library": "Bibliothèque",
-      "needsPackGb": "Voice fonctionne sur cet ordinateur et nécessite le runtime vocal (environ {gb} Go avec les voix rapides Kokoro). Installez-le une fois depuis Voice > Modèles."
+      "cloneTask": null
     },
     "savedToLibrary": "Enregistré dans la bibliothèque",
     "saveToLibrary": "Enregistrer dans la bibliothèque",
@@ -1158,18 +1140,14 @@
     },
     "clone": {
       "statement": "Clonez uniquement votre propre voix ou celle d'une personne qui vous a donné son autorisation. Pas de personnalités publiques, d'enfants ni de personnes décédées. Chaque clip produit avec une voix clonée est étiqueté comme généré par IA dans le fichier et porte un filigrane inaudible ; ni l'un ni l'autre ne peut être désactivé.",
-      "title": "Cloner une voix",
-      "loading": "Chargement…",
       "macOnly": "Le clonage de voix ne fonctionne pour l'instant que sur les Mac Apple Silicon.",
       "deleteConfirm": "Supprimer la voix « {name} » ? Son échantillon et son registre d'autorisation sont supprimés aussi. Action irréversible.",
-      "model": "Modèle de clonage",
       "downloading": "Téléchargement…",
       "notHere": "Les voix clonées ne peuvent être utilisées que depuis la fenêtre ChaosEngineAI de cet ordinateur.",
       "consentOwn": "voix propre, confirmée le {date}",
       "consentPermission": "{name} a donné son autorisation, confirmée le {date}",
       "delete": "Supprimer",
       "new": "Nouvelle voix clonée",
-      "placeholder": "Texte à dire avec la voix clonée.",
       "tagged": "Signalé comme généré par IA",
       "whose": "À qui est cette voix ?",
       "basisOwn": "Ma propre voix",
@@ -1178,17 +1156,13 @@
       "voiceName": "Nom de cette voix (facultatif)",
       "confirm": "C'est ma propre voix, ou la personne m'a autorisé à la cloner.",
       "recordAgain": "Enregistrer à nouveau",
-      "sampleTitle": "Échantillon de voix",
       "sampleHelp": "De 3 à 30 secondes de la même personne qui parle clairement. Importez un fichier WAV, MP3, M4A, FLAC ou OGG, ou enregistrez avec le micro. Entre 10 et 20 secondes donne les meilleurs résultats.",
       "sampleText": "Mots prononcés dans l'échantillon (facultatif ; rempli automatiquement)",
       "tooShort": "L'enregistrement dure moins de 3 secondes. Enregistrez un peu plus.",
       "tooLong": "L'enregistrement dure plus de 30 secondes. Enregistrez un échantillon plus court.",
       "save": "Enregistrer la voix",
       "installingWatermark": "Installation du composant de filigrane…",
-      "tab": "Cloner",
-      "voices": "Voix clonées",
       "deleteVoice": "Supprimer la voix {name}",
-      "textLabel": "Texte à dire avec la voix clonée",
       "sampleFile": "Fichier d'échantillon de voix",
       "recordingPlayback": "Votre enregistrement",
       "saving": "Enregistrement de la voix…",
@@ -1198,7 +1172,19 @@
       "modelNone": "Aucun modèle de clonage n'est encore téléchargé.",
       "modelDownload": "Télécharger {name} ({gb} Go)",
       "modelDefault": "Par défaut",
-      "modelSize": "Téléchargement de {gb} Go"
+      "modelSize": "Téléchargement de {gb} Go",
+      "modelNoneHere": null,
+      "saved": null,
+      "speakWithIt": null,
+      "another": null,
+      "screenTitle": null,
+      "screenSubtitle": null,
+      "openSetup": null,
+      "stepTitle": null,
+      "stepPermission": null,
+      "stepSample": null,
+      "stepName": null,
+      "stepModel": null
     },
     "cost": {
       "kokoroChip": "rapide, moins de 1 Go",
@@ -1227,9 +1213,6 @@
       "fewer": "Afficher la présélection",
       "allVoices": "Toutes les voix {language} ({count})",
       "cloned": "Clonée",
-      "newClone": "Nouvelle voix clonée",
-      "newCloneDetail": "À partir d'un enregistrement de 10 à 20 s. Ouvre le formulaire de consentement.",
-      "newCloneOpen": "Ouvrir le formulaire",
       "designed": "Créée",
       "designedNote": "Une voix créée à partir d'une description.",
       "more": "Plus",
@@ -1239,7 +1222,10 @@
       "openModels": "Ouvrir les modèles",
       "drawerHint": "Cliquez sur une voix pour l'utiliser dans Parler. Le bouton d'échantillon joue une courte phrase.",
       "drawerTitle": "Choisir une voix",
-      "quickNoteAddon": "Kokoro, un module complémentaire du runtime vocal. Rapide, moins de 1 Go, vitesse uniquement. {count} voix en {languages} langues."
+      "quickNoteAddon": "Kokoro, un module complémentaire du runtime vocal. Rapide, moins de 1 Go, vitesse uniquement. {count} voix en {languages} langues.",
+      "cloneVoice": null,
+      "cloneVoiceDetail": null,
+      "cloneVoiceOpen": null
     },
     "chatCalls": {
       "cost": "premier son {warm} s ({cold} s à froid), {memory} Go",
@@ -1249,35 +1235,133 @@
       "browse": "Parcourir les voix"
     },
     "runtime": {
-      "addon": {
-        "chinese": "Voix rapides en mandarin (8 voix, environ 60 Mo)",
-        "speech-gpu": "Module GPU de parole : voix naturelles Qwen3-TTS, Chatterbox, VoxCPM2 et Orpheus, création et clonage de voix sur le GPU NVIDIA (environ {size})",
-        "stt-gpu": "Module GPU de reconnaissance vocale : Qwen3-ASR, Parakeet, Nemotron et Granite sur le GPU NVIDIA (environ {size})",
-        "kokoro": "Voix rapides Kokoro (environ 330 Mo)"
-      },
-      "addons": "Modules complémentaires",
-      "addonsHint": "Installés lorsqu'ils sont cochés ; décochez pour les retirer.",
-      "addonsHintInstall": "Les modules cochés s'installent avec le runtime ; vous pourrez les modifier plus tard.",
-      "alsoModels": "Supprimer aussi les voix rapides Kokoro, la détection des tours de parole et les étiquettes des locuteurs. Les modèles de dictée et de parole téléchargés restent toujours.",
       "idleAfter": "minutes d'inactivité (0 = jamais)",
       "idleBefore": "Libérer la mémoire après",
       "inMemory": "En mémoire maintenant :",
-      "install": "Installer le runtime vocal",
       "modelWithGb": "{name}, {gb} Go",
       "nothingLoaded": "rien",
-      "parts": "{total} Go sur le disque : paquets de parole {packages} Go, voix rapides Kokoro {kokoro} Go, détection des tours de parole et étiquettes des locuteurs {small} Go. Rien n'est envoyé en ligne.",
       "remove": "Supprimer le runtime vocal",
-      "removeConfirm": "Supprimer le runtime vocal{size} ? La dictée, la lecture à voix haute, les appels vocaux et Studio vocal cessent de fonctionner jusqu'à la réinstallation. Les modèles de dictée et de parole téléchargés, les voix clonées et la Bibliothèque sont conservés.",
       "removing": "Suppression…",
-      "repair": "Réparer le runtime vocal",
-      "subtitle": "{lane}. Tout ce dont la voix a besoin et qui n'est pas un modèle que vous choisissez.",
-      "title": "Runtime vocal",
       "troubleshootBody": "Réinstaller relance toute l'installation. Supprimer libère l'espace disque ; la dictée, la lecture à voix haute, les appels et Studio vocal s'arrêtent jusqu'à la réinstallation.",
-      "update": "Mettre à jour le runtime vocal",
       "updateFeatures": "Mettez à jour le runtime vocal pour les appels vocaux dans la discussion et les étiquettes des locuteurs sur les transcriptions (ajoute environ 40 Mo de modèles ; une à deux minutes).",
       "workerOnly": "le worker vocal, pas encore de modèle",
-      "partsNoKokoro": "{total} Go sur le disque : paquets de parole {packages} Go, détection des tours de parole et étiquettes des locuteurs {small} Go ; les voix rapides Kokoro ne sont pas installées. Rien n'est envoyé en ligne.",
-      "aboutTickedGb": "Environ {gb} Go avec les modules cochés ci-dessous : les paquets de parole, la détection de tour de parole et les étiquettes de locuteur, plus chaque module coché. Les modèles de dictée et de parole sont des téléchargements distincts sur cette page. Rien n'est envoyé en ligne."
+      "removeConfirmSetup": null
+    },
+    "chatVoices": {
+      "chooseRead": null,
+      "chooseCall": null,
+      "chooseBackup": null,
+      "chooseBackupHint": null,
+      "noBackup": null
+    },
+    "errors": {
+      "details": null,
+      "detailsToggle": null,
+      "runtime_missing": null,
+      "runtime_outdated": null,
+      "addon_missing": null,
+      "model_missing": null,
+      "watermark_missing": null,
+      "gpu_memory": null,
+      "gpu_unsupported": null,
+      "unsupported_here": null,
+      "ffmpeg_missing": null,
+      "reference_too_short": null,
+      "reference_too_long": null,
+      "reference_unreadable": null,
+      "audio_unreadable": null,
+      "language_unsupported": null,
+      "permission_required": null,
+      "cloning_not_allowed": null,
+      "voice_not_found": null,
+      "no_backup_voice": null,
+      "download_blocked": null,
+      "download_failed": null,
+      "worker_busy": null,
+      "worker_timeout": null,
+      "worker_stopped": null,
+      "unknown": null
+    },
+    "setup": {
+      "chooseParts": null,
+      "optionalParts": null,
+      "part": {
+        "model": null,
+        "modelNoSize": null,
+        "kokoro": null,
+        "chinese": null,
+        "speech-gpu": null,
+        "stt-gpu": null
+      },
+      "partsHint": null,
+      "partsHintInstall": null,
+      "details": null,
+      "task": {
+        "quick": null,
+        "natural": null,
+        "clone": null,
+        "stt": null,
+        "calls": null
+      },
+      "missing": {
+        "downloadingPct": null,
+        "downloading": null,
+        "runtime": null,
+        "update": null,
+        "kokoro": null,
+        "speechGpu": null,
+        "sttGpu": null,
+        "naturalModel": null,
+        "naturalModelUnknown": null,
+        "cloneModel": null,
+        "cloneModelUnknown": null
+      },
+      "unavailable": {
+        "needsGpu": null,
+        "needsGpuMac": null,
+        "memory": null,
+        "compute": null,
+        "noModel": null
+      },
+      "status": {
+        "readyInChat": null,
+        "ready": null,
+        "unavailable": null,
+        "missingInChat": null,
+        "missing": null
+      },
+      "presetBasic": null,
+      "presetFullPartial": null,
+      "presetFull": null,
+      "openChat": null,
+      "chooseCloneModel": null,
+      "presets": null,
+      "installChosen": null,
+      "installMissingOver": null,
+      "installMissingGb": null,
+      "installMissing": null,
+      "repair": null,
+      "parts": null,
+      "partsNoKokoro": null,
+      "beforeInstall": null,
+      "title": null,
+      "subtitle": null,
+      "alsoModels": null,
+      "studioSubtitle": null,
+      "allReady": null
+    },
+    "errorActions": {
+      "install-voice-runtime": null,
+      "install-addon": null,
+      "download-model": null,
+      "smaller-model": null,
+      "pick-another-model": null,
+      "install-ffmpeg": null,
+      "pick-another-language": null,
+      "change-sample": null,
+      "confirm-permission": null,
+      "add-hf-token": null,
+      "retry": null
     }
   },
   "residentChatModelNote": "Un modèle de chat chargé occupe environ {gb} Go de cette mémoire ; le décharger la libère.",
@@ -1650,7 +1734,6 @@
     "conflictNotice": "Modifié ailleurs ; affichage de la dernière version",
     "defaults": {
       "automatic": "Automatique (un modèle installé)",
-      "automaticShort": "auto",
       "automaticName": "Automatique",
       "noVoice": "aucune",
       "modelTimed": "{name} · environ {time} par image fixe",
@@ -1662,7 +1745,6 @@
       "useFastHint": "{name}, environ {time} par image fixe"
     },
     "defaultsSummary": "{aspect} · {resolution} · {fps} fps · {imageModel} · {videoModel} · voix {voice}",
-    "defaultsTitle": "Valeurs par défaut du projet",
     "editor": {
       "discard": "Abandonner les modifications",
       "discardBody": "Ce plan contient des modifications non enregistrées. Fermer maintenant les supprime.",
@@ -1677,7 +1759,6 @@
       "length": "Durée (s)",
       "motionPrompt": "Prompt de mouvement",
       "nativeSound": "Niveau sonore du plan (dB)",
-      "noReferences": "Aucune référence dans ce projet pour l'instant. Ajoutez-en dans le panneau Références.",
       "references": "Références",
       "relinkHint": "Associez la prise manquante à un nouveau fichier.",
       "revert": "Rétablir",
@@ -1727,7 +1808,6 @@
       "vocalHintShot": "Un fichier WAV ou FLAC que la bouche suit : le clip part de l'image fixe de ce plan et garde ce son. Nécessite LTX-2.3 comme modèle vidéo (le modèle NVIDIA 4 bits demande une carte de 24 Go).",
       "vocalOptional": "Un plan n'a pas à chanter : retirez sa voix et il est lu comme un clip ordinaire."
     },
-    "empty": "Pas encore de plans. Ajoutez un plan, puis donnez-lui un prompt ou importez des images.",
     "estimate": {
       "need": "{n, plural, one {# plan nécessite une nouvelle prise} other {# plans nécessitent une nouvelle prise}}",
       "none": "Chaque plan déverrouillé a une prise."
@@ -1735,28 +1815,15 @@
     "loading": "Chargement du projet…",
     "makeAll": "Créer tous les plans déverrouillés",
     "makeAllTitle": "Ajoute une nouvelle prise à chaque plan déverrouillé. Rien n'est écrasé.",
-    "makeMissing": "Créer les plans manquants",
     "makeOne": "Créer ce plan",
-    "mixer": "Mixeur",
-    "noProject": "Aucun projet n'est ouvert. Ouvrez-en un depuis Projets, ou créez-en un nouveau.",
-    "noProjectTitle": "Tableau",
-    "notFound": "Ce projet n'existe plus. Choisissez-en un autre.",
-    "openProjects": "Ouvrir les projets",
-    "projects": "Projets",
     "redo": "Rétablir",
     "references": {
       "addCharacter": "Ajouter un personnage",
       "addPlace": "Ajouter un lieu",
       "characters": "Personnages",
       "description": "À quoi cela ressemble",
-      "image": "Image de référence",
       "name": "Nom",
-      "none": "Aucun pour l'instant.",
-      "places": "Lieux",
-      "remove": "Retirer la référence",
-      "setImage": "Définir l'image",
-      "summary": "{characters, plural, one {# personnage} other {# personnages}} · {places, plural, one {# lieu} other {# lieux}}",
-      "title": "Références"
+      "places": "Lieux"
     },
     "reload": "Recharger",
     "removeBody": "{name} quitte le film. Ses prises restent dans le dossier du projet, et Annuler le ramène.",
@@ -1779,9 +1846,6 @@
       "moreActions": "Plus d'actions pour le plan {n}",
       "moved": "Le plan {n} a été déplacé en position {position}",
       "play": "Lire le clip",
-      "redoLabel": "Refaire",
-      "redoMarked": "Marqué pour être refait",
-      "redoTitle": "Marquer pour être refait : la prochaine création de plans ajoutera une nouvelle prise. Rien n'est écrasé.",
       "relink": "Relier",
       "rerun": "Relancer",
       "seed": "graine {seed}",
@@ -1823,14 +1887,12 @@
       "chooseForFinal": "Choisir pour le final"
     },
     "shots": "Plans",
-    "subtitle": "{shots, plural, one {# plan} other {# plans}} · {seconds} s · {stale} périmé(s)",
     "takes": {
       "active": "Prise active",
       "label": "Prises",
       "pick": "Utiliser cette prise",
       "take": "Prise {n}"
     },
-    "title": "{project} · Tableau",
     "undo": "Annuler",
     "emptyNoCast": "Aucun plan pour l'instant. Ajoutez un plan et décrivez-le, ou importez des images. Un plan n'a pas besoin de personnage : une rue ou une foule suffit seule.",
     "subtitleShots": "{shots, plural, one {# plan} other {# plans}} · {seconds} s · {stale} obsolète(s)",
@@ -1847,7 +1909,6 @@
       "finalChosenTitle": "Recrée chaque plan choisi avec {model} en {width} x {height}, puis son clip à partir de la nouvelle image fixe.",
       "chooseHint": "Utilisez « Choisir pour le final » sur un plan pour l'inclure dans la passe finale."
     },
-    "exportDrafts": "{n, plural, one {# plan utilise une prise brouillon.} other {# plans utilisent une prise brouillon.}} Gardez-les et lancez la passe finale pour la pleine qualité, ou exportez les brouillons tels quels.",
     "preview": {
       "emptyHint": "Ajoutez un plan pour lire le film.",
       "buttonHint": "Lit les prises actives dans l'ordre avec le son du mixeur, sans rien générer.",
@@ -2027,7 +2088,6 @@
         "vision": "· lit vos images"
       },
       "motion": "Mouvement",
-      "overviewButton": "Planifier à partir d'une idée",
       "pictures": {
         "add": "Ajouter une image",
         "edit": "Modifier le style dans Distribution",
@@ -2290,7 +2350,30 @@
           "state": "Synchro labiale"
         },
         "makeAll": "{n, plural, one {Créer # clip avec synchro labiale} other {Créer # clips avec synchro labiale}}",
-        "batchRunning": "Attend les plans en cours de création."
+        "batchRunning": "Attend les plans en cours de création.",
+        "fix": {
+          "lengthen": null,
+          "shorten": null,
+          "unlock": null,
+          "realSpeed": null,
+          "assign": null,
+          "make": null
+        },
+        "state": {
+          "synced": null,
+          "waiting": null,
+          "skipped": null,
+          "unassigned": null
+        },
+        "reason": {
+          "otherSpeed": null,
+          "locked": null,
+          "outsideSong": null,
+          "tooShort": null,
+          "tooLong": null,
+          "noSinging": null,
+          "notAssigned": null
+        }
       },
       "sing": {
         "question": "Quelqu'un chante-t-il à l'écran ?",
@@ -2303,9 +2386,11 @@
         "cut": "Découper la chanson en plans",
         "keepShots": "Garder mes plans et donner à chacun sa voix",
         "choose": "Choisissez d'abord une réponse.",
-        "review": "Vous vérifiez d'abord le découpage ; rien n'est encore créé."
+        "review": "Vous vérifiez d'abord le découpage ; rien n'est encore créé.",
+        "cutAgain": null
       },
-      "cutSongIntoShots": "Découper la chanson en plans"
+      "cutSongIntoShots": "Découper la chanson en plans",
+      "lipSyncRange": null
     },
     "unsaved": {
       "title": "Votre texte n'a pas été enregistré",
@@ -2373,12 +2458,10 @@
   "storyProjects": {
     "card": {
       "edited": "modifié {when}",
-      "meta": "{shots, plural, one {# plan} other {# plans}} · {seconds} s · {aspect}",
       "noShots": "pas encore de plans",
       "noTakes": "pas encore d'images",
       "noPreview": "pas d'aperçu",
       "stale": "{n} périmé(s)",
-      "zeroShots": "0 plan",
       "metaFormat": "{shots, plural, one {# plan} other {# plans}} · {seconds} s · {format}",
       "zeroShotsFormat": "0 plan · {format}"
     },
@@ -2411,11 +2494,8 @@
       "rename": "Renommer"
     },
     "missing": "Le dossier de ce projet a été déplacé ou supprimé.",
-    "moreActions": "Plus d'actions",
     "new": "Nouveau projet",
-    "open": "Ouvrir",
     "subtitle": "{count, plural, one {# projet} other {# projets}}",
-    "title": "Projets Storyboard",
     "format": {
       "fit": {
         "safe": "Ça passe",
@@ -2458,7 +2538,6 @@
     "block": {
       "ariaLabel": "{lane}, {name}, de {start} à {end} secondes"
     },
-    "board": "Tableau",
     "captions": {
       "add": "Ajouter à la tête de lecture",
       "burnIn": "Incruster",
@@ -2481,7 +2560,6 @@
       "relink": "Relier"
     },
     "crossfade": "Fondu enchaîné {seconds} s",
-    "empty": "Rien à mixer pour l'instant. Créez d'abord des plans sur le tableau.",
     "export": {
       "aspect": "Format d'image",
       "button": "Exporter en MP4",
@@ -2574,9 +2652,6 @@
     },
     "leftOut": "{n, plural, one {# plan n'a pas encore de clip et est exclu de l'aperçu et de l'exportation.} other {# plans n'ont pas encore de clip et sont exclus de l'aperçu et de l'exportation.}}",
     "noLibraryYet": "La bibliothèque musique n'est pas encore disponible. Choisissez un fichier ou saisissez son chemin.",
-    "noProjectTitle": "Mixeur",
-    "openBoard": "Ouvrir le tableau",
-    "openOnBoard": "Ouvrir dans le tableau",
     "preview": {
       "cancel": "Annuler",
       "failed": "L'aperçu n'a pas été rendu.",
@@ -2589,7 +2664,6 @@
     "ruler": "Règle de la timeline. Cliquez pour déplacer la tête de lecture.",
     "subtitle": "{seconds} s · {aspect} · aperçu {width} × {height}",
     "timeline": "Timeline",
-    "title": "{project} · Mixeur",
     "transitionsNote": "Les transitions raccourcissent le film de leur durée ; la règle indique le total réel.",
     "transport": {
       "keys": "Espace ou K : lecture / pause. J et L : 5 s en arrière / en avant. Gauche et Droite : 1 s (Maj 10 s, Alt une image). Début / Fin. + et - : zoom.",
@@ -2833,7 +2907,6 @@
     "addPicture": "Ajouter une image",
     "addPictureFor": "Ajouter une image de {name}",
     "dropHint": "Déposez des images n'importe où dans cet onglet pour ajouter un personnage nommé d'après chaque fichier.",
-    "none": "Aucun pour l'instant. Un personnage ou un lieu est un nom, quelques mots et une image. Les plans qui l'utilisent gardent le même rendu.",
     "pickerTitle": "Ajouter une image de {name}",
     "pictureAlt": "{name}, image {n}",
     "remove": "Retirer {name}",
@@ -2852,13 +2925,7 @@
     "bundleBody": "Un fichier .chaosfilm avec les plans, les prises, les images de distribution et le son, pour sauvegarder le projet ou l'ouvrir sur un autre ordinateur.",
     "bundleTitle": "Paquet du projet",
     "openStoryboard": "Ouvrir dans le Storyboard",
-    "stale": "{n, plural, one {# plan est obsolète.} other {# plans sont obsolètes.}} L'export utilise les prises actuelles.",
-    "before": "Avant d'exporter",
     "line": {
-      "captions": "{n, plural, one {# sous-titre} other {# sous-titres}}, à régler ci-dessous dans Sous-titres.",
-      "clipsAll": "{n, plural, one {Le plan a un clip.} other {Les # plans ont un clip.}}",
-      "clipsNone": "Aucun plan n'a encore de clip, il n'y a donc rien à exporter.",
-      "clipsSome": "{n} plans sur {total} ont un clip ; les autres sont omis.",
       "cloned": "Une voix clonée est utilisée, le tag IA est donc toujours écrit.",
       "noCaptions": "Pas de sous-titres.",
       "preview": "L'aperçu n'est plus à jour (cela n'empêche pas l'export).",
@@ -2868,7 +2935,6 @@
       "captionsBurn": "{n, plural, one {# sous-titre} other {# sous-titres}}, incrustés dans l'image.",
       "captionsSrt": "{n, plural, one {# sous-titre} other {# sous-titres}}, écrits dans un fichier SRT.",
       "captionsUnused": "{n, plural, one {# sous-titre} other {# sous-titres}} non exporté : cochez Fichier SRT ou Incruster ci-dessous.",
-      "format": "Le film est en {format}.",
       "loudness": "Le son est nivelé à {lufs} LUFS.",
       "loudnessOff": "Le son reste tel que mixé (pas de cible de volume).",
       "upscale": "Il est agrandi en {size} à la fin : plus de pixels, pas plus de détails."

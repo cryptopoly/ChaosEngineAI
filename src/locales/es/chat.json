@@ -544,17 +544,19 @@
   },
   "voicePopover": {
     "button": "Voz",
-    "call": "Llamadas de voz",
     "change": "Cambiar",
-    "dictation": "Dictado",
     "fix": "Instalar lo que falta",
     "noRuntime": "La voz en Chat necesita el entorno de voz. Instálalo una vez desde Voz > Modelos.",
-    "openVoices": "Abrir Voces",
-    "read": "Leer el chat en voz alta",
     "sameAsChat": "(igual que en Chat)",
     "title": "Voz en Chat: qué voz lee, llama y dicta",
-    "fallback": "Alternativa",
-    "noFallback": "Ninguna definida"
+    "noFallback": "Ninguna definida",
+    "changeFor": null,
+    "openStudio": null,
+    "voicesInChat": null,
+    "readAloud": null,
+    "calls": null,
+    "backup": null,
+    "dictate": null
   },
   "keepGoing": {
     "label": "Seguir avanzando",

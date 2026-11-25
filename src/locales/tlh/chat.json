@@ -544,17 +544,19 @@
   },
   "voicePopover": {
     "button": null,
-    "call": null,
     "change": null,
-    "dictation": null,
     "fix": null,
     "noRuntime": null,
-    "openVoices": null,
-    "read": null,
     "sameAsChat": null,
     "title": null,
-    "fallback": null,
-    "noFallback": null
+    "noFallback": null,
+    "changeFor": null,
+    "openStudio": null,
+    "voicesInChat": null,
+    "readAloud": null,
+    "calls": null,
+    "backup": null,
+    "dictate": null
   },
   "keepGoing": {
     "label": null,

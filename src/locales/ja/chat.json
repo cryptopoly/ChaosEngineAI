@@ -544,17 +544,19 @@
   },
   "voicePopover": {
     "button": "音声",
-    "call": "音声通話",
     "change": "変更",
-    "dictation": "音声入力",
     "fix": "不足しているものをインストール",
     "noRuntime": "チャットの音声機能には音声ランタイムが必要です。音声 > モデルから一度インストールしてください。",
-    "openVoices": "音声を開く",
-    "read": "チャットの読み上げ",
     "sameAsChat": "（チャットと同じ）",
     "title": "チャットの音声: 読み上げ、通話、音声入力に使う声",
-    "fallback": "フォールバック",
-    "noFallback": "未設定"
+    "noFallback": "未設定",
+    "changeFor": null,
+    "openStudio": null,
+    "voicesInChat": null,
+    "readAloud": null,
+    "calls": null,
+    "backup": null,
+    "dictate": null
   },
   "keepGoing": {
     "label": "自動継続",

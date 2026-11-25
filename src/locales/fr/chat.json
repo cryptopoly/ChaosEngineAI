@@ -544,17 +544,19 @@
   },
   "voicePopover": {
     "button": "Voix",
-    "call": "Appels vocaux",
     "change": "Modifier",
-    "dictation": "Dictée",
     "fix": "Installer ce qui manque",
     "noRuntime": "La voix dans la discussion nécessite le runtime vocal. Installez-le une fois depuis Voix > Modèles.",
-    "openVoices": "Ouvrir Voix",
-    "read": "Lecture à voix haute de la discussion",
     "sameAsChat": "(identique à la discussion)",
     "title": "Voix dans la discussion : quelle voix lit, appelle et dicte",
-    "fallback": "Secours",
-    "noFallback": "Aucune définie"
+    "noFallback": "Aucune définie",
+    "changeFor": null,
+    "openStudio": null,
+    "voicesInChat": null,
+    "readAloud": null,
+    "calls": null,
+    "backup": null,
+    "dictate": null
   },
   "keepGoing": {
     "label": "Continuer",

@@ -544,17 +544,19 @@
   },
   "voicePopover": {
     "button": "Голос",
-    "call": "Голосовые звонки",
     "change": "Изменить",
-    "dictation": "Диктовка",
     "fix": "Установить недостающее",
     "noRuntime": "Для голоса в чате нужна среда выполнения голоса. Установите её один раз в разделе «Голос» > «Модели».",
-    "openVoices": "Открыть «Голоса»",
-    "read": "Озвучивание ответов чата",
     "sameAsChat": "(как в чате)",
     "title": "Голос в чате: какой голос читает, звонит и диктует",
-    "fallback": "Запасной",
-    "noFallback": "Не задан"
+    "noFallback": "Не задан",
+    "changeFor": null,
+    "openStudio": null,
+    "voicesInChat": null,
+    "readAloud": null,
+    "calls": null,
+    "backup": null,
+    "dictate": null
   },
   "keepGoing": {
     "label": "Продолжать",

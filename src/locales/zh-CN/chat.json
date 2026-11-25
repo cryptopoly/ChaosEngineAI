@@ -544,17 +544,19 @@
   },
   "voicePopover": {
     "button": "语音",
-    "call": "语音通话",
     "change": "更改",
-    "dictation": "听写",
     "fix": "安装缺失的组件",
     "noRuntime": "对话中的语音需要语音运行时。请在“语音 > 模型”中安装一次。",
-    "openVoices": "打开语音",
-    "read": "对话朗读",
     "sameAsChat": "（与对话相同）",
     "title": "对话中的语音：谁负责朗读、通话和听写",
-    "fallback": "备用",
-    "noFallback": "未设置"
+    "noFallback": "未设置",
+    "changeFor": null,
+    "openStudio": null,
+    "voicesInChat": null,
+    "readAloud": null,
+    "calls": null,
+    "backup": null,
+    "dictate": null
   },
   "keepGoing": {
     "label": "继续推进",

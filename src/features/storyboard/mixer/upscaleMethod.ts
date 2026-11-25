@@ -10,9 +10,7 @@ export const UPSCALE_METHODS: UpscaleMethod[] = ["fast", "lanczos"];
 
 /** The method the project uses; a project saved before the field existed (or an old payload) stretches the standard way. */
 export function upscaleMethodOf(project: { export: StoryboardExportSettings }): UpscaleMethod {
-  // The TypeScript export type does not carry `upscaleMethod` yet (backend `models.py` has it): read it as optional.
-  const stored = (project.export as StoryboardExportSettings & { upscaleMethod?: UpscaleMethod }).upscaleMethod;
-  return stored === "fast" ? "fast" : "lanczos";
+  return project.export.upscaleMethod === "fast" ? "fast" : "lanczos";
 }
 
 /** The `edit_project` arguments for the choice. */

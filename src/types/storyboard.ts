@@ -188,6 +188,9 @@ export interface StoryboardExportSettings {
   stems: boolean;
   /** Scale the finished film up (lanczos) at the final encode; "none" keeps the project size. */
   upscale: StoryboardUpscale;
+  /** How the film is scaled up: "fast" runs each shot through the AI upscaler (the Upscale add-on), "lanczos" is the
+   * plain resize. Absent in projects saved before it, which stretch the plain way. */
+  upscaleMethod?: "lanczos" | "fast";
   /** The brand kit on the film (S15); absent in projects saved before it. Draw the brand logo in its corner. */
   showLogo?: boolean;
   /** A title card before the first shot and an end card after the last, each `cardSeconds` long. */

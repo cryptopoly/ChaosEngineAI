@@ -20,6 +20,7 @@ import type {
   JobProgress,
   StoryboardBatchRecord,
   StoryboardBatchWhat,
+  StoryboardGuide,
   StoryboardOpArgs,
   StoryboardOpName,
   StoryboardPausedProgress,
@@ -42,6 +43,9 @@ export interface UseStoryboardResult {
   projectId: string | null;
   project: StoryboardProject | null;
   timeline: StoryboardTimeline | null;
+  /** The guide block of the newest project payload (stages, quality, coverage, failures, readiness); null until one
+   * carries it. Refreshed with every payload, so the tabs read it here instead of asking again. */
+  guide?: StoryboardGuide | null;
   loading: boolean;
   /** Set when a request failed; the message is the server's own words. */
   error: string | null;
@@ -93,6 +97,7 @@ function message(err: unknown): string {
 export function useStoryboard(enabled: boolean, projectId: string | null): UseStoryboardResult {
   const [project, setProject] = useState<StoryboardProject | null>(null);
   const [timeline, setTimeline] = useState<StoryboardTimeline | null>(null);
+  const [guide, setGuide] = useState<StoryboardGuide | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -122,6 +127,7 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
     projectRef.current = payload.project;
     setProject(payload.project);
     setTimeline(payload.timeline);
+    setGuide(payload.guide ?? null);
     const latest = payload.project.batches[payload.project.batches.length - 1] ?? null;
     setBatch((current) => {
       // A running batch, or one paused (by Pause or a restart) that can still carry on: the bar shows it.
@@ -146,6 +152,7 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
         projectRef.current = null;
         setProject(null);
         setTimeline(null);
+        setGuide(null);
       } else {
         setError(message(err));
       }
@@ -354,6 +361,7 @@ export function useStoryboard(enabled: boolean, projectId: string | null): UseSt
     projectId,
     project,
     timeline,
+    guide,
     loading,
     error,
     notFound,

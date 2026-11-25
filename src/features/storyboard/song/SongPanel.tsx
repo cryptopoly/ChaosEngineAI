@@ -43,7 +43,7 @@ export function SongPanel({ story, project, onOpenShot }: SongPanelProps) {
   const [stem, setStem] = useState<string | null>(null);
   const [vocals, setVocals] = useState<StoryboardSongVocals | null>(null);
   const [vocalsProblem, setVocalsProblem] = useState<string | null>(null);
-  const { coverage, show } = useSongCoverage(project.id, project.revision, Boolean(song));
+  const { coverage, show } = useSongCoverage(project.id, project.revision, Boolean(song), story.guide);
   const review = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLElement>(null);
 

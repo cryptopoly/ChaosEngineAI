@@ -851,6 +851,7 @@ export {
   getStoryboardSample,
   installStoryboardSample,
   getStoryboardBatch,
+  getStoryboardGuide,
   getStoryboardPeaks,
   getStoryboardProject,
   generateStoryboardCaptions,

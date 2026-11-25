@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 import { Panel } from "../../../components/Panel";
 import type { VoiceChatCost, VoiceEntry } from "../../../types";
 import { useVoice } from "../VoiceContext";
-import { unsupportedModelText } from "../models/voiceModelsLogic";
+import { speechGpuAddonMissing, speechGpuAddonText, unsupportedModelText } from "../models/voiceModelsLogic";
 import { deleteClonedVoice } from "../clone/cloneApi";
 import { CloneVoiceScreen } from "../clone/CloneVoiceScreen";
 import { cloneActionBlock, type ActionBlock } from "../clone/cloneLogic";
@@ -149,6 +149,8 @@ export function VoicesScreen({ catalog, speakVoiceId, onUseInSpeak, onDesign, on
     const uses = usesOf(voice.id, settings, speakVoiceId, callId);
     const model = chooseModel(voice, catalog.models);
     const needsDownload = Boolean(model && !model.installed && voice.kind !== "builtin");
+    // A downloaded GPU model still cannot run until the speech GPU part is installed (the picker greys it too).
+    const gpuPartMissing = Boolean(model && model.installed && voice.kind !== "builtin" && (model.lanes ?? []).includes("cuda") && speechGpuAddonMissing(runtime));
     const name = voice.kind === "design" ? t("voice.voices.designCard", { defaultValue: "Design a voice" }) : voice.name;
     return (
       <li key={voice.id} className="voice-list__row" data-voice-row={voice.id}>
@@ -193,6 +195,8 @@ export function VoicesScreen({ catalog, speakVoiceId, onUseInSpeak, onDesign, on
                 {t("voice.cost.download", { defaultValue: "Download {gb} GB", gb: model.sizeGb })}
               </button>
             )
+          ) : gpuPartMissing ? (
+            <span className="muted-text voice-list__unsupported">{speechGpuAddonText(tf)}</span>
           ) : null}
           {voice.kind === "design" ? (
             <button type="button" className="secondary-button" disabled={waiting || designBlock !== null} onClick={onDesign}>
@@ -202,7 +206,7 @@ export function VoicesScreen({ catalog, speakVoiceId, onUseInSpeak, onDesign, on
             <button
               type="button"
               className="secondary-button"
-              disabled={voice.id === speakVoiceId}
+              disabled={voice.id === speakVoiceId || gpuPartMissing}
               aria-label={t("voice.voices.useNameInSpeak", { defaultValue: "Use {name} in Speak", name })}
               onClick={() => onUseInSpeak(voice.id)}
             >

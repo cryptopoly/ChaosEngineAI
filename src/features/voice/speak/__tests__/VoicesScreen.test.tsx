@@ -125,6 +125,19 @@ describe("VoicesScreen as the voice catalogue (D-73 S2, D0142)", () => {
     expect(html).not.toContain('title="Needs the speech GPU');
   });
 
+  it("a downloaded natural voice is off, with the reason, on a PC without the speech GPU part (B1324)", () => {
+    const model = { key: "c17", name: "Qwen3-TTS 1.7B CustomVoice", installed: true, supported: true, lanes: ["cuda"], sizeGb: 4.5, download: { state: "idle" } } as unknown as VoiceModelRow;
+    const cat = { ...catalog, models: [model] };
+    const missing = runtime({ lane: "portable", extras: [{ id: "speech-gpu", label: "", installed: false }] } as Partial<VoiceRuntime>);
+    const without = row(render(missing, "", cat), "Ryan");
+    expect(without).toMatch(/<button[^>]*disabled=""[^>]*aria-label="Use Ryan in Speak"/);
+    expect(without).toContain("Needs the speech GPU part.");
+    const withPart = runtime({ lane: "portable", extras: [{ id: "speech-gpu", label: "", installed: true }] } as Partial<VoiceRuntime>);
+    const ok = row(render(withPart, "", cat), "Ryan");
+    expect(ok).not.toMatch(/disabled=""[^>]*aria-label="Use Ryan in Speak"/);
+    expect(ok).not.toContain("Needs the speech GPU part.");
+  });
+
   it("a Mac-only model says so in words without a button; a window-only clone says so too", () => {
     const mac = render(runtime(), "", { ...catalog, modelsAvailable: false });
     expect(mac).toContain("Voice cloning runs on Apple Silicon Macs for now.");

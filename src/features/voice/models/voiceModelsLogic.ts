@@ -215,14 +215,14 @@ export function licenceUrl(repo: string): string {
 // i18n-extract: voice.models.sttGuide.nemotron-3_5-transcribe-30b
 /** One line per dictation model on what it is for (D-102 D, P2), by catalog key. */
 export const STT_GUIDES: Record<string, string> = {
-  "qwen3-asr-1.7b": "The pick for an NVIDIA GPU: 30 languages and 22 Chinese dialects, finds the language itself.",
+  "qwen3-asr-1.7b": "The pick for an NVIDIA GPU: 30 languages and 22 Chinese dialects, can find the language itself.",
   "qwen3-asr-0.6b": "A smaller Qwen3-ASR: less GPU memory and quicker, for the same languages.",
-  "parakeet-tdt-v3": "Very fast for 25 European languages; finds the language itself and times each word on its own.",
+  "parakeet-tdt-v3": "Very fast for 25 European languages; can find the language itself and times each word on its own.",
   "nemotron-3.5-asr": "Small and quick, made for live speech in 40 languages; uses the Language setting or finds it.",
   "whisper-large-v3-turbo": "Works on any machine in 99 languages and times each word; does not translate.",
   "whisper-small": "Small and quick in 99 languages; one of the two that can translate speech into English.",
   "whisper-base": "The smallest: quick on any machine and can translate into English, but the least accurate.",
-  "granite-speech-5.0-2b": "Six languages, English first; finds the language itself.",
+  "granite-speech-5.0-2b": "Six languages, English first; can find the language itself.",
   "nemotron-3.5-transcribe-30b": "The largest, 40 languages; for a GPU with about 80 GB of memory.",
 };
 

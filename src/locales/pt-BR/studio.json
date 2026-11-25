@@ -783,14 +783,14 @@
       },
       "licenceOpen": "Leia a licença na página do modelo",
       "sttGuide": {
-        "qwen3-asr-1_7b": "A escolha para uma GPU NVIDIA: 30 idiomas e 22 dialetos do chinês, detecta o idioma sozinho.",
+        "qwen3-asr-1_7b": "A escolha para uma GPU NVIDIA: 30 idiomas e 22 dialetos do chinês, pode detectar o idioma sozinho.",
         "qwen3-asr-0_6b": "Um Qwen3-ASR menor: usa menos memória da GPU e é mais rápido, para os mesmos idiomas.",
-        "parakeet-tdt-v3": "Muito rápido para 25 idiomas europeus; detecta o idioma sozinho e marca o tempo de cada palavra por conta própria.",
+        "parakeet-tdt-v3": "Muito rápido para 25 idiomas europeus; pode detectar o idioma sozinho e marcar o tempo de cada palavra por conta própria.",
         "nemotron-3_5-asr": "Pequeno e rápido, feito para fala ao vivo em 40 idiomas; usa a configuração de Idioma ou o detecta.",
         "whisper-large-v3-turbo": "Funciona em qualquer máquina, em 99 idiomas, e marca o tempo de cada palavra; não traduz.",
         "whisper-small": "Pequeno e rápido, em 99 idiomas; um dos dois que podem traduzir fala para o inglês.",
         "whisper-base": "O menor: rápido em qualquer máquina e capaz de traduzir para o inglês, mas o menos preciso.",
-        "granite-speech-5_0-2b": "Seis idiomas, com o inglês em primeiro lugar; detecta o idioma sozinho.",
+        "granite-speech-5_0-2b": "Seis idiomas, com o inglês em primeiro lugar; pode detectar o idioma sozinho.",
         "nemotron-3_5-transcribe-30b": "O maior, com 40 idiomas; para uma GPU com cerca de 80 GB de memória."
       },
       "sttFit": "Cabe · {gb} GB de memória da GPU",

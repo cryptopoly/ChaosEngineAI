@@ -13419,6 +13419,17 @@ button.licence-chip:focus-visible {
 }
 .timeline__lane-add {
   flex-shrink: 0;
+  position: relative;
+}
+/* The button stays small in the lane header; this widens the part that takes a tap to 44 px. */
+.timeline__lane-add::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
 }
 .timeline__clock {
   font-variant-numeric: tabular-nums;

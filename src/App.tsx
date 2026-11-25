@@ -530,7 +530,7 @@ export default function App() {
       },
       openVoiceModels: () => void setActiveTab("voice-models"),
       openVoices: () => {
-        setVoiceOpenRequest({ mode: "voices", nonce: Date.now() });
+        setVoiceOpenRequest({ mode: "speak", nonce: Date.now() });
         void setActiveTab("voice-studio");
       },
     }),

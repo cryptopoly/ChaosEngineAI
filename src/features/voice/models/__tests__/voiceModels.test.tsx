@@ -448,7 +448,7 @@ describe("Voice runtime panel (D-73 M4, M5)", () => {
   const pack = { job: runtime().install, error: null, setError: () => {}, start: async () => {}, cancel: () => undefined };
   it("names the runtime, lists its parts with sizes, what is in memory, the add-ons and Remove", () => {
     const html = wrap(<VoiceRuntimePanel runtime={runtime()} pack={pack} />);
-    expect(html).toContain("Voice runtime");
+    expect(html).toContain("Voice setup");
     expect(html).not.toContain("Voice pack");
     expect(html).toContain("2.3 GB on disk: speech packages 1.9 GB, Kokoro quick voices 0.3 GB");
     expect(html).toContain("In memory now:");
@@ -456,15 +456,15 @@ describe("Voice runtime panel (D-73 M4, M5)", () => {
     expect(html).toContain(">Unload<");
     expect(html).toContain("minutes idle");
     expect(html).toMatch(/<input type="checkbox"\/>Mandarin Chinese quick voices/);
-    expect(html).toContain("Installs when ticked; untick to remove.");
+    expect(html).toContain("A part installs when ticked; untick it to remove it.");
     expect(html).toContain("Remove voice runtime");
-    expect(html).toContain("Downloaded dictation and speech models always stay");
+    expect(html).toContain("Downloaded speech-to-text and speech models always stay");
   });
 
   it("before install, the add-ons are chosen with the install", () => {
     const html = wrap(<VoiceRuntimePanel runtime={runtime({ installed: false, parts: [], workerPid: null })} pack={pack} />);
-    expect(html).toContain("Install voice runtime");
-    expect(html).toContain("Ticked add-ons install with the runtime");
+    expect(html).toContain("Install, about 2.3 GB");
+    expect(html).toContain("Ticked parts install with Voice setup");
     expect(html).not.toContain("Remove voice runtime");
     expect(html).not.toContain("In memory now");
   });
@@ -480,10 +480,11 @@ describe("Voice runtime panel (D-73 M4, M5)", () => {
       { id: "chinese", label: "Mandarin Chinese voices", installed: false },
     ];
     const before = wrap(<VoiceRuntimePanel runtime={runtime({ installed: false, parts: [], workerPid: null, extras, ttsModelInstalled: false })} pack={pack} />);
-    expect(before).toMatch(/<input type="checkbox" checked=""\/>Kokoro quick voices \(about 330 MB\)/);
+    // Kokoro is part of the Basic preset now, not a tick box (setup card).
+    expect(before).toContain("Basic: quick voices, about 2.6 GB");
     expect(before).toMatch(/<input type="checkbox"\/>Mandarin Chinese quick voices/);
     // One size source (runtimeSize.ts): the base plus the ticked add-ons; Kokoro is ticked by default.
-    expect(before).toContain("About 2.6 GB with the add-ons ticked below");
+    expect(before).toContain("Install, about 2.6 GB");
     expect(runtimeInstallGb([])).toBe(2.3);
     expect(runtimeInstallGb(["kokoro", "speech-gpu"])).toBe(8.3);
     expect(addonSizeText("kokoro")).toBe("330 MB");
@@ -495,7 +496,7 @@ describe("Voice runtime panel (D-73 M4, M5)", () => {
         pack={pack}
       />,
     );
-    expect(without).toMatch(/<input type="checkbox"\/>Kokoro quick voices/);
+    expect(without).toContain("Missing: Kokoro quick voices 0.3 GB");
     expect(without).toContain("the Kokoro quick voices are not installed");
     expect(without).toContain("Installed, checked OK");
     expect(without).not.toContain("Repair voice runtime");

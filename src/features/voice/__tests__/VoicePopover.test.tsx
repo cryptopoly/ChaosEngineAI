@@ -89,8 +89,8 @@ describe("Chat's Voice popover (D-73 S3)", () => {
     expect(none).toContain("<strong>None set</strong>");
     // The note under it (shown once the voice list has loaded) names the voice or says none is set.
     const ryan = { id: "qwen3:Ryan", name: "Ryan" } as VoiceEntry;
-    expect(renderToStaticMarkup(<FallbackNote voice={ryan} />)).toContain("the fallback voice Ryan reads instead");
-    expect(renderToStaticMarkup(<FallbackNote voice={null} />)).toContain("No fallback voice is set");
+    expect(renderToStaticMarkup(<FallbackNote voice={ryan} />)).toContain("the backup voice Ryan reads instead");
+    expect(renderToStaticMarkup(<FallbackNote voice={null} />)).toContain("No backup voice is set");
   });
 
   it("holds the chat behaviour settings, read from the same keys", () => {

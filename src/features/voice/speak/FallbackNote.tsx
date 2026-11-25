@@ -7,12 +7,12 @@ export function FallbackNote({ voice }: { voice: VoiceEntry | null }) {
   return (
     <>
       {voice
-        ? t("voice.voices.fallbackNoteVoice", {
-            defaultValue: "If a chosen voice cannot speak (model not downloaded, or it fails to load), the fallback voice {name} reads instead and Chat says so.",
+        ? t("voice.voices.backupNoteVoice", {
+            defaultValue: "If a chosen voice cannot speak (model not downloaded, or it fails to load), the backup voice {name} reads instead and Chat says so.",
             name: voice.name,
           })
-        : t("voice.voices.fallbackNoteNone", {
-            defaultValue: "No fallback voice is set: if a chosen voice cannot speak, read-aloud and calls show an error instead of switching voice.",
+        : t("voice.voices.backupNoteNone", {
+            defaultValue: "No backup voice is set: if a chosen voice cannot speak, read-aloud and calls show an error instead of switching voice.",
           })}
     </>
   );

@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import type { VoiceSliderRange } from "../../../types";
-import type { VoiceControls } from "./speakLogic";
+import type { VoiceErrorView } from "../voiceErrorText";
+import type { StyleGap, VoiceControls } from "./speakLogic";
 
 const TAG_LABELS: Record<string, string> = {
   laugh: "Laugh",
@@ -89,6 +90,11 @@ const LANGUAGE_NAMES: Record<string, string> = {
   pl: "Polish", pt: "Portuguese", ru: "Russian", sv: "Swedish", sw: "Swahili", tr: "Turkish", zh: "Chinese",
 };
 
+/** A language code's name (the select's option text), in the UI language when a translation exists. */
+export function languageName(t: (key: string, options?: Record<string, unknown>) => string, code: string): string {
+  return t(`voice.speak.languages.${code}`, { defaultValue: LANGUAGE_NAMES[code] ?? code });
+}
+
 /** Chatterbox V3: the language it speaks and the Expression slider (calm to dramatic). */
 export function LanguageAndExpression({
   controls,
@@ -113,7 +119,7 @@ export function LanguageAndExpression({
           <select className="text-input" value={language} onChange={(e) => onLanguage(e.target.value)}>
             {controls.languages.map((code) => (
               <option key={code} value={code}>
-                {t(`voice.speak.languages.${code}`, { defaultValue: LANGUAGE_NAMES[code] ?? code })}
+                {languageName(t as unknown as (key: string, options?: Record<string, unknown>) => string, code)}
               </option>
             ))}
           </select>
@@ -126,6 +132,83 @@ export function LanguageAndExpression({
           value={expression}
           onChange={onExpression}
         />
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Where an unusable style box was: one sentence and, when something fixes it, one button. "Style needs a natural voice"
+ * downloads the natural model (its size from the catalogue) or, when one is already downloaded, opens the voice picker.
+ */
+export function StyleGapNote({
+  gap,
+  sizeGb,
+  onDownload,
+  onChoose,
+}: {
+  gap: StyleGap;
+  sizeGb: number;
+  onDownload: (modelKey: string) => void;
+  onChoose: () => void;
+}) {
+  const { t } = useTranslation("studio");
+  const sentence =
+    gap.kind === "needsNatural"
+      ? t("voice.speak.styleNeedsNatural", { defaultValue: "Style needs a natural voice." })
+      : gap.kind === "builtinNone"
+        ? t("voice.speak.styleBuiltin", { defaultValue: "Quick voices have no style control. Pick a natural voice to use it." })
+        : gap.kind === "clone"
+          ? t("voice.speak.styleClone", { defaultValue: "Cloned voices have no style control." })
+          : gap.kind === "smallModel"
+            ? t("voice.speak.styleSmall", { defaultValue: "The small model ignores style. The 1.7B model reads it." })
+            : gap.kind === "tags"
+              ? t("voice.speak.styleTags", { defaultValue: "This voice takes sound tags in the text, such as [laugh], not a style." })
+              : t("voice.speak.styleExpression", { defaultValue: "Chatterbox has no style box; use the Expression slider." });
+  const model = gap.model;
+  return (
+    <p id="voice-speak-style-reason" className="muted-text voice-speak__hint">
+      {sentence}{" "}
+      {gap.action === "downloading" && model ? (
+        <span aria-live="polite">{t("voice.speak.modelDownloading", { defaultValue: "Downloading {name}…", name: model.name })}</span>
+      ) : null}
+      {gap.action === "download" && model ? (
+        <button type="button" className="secondary-button" onClick={() => onDownload(model.key)}>
+          {gap.kind === "needsNatural"
+            ? t("voice.speak.getNatural", { defaultValue: "Get one, {gb} GB", gb: sizeGb })
+            : t("voice.speak.downloadForStyleSized", { defaultValue: "Download {name} for style, {gb} GB", name: model.name, gb: sizeGb })}
+        </button>
+      ) : null}
+      {gap.action === "choose" ? (
+        <button type="button" className="secondary-button" onClick={onChoose}>
+          {t("voice.speak.chooseNatural", { defaultValue: "Choose a natural voice" })}
+        </button>
+      ) : null}
+    </p>
+  );
+}
+
+/**
+ * A failed Speak request: the plain sentence, the one button the error's action calls for (when this screen can do it)
+ * and the raw text under Details.
+ */
+export function SpeakError({ error, onAction }: { error: VoiceErrorView; onAction: (() => void) | null }) {
+  const { t } = useTranslation("studio");
+  return (
+    <div className="voice-error" role="alert">
+      <p>{error.sentence}</p>
+      {error.actionLabel && onAction ? (
+        <button type="button" className="secondary-button" onClick={onAction}>
+          {error.actionLabel}
+        </button>
+      ) : null}
+      {error.details ? (
+        <details>
+          <summary>{t("voice.speak.errorDetails", { defaultValue: "Details" })}</summary>
+          <p className="muted-text" style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+            {error.details}
+          </p>
+        </details>
       ) : null}
     </div>
   );

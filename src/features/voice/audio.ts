@@ -336,6 +336,31 @@ export function formatClock(seconds: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
+/** The first ``count`` words of ``text`` (spaces collapsed), and whether more followed. */
+export function firstWords(text: string, count = 6): { words: string; truncated: boolean } {
+  const all = text.trim().split(/\s+/).filter(Boolean);
+  return { words: all.slice(0, count).join(" "), truncated: all.length > count };
+}
+
+function slugPart(text: string, maxChars: number): string {
+  return text
+    .toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, maxChars)
+    .replace(/-+$/g, "");
+}
+
+/**
+ * The file name for a saved clip: the first words of the text, then the voice ("welcome-to-the-studio-heart.wav"),
+ * so a folder of downloads reads. Falls back to "speech" when the text has no letters or digits.
+ */
+export function clipFileName(text: string, voiceName: string, extension: string): string {
+  const stem = slugPart(firstWords(text, 6).words, 40) || "speech";
+  const voice = slugPart(firstWords(voiceName, 3).words, 24);
+  return `${voice ? `${stem}-${voice}` : stem}.${extension}`;
+}
+
 export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");

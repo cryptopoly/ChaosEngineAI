@@ -31,6 +31,15 @@ class Proc:
                                   stderr=subprocess.PIPE, text=True, bufsize=1, env=env, cwd=str(cwd))
         self.lines: queue.Queue[str] = queue.Queue()
         threading.Thread(target=self._read, daemon=True).start()
+        self.err: list[str] = []
+        # Drained as it arrives: a Windows pipe holds 4 KB, so the tracebacks of a few refused requests would
+        # otherwise block the worker on its own stderr.
+        self._err_thread = threading.Thread(target=self._drain, daemon=True)
+        self._err_thread.start()
+
+    def _drain(self) -> None:
+        for line in self.p.stderr:  # type: ignore[union-attr]
+            self.err.append(line)
 
     def _read(self) -> None:
         for line in self.p.stdout:  # type: ignore[union-attr]
@@ -59,7 +68,8 @@ class Proc:
     def close(self) -> str:
         self.p.stdin.close()  # type: ignore[union-attr]
         self.p.wait(timeout=10)
-        return self.p.stderr.read()  # type: ignore[union-attr]
+        self._err_thread.join(timeout=10)
+        return "".join(self.err)
 
 
 def _gen(job: str, data: Path, **extra) -> dict:

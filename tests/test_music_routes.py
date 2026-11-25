@@ -246,11 +246,16 @@ class MusicRouteTests(_RouteBox):
         lane = mock.patch.object(music_env, "lane", return_value="mlx")  # the Mac table below, on any host
         lane.start()
         self.addCleanup(lane.stop)
+        # The Mac lane's memory gate wants about 23 GB free; give it that so a busy host cannot refuse the run.
+        memory = mock.patch("backend_service.helpers.memory_gate.snapshot_memory_signals", return_value=(64.0, 10.0))
+        memory.start()
+        self.addCleanup(memory.stop)
         cold = self.client.post("/api/music/estimate", json={"seconds": 60}).json()
         self.assertFalse(cold["estimate"]["warm"])
         self.assertEqual(cold["estimate"]["basis"], "measured")
         self.assertIn("fit", cold)
-        self.client.post("/api/music/generate", json=INSTRUMENTAL)
+        made = self.client.post("/api/music/generate", json=INSTRUMENTAL)
+        self.assertEqual(made.status_code, 200, made.text)
         warm = self.client.post("/api/music/estimate", json={"seconds": 60}).json()["estimate"]
         self.assertTrue(warm["warm"])
         self.assertEqual(warm["seconds"], 5.9)

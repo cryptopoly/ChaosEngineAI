@@ -104,8 +104,9 @@ class DownloadTests(_Home):
 class InstallTests(_Home):
     def test_install_runs_pip_then_downloads_the_default_row_then_checks(self) -> None:
         calls, phases = [], []
-        row = catalog.find_model(catalog.DEFAULT_MODEL_ID)
+        row = dict(catalog.find_model(catalog.DEFAULT_MODEL_ID))
         data = b"\0" * row["sizeBytes"]
+        row["sha256"] = hashlib.sha256(data).hexdigest()  # the pinned real hash does not match fake bytes
 
         def runner(cmd, **_kw):
             calls.append(cmd)
@@ -113,7 +114,8 @@ class InstallTests(_Home):
                 self.fake_site()
             return _ok()
 
-        addon.install(phases.append, runner=runner, opener=lambda *a, **k: _Response(data))
+        with mock.patch.object(addon, "find_model", return_value=row):
+            addon.install(phases.append, runner=runner, opener=lambda *a, **k: _Response(data))
         self.assertEqual(phases, ["packages", "weights", "check"])
         self.assertEqual(len(calls), 2)
         self.assertTrue(addon.installed())

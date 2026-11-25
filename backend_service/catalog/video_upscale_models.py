@@ -41,8 +41,7 @@ VIDEO_UPSCALE_MODELS: list[dict[str, Any]] = [
         "url": f"{_RELEASES}/v0.2.5.0/realesr-general-x4v3.pth",
         "sizeBytes": 4_885_111,
         "sizeGb": 0.005,
-        "sha256": None,
-        "sha256Todo": _SHA_TODO,
+        "sha256": "8dc7edb9ac80ccdc30c3a5dca6616509367f05fbc184ad95b731f05bece96292",
         # Whole frames up to 1080p input, four at a time. ESTIMATES (see the module docstring).
         "tile": 0,
         "batch": 4,
@@ -70,8 +69,7 @@ VIDEO_UPSCALE_MODELS: list[dict[str, Any]] = [
         "url": f"{_RELEASES}/v0.1.0/RealESRGAN_x4plus.pth",
         "sizeBytes": 67_040_989,
         "sizeGb": 0.067,
-        "sha256": None,
-        "sha256Todo": _SHA_TODO,
+        "sha256": "4fa0d38905f75ac06eb49a7951b426670021be3018265fd191d2125df9d682f1",
         # Tiles of 512 input pixels, one frame at a time: an untiled 720p frame needs far more. ESTIMATES.
         "tile": 512,
         "batch": 1,

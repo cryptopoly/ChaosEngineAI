@@ -40,6 +40,11 @@ class AllocatorEnvTests(unittest.TestCase):
         self.assertEqual(env["MIMALLOC_ABANDONED_RECLAIM_ON_FREE"], "0")
         self.assertNotIn("MIMALLOC_ABANDONED_RECLAIM_ON_FREE", applied)
 
+    def test_a_worker_that_keeps_the_allocator_defaults_is_left_alone(self):
+        env = {malloc_release.ALLOCATOR_ENV_OFF: "1"}
+        self.assertEqual(malloc_release.apply_allocator_env(env, platform="win32"), {})
+        self.assertEqual(env, {malloc_release.ALLOCATOR_ENV_OFF: "1"})
+
     def test_other_platforms_are_left_alone(self):
         for platform in ("linux", "darwin"):
             env: dict[str, str] = {}

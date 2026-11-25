@@ -34,10 +34,15 @@ MIMALLOC_ENV: dict[str, str] = {
 }
 
 
+# A worker process that imports ``backend_service`` but should keep mimalloc's own defaults gets this variable (its
+# launcher also drops ``MIMALLOC_ENV`` from the environment it hands the child, see ``video_upscale/jobs._worker_env``).
+ALLOCATOR_ENV_OFF = "CHAOSENGINE_NO_ALLOCATOR_ENV"
+
+
 def apply_allocator_env(environ: Any = None, platform: str | None = None) -> dict[str, str]:
     """Set the mimalloc defaults on Windows (a value the user exported wins). Returns what was set."""
     environ = os.environ if environ is None else environ
-    if (platform or sys.platform) != "win32":
+    if (platform or sys.platform) != "win32" or environ.get(ALLOCATOR_ENV_OFF):
         return {}
     applied = {}
     for name, value in MIMALLOC_ENV.items():

@@ -84,6 +84,27 @@ class WorkerProtocolTests(_Clip):
         self.assertEqual(parts[-1], str(addon.site_dir()))
         self.assertTrue((Path(parts[0]) / "backend_service").is_dir())
 
+    def test_worker_env_drops_the_backend_allocator_switches_and_does_not_set_them_again(self):
+        import os
+
+        from backend_service.helpers.malloc_release import ALLOCATOR_ENV_OFF, MIMALLOC_ENV, apply_allocator_env
+
+        with mock.patch.dict(os.environ, MIMALLOC_ENV):
+            env = jobs._worker_env()
+        self.assertFalse(set(MIMALLOC_ENV) & set(env))
+        self.assertEqual(env[ALLOCATOR_ENV_OFF], "1")
+        self.assertEqual(apply_allocator_env(dict(env), platform="win32"), {})  # what the worker's import does
+
+    def test_worker_env_keeps_an_allocator_switch_the_user_set(self):
+        import os
+
+        from backend_service.helpers.malloc_release import MIMALLOC_ENV
+
+        with mock.patch.dict(os.environ, {**MIMALLOC_ENV, "MIMALLOC_PURGE_DELAY": "250"}):
+            env = jobs._worker_env()
+        self.assertEqual(env["MIMALLOC_PURGE_DELAY"], "250")
+        self.assertNotIn("MIMALLOC_RESET_DELAY", env)
+
 
 class JobTests(_Clip):
     def manager(self, factory=None, queue=None):

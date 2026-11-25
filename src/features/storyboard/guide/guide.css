@@ -54,10 +54,19 @@
 }
 .stage-rail__name {
   font-size: 0.86rem;
+  white-space: nowrap;
 }
 .stage-rail__look {
   font-size: 0.7rem;
   color: var(--muted);
+  white-space: nowrap;
+}
+/* Narrow: the stages wrap onto a second row instead of each chip breaking its words over three lines. */
+@media (max-width: 760px) {
+  .stage-rail__list {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
 }
 .stage-rail__step--done .stage-rail__mark {
   border-color: var(--success);

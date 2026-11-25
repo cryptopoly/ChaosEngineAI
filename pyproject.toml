@@ -107,7 +107,7 @@ mlx-video = ["mlx-video @ git+https://github.com/Blaizzy/mlx-video.git"]
 # Pinned ffmpeg for joining and mixing films (home-studio plan). imageio-ffmpeg ships a static ffmpeg
 # binary per platform; that binary is a GPL build (see THIRD_PARTY_NOTICES.md), so it is an opt-in
 # extra rather than part of the base install. It was only a transitive dependency of mlx-video before.
-ffmpeg = ["imageio-ffmpeg>=0.6.0"]
+ffmpeg = ["imageio-ffmpeg>=0.8.1"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

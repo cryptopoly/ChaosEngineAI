@@ -546,8 +546,8 @@ on the system `PATH`. The app runs it as a separate program and never links it i
 
 - **imageio-ffmpeg** (all systems, the one-click install). Upstream: <https://github.com/imageio/imageio-ffmpeg>
   (the Python wrapper, BSD-2-Clause) and <https://ffmpeg.org> (the program). The user's machine installs it from PyPI
-  when they choose Install video tools; we distribute nothing. The macOS build we checked (ffmpeg 7.1,
-  `ffmpeg-macos-aarch64-v7.1`, imageio-ffmpeg 0.6.0) reports `--enable-gpl` with `libx264` and `libx265`, so the
+  when they choose Install video tools; we distribute nothing. The macOS build we checked (ffmpeg 9.0,
+  `ffmpeg-macos-aarch64-v9.0`, imageio-ffmpeg 0.8.1; the Windows file is 9.0.2) is configured with `--enable-gpl`, `libx264` and `libx265`, so the
   binary as a whole is licensed under the **GNU General Public License, version 2 or later**; its configuration line
   is printed by `ffmpeg -version`. Source: <https://ffmpeg.org/releases/>, x264 at
   <https://code.videolan.org/videolan/x264>, x265 at <https://bitbucket.org/multicoreware/x265_git>. The ltx-2-mlx

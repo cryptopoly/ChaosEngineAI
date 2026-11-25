@@ -23,6 +23,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 from dataclasses import asdict, dataclass
@@ -588,6 +589,20 @@ def _short_message(spec: JobSpec, made: int, expected: int) -> str:
             f"saved. {_ADVICE}")
 
 
+def _move_into_place(src: Path, dst: Path) -> None:
+    """os.replace, with a copy next to the target when the output folder is on another drive (WinError 17)."""
+    try:
+        os.replace(src, dst)
+    except OSError:
+        side = dst.with_name(f".{dst.name}.{os.getpid()}.part")
+        try:
+            shutil.copyfile(src, side)
+            os.replace(side, dst)
+        finally:
+            side.unlink(missing_ok=True)
+        src.unlink(missing_ok=True)
+
+
 def _mux(spec: JobSpec, exe: str, work: Path, names: list[str]) -> list[str]:
     listing = work / "segments.txt"
     listing.write_text(concat_list(names), encoding="utf-8")
@@ -599,7 +614,7 @@ def _mux(spec: JobSpec, exe: str, work: Path, names: list[str]) -> list[str]:
         run = subprocess.run(args, cwd=str(work), capture_output=True, text=True, encoding="utf-8", errors="replace",
                              timeout=3600)
         if run.returncode == 0 and tmp.is_file():
-            os.replace(tmp, output)
+            _move_into_place(tmp, output)
             return [note] if note else []
         tmp.unlink(missing_ok=True)
         last = (run.stderr or "").strip().splitlines()[-1:][0] if (run.stderr or "").strip() else str(run.returncode)

@@ -411,3 +411,29 @@ class PipelineTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MoveIntoPlaceTests(unittest.TestCase):
+    def test_falls_back_to_a_copy_when_replace_crosses_drives(self):
+        import tempfile
+        from unittest import mock
+        from pathlib import Path
+        from backend_service.video_upscale import pipeline
+
+        real = pipeline.os.replace
+        calls = {"n": 0}
+
+        def flaky(a, b):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise OSError(17, "The system cannot move the file to a different disk drive")
+            return real(a, b)
+
+        with tempfile.TemporaryDirectory() as d:
+            src, dst = Path(d) / "work.mp4", Path(d) / "out.mp4"
+            src.write_bytes(b"video")
+            with mock.patch.object(pipeline.os, "replace", flaky):
+                pipeline._move_into_place(src, dst)
+            self.assertEqual(dst.read_bytes(), b"video")
+            self.assertFalse(src.exists())
+            self.assertEqual([p.name for p in Path(d).iterdir()], ["out.mp4"])

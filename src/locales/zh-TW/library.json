@@ -700,7 +700,8 @@
       "unknown": "不適合本機",
       "needsAccess": "需要存取權限",
       "wontFit": "放不下",
-      "fitsOffload": "卸載後可容納"
+      "fitsOffload": "卸載後可容納",
+      "needsGpuPart": "需要 GPU 元件"
     },
     "image": {
       "emptyAttention": "沒有需要留意的影像模型。",

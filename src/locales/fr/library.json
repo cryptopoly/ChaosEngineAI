@@ -700,7 +700,8 @@
       "unknown": "Pas pour cette machine",
       "needsAccess": "Accès requis",
       "wontFit": "Ne tient pas",
-      "fitsOffload": "Tient avec déchargement"
+      "fitsOffload": "Tient avec déchargement",
+      "needsGpuPart": "Élément GPU requis"
     },
     "image": {
       "emptyAttention": "Aucun modèle d'image ne demande d'attention.",

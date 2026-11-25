@@ -700,7 +700,8 @@
       "unknown": "Nicht für diesen Rechner",
       "needsAccess": "Zugang nötig",
       "wontFit": "Passt nicht",
-      "fitsOffload": "Passt mit Auslagerung"
+      "fitsOffload": "Passt mit Auslagerung",
+      "needsGpuPart": "GPU-Teil nötig"
     },
     "image": {
       "emptyAttention": "Kein Bildmodell muss geprüft werden.",

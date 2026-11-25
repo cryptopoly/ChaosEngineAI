@@ -700,7 +700,8 @@
       "unknown": "Não para esta máquina",
       "needsAccess": "Requer acesso",
       "wontFit": "Não cabe",
-      "fitsOffload": "Cabe com offload"
+      "fitsOffload": "Cabe com offload",
+      "needsGpuPart": "Requer componente GPU"
     },
     "image": {
       "emptyAttention": "Nenhum modelo de imagem precisa de atenção.",

@@ -54,6 +54,7 @@ import {
   speechGpuMemoryText,
   studioTargetFor,
   unsupportedModelText,
+  withUnsupportedFit,
   voiceSortOptions,
 } from "./voiceModelsLogic";
 
@@ -180,8 +181,8 @@ export function SpeechModelsPanel({ catalog, runtime, availability, onAvailabili
           catalog.kokoro?.fit,
         )
       : null;
-    return buildVoiceEntries(catalog.models, kokoro);
-  }, [catalog.models, catalog.kokoro, runtime.installed, runtime.ttsModelInstalled, quick.count, quick.languages, kokoroPart]);
+    return buildVoiceEntries(catalog.models, kokoro).map((entry) => withUnsupportedFit(entry, runtime, tf));
+  }, [catalog.models, catalog.kokoro, runtime, tf, quick.count, quick.languages, kokoroPart]);
   const pick = recommendedSpeechPick(catalog.models);
   const preferredKey = pick.kind === "model" ? pick.row.key : null;
   const collapsible = useMemo(() => collapsedFamilyRows(entries, preferredKey), [entries, preferredKey]);

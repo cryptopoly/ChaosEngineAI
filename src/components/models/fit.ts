@@ -34,6 +34,8 @@ export interface Fit {
   basis: FitBasis;
   /** Set by an area's adapter when ``unknown`` means "gated, no access yet", not "cannot run here". */
   accessBlocked?: boolean;
+  /** Set by the voice adapter when ``unknown`` means "the speech GPU part is not installed", not a hardware limit. */
+  needsGpuPart?: boolean;
   /** A mixture of experts that fits a discrete card with some experts in system RAM (FU-550). */
   offload?: FitOffload;
 }

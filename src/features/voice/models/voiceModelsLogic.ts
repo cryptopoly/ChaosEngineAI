@@ -69,6 +69,27 @@ export function unsupportedModelText(
 }
 
 /**
+ * A catalog row that cannot run here gets the same reason the row's own line gives (translated, with the GPU's numbers,
+ * or the missing speech GPU part) in place of the backend's English "does not run on this machine", and the badge says
+ * "Needs GPU part" when the add-on is the cause.
+ */
+export function withUnsupportedFit(
+  entry: VoiceModelEntry,
+  runtime: Pick<VoiceRuntime, "lane" | "extras"> | null | undefined,
+  t: T = tStudio,
+): VoiceModelEntry {
+  const source = entry.source;
+  if (isKokoro(source) || source.supported || !entry.fit || entry.fit.status !== "unknown") return entry;
+  const reason = unsupportedModelText(source, runtime, t);
+  const needsGpuPart = !source.unsupportedFacts && (source.lanes ?? []).includes("cuda") && speechGpuAddonMissing(runtime);
+  return {
+    ...entry,
+    fit: { ...entry.fit, reason, ...(needsGpuPart ? { needsGpuPart: true } : {}) },
+    memory: entry.memory ? { ...entry.memory, title: reason } : entry.memory,
+  };
+}
+
+/**
  * A speech model that only runs on an Apple Silicon Mac, seen on a PC (D-102 A): no GPU lane and not on disk. Such
  * rows are folded under one closed line instead of filling the table with rows that can only say no.
  */

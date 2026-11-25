@@ -63,6 +63,68 @@ export interface VideoUpscaleModels {
   addonInstalled: boolean;
   /** False when the video tools cannot deinterlace on this machine (the tab disables the option). */
   deinterlaceAvailable: boolean;
+  /** The opt-in quality tier (FlashVSR+ Turbo); empty where it can never run (a Mac, no NVIDIA GPU). */
+  qualityModels?: VideoUpscaleQualityModel[];
+}
+
+/** Why the quality tier is not offered, or a size it will not make (``catalog.quality_fit`` codes). */
+export type VideoUpscaleQualityCode = "notCuda" | "smallCard" | "tooBig" | "sizeNeedsMore";
+
+/** The quality tier's gates on this machine: the card floor and the largest output (``maxOutput``). */
+export interface VideoUpscaleQualityFit {
+  offered: boolean;
+  code: VideoUpscaleQualityCode | null;
+  reason: string;
+  cardGb: number | null;
+  maxOutput: [number, number] | null;
+}
+
+export interface VideoUpscaleQualityTier {
+  width: number;
+  height: number;
+  gpuGb: number;
+}
+
+export interface VideoUpscaleQualityModel extends VideoUpscaleModel {
+  tier: "quality";
+  minCardGb: number;
+  /** Largest output per GPU memory, smallest first (measured on an RTX 4090 plus the CUDA context). */
+  sizeTiers: VideoUpscaleQualityTier[];
+  maxOutputWidth: number;
+  maxOutputHeight: number;
+  qualityFit: VideoUpscaleQualityFit;
+}
+
+export type VideoUpscaleQualityPhase =
+  | "idle" | "preflight" | "venv" | "packages" | "code" | "weights" | "check" | "done" | "error" | "cancelled";
+
+export interface VideoUpscaleQualityInstallJob {
+  phase: VideoUpscaleQualityPhase;
+  phaseIndex: number;
+  phaseTotal: number;
+  error: string | null;
+  running: boolean;
+  done: boolean;
+  /** Bytes of the weights fetched or checked so far, during the weights phase. */
+  bytesDone: number;
+  bytesTotal: number;
+  log: string[];
+  startedAt: number;
+  finishedAt: number;
+}
+
+export interface VideoUpscaleQualityStatus {
+  /** False on a computer it cannot run on; nothing is installed there. */
+  available: boolean;
+  unavailableReason: string | null;
+  installed: boolean;
+  folder: string;
+  diskMb: number;
+  /** About how much the install downloads (torch, the other packages and the 7 GB of weights). */
+  downloadGb: number;
+  weightsGb: number;
+  minFreeGb: number;
+  job: VideoUpscaleQualityInstallJob;
 }
 
 /** ``POST /api/video/upscale/probe``: what the backend reads from a file before a start. */
@@ -121,6 +183,18 @@ export async function getVideoUpscaleAddonStatus(): Promise<VideoUpscaleAddonSta
 
 export async function startVideoUpscaleInstall(models?: string[]): Promise<VideoUpscaleAddonStatus> {
   return await postJson<VideoUpscaleAddonStatus>("/api/setup/install-video-upscale", models ? { models } : {}, 15000);
+}
+
+export async function getVideoUpscaleQualityStatus(): Promise<VideoUpscaleQualityStatus> {
+  return await fetchJson<VideoUpscaleQualityStatus>("/api/setup/video-upscale-quality/status", 10000);
+}
+
+export async function startVideoUpscaleQualityInstall(): Promise<VideoUpscaleQualityStatus> {
+  return await postJson<VideoUpscaleQualityStatus>("/api/setup/install-video-upscale-quality", {}, 15000);
+}
+
+export async function cancelVideoUpscaleQualityInstall(): Promise<VideoUpscaleQualityStatus> {
+  return await postJson<VideoUpscaleQualityStatus>("/api/setup/video-upscale-quality/cancel", {}, 15000);
 }
 
 export async function getVideoUpscaleModels(): Promise<VideoUpscaleModels> {

@@ -3290,6 +3290,33 @@
       "failed": "실패",
       "cancelled": "취소됨",
       "interrupted": "중지됨"
+    },
+    "qualityTier": {
+      "label": "업스케일러",
+      "fast": "빠름(기본값)",
+      "fastHint": "원본에 충실합니다. 몇 배 더 빠릅니다.",
+      "quality": "고화질",
+      "qualityHint": "더 선명하고 새로운 디테일을 더합니다. 느림, NVIDIA 전용.",
+      "smallCard": "이 컴퓨터에서는 제공되지 않습니다. 고화질 업스케일러에는 {need}GB 이상의 그래픽 카드가 필요한데, 이 카드는 {card}GB입니다.",
+      "notCuda": "이 컴퓨터에서는 제공되지 않습니다. 고화질 업스케일러에는 전용 메모리가 있는 NVIDIA 그래픽 카드가 필요합니다.",
+      "warningTitle": "이 업스케일러는 디테일을 만들어 냅니다",
+      "warningBody": "원본에 없던 질감(머리카락, 피부, 천, 물)을 더합니다. AI로 만든 영상에는 잘 맞습니다. 얼굴이 바뀔 수 있고, 타임코드나 자막처럼 바뀌는 글자는 망가집니다. 가족 테이프에는 빠른 업스케일러가 충실한 선택입니다.",
+      "speed": "RTX 4090에서 측정: 1280 × 1024로 초당 약 6프레임, 1080p로 4, 1440p로 2. 빠른 업스케일러는 11~27. 테이프 1시간에 약 5시간이 걸립니다.",
+      "maxOutput": "이 {card}GB 카드에서는 최대 {width} × {height}까지 만듭니다. 4K는 제공되지 않습니다.",
+      "installTitle": "고화질 업스케일러 설치",
+      "installBody": "FlashVSR+ Turbo(OpenImagingLab 제작)를 전용 Python 및 PyTorch와 함께 전용 폴더에 추가합니다. 약 {size}GB를 내려받고 {free}GB의 여유 디스크 공간이 필요합니다. 컴퓨터의 다른 부분은 바뀌지 않습니다.",
+      "installButton": "고화질 업스케일러 설치(약 {size}GB)",
+      "cancelInstall": "설치 취소",
+      "cancelled": "설치가 취소되었습니다. 다시 설치하면 멈춘 곳부터 이어서 진행합니다.",
+      "step": "{total}단계 중 {step}단계: {phase}",
+      "phasePreflight": "여유 공간을 확인하는 중…",
+      "phaseVenv": "전용 Python 환경을 만드는 중…",
+      "phasePackages": "PyTorch와 다른 패키지를 내려받는 중(약 3.4GB)…",
+      "phaseCode": "FlashVSR+ 코드를 내려받는 중…",
+      "phaseWeights": "모델을 내려받고 확인하는 중(7GB)…",
+      "phaseCheck": "그래픽 카드에서 실행되는지 확인하는 중…",
+      "sizeTooBig": "고화질 업스케일러는 최대 {width} × {height}까지 만들며 4K는 제공되지 않습니다. 더 작은 크기나 빠른 업스케일러를 선택하세요.",
+      "sizeNeedsMore": "고화질 업스케일러로 {width} × {height}을(를) 만들려면 {need}GB 그래픽 카드가 필요합니다."
     }
   },
   "guide": {

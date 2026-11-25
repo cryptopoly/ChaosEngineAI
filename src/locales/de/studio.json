@@ -3290,6 +3290,33 @@
       "failed": "Fehlgeschlagen",
       "cancelled": "Abgebrochen",
       "interrupted": "Angehalten"
+    },
+    "qualityTier": {
+      "label": "Hochskalierer",
+      "fast": "Schnell (Standard)",
+      "fastHint": "Bleibt nah am Original. Um ein Vielfaches schneller.",
+      "quality": "Qualität",
+      "qualityHint": "Schärfer, mit neuen Details. Langsam; nur NVIDIA.",
+      "smallCard": "Auf diesem Computer nicht verfügbar: Der Qualitäts-Hochskalierer braucht eine Grafikkarte mit mindestens {need} GB, diese hat {card} GB.",
+      "notCuda": "Auf diesem Computer nicht verfügbar: Der Qualitäts-Hochskalierer braucht eine NVIDIA-Grafikkarte mit eigenem Speicher.",
+      "warningTitle": "Dieser Hochskalierer erfindet Details",
+      "warningBody": "Er fügt Struktur hinzu, die das Original nie hatte: Haare, Haut, Stoff, Wasser. Das passt zu KI-Videos. Er kann Gesichter verändern und gibt wechselnden Text falsch wieder, etwa einen Timecode oder eine Einblendung. Für Familienvideos ist der schnelle Hochskalierer die originalgetreue Wahl.",
+      "speed": "Gemessen auf einer RTX 4090: etwa 6 Bilder pro Sekunde auf 1280 × 1024, 4 auf 1080p und 2 auf 1440p; der schnelle Hochskalierer schafft 11 bis 27. Eine Stunde Band dauert etwa 5 Stunden.",
+      "maxOutput": "Auf dieser Karte mit {card} GB macht er bis zu {width} × {height}. 4K wird nicht angeboten.",
+      "installTitle": "Qualitäts-Hochskalierer installieren",
+      "installBody": "Das fügt FlashVSR+ Turbo (von OpenImagingLab) mit eigenem Python und PyTorch hinzu, in einem eigenen Ordner. Etwa {size} GB zum Herunterladen und {free} GB freier Speicherplatz. Sonst ändert sich nichts auf deinem Computer.",
+      "installButton": "Qualitäts-Hochskalierer installieren (etwa {size} GB)",
+      "cancelInstall": "Installation abbrechen",
+      "cancelled": "Die Installation wurde abgebrochen. Wenn du erneut installierst, geht es dort weiter, wo sie aufgehört hat.",
+      "step": "Schritt {step} von {total}: {phase}",
+      "phasePreflight": "Freier Speicherplatz wird geprüft …",
+      "phaseVenv": "Eigene Python-Umgebung wird angelegt …",
+      "phasePackages": "PyTorch und die übrigen Pakete werden heruntergeladen (etwa 3,4 GB) …",
+      "phaseCode": "FlashVSR+-Code wird heruntergeladen …",
+      "phaseWeights": "Modell wird heruntergeladen und geprüft (7 GB) …",
+      "phaseCheck": "Es wird geprüft, ob es auf der Grafikkarte läuft …",
+      "sizeTooBig": "Der Qualitäts-Hochskalierer macht höchstens {width} × {height}; 4K wird nicht angeboten. Wähle eine kleinere Größe oder den schnellen Hochskalierer.",
+      "sizeNeedsMore": "{width} × {height} braucht für den Qualitäts-Hochskalierer eine Grafikkarte mit {need} GB."
     }
   },
   "guide": {

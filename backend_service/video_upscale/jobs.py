@@ -20,8 +20,8 @@ import uuid
 from pathlib import Path
 from typing import Any, Callable
 
-from backend_service.catalog.video_upscale_models import find_model
-from backend_service.video_upscale import addon, pipeline
+from backend_service.catalog.video_upscale_models import find_model, find_quality_model, is_quality_model
+from backend_service.video_upscale import addon, pipeline, quality, quality_addon
 from backend_service.video_upscale.engine import UpscaleError
 
 SLOT_KIND = "upscale"
@@ -98,6 +98,14 @@ def worker_runner() -> Callable[..., dict[str, Any]]:
 
 def check_ready(model_id: str) -> dict[str, Any]:
     """The catalog row, or ``UpscaleError`` naming the install step (409) or the unknown model (400)."""
+    quality_row = find_quality_model(model_id)
+    if quality_row is not None:
+        reason = quality_addon.unavailable_reason()
+        if reason:
+            raise UpscaleError(reason, 409)
+        if not quality_addon.installed():
+            raise UpscaleError(quality_addon.NOT_INSTALLED, 409)
+        return quality_row
     row = find_model(model_id)
     if row is None:
         raise UpscaleError(f"Unknown video upscale model '{model_id}'.")
@@ -116,9 +124,15 @@ def build_spec(src: Path, dst: Path, model_id: str, size: tuple[int, int], *, de
     if deinterlace and pipeline.DEINTERLACE_FILTER not in ffmpeg_bin.ffmpeg_filters():
         raise UpscaleError(f"This ffmpeg has no '{pipeline.DEINTERLACE_FILTER}' filter, so it cannot deinterlace. "
                            "Turn deinterlacing off or choose another ffmpeg in Setup.")
-    spec = pipeline.make_spec(exe, src, dst, model_id=model_id, weights=addon.weights_path(row), size=size,
+    is_quality = row.get("tier") == "quality"
+    if is_quality and min(size) < quality.MIN_SIDE:
+        raise UpscaleError(f"The quality tier needs at least {quality.MIN_SIDE} pixels on each side of the result.")
+    weights = quality_addon.weights_dir() if is_quality else addon.weights_path(row)
+    spec = pipeline.make_spec(exe, src, dst, model_id=model_id, weights=weights, size=size,
                               tile=int(row.get("tile") or 0), batch=int(row.get("batch") or 1), deinterlace=deinterlace,
                               segment_seconds=segment_seconds, avtb=avtb)
+    if is_quality:  # segments capped by pixels too: the worker holds a whole one at the padded size
+        spec.segment_frames = quality.segment_frames(size[0], size[1], spec.source["fps"], segment_seconds)
     # The Storyboard's final quality with the encoder this build has (libx264 CRF 18 when present).
     spec.codec_args = ffmpeg_bin.h264_args(False, width=size[0], height=size[1],
                                            fps=round(pipeline.fps_value(spec.source["fps"])))
@@ -178,8 +192,10 @@ class UpscaleJob:
 
 class UpscaleJobs:
     def __init__(self, runner_factory: Callable[[], Callable[..., dict[str, Any]]] | None = None,
-                 root: Callable[[], Path] = work_root, queue: Any = None) -> None:
+                 root: Callable[[], Path] = work_root, queue: Any = None,
+                 quality_runner_factory: Callable[[], Callable[..., dict[str, Any]]] | None = None) -> None:
         self.runner_factory = runner_factory or worker_runner
+        self.quality_runner_factory = quality_runner_factory or quality.runner
         self.root = root
         self._queue = queue
         self._jobs: dict[str, UpscaleJob] = {}
@@ -192,6 +208,16 @@ class UpscaleJobs:
 
             self._queue = HEAVY_JOBS
         return self._queue
+
+    def runner_for(self, spec: pipeline.JobSpec) -> Callable[..., dict[str, Any]]:
+        """The quality tier's runner for its rows, else the fast one. Both workers share the ``upscale`` kind, so the
+        heavy-job slot does not stop one for the other: the idle one of the other tier is stopped here."""
+        if is_quality_model(spec.model_id):
+            if _WORKER is not None:
+                _WORKER.stop_if_idle("a quality upscale started")
+            return self.quality_runner_factory()
+        quality.release_worker("a fast upscale started")
+        return self.runner_factory()
 
     def start(self, spec: pipeline.JobSpec, source: str = "ui") -> UpscaleJob:
         key = spec.key()
@@ -217,7 +243,7 @@ class UpscaleJobs:
                 raise pipeline.Cancelled("cancelled")
             self.queue.wait_turn(ticket)
             job.state, job.running_since = "running", time.time()
-            result = pipeline.run_job(job.spec, self.runner_factory(), exe=_ffmpeg(), work=work,
+            result = pipeline.run_job(job.spec, self.runner_for(job.spec), exe=_ffmpeg(), work=work,
                                       progress=job.progress, is_cancelled=job.cancel_event.is_set)
             job.notes, job.resumed_segments = list(result.get("notes") or []), int(result.get("resumedSegments") or 0)
             job.state = "done"
@@ -299,7 +325,7 @@ class UpscaleJobs:
         when it finishes."""
         work = self.root() / spec.key()
         with self.queue.slot(SLOT_KIND, source, label):
-            result = pipeline.run_job(spec, self.runner_factory(), exe=_ffmpeg(), work=work, progress=progress,
+            result = pipeline.run_job(spec, self.runner_for(spec), exe=_ffmpeg(), work=work, progress=progress,
                                       is_cancelled=is_cancelled)
         shutil.rmtree(work, ignore_errors=True)
         return result

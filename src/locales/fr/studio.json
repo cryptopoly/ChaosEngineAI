@@ -3290,6 +3290,33 @@
       "failed": "Échec",
       "cancelled": "Annulé",
       "interrupted": "Arrêté"
+    },
+    "qualityTier": {
+      "label": "Agrandisseur",
+      "fast": "Rapide (par défaut)",
+      "fastHint": "Fidèle à l’original. Bien plus rapide.",
+      "quality": "Qualité",
+      "qualityHint": "Plus net, avec de nouveaux détails. Lent ; NVIDIA uniquement.",
+      "smallCard": "Non proposé sur cet ordinateur : l’agrandisseur qualité demande une carte graphique d’au moins {need} Go, celle-ci a {card} Go.",
+      "notCuda": "Non proposé sur cet ordinateur : l’agrandisseur qualité demande une carte graphique NVIDIA avec sa propre mémoire.",
+      "warningTitle": "Cet agrandisseur invente des détails",
+      "warningBody": "Il ajoute une texture que l’original n’a jamais eue : cheveux, peau, tissu, eau. Cela convient aux vidéos créées par IA. Il peut modifier les visages et déforme le texte qui change, comme un timecode ou un sous-titre incrusté. Pour les cassettes de famille, l’agrandisseur rapide reste le choix fidèle.",
+      "speed": "Mesuré sur une RTX 4090 : environ 6 images par seconde vers 1280 × 1024, 4 vers 1080p et 2 vers 1440p ; l’agrandisseur rapide en fait 11 à 27. Une heure de cassette prend environ 5 heures.",
+      "maxOutput": "Sur cette carte de {card} Go, il produit jusqu’à {width} × {height}. La 4K n’est pas proposée.",
+      "installTitle": "Installer l’agrandisseur qualité",
+      "installBody": "Ceci ajoute FlashVSR+ Turbo (d’OpenImagingLab) avec sa propre copie de Python et de PyTorch, dans son propre dossier. Environ {size} Go à télécharger et {free} Go d’espace disque libre. Rien d’autre ne change sur votre ordinateur.",
+      "installButton": "Installer l’agrandisseur qualité (environ {size} Go)",
+      "cancelInstall": "Annuler l’installation",
+      "cancelled": "L’installation a été annulée. Une nouvelle installation reprend là où elle s’est arrêtée.",
+      "step": "Étape {step} sur {total} : {phase}",
+      "phasePreflight": "Vérification de l’espace libre…",
+      "phaseVenv": "Création de son propre environnement Python…",
+      "phasePackages": "Téléchargement de PyTorch et des autres paquets (environ 3,4 Go)…",
+      "phaseCode": "Téléchargement du code FlashVSR+…",
+      "phaseWeights": "Téléchargement et vérification du modèle (7 Go)…",
+      "phaseCheck": "Vérification du fonctionnement sur la carte graphique…",
+      "sizeTooBig": "L’agrandisseur qualité produit au plus {width} × {height} ; la 4K n’est pas proposée. Choisissez une taille plus petite ou l’agrandisseur rapide.",
+      "sizeNeedsMore": "{width} × {height} demande une carte graphique de {need} Go pour l’agrandisseur qualité."
     }
   },
   "guide": {

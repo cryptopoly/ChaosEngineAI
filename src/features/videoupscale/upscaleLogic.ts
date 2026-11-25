@@ -4,7 +4,8 @@
  * (``routes/video_upscale.py``) decides in the end; these rules only spare the user a request it would refuse.
  */
 import type {
-  VideoUpscaleAddonStatus, VideoUpscaleJob, VideoUpscaleModel, VideoUpscaleProbe, VideoUpscaleRequest, VideoUpscaleState,
+  VideoUpscaleAddonStatus, VideoUpscaleJob, VideoUpscaleModel, VideoUpscaleProbe, VideoUpscaleQualityInstallJob,
+  VideoUpscaleQualityModel, VideoUpscaleQualityStatus, VideoUpscaleRequest, VideoUpscaleState,
 } from "../../api/videoUpscale";
 
 /** The largest output side the backend makes (``video_upscale/engine.py`` ``MAX_SIDE``). */
@@ -216,6 +217,59 @@ export interface UpscaleMediaView {
 export const NO_MEDIA: UpscaleMediaView = {
   inputFrameUrl: null, outputFrameUrl: null, loading: false, playUrl: null, playState: "idle", playError: null,
 };
+
+// ---------------------------------------------------------------------------
+// the quality tier (FlashVSR+ Turbo, D0145): opt-in, NVIDIA only, the fast tier stays the default
+// ---------------------------------------------------------------------------
+
+export type UpscaleTier = "fast" | "quality";
+
+/** The quality row, when the backend lists one and its add-on can run on this computer; otherwise the tab shows
+ * nothing of the quality tier (a Mac, a computer without an NVIDIA card). */
+export function qualityRow(
+  models: VideoUpscaleQualityModel[] | undefined, status: Pick<VideoUpscaleQualityStatus, "available"> | null,
+): VideoUpscaleQualityModel | null {
+  if (!status?.available) return null;
+  return models?.[0] ?? null;
+}
+
+export type QualitySizeBlock = "qualityTooBig" | "qualityNeedsMore";
+
+function within(size: VideoSize, maxWidth: number, maxHeight: number): boolean {
+  return size.width * size.height <= maxWidth * maxHeight && Math.max(size.width, size.height) <= Math.max(maxWidth, maxHeight);
+}
+
+/**
+ * Whether the quality tier makes this size here (the backend's ``quality_fit``): above its largest tier (4K) it is
+ * ``qualityTooBig``; above what this card's memory allows it is ``qualityNeedsMore``. Null when it fits or the size
+ * is not known yet (the backend then checks it).
+ */
+export function qualitySizeBlock(size: VideoSize | null, row: VideoUpscaleQualityModel): QualitySizeBlock | null {
+  if (!size) return null;
+  if (!within(size, row.maxOutputWidth, row.maxOutputHeight)) return "qualityTooBig";
+  const max = row.qualityFit.maxOutput;
+  if (!max || !within(size, max[0], max[1])) return "qualityNeedsMore";
+  return null;
+}
+
+/** The GPU memory the quality tier needs for this size (its smallest tier that holds it), or null above them all. */
+export function qualityNeedGb(size: VideoSize, row: VideoUpscaleQualityModel): number | null {
+  return row.sizeTiers.find((tier) => within(size, tier.width, tier.height))?.gpuGb ?? null;
+}
+
+/** The install's whole percent: by phase, and inside the weights phase by bytes (the 7 GB dominate). */
+export function qualityInstallPercent(job: Pick<VideoUpscaleQualityInstallJob, "phaseIndex" | "phaseTotal" | "bytesDone" | "bytesTotal" | "phase">): number {
+  if (job.phase === "done") return 100;
+  if (job.phaseTotal <= 0 || job.phaseIndex <= 0) return 0;
+  const inPhase = job.phase === "weights" && job.bytesTotal > 0 ? job.bytesDone / job.bytesTotal : 0;
+  return Math.max(0, Math.min(99, Math.floor(((job.phaseIndex - 1 + inPhase) / job.phaseTotal) * 100)));
+}
+
+/** The install card shows until the quality tier is installed, and while its install runs, failed or was cancelled. */
+export function showQualityInstall(status: VideoUpscaleQualityStatus | null): boolean {
+  if (!status?.available) return false;
+  return !status.installed || status.job.running || status.job.phase === "error";
+}
 
 /** The file name of a local path, Windows or POSIX. */
 export function fileNameOf(path: string): string {

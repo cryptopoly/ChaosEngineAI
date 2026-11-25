@@ -1,6 +1,8 @@
 """Video upscale jobs, fast tier (``video_upscale``): models, start, status, cancel, resume.
 
-* ``GET  /api/video/upscale/models``: the catalog rows with ``fit`` for this machine and whether each is installed.
+* ``GET  /api/video/upscale/models``: the catalog rows with ``fit`` for this machine and whether each is installed;
+  ``qualityModels`` holds the opt-in quality tier (FlashVSR+ Turbo, D0145) with its size gates (``qualityFit``), empty
+  where it cannot run. A quality start is also checked against the output size (``catalog.quality_fit``).
 * ``POST /api/video/upscale``: start a job (``inputPath``, ``modelId``, ``scale`` or ``width`` + ``height``,
   optional ``outputPath`` and ``deinterlace``). The same request again returns the same job (its id is a hash of
   the request), so a client that lost the id finds it.
@@ -26,8 +28,10 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, model_validator
 
-from backend_service.catalog.video_upscale_models import DEFAULT_MODEL_ID, catalog_with_fit, find_model
-from backend_service.video_upscale import addon, jobs, pipeline
+from backend_service.catalog.video_upscale_models import (
+    DEFAULT_MODEL_ID, catalog_with_fit, find_model, is_quality_model, quality_catalog_with_fit, quality_fit,
+)
+from backend_service.video_upscale import addon, jobs, pipeline, quality_addon
 from backend_service.video_upscale.engine import UpscaleError, check_target, target_size
 
 router = APIRouter()
@@ -141,21 +145,44 @@ def _deinterlace_available() -> bool:
         return False
 
 
+def _quality_rows() -> list[dict[str, Any]]:
+    """The quality tier's rows (FlashVSR+ Turbo) with fit and install state; empty where it can never run (a Mac, a
+    CPU-only box), so the tab shows nothing of it there."""
+    if quality_addon.unavailable_reason():
+        return []
+    rows = quality_catalog_with_fit()
+    for row in rows:
+        row["installed"] = quality_addon.installed()
+    return rows
+
+
 @router.get("/api/video/upscale/models")
 def upscale_models() -> dict[str, Any]:
     rows = catalog_with_fit()
     for row in rows:
         row["installed"] = addon.site_installed() and addon.model_installed(row)
-    return {"models": rows, "addonInstalled": addon.site_installed(), "deinterlaceAvailable": _deinterlace_available()}
+    return {"models": rows, "addonInstalled": addon.site_installed(), "deinterlaceAvailable": _deinterlace_available(),
+            "qualityModels": _quality_rows()}
+
+
+def _quality_refusal(size: tuple[int, int]) -> str | None:
+    """Why the quality tier will not make ``size`` on this machine (the spike's gates), or None."""
+    from backend_service.helpers.hardware_class import host_hardware_class  # noqa: PLC0415
+
+    gate = quality_fit(host_hardware_class(), size)
+    if not gate["offered"] or not gate.get("sizeOk"):
+        return gate["reason"]
+    return None
 
 
 @router.post("/api/video/upscale")
 def start_upscale(body: UpscaleRequest) -> dict[str, Any]:
     try:
-        if find_model(body.modelId) is None:
+        quality_tier = is_quality_model(body.modelId)
+        if find_model(body.modelId) is None and not quality_tier:
             raise UpscaleError(f"Unknown video upscale model '{body.modelId}'.")
         jobs.check_ready(body.modelId)
-        refusal = _fit_refusal(body.modelId)
+        refusal = None if quality_tier else _fit_refusal(body.modelId)
         if refusal:
             raise UpscaleError(refusal, 409)
         src = resolve_input(body.inputPath)
@@ -164,6 +191,9 @@ def start_upscale(body: UpscaleRequest) -> dict[str, Any]:
         info = pipeline.probe_source(ffmpeg_bin.ffmpeg_exe(), src)
         size = (body.width, body.height) if body.width else target_size(info.width, info.height, body.scale or 2.0)
         check_target(*size)  # type: ignore[arg-type]
+        refusal = _quality_refusal(size) if quality_tier else None  # type: ignore[arg-type]
+        if refusal:
+            raise UpscaleError(refusal, 409)
         dst = resolve_output(body.outputPath, src, body.modelId, size)  # type: ignore[arg-type]
         spec = jobs.build_spec(src, dst, body.modelId, size, deinterlace=body.deinterlace)  # type: ignore[arg-type]
         return jobs.JOBS.start(spec).to_dict()

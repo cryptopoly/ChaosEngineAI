@@ -10,22 +10,28 @@ import { Panel } from "../../components/Panel";
 import { FitBadge } from "../../components/models/FitBadge";
 import {
   cancelVideoUpscaleJob,
+  cancelVideoUpscaleQualityInstall,
   fetchVideoOutputBlobUrl,
   getVideoUpscaleAddonStatus,
   getVideoUpscaleJob,
   getVideoUpscaleModels,
+  getVideoUpscaleQualityStatus,
   listVideoUpscaleJobs,
   probeVideoUpscaleInput,
   resumeVideoUpscaleJob,
   startVideoUpscale,
   startVideoUpscaleInstall,
+  startVideoUpscaleQualityInstall,
   type VideoUpscaleAddonStatus,
   type VideoUpscaleJob,
   type VideoUpscaleModel,
   type VideoUpscaleProbe,
+  type VideoUpscaleQualityModel,
+  type VideoUpscaleQualityStatus,
 } from "../../api";
 import { UpscaleInstallCard } from "./UpscaleInstallCard";
 import { UpscaleJobCard } from "./UpscaleJobCard";
+import { UpscaleQualityTier } from "./UpscaleQualityTier";
 import { UpscaleRecentJobs } from "./UpscaleRecentJobs";
 import { useUpscaleMedia } from "./useUpscaleMedia";
 import {
@@ -40,11 +46,15 @@ import {
   isLive,
   missingModelIds,
   probeSize,
+  qualityNeedGb,
   qualityOption,
+  qualityRow,
+  qualitySizeBlock,
   showInstallCard,
   sizeOption,
   sizeRequest,
   type SizeChoice,
+  type UpscaleTier,
   type VideoSize,
 } from "./upscaleLogic";
 import { clearUpscaleRequest, peekUpscaleRequest, readLastJob, writeLastJob, type UpscaleSource } from "./upscaleSource";
@@ -111,6 +121,11 @@ export function VideoUpscaleTab({ onRevealPath, onOpenPath }: VideoUpscaleTabPro
   const [pickError, setPickError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const installPoll = useRef<number | null>(null);
+  const [qualityModels, setQualityModels] = useState<VideoUpscaleQualityModel[]>([]);
+  const [qualityStatus, setQualityStatus] = useState<VideoUpscaleQualityStatus | null>(null);
+  const [qualityInstallError, setQualityInstallError] = useState<string | null>(null);
+  const [tier, setTier] = useState<UpscaleTier>("fast");
+  const qualityPoll = useRef<number | null>(null);
 
   // The probe's size is the file's own; a Gallery clip's size and the preview's size hold until it answers.
   const sourceSize: VideoSize | null = probeSize(probe)
@@ -125,6 +140,7 @@ export function VideoUpscaleTab({ onRevealPath, onOpenPath }: VideoUpscaleTabPro
     getVideoUpscaleModels()
       .then((next) => {
         setModels(next.models);
+        setQualityModels(next.qualityModels ?? []);
         setDeinterlaceAvailable(next.deinterlaceAvailable !== false);
         setModelId((current) => defaultModelId(next.models, current));
       })
@@ -134,6 +150,56 @@ export function VideoUpscaleTab({ onRevealPath, onOpenPath }: VideoUpscaleTabPro
   const loadRecent = useCallback(() => {
     listVideoUpscaleJobs().then(setRecent).catch(() => undefined);
   }, []);
+
+  const stopQualityPoll = () => {
+    if (qualityPoll.current != null) window.clearInterval(qualityPoll.current);
+    qualityPoll.current = null;
+  };
+
+  // The quality tier's install (D0145): followed like the fast add-on's, then the rows are read again.
+  const followQualityInstall = useCallback(() => {
+    stopQualityPoll();
+    qualityPoll.current = window.setInterval(() => {
+      getVideoUpscaleQualityStatus()
+        .then((next) => {
+          setQualityStatus(next);
+          if (!next.job.running) {
+            stopQualityPoll();
+            loadModels();
+          }
+        })
+        .catch(stopQualityPoll);
+    }, POLL_MS);
+  }, [loadModels]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getVideoUpscaleQualityStatus()
+      .then((next) => {
+        if (cancelled) return;
+        setQualityStatus(next);
+        if (next.job.running) followQualityInstall();
+      })
+      .catch(() => undefined); // an older backend: the quality tier stays hidden
+    return () => {
+      cancelled = true;
+      stopQualityPoll();
+    };
+  }, [followQualityInstall]);
+
+  const installQuality = () => {
+    setQualityInstallError(null);
+    startVideoUpscaleQualityInstall()
+      .then((next) => {
+        setQualityStatus(next);
+        followQualityInstall();
+      })
+      .catch((err: unknown) => setQualityInstallError(message(err)));
+  };
+
+  const cancelQualityInstall = () => {
+    cancelVideoUpscaleQualityInstall().then(setQualityStatus).catch((err: unknown) => setQualityInstallError(message(err)));
+  };
 
   const stopInstallPoll = () => {
     if (installPoll.current != null) window.clearInterval(installPoll.current);
@@ -272,15 +338,21 @@ export function VideoUpscaleTab({ onRevealPath, onOpenPath }: VideoUpscaleTabPro
 
   const sizePart = sizeRequest(sizeChoice, sourceSize);
   const selectedModel = models.find((model) => model.id === modelId) ?? null;
-  const modelOk = selectedModel ? qualityOption(selectedModel).selectable : false;
+  const quality = qualityRow(qualityModels, qualityStatus);
+  const qualityChosen = tier === "quality" && quality !== null;
+  const qualityBlock = (choice: SizeChoice) => (qualityChosen && quality ? qualitySizeBlock(sizeOption(choice, sourceSize).size, quality) : null);
+  const modelOk = qualityChosen
+    ? Boolean(quality?.qualityFit.offered && qualityStatus?.installed) && qualityBlock(sizeChoice) === null
+    : selectedModel ? qualityOption(selectedModel).selectable : false;
+  const startModelId = qualityChosen ? quality?.id ?? null : modelId;
   const canStart = Boolean(source?.path) && modelOk && sizePart !== null && !jobLive && !busy && Boolean(addon?.installed);
 
   const start = () => {
-    if (!source || !modelId || !sizePart) return;
+    if (!source || !startModelId || !sizePart) return;
     setBusy(true);
     setStartError(null);
     setActionError(null);
-    startVideoUpscale({ inputPath: source.path, modelId, ...sizePart, deinterlace: deinterlace && deinterlaceAvailable })
+    startVideoUpscale({ inputPath: source.path, modelId: startModelId, ...sizePart, deinterlace: deinterlace && deinterlaceAvailable })
       .then((started) => {
         setJob(started);
         writeLastJob({ id: started.id, source });
@@ -341,6 +413,19 @@ export function VideoUpscaleTab({ onRevealPath, onOpenPath }: VideoUpscaleTabPro
     if (option.block === "notBigger") {
       return t("videoUpscale.size.notBigger", { defaultValue: "The video is already this tall or taller." });
     }
+    const quick = qualityBlock(choice);
+    if (quick === "qualityTooBig" && quality) {
+      return t("videoUpscale.qualityTier.sizeTooBig", {
+        defaultValue: "The quality upscaler makes at most {width} × {height}; 4K is not offered. Choose a smaller size or the fast upscaler.",
+        width: quality.maxOutputWidth, height: quality.maxOutputHeight,
+      });
+    }
+    if (quick === "qualityNeedsMore" && quality && option.size) {
+      return t("videoUpscale.qualityTier.sizeNeedsMore", {
+        defaultValue: "{width} × {height} needs a graphics card with {need} GB for the quality upscaler.",
+        width: option.size.width, height: option.size.height, need: qualityNeedGb(option.size, quality) ?? 0,
+      });
+    }
     return null;
   };
   const blockNotes = Array.from(new Set(SIZE_CHOICES.map(blockText).filter((note): note is string => Boolean(note))));
@@ -379,7 +464,7 @@ export function VideoUpscaleTab({ onRevealPath, onOpenPath }: VideoUpscaleTabPro
         {job ? (
           <UpscaleJobCard
             job={job}
-            modelLabel={models.find((model) => model.id === job.modelId)?.label ?? null}
+            modelLabel={[...models, ...qualityModels].find((model) => model.id === job.modelId)?.label ?? null}
             media={media}
             busy={busy}
             actionError={actionError}
@@ -455,6 +540,19 @@ export function VideoUpscaleTab({ onRevealPath, onOpenPath }: VideoUpscaleTabPro
               {probeError ? <p className="error-text">{probeError}</p> : null}
             </div>
 
+            {quality && qualityStatus ? (
+              <UpscaleQualityTier
+                row={quality}
+                status={qualityStatus}
+                tier={tier}
+                onTier={setTier}
+                requestError={qualityInstallError}
+                onInstall={installQuality}
+                onCancelInstall={cancelQualityInstall}
+              />
+            ) : null}
+
+            {!qualityChosen ? (
             <div className="control-stack">
               <span className="eyebrow">{t("videoUpscale.quality.label", { defaultValue: "Quality" })}</span>
               <div className="image-pill-row" role="radiogroup" aria-label={t("videoUpscale.quality.label", { defaultValue: "Quality" })}>
@@ -493,6 +591,7 @@ export function VideoUpscaleTab({ onRevealPath, onOpenPath }: VideoUpscaleTabPro
                 </div>
               ) : null}
             </div>
+            ) : null}
 
             <div className="control-stack">
               <span className="eyebrow">{t("videoUpscale.size.label", { defaultValue: "Size" })}</span>
@@ -506,7 +605,7 @@ export function VideoUpscaleTab({ onRevealPath, onOpenPath }: VideoUpscaleTabPro
                       role="radio"
                       aria-checked={sizeChoice === choice}
                       className={`pill-button${sizeChoice === choice ? " active" : ""}`}
-                      disabled={option.block !== null}
+                      disabled={option.block !== null || qualityBlock(choice) !== null}
                       title={blockText(choice) ?? undefined}
                       onClick={() => setSizeChoice(choice)}
                     >

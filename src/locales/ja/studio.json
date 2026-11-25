@@ -3290,6 +3290,33 @@
       "failed": "失敗",
       "cancelled": "キャンセル済み",
       "interrupted": "停止"
+    },
+    "qualityTier": {
+      "label": "アップスケーラー",
+      "fast": "高速（既定）",
+      "fastHint": "元の映像に忠実。何倍も速い。",
+      "quality": "高画質",
+      "qualityHint": "よりシャープで、新しいディテールを加えます。低速。NVIDIA のみ。",
+      "smallCard": "このコンピューターでは使えません。高画質アップスケーラーには {need} GB 以上のグラフィックカードが必要ですが、このカードは {card} GB です。",
+      "notCuda": "このコンピューターでは使えません。高画質アップスケーラーには専用メモリを持つ NVIDIA のグラフィックカードが必要です。",
+      "warningTitle": "このアップスケーラーはディテールを作り出します",
+      "warningBody": "元の映像になかった質感（髪、肌、布、水）を加えます。AI で作った映像には向いています。顔が変わることがあり、タイムコードや字幕のように変化する文字は崩れます。家族のテープには、高速アップスケーラーが忠実な選択です。",
+      "speed": "RTX 4090 で測定：1280 × 1024 へ毎秒約 6 フレーム、1080p へ 4、1440p へ 2。高速アップスケーラーは 11〜27。テープ 1 時間でおよそ 5 時間かかります。",
+      "maxOutput": "この {card} GB のカードでは最大 {width} × {height} まで。4K には対応しません。",
+      "installTitle": "高画質アップスケーラーをインストール",
+      "installBody": "FlashVSR+ Turbo（OpenImagingLab 製）を、専用の Python と PyTorch とともに専用フォルダーに追加します。ダウンロードは約 {size} GB、空きディスク容量は {free} GB 必要です。コンピューターのほかの部分は変わりません。",
+      "installButton": "高画質アップスケーラーをインストール（約 {size} GB）",
+      "cancelInstall": "インストールを中止",
+      "cancelled": "インストールを中止しました。もう一度インストールすると、止まったところから続けます。",
+      "step": "手順 {step}/{total}：{phase}",
+      "phasePreflight": "空き容量を確認しています…",
+      "phaseVenv": "専用の Python 環境を作成しています…",
+      "phasePackages": "PyTorch とほかのパッケージをダウンロードしています（約 3.4 GB）…",
+      "phaseCode": "FlashVSR+ のコードをダウンロードしています…",
+      "phaseWeights": "モデルをダウンロードして確認しています（7 GB）…",
+      "phaseCheck": "グラフィックカードで動くか確認しています…",
+      "sizeTooBig": "高画質アップスケーラーの最大は {width} × {height} で、4K には対応しません。小さいサイズか高速アップスケーラーを選んでください。",
+      "sizeNeedsMore": "高画質アップスケーラーで {width} × {height} にするには {need} GB のグラフィックカードが必要です。"
     }
   },
   "guide": {

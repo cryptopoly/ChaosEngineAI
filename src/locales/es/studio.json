@@ -3290,6 +3290,33 @@
       "failed": "Error",
       "cancelled": "Cancelado",
       "interrupted": "Detenido"
+    },
+    "qualityTier": {
+      "label": "Escalador",
+      "fast": "Rápido (predeterminado)",
+      "fastHint": "Fiel al original. Muchas veces más rápido.",
+      "quality": "Calidad",
+      "qualityHint": "Más nítido, con detalle nuevo. Lento; solo NVIDIA.",
+      "smallCard": "No disponible en este ordenador: el escalador de calidad necesita una tarjeta gráfica de al menos {need} GB y esta tiene {card} GB.",
+      "notCuda": "No disponible en este ordenador: el escalador de calidad necesita una tarjeta gráfica NVIDIA con memoria propia.",
+      "warningTitle": "Este escalador inventa detalle",
+      "warningBody": "Añade textura que el original nunca tuvo: pelo, piel, tela, agua. Eso va bien con vídeo hecho con IA. Puede cambiar caras y estropea el texto que cambia, como un código de tiempo o un rótulo. Para cintas familiares, el escalador rápido es la opción fiel.",
+      "speed": "Medido en una RTX 4090: unos 6 fotogramas por segundo a 1280 × 1024, 4 a 1080p y 2 a 1440p; el escalador rápido hace de 11 a 27. Una hora de cinta tarda unas 5 horas.",
+      "maxOutput": "En esta tarjeta de {card} GB llega hasta {width} × {height}. No se ofrece 4K.",
+      "installTitle": "Instalar el escalador de calidad",
+      "installBody": "Esto añade FlashVSR+ Turbo (de OpenImagingLab) con su propia copia de Python y PyTorch, en su propia carpeta. Unos {size} GB de descarga y {free} GB de espacio libre en disco. No cambia nada más en tu ordenador.",
+      "installButton": "Instalar el escalador de calidad (unos {size} GB)",
+      "cancelInstall": "Cancelar la instalación",
+      "cancelled": "Se canceló la instalación. Si vuelves a instalar, sigue donde se quedó.",
+      "step": "Paso {step} de {total}: {phase}",
+      "phasePreflight": "Comprobando el espacio libre…",
+      "phaseVenv": "Creando su propio entorno de Python…",
+      "phasePackages": "Descargando PyTorch y los demás paquetes (unos 3,4 GB)…",
+      "phaseCode": "Descargando el código de FlashVSR+…",
+      "phaseWeights": "Descargando y comprobando el modelo (7 GB)…",
+      "phaseCheck": "Comprobando que funciona en la tarjeta gráfica…",
+      "sizeTooBig": "El escalador de calidad llega como mucho a {width} × {height}; no se ofrece 4K. Elige un tamaño menor o el escalador rápido.",
+      "sizeNeedsMore": "{width} × {height} necesita una tarjeta gráfica de {need} GB para el escalador de calidad."
     }
   },
   "guide": {

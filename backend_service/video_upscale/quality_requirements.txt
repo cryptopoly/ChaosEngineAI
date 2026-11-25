@@ -1,0 +1,17 @@
+# The quality upscale add-on's venv (FlashVSR+ Turbo, docs/research/ai-video-upscaler-spike-2026-11.md section 2).
+# Installed by backend_service/video_upscale/quality_addon.py into ~/.chaosengine/addons/video-upscale-quality/venv
+# with --extra-index-url https://download.pytorch.org/whl/cu128 (the +cu128 torch lives only there), wheels only.
+# FlashVSR+ asks for torch>=2.5,<2.8. triton-windows is tied to the torch minor version (3.3 goes with torch 2.7):
+# bump both together. On Linux torch 2.7.1 brings the official triton 3.3.1 itself.
+torch==2.7.1+cu128
+triton-windows==3.3.1.post21; sys_platform == "win32"
+einops==0.8.1
+imageio==2.37.0
+imageio-ffmpeg==0.6.0
+numpy==2.2.6
+# safetensors.torch imports packaging; nothing else in the list brings it.
+packaging==26.4
+opencv-python-headless==4.12.0.88
+pillow==11.3.0
+safetensors==0.6.2
+tqdm==4.67.1

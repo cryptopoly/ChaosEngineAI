@@ -3290,6 +3290,33 @@
       "failed": "Failed",
       "cancelled": "Cancelled",
       "interrupted": "Stopped"
+    },
+    "qualityTier": {
+      "label": "Upscaler",
+      "fast": "Fast (default)",
+      "fastHint": "Faithful to the original. Many times faster.",
+      "quality": "Quality",
+      "qualityHint": "Sharper, with new detail. Slow; NVIDIA only.",
+      "smallCard": "Not offered on this computer: the quality upscaler needs a graphics card with at least {need} GB, and this one has {card} GB.",
+      "notCuda": "Not offered on this computer: the quality upscaler needs an NVIDIA graphics card with its own memory.",
+      "warningTitle": "This upscaler invents detail",
+      "warningBody": "It adds texture the original never had: hair, skin, fabric, water. That suits AI footage. It can change faces and gets changing text wrong, such as a timecode or a caption. For family tapes, the fast upscaler is the faithful choice.",
+      "speed": "Measured on an RTX 4090: about 6 frames a second to 1280 × 1024, 4 to 1080p and 2 to 1440p; the fast upscaler does 11 to 27. An hour of tape takes about 5 hours.",
+      "maxOutput": "On this {card} GB card it makes up to {width} × {height}. 4K is not offered.",
+      "installTitle": "Install the quality upscaler",
+      "installBody": "This adds FlashVSR+ Turbo (by OpenImagingLab) with its own copy of Python and PyTorch, in its own folder. About {size} GB to download and {free} GB of free disk space. Nothing else on your computer changes.",
+      "installButton": "Install the quality upscaler (about {size} GB)",
+      "cancelInstall": "Cancel the install",
+      "cancelled": "The install was cancelled. Installing again carries on where it stopped.",
+      "step": "Step {step} of {total}: {phase}",
+      "phasePreflight": "Checking free space…",
+      "phaseVenv": "Making its own Python environment…",
+      "phasePackages": "Downloading PyTorch and the other packages (about 3.4 GB)…",
+      "phaseCode": "Downloading the FlashVSR+ code…",
+      "phaseWeights": "Downloading and checking the model (7 GB)…",
+      "phaseCheck": "Checking that it runs on the graphics card…",
+      "sizeTooBig": "The quality upscaler makes at most {width} × {height}; 4K is not offered. Choose a smaller size or the fast upscaler.",
+      "sizeNeedsMore": "{width} × {height} needs a graphics card with {need} GB for the quality upscaler."
     }
   },
   "guide": {

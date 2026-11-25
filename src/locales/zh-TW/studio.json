@@ -3290,6 +3290,33 @@
       "failed": "失敗",
       "cancelled": "已取消",
       "interrupted": "已停止"
+    },
+    "qualityTier": {
+      "label": "放大器",
+      "fast": "快速（預設）",
+      "fastHint": "忠於原片。快很多倍。",
+      "quality": "高畫質",
+      "qualityHint": "更清晰，加入新細節。較慢；僅限 NVIDIA。",
+      "smallCard": "此電腦不提供：高畫質放大器需要至少 {need} GB 的顯示卡，這張顯示卡只有 {card} GB。",
+      "notCuda": "此電腦不提供：高畫質放大器需要具備獨立記憶體的 NVIDIA 顯示卡。",
+      "warningTitle": "這個放大器會創造細節",
+      "warningBody": "它會加入原片沒有的紋理：頭髮、皮膚、布料、水面。這適合 AI 生成的影片。它可能改變人臉，並會弄錯變化的文字，例如時間碼或字幕。家庭錄影帶請選快速放大器，它更忠實。",
+      "speed": "在 RTX 4090 上實測：放大到 1280 × 1024 約每秒 6 格，到 1080p 約 4 格，到 1440p 約 2 格；快速放大器為 11 到 27 格。一小時錄影帶約需 5 小時。",
+      "maxOutput": "在這張 {card} GB 的顯示卡上最大可到 {width} × {height}。不提供 4K。",
+      "installTitle": "安裝高畫質放大器",
+      "installBody": "這會把 FlashVSR+ Turbo（OpenImagingLab 出品）連同它自己的 Python 和 PyTorch 裝進獨立的資料夾。下載約 {size} GB，需要 {free} GB 可用磁碟空間。電腦上的其他內容不會改變。",
+      "installButton": "安裝高畫質放大器（約 {size} GB）",
+      "cancelInstall": "取消安裝",
+      "cancelled": "安裝已取消。再次安裝會從中斷處繼續。",
+      "step": "第 {step} 步，共 {total} 步：{phase}",
+      "phasePreflight": "正在檢查可用空間…",
+      "phaseVenv": "正在建立獨立的 Python 環境…",
+      "phasePackages": "正在下載 PyTorch 和其他套件（約 3.4 GB）…",
+      "phaseCode": "正在下載 FlashVSR+ 程式碼…",
+      "phaseWeights": "正在下載並檢查模型（7 GB）…",
+      "phaseCheck": "正在檢查能否在顯示卡上執行…",
+      "sizeTooBig": "高畫質放大器最大只到 {width} × {height}，不提供 4K。請選擇較小的尺寸或快速放大器。",
+      "sizeNeedsMore": "用高畫質放大器產生 {width} × {height} 需要 {need} GB 的顯示卡。"
     }
   },
   "guide": {

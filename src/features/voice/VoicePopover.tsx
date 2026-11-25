@@ -34,19 +34,26 @@ function VoiceIcon() {
 /** Gap kept under the button and above the window's bottom edge. */
 const POPOVER_GAP = 6;
 const POPOVER_MARGIN = 12;
+/** Room under the button that is enough to open downward (the popover is about 600 px of content). */
+const POPOVER_COMFORT_PX = 360;
 /** Below this width the stylesheet pins the panel to the window's sides (phone layout). */
 const POPOVER_NARROW_PX = 760;
 
 /**
- * Where the open popover goes: fixed under its button, as tall as the window leaves room for (it scrolls inside), so
+ * Where the open popover goes: fixed under its button (above it when the button is low in the window), as tall as the window leaves room for (it scrolls inside), so
  * the chat panel's clipping cannot cut it off. ``right`` is left to the stylesheet in the narrow layout.
  */
 export function popoverPlacement(
-  button: { bottom: number; right: number },
+  button: { bottom: number; right: number; top?: number },
   viewport: { width: number; height: number },
 ): CSSProperties {
-  const top = Math.round(button.bottom + POPOVER_GAP);
-  const placement: CSSProperties = { top, maxHeight: Math.max(160, viewport.height - top - POPOVER_MARGIN) };
+  const below = viewport.height - Math.round(button.bottom + POPOVER_GAP) - POPOVER_MARGIN;
+  const above = button.top === undefined ? 0 : Math.round(button.top - POPOVER_GAP) - POPOVER_MARGIN;
+  // A button low in the window has little room under it: open upward when that room is clearly larger.
+  const upward = below < POPOVER_COMFORT_PX && above > below;
+  const placement: CSSProperties = upward
+    ? { bottom: Math.round(viewport.height - (button.top ?? 0) + POPOVER_GAP), maxHeight: Math.max(160, above) }
+    : { top: Math.round(button.bottom + POPOVER_GAP), maxHeight: Math.max(160, below) };
   if (viewport.width > POPOVER_NARROW_PX) placement.right = Math.max(POPOVER_MARGIN, Math.round(viewport.width - button.right));
   return placement;
 }

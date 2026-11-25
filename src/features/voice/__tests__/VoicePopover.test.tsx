@@ -192,6 +192,13 @@ describe("where the Voice popover opens (it was cut to ~190 px at 900x800)", () 
     expect((popoverPlacement({ bottom: 700, right: 880 }, { width: 1280, height: 800 }) as { maxHeight: number }).maxHeight).toBe(160);
   });
 
+  it("opens upward when the button is low in the window and the room above is larger", () => {
+    // 900 x 800 window, button at y 548 to 566: 200 px below, 530 px above.
+    expect(popoverPlacement({ top: 548, bottom: 566, right: 600 }, { width: 900, height: 800 })).toEqual({ bottom: 258, maxHeight: 530, right: 300 });
+    // Plenty of room below keeps it under the button.
+    expect(popoverPlacement({ top: 160, bottom: 180, right: 880 }, { width: 1280, height: 800 })).toEqual({ top: 186, maxHeight: 602, right: 400 });
+  });
+
   it("leaves the sides to the stylesheet in the narrow layout", () => {
     expect(popoverPlacement({ bottom: 100, right: 300 }, { width: 375, height: 812 })).toEqual({ top: 106, maxHeight: 694 });
   });

@@ -177,9 +177,9 @@
     "addGrammar": "添加结构化输出",
     "exclusiveLabel": "说明:",
     "exclusiveBody": "应用中没有其他引擎能加载此模型，因此它始终在 TensorFold 上运行；该复选框用于开启或关闭其草稿功能。",
-    "contextCapped": null,
-    "cacheNote": null,
-    "contextCappedVram": null
+    "contextCapped": "TensorFold 使用它自己的缓存。这台 Mac 的 GPU 上限是 {limitGb} GB；{weightsGb} GB 的模型加上 {marginGb} GB 的余量后剩下 {budgetGb} GB，而完整窗口需要 {needGb} GB。窗口已限制为 {maxContext}，以便 TensorFold 能启动。",
+    "cacheNote": "TensorFold 在这里约占用 {cacheGb} GB 缓存（它自己的缓存加上草稿模型的缓存），比所示的标准估算更多。",
+    "contextCappedVram": "在完整窗口下，TensorFold 需要约 {needGb} GB 显存，而显卡只有 {freeGb} GB 空闲。窗口已限制为 {maxContext}，以便 TensorFold 能启动。"
   },
   "strategyRole": {
     "memorySaverTitle": "压缩 KV 缓存，让长上下文占用更少内存。生成速度比原生慢。",

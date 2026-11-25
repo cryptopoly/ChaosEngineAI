@@ -671,7 +671,7 @@
       "delete": "削除",
       "soundOn": "音声をオンにする",
       "soundOff": "ミュート",
-      "upscale": null
+      "upscale": "このクリップをアップスケール"
     }
   },
   "voice": {
@@ -1487,7 +1487,7 @@
       "stepsNumber": "ステップ数",
       "stepsNote": "ステップを減らすと速くなりますが、品質が下がることがあります。{n} はモデル作者の設定です。",
       "summarySteps": "{n} ステップ",
-      "random": null
+      "random": "ランダム"
     },
     "artistWarning": "アーティスト名を入れると、そのスタイルのコピーになることがあります。代わりに音そのものを描写してください。",
     "cancel": "キャンセル",
@@ -1645,7 +1645,7 @@
       "title": "ショットを作成中",
       "titleDraft": "ドラフトを作成中",
       "titleFinal": "最終パス",
-      "failedSoFar": null
+      "failedSoFar": "{n, plural, other {# ショットが生成できませんでした。各カードに理由と対処法が表示されています。}}"
     },
     "conflictNotice": "他の場所で変更されました。最新の内容を表示しています",
     "defaults": {
@@ -1709,23 +1709,23 @@
       "vocalTakesDefault": "デフォルト ({count})",
       "vocalTakesBest": "4 (最高品質)",
       "vocalTakesHint": "歌唱ボーカル: ボーカルステムと、口を閉じた正面のクローズアップ静止画を使い、フレーズの約 0.4 秒前から始めてください。各テイクは独自のシードを使い、同期スコアが最良のものを残し、ほかは動画ギャラリーに残ります。",
-      "castInShot": null,
-      "castNone": null,
-      "castEveryShot": null,
-      "leaveOut": null,
-      "lipSyncSeparate": null,
-      "clipSound": null,
-      "clipSoundOn": null,
-      "clipSoundOff": null,
-      "endFrame": null,
-      "endFrameHint": null,
-      "endFrameAlt": null,
-      "endFrameChange": null,
-      "endFramePick": null,
-      "endFrameRemove": null,
-      "endFramePickerTitle": null,
-      "vocalHintShot": null,
-      "vocalOptional": null
+      "castInShot": "このショットに登場: {names}",
+      "castNone": "このショットにはキャラクターがいません。",
+      "castEveryShot": "すべてのショットに登場",
+      "leaveOut": "このショットから外す",
+      "lipSyncSeparate": "ショット内のキャラクターが歌う必要はありません。リップシンクはショットごとに、「リップシンク用ボーカル」で設定します。",
+      "clipSound": "クリップの音を鳴らす",
+      "clipSoundOn": "このクリップ自身の音が、曲に重ねて再生されます。",
+      "clipSoundOff": "曲の再生中はミュートされます。",
+      "endFrame": "終了フレーム",
+      "endFrameHint": "クリップの最後に映したい画像です。使えるのは LTX-2 の動画モデルだけで、ほかのモデルでは削除するよう求められます。",
+      "endFrameAlt": "ショット {number} の終了フレーム",
+      "endFrameChange": "終了フレームを変更",
+      "endFramePick": "終了フレームを選ぶ",
+      "endFrameRemove": "終了フレームを削除",
+      "endFramePickerTitle": "ショット {number} の終了フレーム",
+      "vocalHintShot": "口の動きが合わせる WAV または FLAC です。クリップはこのショットの静止画から始まり、この音を保ちます。動画モデルとして LTX-2.3 が必要です（NVIDIA 向けの 4 ビットモデルは 24 GB のカードが必要）。",
+      "vocalOptional": "ショットが歌う必要はありません。ボーカルを削除すると、通常のクリップとして再生されます。"
     },
     "empty": "まだショットがありません。ショットを追加して、プロンプトを入力するか素材をインポートしてください。",
     "estimate": {
@@ -1816,11 +1816,11 @@
       "makeClip": "クリップを作る",
       "makeClipTitle": "このショットのクリップを静止画から作ります。",
       "referenceAdded": "{name} をこの静止画でキャストに追加しました。",
-      "tagsLabel": null,
-      "hideStaleTitle": null,
-      "hideStale": null,
-      "chooseForFinalTitle": null,
-      "chooseForFinal": null
+      "tagsLabel": "リップシンクとキャスト",
+      "hideStaleTitle": "この警告を隠します。ショットはそのままで、何も作り直されません。",
+      "hideStale": "この警告を隠す",
+      "chooseForFinalTitle": "最終パスでは、選んだショットを高品質モデルで、映画の本来のサイズで作り直します。",
+      "chooseForFinal": "最終用に選ぶ"
     },
     "shots": "ショット",
     "subtitle": "{shots, plural, other {# 件のショット}} · {seconds} 秒 · 期限切れ {stale} 件",
@@ -1841,11 +1841,11 @@
       "draftTimed": "ドラフトを作成 · 約 {time}",
       "withClips": "クリップ付きのドラフト",
       "draftPer": "ドラフト 1 件あたり約 {time}。",
-      "draftTitleChoose": null,
-      "finalChosenTimed": null,
-      "finalChosen": null,
-      "finalChosenTitle": null,
-      "chooseHint": null
+      "draftTitleChoose": "{model} で {width} x {height} の静止画をすばやく作ります。気に入ったショットを最終用に選び、最終パスを実行してください。",
+      "finalChosenTimed": "選んだ {n, plural, other {# ショット}}の最終パス · 約 {time}",
+      "finalChosen": "選んだ {n, plural, other {# ショット}}の最終パス",
+      "finalChosenTitle": "選んだ各ショットを {model} で {width} x {height} に作り直し、新しい静止画からクリップを作ります。",
+      "chooseHint": "ショットで「最終用に選ぶ」を使うと、そのショットが最終パスに入ります。"
     },
     "exportDrafts": "{n, plural, other {# 件のショット}} がドラフトのテイクを使用しています。残して最終パスを実行すると最高品質になります。または、ドラフトのまま書き出すこともできます。",
     "preview": {
@@ -1877,7 +1877,7 @@
       "titleCard": "タイトルカード",
       "endCard": "エンドカード",
       "legendCard": "タイトルまたはエンドカード（ブランドキット）",
-      "draftNoteSized": null
+      "draftNoteSized": "{n, plural, other {# ショットがドラフトのテイクで再生されます。}}ドラフトは映画より小さいサイズです。最終用に選んで最終パスを実行すると、本来のサイズになります。"
     },
     "captions": {
       "toggle": "字幕を表示 (C)",
@@ -1933,7 +1933,7 @@
       "open": "テイクを比較",
       "openTitle": "2 つのテイクを並べて、それぞれの生成設定とともに表示します。",
       "short": "比較",
-      "noClipYet": null
+      "noClipYet": "このテイクにはまだクリップがありません。"
     },
     "remake": {
       "clip": "クリップのみやり直し",
@@ -2234,7 +2234,7 @@
         "replaceNote": "これらは、ボード上の {n, plural, other {# ショット}} を置き換えます。「プロンプトを保持」を選ぶと、ショット 1 は現在のショット 1 のプロンプトを保持し、以下同様です。元に戻すと古いショットが戻ります。",
         "title": "カットプラン: {time} の間に {n, plural, other {# ショット}}",
         "use": "{n, plural, other {これら # ショットを使う}}",
-        "useSinging": null
+        "useSinging": "{n, plural, other {これら # ショットを使い、それぞれにボーカルを割り当てる}}"
       },
       "cutting": "曲に合わせてカット中…",
       "fromFile": "または音声ファイル（WAV、FLAC、MP3、OGG、M4A）",
@@ -2274,38 +2274,38 @@
         "working": "ボーカルをカット中…",
         "attach": "各ショットにボーカルを割り当てる",
         "done": "{attached, plural, =0 {ボーカルが割り当てられたショットはありません} other {# ショットにボーカルを割り当てました}} (元: {source, select, stem {ステム} other {曲}})。",
-        "hintEach": null,
-        "again": null,
-        "unassigned": null
+        "hintEach": "各ショットにその部分のボーカルが割り当てられます。ショットの 0.4 s 前から始まり、歌うショットとして印が付き、テイクが 3 つ作られます。",
+        "again": "ボーカルを外したショットも含め、すべてのショットでもう一度実行されます。",
+        "unassigned": "{n, plural, other {# ショットにまだボーカルがありません。}}"
       },
       "coverage": {
-        "title": null,
-        "source": null,
-        "counts": null,
-        "empty": null,
+        "title": "リップシンク: {total, plural, other {# ショット}}のうち {sings} が歌う",
+        "source": "{source, select, stem {ボーカルはステムから} other {ボーカルは曲から}}",
+        "counts": "同期済み {synced} · クリップ待ち {waiting} · リップシンクなし {skipped} · ボーカルなし {unassigned}",
+        "empty": "まだショットがありません。",
         "col": {
-          "shot": null,
-          "time": null,
-          "length": null,
-          "state": null
+          "shot": "ショット",
+          "time": "曲の時間",
+          "length": "長さ",
+          "state": "リップシンク"
         },
-        "makeAll": null,
-        "batchRunning": null
+        "makeAll": "{n, plural, other {リップシンクのクリップを # 件作る}}",
+        "batchRunning": "今作成中のショットが終わるまで待ちます。"
       },
       "sing": {
-        "question": null,
-        "yes": null,
-        "yesHint": null,
-        "stemHint": null,
-        "perShot": null,
-        "no": null,
-        "noHint": null,
-        "cut": null,
-        "keepShots": null,
-        "choose": null,
-        "review": null
+        "question": "画面の中で誰かが歌いますか？",
+        "yes": "はい、歌にリップシンクを付ける",
+        "yesHint": "曲を {min} 〜 {max} s のショットに切り分け、各ショットにその部分のボーカルを割り当てます。",
+        "stemHint": "ボーカルステム（声だけのトラック）が最も合わせやすく、ない場合は曲そのものを使います。",
+        "perShot": "すべてのショットが歌う必要はありません。歌わないショットは通常のクリップとして再生され、どのショットもエディターでボーカルを外せます。",
+        "no": "いいえ、映像だけ",
+        "noHint": "ビートに合わせて切り分け、リップシンクは付けません。",
+        "cut": "曲をショットに切り分ける",
+        "keepShots": "今のショットを残して、各ショットにボーカルを割り当てる",
+        "choose": "先にどちらかを選んでください。",
+        "review": "先にカットを確認できます。まだ何も作られません。"
       },
-      "cutSongIntoShots": null
+      "cutSongIntoShots": "曲をショットに切り分ける"
     },
     "unsaved": {
       "title": "テキストは保存されませんでした",
@@ -2318,56 +2318,56 @@
       "discard": "自分のテキストを破棄"
     },
     "chip": {
-      "noCharacterTitle": null,
-      "noCharacter": null,
-      "reasonSpeed": null,
-      "reasonLocked": null,
-      "reasonOutside": null,
-      "reasonShort": null,
-      "reasonLong": null,
-      "reasonNoSinging": null,
-      "reasonNoVocal": null,
-      "titleSpeed": null,
-      "titleLocked": null,
-      "titleOutside": null,
-      "titleShort": null,
-      "titleLong": null,
-      "titleNoSinging": null,
-      "titleNoVocal": null,
-      "sings": null,
-      "singsTitle": null,
-      "willSing": null,
-      "willSingTitle": null,
-      "noLipSync": null,
-      "plainClip": null
+      "noCharacterTitle": "このショットにはキャラクターがいないため、キャラクターなしで画像が作られます。ショットを開いて追加できます。",
+      "noCharacter": "キャラクターなし",
+      "reasonSpeed": "別の速度",
+      "reasonLocked": "ロック中",
+      "reasonOutside": "曲の範囲外",
+      "reasonShort": "短すぎる",
+      "reasonLong": "長すぎる",
+      "reasonNoSinging": "ここは歌なし",
+      "reasonNoVocal": "ボーカルなし",
+      "titleSpeed": "このショットは別の速度で再生されます。リップシンクには等速が必要です。",
+      "titleLocked": "このショットはロックされているため、リップシンクの対象外です。",
+      "titleOutside": "このショットは曲の範囲外のため、歌う部分がありません。",
+      "titleShort": "このショットは短すぎてリップシンクできません。少なくとも {min} s 必要です。",
+      "titleLong": "このショットは長すぎてリップシンクできません。最長 {max} s までです。",
+      "titleNoSinging": "曲のこの部分のボーカルには歌がありません。",
+      "titleNoVocal": "このショットにはまだボーカルがありません。リップシンクするには、各ショットにボーカルを割り当ててください。",
+      "sings": "歌う",
+      "singsTitle": "このショットのクリップは曲にリップシンクされています。",
+      "willSing": "歌う予定",
+      "willSingTitle": "このショットにはボーカルがあります。リップシンクのクリップを作ると歌う姿を確認できます。",
+      "noLipSync": "リップシンクなし: {reason}",
+      "plainClip": "通常のクリップとして再生されます。"
     },
     "failure": {
-      "details": null,
-      "outOfMemory": null,
-      "modelMissing": null,
-      "lipsyncModel": null,
-      "downloadBlocked": null,
-      "videoToolsMissing": null,
-      "sizeOverCap": null,
-      "referencesUnsupported": null,
-      "noPrompt": null,
-      "diskFull": null,
-      "cancelled": null,
-      "unknown": null,
-      "actionEdit": null,
-      "actionSmallerSized": null,
-      "actionSmaller": null,
-      "actionSmallerTitle": null,
-      "actionVideoModels": null,
-      "actionImageModels": null,
-      "actionVideoTools": null
+      "details": "詳細",
+      "outOfMemory": "空きメモリが足りず、このサイズではこのショットを作れませんでした。",
+      "modelMissing": "このショットに必要なモデルがインストールされていません。",
+      "lipsyncModel": "このプロジェクトの動画モデルでは、このショットのボーカルにリップシンクできません。",
+      "downloadBlocked": "モデルをダウンロードできませんでした。ライセンスへの同意が必要か、接続が切れている可能性があります。",
+      "videoToolsMissing": "動画ツールがインストールされていません。",
+      "sizeOverCap": "このショットは、モデルが作れるサイズより大きくなっています。",
+      "referencesUnsupported": "このモデルは、このショットの画像（開始・終了・参照用の画像）を扱えません。",
+      "noPrompt": "このショットには、作成の元になるものがありません。先にプロンプトを書いてください。",
+      "diskFull": "ディスクがいっぱいで、ショットを保存できませんでした。空き容量を確保してから、もう一度お試しください。",
+      "cancelled": "ショットは完了する前に停止されました。",
+      "unknown": "ショットを生成できませんでした。",
+      "actionEdit": "プロンプトを編集",
+      "actionSmallerSized": "ドラフトサイズで作る（{size}）",
+      "actionSmaller": "ドラフトサイズで作る",
+      "actionSmallerTitle": "メモリの少なくて済む小さいサイズでこのショットを作り直します。ドラフトになるので、あとで最終用に選んでください。",
+      "actionVideoModels": "動画モデルを開く",
+      "actionImageModels": "画像モデルを開く",
+      "actionVideoTools": "動画ツールをインストール"
     },
     "quality": {
-      "tag": null,
-      "tagNoSize": null,
-      "titleSized": null,
-      "titleDraftOnly": null,
-      "titleNoSize": null
+      "tag": "ドラフト {size}",
+      "tagNoSize": "ドラフト",
+      "titleSized": "{size} で作ったドラフトです。映画の約半分のサイズで、ショットをすばやく選べます。映画のサイズは {film} です。このショットを最終用に選ぶと、そのサイズで作られます。",
+      "titleDraftOnly": "{size} で作ったドラフトです。映画より小さいサイズで、ショットをすばやく選べます。このショットを最終用に選ぶと、本来のサイズで作られます。",
+      "titleNoSize": "映画より小さく作ったドラフトで、ショットをすばやく選べます。このショットを最終用に選ぶと、本来のサイズで作られます。"
     }
   },
   "storyProjects": {
@@ -2531,12 +2531,12 @@
       "more": "その他",
       "whyBusy": "生成が実行中です。終了するかキャンセルすると書き出しが始まります。",
       "whyEmpty": "まだ書き出すものがありません: クリップがあるショットがありません。ストーリーボードタブでクリップを作成してください。",
-      "methodSharp": null,
-      "methodStandard": null,
-      "method": null,
-      "methodNeedsAddon": null,
-      "methodOpenUpscale": null,
-      "anyway": null
+      "methodSharp": "よりシャープ（AI、アップスケールのアドオンが必要）",
+      "methodStandard": "標準の拡大",
+      "method": "拡大の方法",
+      "methodNeedsAddon": "アップスケールのアドオンがインストールされていないため、この設定では書き出しを始められません。インストールするか、「標準の拡大」を選んでください。",
+      "methodOpenUpscale": "アップスケールのタブを開く",
+      "anyway": "それでも書き出す"
     },
     "importAudio": "オーディオをインポート",
     "importAudioPath": "オーディオファイルのパス",
@@ -2613,10 +2613,10 @@
       "render": "生成済みプレビュー"
     },
     "clipSound": {
-      "muted": null,
-      "playing": null,
-      "mixed": null,
-      "switch": null
+      "muted": "曲の再生中はミュート",
+      "playing": "曲に重ねて再生",
+      "mixed": "一部のショットで再生",
+      "switch": "クリップの音を鳴らす"
     }
   },
   "aiLabel": {
@@ -2845,8 +2845,8 @@
     "unnamed": "名前なし",
     "usedBy": "{n, plural, =0 {まだどのショットでも使われていません} other {# 件のショットで使用}}",
     "noneShort": "まだありません。",
-    "inEveryShot": null,
-    "inEveryShotHint": null
+    "inEveryShot": "すべてのショットに登場",
+    "inEveryShotHint": "このキャラクターを、今あるショットにも今後のショットにも入れます。ショットごとにエディターで外すこともできます。"
   },
   "exportTab": {
     "bundleBody": "ショット、テイク、キャストの画像、音声を含む 1 つの .chaosfilm ファイル。プロジェクトのバックアップや、別のコンピューターで開くために使います。",
@@ -2949,8 +2949,8 @@
       "storyboard": "ストーリーボード"
     },
     "tabsLabel": "プロジェクト",
-    "more": null,
-    "boardHint": null
+    "more": "その他",
+    "boardHint": "ショットとキャストを自由に並べます"
   },
   "templates": {
     "ad30": "30 秒広告",
@@ -3034,8 +3034,8 @@
     "metaFormat": "{aspect} · {resolution} · {fps} fps · {shots, plural, other {# ショット}}",
     "sets": "{name} が形式を {aspect}、{resolution}、{fps} fps に設定しました。下で変更できます。",
     "sample": "サンプル映画",
-    "musicVideoMeta": null,
-    "musicVideoNote": null
+    "musicVideoMeta": "曲から始める",
+    "musicVideoNote": "「曲」のステージで開きます。曲を追加して、ショットに切り分けましょう。形式は {aspect}、{resolution}、{fps} fps です。下で変更できます。"
   },
   "voicePicker": {
     "automatic": "音声なし (自動)",
@@ -3068,15 +3068,15 @@
     "needStills": "{n, plural, other {# ショットに作業が必要です}}: {stills, plural, other {# ショットには静止画がありクリップが必要です}}",
     "stale": "{n} 件が古い",
     "choice": {
-      "finalPass": null,
-      "label": null,
-      "draft": null,
-      "about": null,
-      "draftWhy": null,
-      "final": null,
-      "peak": null
+      "finalPass": "最終パスでは、選んだショットを {size} で作り直し、続けてそのクリップを作ります。",
+      "label": "ドラフトか最終か",
+      "draft": "まずドラフト: {size}",
+      "about": "約 {time}",
+      "draftWhy": "半分のサイズで、気に入ったショットを選ぶためのものです。選んだショットをあとで本来のサイズで作ります。",
+      "final": "いきなり最終: {size}",
+      "peak": "ピーク {peak} / {total}"
     },
-    "more": null
+    "more": "ほかの作り方"
   },
   "slowRow": {
     "label": "このコンピューターでは低速",
@@ -3120,161 +3120,161 @@
     "hint": "ストーリーボードのバッチなど、別の画面から開始されました。終わるまで待ってから、別の処理を開始してください。"
   },
   "videoUpscale": {
-    "statusFailed": null,
+    "statusFailed": "アップスケーラーの状態を読み取れませんでした: {error}",
     "install": {
-      "title": null,
-      "body": null,
-      "licence": null,
-      "phasePackages": null,
-      "phaseWeights": null,
-      "phaseCheck": null,
-      "step": null,
-      "button": null,
-      "retry": null,
-      "failed": null,
-      "unknownError": null
+      "title": "動画アップスケーラーをインストール",
+      "body": "2 つのアップスケールモデル（Real-ESRGAN、xinntao 作）と、それを動かす小さなライブラリを、専用のフォルダーに追加します。約 {size} MB で、ダウンロードは 1 回だけです。コンピューターのほかの部分は変わりません。",
+      "licence": "モデルのライセンス: {licence}。",
+      "phasePackages": "モデルを動かすライブラリをインストール中…",
+      "phaseWeights": "アップスケールのモデルをダウンロード中…",
+      "phaseCheck": "インストールを確認中…",
+      "step": "ステップ {step} / 3: {phase}",
+      "button": "インストール（約 {size} MB）",
+      "retry": "もう一度インストールする",
+      "failed": "インストールに失敗しました: {error}",
+      "unknownError": "理由は示されませんでした。"
     },
     "source": {
-      "label": null,
-      "placeholder": null,
-      "browse": null,
-      "browseTitle": null,
-      "filterName": null,
-      "browseFailed": null,
-      "hint": null,
-      "chosenSized": null
+      "label": "動画",
+      "placeholder": "このコンピューター上の動画ファイルのフルパス",
+      "browse": "参照…",
+      "browseTitle": "アップスケールする動画を選択",
+      "filterName": "動画",
+      "browseFailed": "ここではファイル選択を使えません。代わりに動画のフルパスを貼り付けてください。",
+      "hint": "動画ギャラリーのクリップで「このクリップをアップスケール」を使うこともできます。新しい映像は、動画フォルダーの upscaled に保存されます。",
+      "chosenSized": "{name}、{width} × {height}"
     },
     "quality": {
-      "label": null,
-      "notInstalled": null,
-      "wontFit": null,
-      "downloadMissing": null
+      "label": "品質",
+      "notInstalled": "まだダウンロードされていません",
+      "wontFit": "このコンピューターより多くのグラフィックスメモリが必要です",
+      "downloadMissing": "足りないモデルをダウンロード"
     },
     "size": {
-      "label": null,
-      "x2": null,
-      "x4": null,
-      "target": null,
-      "result": null,
-      "limit": null,
-      "needsSize": null,
-      "notBigger": null
+      "label": "サイズ",
+      "x2": "2x",
+      "x4": "4x",
+      "target": "{height}p",
+      "result": "結果は {width} × {height} になります。",
+      "limit": "結果は {width}x{height} になりますが、1 辺の上限は {max} ピクセルです。倍率か目標サイズを小さくしてください。",
+      "needsSize": "目標サイズを使うには動画のサイズが必要で、ファイルを選ぶと読み取られます。読み取りが終わるまでは 2x か 4x を選んでください。",
+      "notBigger": "この動画はすでにこの高さ以上です。"
     },
-    "deinterlace": null,
-    "start": null,
-    "oneAtATime": null,
+    "deinterlace": "先にインターレースを解除する（動くとくし状の線が出るテレビやテープの録画向け）",
+    "start": "アップスケールを開始",
+    "oneAtATime": "アップスケールは一度に 1 つだけです。今のものが終わるのを待つか、キャンセルしてください。",
     "job": {
-      "target": null,
-      "queued": null,
-      "running": null,
-      "done": null,
-      "failed": null,
-      "cancelled": null,
-      "interrupted": null,
-      "frames": null,
-      "speed": null,
-      "etaSeconds": null,
-      "etaMinutes": null,
-      "etaHours": null,
-      "progressLabel": null,
-      "parts": null,
-      "savedAs": null,
-      "cancel": null,
-      "resume": null,
-      "open": null,
-      "reveal": null,
-      "dismiss": null,
-      "play": null,
-      "playLoading": null
+      "target": "{width} × {height} へ",
+      "queued": "GPU 上のほかのジョブが終わるのを待っています。",
+      "running": "アップスケール中…",
+      "done": "完了しました。",
+      "failed": "エラーで停止しました: {error}",
+      "cancelled": "キャンセルしました。完了した部分は残っているので、「再開」でそこから続けられます。",
+      "interrupted": "アプリが閉じられたときに停止しました。「再開」で止まったところから続けられます。",
+      "frames": "{done, number} / {total, number} フレーム",
+      "speed": "毎秒 {fps} フレーム",
+      "etaSeconds": "残り約 {count} s",
+      "etaMinutes": "残り約 {count} min",
+      "etaHours": "残り約 {hours} h {minutes} min",
+      "progressLabel": "アップスケールの進行状況",
+      "parts": "映像は {segments} 個のパートに分けて作られ、ジョブが止まっても完了したパートは残ります。",
+      "savedAs": "{path} に保存しました",
+      "cancel": "キャンセル",
+      "resume": "再開",
+      "open": "結果を開く",
+      "reveal": "フォルダーで表示",
+      "dismiss": "閉じる",
+      "play": "結果を再生",
+      "playLoading": "映像を読み込み中…"
     },
     "compare": {
-      "before": null,
-      "beforeMissing": null,
-      "after": null,
-      "afterOpen": null,
-      "beforeAlt": null,
-      "afterAlt": null,
-      "loading": null,
-      "playMissing": null,
-      "playFailed": null
+      "before": "前",
+      "beforeMissing": "このファイルはアプリ内でプレビューできません。",
+      "after": "後（{width} × {height}）",
+      "afterOpen": "結果を開くと、本来のサイズで比較できます。",
+      "beforeAlt": "元の動画の最初のフレーム",
+      "afterAlt": "アップスケールした動画の最初のフレーム",
+      "loading": "最初のフレームを読み込み中…",
+      "playMissing": "アプリはこの映像を自分では再生できなくなっています（その後再起動したため）。「結果を開く」か「フォルダーで表示」を使ってください。",
+      "playFailed": "映像を読み込めませんでした: {error}"
     },
-    "deinterlaceUnavailable": null,
+    "deinterlaceUnavailable": "インターレース解除は使えません。このコンピューターの動画ツールでは対応できません。",
     "probe": {
-      "line": null,
-      "withSound": null,
-      "noSound": null,
-      "reading": null,
-      "interlaced": null
+      "line": "{name}: {width} × {height}、毎秒 {fps} フレーム、{duration}、{audio}",
+      "withSound": "音声あり",
+      "noSound": "音声なし",
+      "reading": "動画を読み取り中…",
+      "interlaced": "この動画はインターレースのようなので、チェックを入れています。"
     },
     "recent": {
-      "label": null,
-      "queued": null,
-      "running": null,
-      "done": null,
-      "failed": null,
-      "cancelled": null,
-      "interrupted": null
+      "label": "最近のアップスケール",
+      "queued": "待機中",
+      "running": "アップスケール中",
+      "done": "完了",
+      "failed": "失敗",
+      "cancelled": "キャンセル済み",
+      "interrupted": "停止"
     }
   },
   "guide": {
     "stage": {
-      "song": null,
-      "look": null,
-      "shots": null,
-      "drafts": null,
-      "final": null,
-      "lipsync": null,
-      "sound": null,
-      "check": null,
-      "export": null
+      "song": "曲",
+      "look": "ルック",
+      "shots": "ショット",
+      "drafts": "ドラフト",
+      "final": "最終",
+      "lipsync": "リップシンク",
+      "sound": "サウンド",
+      "check": "チェック",
+      "export": "書き出し"
     },
     "look": {
-      "done": null,
-      "current": null,
-      "attention": null,
-      "progress": null,
-      "skipped": null,
-      "todo": null
+      "done": "完了",
+      "current": "いま",
+      "attention": "要確認",
+      "progress": "進行中",
+      "skipped": "スキップ",
+      "todo": "未着手"
     },
     "action": {
-      "attachSong": null,
-      "openCast": null,
-      "cutPlan": null,
-      "planShots": null,
-      "openStoryboard": null,
-      "watchBatch": null,
-      "resumeBatch": null,
-      "retryFailed": null,
-      "makeDrafts": null,
-      "makeMissing": null,
-      "makeFinal": null,
-      "chooseFinal": null,
-      "makeClips": null,
-      "remakeStale": null,
-      "assignVocals": null,
-      "makeLipsync": null,
-      "openCoverage": null,
-      "openMixer": null,
-      "openCheck": null,
-      "export": null
+      "attachSong": "曲を追加",
+      "openCast": "キャストを開く",
+      "cutPlan": "曲をショットに切り分ける",
+      "planShots": "ショットを計画",
+      "openStoryboard": "ストーリーボードを開く",
+      "watchBatch": "進行状況を見る",
+      "resumeBatch": "再開",
+      "retryFailed": "もう一度作る",
+      "makeDrafts": "ドラフトを作成",
+      "makeMissing": "足りないショットを作る",
+      "makeFinal": "本来のサイズで作る",
+      "chooseFinal": "ショットを選ぶ",
+      "makeClips": "クリップを作る",
+      "remakeStale": "作り直す",
+      "assignVocals": "各ショットにボーカルを割り当てる",
+      "makeLipsync": "リップシンクのクリップを作る",
+      "openCoverage": "歌うショットを確認",
+      "openMixer": "ミキサーを開く",
+      "openCheck": "書き出し前にチェック",
+      "export": "書き出しを開く"
     },
-    "label": null
+    "label": "映画のステージ"
   },
   "exportCheck": {
     "line": {
-      "upscaleSharp": null
+      "upscaleSharp": "最後に AI アップスケーラーで {size} に拡大されます。"
     },
-    "stops": null,
-    "worthFixing": null,
-    "forInfo": null,
-    "stopsNone": null,
-    "worthFixingNone": null,
+    "stops": "書き出しを止めるもの",
+    "worthFixing": "直しておきたいもの",
+    "forInfo": "参考情報",
+    "stopsNone": "書き出しを止めるものはありません。",
+    "worthFixingNone": "直すものはありません。",
     "fix": {
-      "plan": null,
-      "song": null,
-      "cast": null,
-      "shot": null
+      "plan": "計画を開く",
+      "song": "曲のステップを開く",
+      "cast": "キャストを開く",
+      "shot": "ショット {n} を開く"
     },
-    "title": null
+    "title": "書き出しの準備はできましたか？"
   }
 }

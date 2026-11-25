@@ -177,9 +177,9 @@
     "addGrammar": "加入結構化輸出",
     "exclusiveLabel": "說明:",
     "exclusiveBody": "應用程式中沒有其他引擎能載入此模型，因此它一律在 TensorFold 上執行；此核取方塊用於開啟或關閉其草稿功能。",
-    "contextCapped": null,
-    "cacheNote": null,
-    "contextCappedVram": null
+    "contextCapped": "TensorFold 使用它自己的快取。這台 Mac 的 GPU 上限是 {limitGb} GB；{weightsGb} GB 的模型加上 {marginGb} GB 的餘裕後剩下 {budgetGb} GB，而完整視窗需要 {needGb} GB。視窗已限制為 {maxContext}，讓 TensorFold 能夠啟動。",
+    "cacheNote": "TensorFold 在這裡約佔用 {cacheGb} GB 快取（它自己的快取加上草稿模型的快取），比所示的標準估算更多。",
+    "contextCappedVram": "在完整視窗下，TensorFold 需要約 {needGb} GB 的 GPU 記憶體，而顯示卡只有 {freeGb} GB 可用。視窗已限制為 {maxContext}，讓 TensorFold 能夠啟動。"
   },
   "strategyRole": {
     "memorySaverTitle": "壓縮 KV 快取，讓長上下文佔用更少記憶體。生成速度比原生慢。",

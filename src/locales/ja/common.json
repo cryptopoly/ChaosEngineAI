@@ -42,7 +42,7 @@
     "storyBoard": "ボード",
     "storyMixer": "ミキサー",
     "projects": "プロジェクト",
-    "videoUpscale": null
+    "videoUpscale": "アップスケール"
   },
   "tabCaptions": {
     "dashboard": "システム概要",
@@ -79,7 +79,7 @@
     "storyBoard": "ショット、テイク、プロンプト",
     "storyMixer": "映像、音声、書き出し",
     "projects": "ストーリーボード作品: ショット、サウンド、書き出し",
-    "videoUpscale": null
+    "videoUpscale": "動画をより鮮明に、より大きく"
   },
   "tabShortLabels": {
     "chat": "チャット",
@@ -107,7 +107,7 @@
     "storyProjects": "プロジェクト",
     "storyBoard": "ボード",
     "storyMixer": "ミキサー",
-    "videoUpscale": null
+    "videoUpscale": "アップスケール"
   },
   "tabGroups": {
     "chat": "チャット",
@@ -1585,15 +1585,15 @@
     "note": "キーは画面上では非表示です。コピーすると常に実際のキーがコピーされます。"
   },
   "memoryBar": {
-    "aria": null,
-    "usedNow": null,
-    "weights": null,
-    "cache": null,
-    "summary": null,
-    "limitMetal": null,
-    "limitVram": null,
-    "limitRam": null,
-    "overLimit": null,
-    "overFree": null
+    "aria": "メモリ: 現在 {used} GB 使用中、モデルの重み {weights} GB、キャッシュ {cache} GB、全体 {total} GB",
+    "usedNow": "現在の使用量 {value} GB",
+    "weights": "モデル {value} GB",
+    "cache": "キャッシュ {value} GB",
+    "summary": "必要量 {need} GB。現在の空き {free} GB。{label} {limit} GB。",
+    "limitMetal": "GPU の上限",
+    "limitVram": "グラフィックスカードのメモリ",
+    "limitRam": "使用できる RAM",
+    "overLimit": "この起動には{label}の許容量を超えるメモリが必要なため、この設定のままでは起動しません。",
+    "overFree": "現在の空きメモリを超えています。起動はできますが、ほかのアプリが RAM から追い出され、スワップが発生することがあります。先にアプリを閉じておくと安心です。"
   }
 }

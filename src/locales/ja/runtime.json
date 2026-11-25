@@ -177,9 +177,9 @@
     "addGrammar": "構造化出力を追加",
     "exclusiveLabel": "注:",
     "exclusiveBody": "アプリ内のほかのエンジンではこのモデルを読み込めないため、常に TensorFold で実行されます。このチェックボックスはドラフトのオン / オフを切り替えます。",
-    "contextCapped": null,
-    "cacheNote": null,
-    "contextCappedVram": null
+    "contextCapped": "TensorFold は独自のキャッシュを持ちます。この Mac の GPU 上限は {limitGb} GB で、{weightsGb} GB のモデルと {marginGb} GB の余裕を引くと {budgetGb} GB が残りますが、ウィンドウをフルに使うには {needGb} GB 必要です。TensorFold が起動できるよう、ウィンドウを {maxContext} に制限しました。",
+    "cacheNote": "TensorFold はここで約 {cacheGb} GB のキャッシュ（自身のキャッシュとドラフトモデルのキャッシュ）を使います。表示されている標準の見積もりより多くなります。",
+    "contextCappedVram": "ウィンドウをフルに使うと、TensorFold は約 {needGb} GB の GPU メモリを必要としますが、カードの空きは {freeGb} GB です。TensorFold が起動できるよう、ウィンドウを {maxContext} に制限しました。"
   },
   "strategyRole": {
     "memorySaverTitle": "KV キャッシュを圧縮し、長いコンテキストを少ないメモリに収めます。生成速度はネイティブより遅くなります。",

@@ -671,7 +671,7 @@
       "delete": "刪除",
       "soundOn": "開啟聲音",
       "soundOff": "靜音",
-      "upscale": null
+      "upscale": "放大此片段"
     }
   },
   "voice": {
@@ -1487,7 +1487,7 @@
       "stepsNumber": "步數",
       "stepsNote": "步數越少越快,但聽感可能較差。{n} 為模型作者的設定值。",
       "summarySteps": "{n} 步",
-      "random": null
+      "random": "隨機"
     },
     "artistWarning": "寫出藝術家的名字可能會產生其風格的仿作。請改為描述聲音本身。",
     "cancel": "取消",
@@ -1645,7 +1645,7 @@
       "title": "正在製作鏡頭",
       "titleDraft": "製作草稿",
       "titleFinal": "最終輸出",
-      "failedSoFar": null
+      "failedSoFar": "{n, plural, other {# 個鏡頭未能產生。它們的卡片會說明原因和處理方式。}}"
     },
     "conflictNotice": "已在別處變更；顯示的是最新版本",
     "defaults": {
@@ -1709,23 +1709,23 @@
       "vocalTakesDefault": "預設({count})",
       "vocalTakesBest": "4(最佳品質)",
       "vocalTakesHint": "演唱人聲：使用人聲分軌，搭配一張嘴巴閉合的正面特寫靜態畫面，並在樂句開始前約 0.4 秒起始。每個版本使用各自的種子；同步評分會保留最佳版本，其餘留在影片圖庫中。",
-      "castInShot": null,
-      "castNone": null,
-      "castEveryShot": null,
-      "leaveOut": null,
-      "lipSyncSeparate": null,
-      "clipSound": null,
-      "clipSoundOn": null,
-      "clipSoundOff": null,
-      "endFrame": null,
-      "endFrameHint": null,
-      "endFrameAlt": null,
-      "endFrameChange": null,
-      "endFramePick": null,
-      "endFrameRemove": null,
-      "endFramePickerTitle": null,
-      "vocalHintShot": null,
-      "vocalOptional": null
+      "castInShot": "此鏡頭中的角色：{names}",
+      "castNone": "此鏡頭中沒有角色。",
+      "castEveryShot": "出現在每個鏡頭",
+      "leaveOut": "不放入此鏡頭",
+      "lipSyncSeparate": "鏡頭中的角色不一定要唱歌。嘴型同步是每個鏡頭各自設定，在「對嘴人聲」底下。",
+      "clipSound": "播放片段本身的聲音",
+      "clipSoundOn": "此片段本身的聲音會蓋在歌曲之上播放。",
+      "clipSoundOff": "歌曲播放時靜音。",
+      "endFrame": "結尾幀",
+      "endFrameHint": "片段應當結束在的畫面。只有 LTX-2 影片模型會用到它；其他模型會請你把它移除。",
+      "endFrameAlt": "鏡頭 {number} 的結尾幀",
+      "endFrameChange": "更換結尾幀",
+      "endFramePick": "選擇結尾幀",
+      "endFrameRemove": "移除結尾幀",
+      "endFramePickerTitle": "鏡頭 {number} 的結尾幀",
+      "vocalHintShot": "讓嘴型跟隨的 WAV 或 FLAC：片段從此鏡頭的靜態圖開始，並保留這段聲音。需要將 LTX-2.3 作為影片模型（NVIDIA 的 4 位元模型需要 24 GB 的顯示卡）。",
+      "vocalOptional": "鏡頭不一定要唱歌：移除它的人聲後，它就會當作一般片段播放。"
     },
     "empty": "還沒有鏡頭。新增一個鏡頭，然後寫提示詞或匯入素材。",
     "estimate": {
@@ -1816,11 +1816,11 @@
       "makeClip": "產生片段",
       "makeClipTitle": "用此鏡頭的靜態畫面產生片段。",
       "referenceAdded": "已用此靜態畫面將 {name} 加入角色。",
-      "tagsLabel": null,
-      "hideStaleTitle": null,
-      "hideStale": null,
-      "chooseForFinalTitle": null,
-      "chooseForFinal": null
+      "tagsLabel": "嘴型同步與角色",
+      "hideStaleTitle": "隱藏此警告。鏡頭維持原樣，不會重新製作任何內容。",
+      "hideStale": "隱藏此警告",
+      "chooseForFinalTitle": "最終輸出會用高品質模型，以影片的完整尺寸重新製作你選取的鏡頭。",
+      "chooseForFinal": "選入最終輸出"
     },
     "shots": "鏡頭",
     "subtitle": "{shots, plural, other {# 個鏡頭}} · {seconds} 秒 · {stale} 個已過期",
@@ -1841,11 +1841,11 @@
       "draftTimed": "製作草稿 · 約 {time}",
       "withClips": "草稿與片段",
       "draftPer": "每份草稿約 {time}。",
-      "draftTitleChoose": null,
-      "finalChosenTimed": null,
-      "finalChosen": null,
-      "finalChosenTitle": null,
-      "chooseHint": null
+      "draftTitleChoose": "用 {model} 以 {width} x {height} 快速產生靜態圖。選出你喜歡的鏡頭加入最終輸出，然後執行最終輸出。",
+      "finalChosenTimed": "對 {n, plural, other {# 個已選鏡頭}} 進行最終輸出 · 約 {time}",
+      "finalChosen": "對 {n, plural, other {# 個已選鏡頭}} 進行最終輸出",
+      "finalChosenTitle": "用 {model} 以 {width} x {height} 重新製作每個已選鏡頭，再用新的靜態圖產生它的片段。",
+      "chooseHint": "在鏡頭上使用「選入最終輸出」，即可把它加入最終輸出。"
     },
     "exportDrafts": "{n, plural, other {# 個鏡頭使用草稿版本。}}請保留這些鏡頭並執行最終輸出以取得全品質,或直接匯出目前的草稿。",
     "preview": {
@@ -1877,7 +1877,7 @@
       "titleCard": "片頭卡",
       "endCard": "片尾卡",
       "legendCard": "片頭或片尾卡(品牌套件)",
-      "draftNoteSized": null
+      "draftNoteSized": "{n, plural, other {# 個鏡頭播放的是草稿版本。}}草稿比影片尺寸小。選入最終輸出並執行，即可得到完整尺寸。"
     },
     "captions": {
       "toggle": "顯示字幕(C)",
@@ -1933,7 +1933,7 @@
       "open": "比較版本",
       "openTitle": "並排顯示兩個版本,以及各自的製作條件。",
       "short": "比較",
-      "noClipYet": null
+      "noClipYet": "此版本還沒有片段。"
     },
     "remake": {
       "clip": "僅重做片段",
@@ -2234,7 +2234,7 @@
         "replaceNote": "這些會取代分鏡板上的 {n, plural, one {# 個鏡頭} other {# 個鏡頭}};若勾選「保留提示詞」,第 1 個鏡頭會保留目前第 1 個鏡頭的提示詞,依此類推。復原即可帶回舊的鏡頭。",
         "title": "剪輯計畫:{time} 內 {n, plural, one {# 個鏡頭} other {# 個鏡頭}}",
         "use": "{n, plural, one {使用此鏡頭} other {使用這 # 個鏡頭}}",
-        "useSinging": null
+        "useSinging": "{n, plural, other {使用這 # 個鏡頭，並為每個鏡頭配上人聲}}"
       },
       "cutting": "依音樂剪輯中…",
       "fromFile": "或音訊檔案(WAV、FLAC、MP3、OGG、M4A)",
@@ -2274,38 +2274,38 @@
         "working": "正在剪切人聲…",
         "attach": "為每個鏡頭配上人聲",
         "done": "{attached, plural, =0 {沒有鏡頭取得人聲} other {# 個鏡頭取得人聲}}，來源：{source, select, stem {分軌} other {歌曲}}。",
-        "hintEach": null,
-        "again": null,
-        "unassigned": null
+        "hintEach": "每個鏡頭會得到它對應的那段人聲：從鏡頭開始前 0.4 秒起，標記為演唱，並製作 3 個版本。",
+        "again": "會對每個鏡頭重新執行，包括你已移除人聲的鏡頭。",
+        "unassigned": "{n, plural, other {# 個鏡頭還沒有人聲。}}"
       },
       "coverage": {
-        "title": null,
-        "source": null,
-        "counts": null,
-        "empty": null,
+        "title": "嘴型同步：{total, plural, other {# 個鏡頭}}中有 {sings} 個在演唱",
+        "source": "{source, select, stem {人聲來自分軌} other {人聲來自歌曲}}",
+        "counts": "已同步 {synced} · 等待片段 {waiting} · 不做嘴型同步 {skipped} · 沒有人聲 {unassigned}",
+        "empty": "還沒有鏡頭。",
         "col": {
-          "shot": null,
-          "time": null,
-          "length": null,
-          "state": null
+          "shot": "鏡頭",
+          "time": "歌曲時間",
+          "length": "長度",
+          "state": "嘴型同步"
         },
-        "makeAll": null,
-        "batchRunning": null
+        "makeAll": "{n, plural, other {製作 # 個嘴型同步片段}}",
+        "batchRunning": "等待目前正在製作的鏡頭完成。"
       },
       "sing": {
-        "question": null,
-        "yes": null,
-        "yesHint": null,
-        "stemHint": null,
-        "perShot": null,
-        "no": null,
-        "noHint": null,
-        "cut": null,
-        "keepShots": null,
-        "choose": null,
-        "review": null
+        "question": "畫面中有人在唱歌嗎？",
+        "yes": "有，為演唱做嘴型同步",
+        "yesHint": "把歌曲剪成 {min} 到 {max} 秒的鏡頭，再為每個鏡頭配上它對應的那段人聲。",
+        "stemHint": "人聲分軌（單獨的人聲）效果最好；沒有分軌時會使用歌曲本身。",
+        "perShot": "不是每個鏡頭都要唱：沒有演唱的鏡頭會當作一般片段播放，任何鏡頭也都可以在它的編輯器中去掉人聲。",
+        "no": "沒有，只要畫面",
+        "noHint": "依節拍剪輯，不做嘴型同步。",
+        "cut": "把歌曲剪成鏡頭",
+        "keepShots": "保留我的鏡頭，並為每個鏡頭配上人聲",
+        "choose": "請先選擇一個答案。",
+        "review": "你會先檢視剪輯計畫；此時還不會製作任何內容。"
       },
-      "cutSongIntoShots": null
+      "cutSongIntoShots": "把歌曲剪成鏡頭"
     },
     "unsaved": {
       "title": "您的文字未儲存",
@@ -2318,56 +2318,56 @@
       "discard": "捨棄我的文字"
     },
     "chip": {
-      "noCharacterTitle": null,
-      "noCharacter": null,
-      "reasonSpeed": null,
-      "reasonLocked": null,
-      "reasonOutside": null,
-      "reasonShort": null,
-      "reasonLong": null,
-      "reasonNoSinging": null,
-      "reasonNoVocal": null,
-      "titleSpeed": null,
-      "titleLocked": null,
-      "titleOutside": null,
-      "titleShort": null,
-      "titleLong": null,
-      "titleNoSinging": null,
-      "titleNoVocal": null,
-      "sings": null,
-      "singsTitle": null,
-      "willSing": null,
-      "willSingTitle": null,
-      "noLipSync": null,
-      "plainClip": null
+      "noCharacterTitle": "此鏡頭中沒有角色，所以畫面會在沒有角色的情況下產生。開啟鏡頭即可新增。",
+      "noCharacter": "無角色",
+      "reasonSpeed": "其他速度",
+      "reasonLocked": "已鎖定",
+      "reasonOutside": "在歌曲之外",
+      "reasonShort": "太短",
+      "reasonLong": "太長",
+      "reasonNoSinging": "這裡沒有演唱",
+      "reasonNoVocal": "還沒有人聲",
+      "titleSpeed": "此鏡頭以其他速度播放。嘴型同步需要正常速度。",
+      "titleLocked": "此鏡頭已鎖定，因此嘴型同步會跳過它。",
+      "titleOutside": "此鏡頭在歌曲之外，沒有可唱的內容。",
+      "titleShort": "此鏡頭太短，無法做嘴型同步。至少需要 {min} 秒。",
+      "titleLong": "此鏡頭太長，無法做嘴型同步。最長只能 {max} 秒。",
+      "titleNoSinging": "歌曲的這一部分，人聲裡沒有演唱。",
+      "titleNoVocal": "此鏡頭還沒有人聲。先為每個鏡頭配上人聲，才能做嘴型同步。",
+      "sings": "演唱",
+      "singsTitle": "此鏡頭的片段已與歌曲做了嘴型同步。",
+      "willSing": "將演唱",
+      "willSingTitle": "此鏡頭已有人聲。製作它的嘴型同步片段，即可看到它演唱。",
+      "noLipSync": "無嘴型同步：{reason}",
+      "plainClip": "它會當作一般片段播放。"
     },
     "failure": {
-      "details": null,
-      "outOfMemory": null,
-      "modelMissing": null,
-      "lipsyncModel": null,
-      "downloadBlocked": null,
-      "videoToolsMissing": null,
-      "sizeOverCap": null,
-      "referencesUnsupported": null,
-      "noPrompt": null,
-      "diskFull": null,
-      "cancelled": null,
-      "unknown": null,
-      "actionEdit": null,
-      "actionSmallerSized": null,
-      "actionSmaller": null,
-      "actionSmallerTitle": null,
-      "actionVideoModels": null,
-      "actionImageModels": null,
-      "actionVideoTools": null
+      "details": "詳細資訊",
+      "outOfMemory": "可用記憶體不足，無法以此尺寸製作此鏡頭。",
+      "modelMissing": "此鏡頭需要的模型尚未安裝。",
+      "lipsyncModel": "此專案中的影片模型無法為此鏡頭的人聲做嘴型同步。",
+      "downloadBlocked": "無法下載該模型。可能需要先接受它的授權條款，或是網路已中斷。",
+      "videoToolsMissing": "影片工具尚未安裝。",
+      "sizeOverCap": "此鏡頭的尺寸超出了模型能產生的範圍。",
+      "referencesUnsupported": "該模型無法使用此鏡頭的圖片（起始圖、結尾圖或參考圖）。",
+      "noPrompt": "此鏡頭沒有可用來產生的內容。請先寫好它的提示詞。",
+      "diskFull": "磁碟已滿，無法儲存此鏡頭。請釋出一些空間後再試一次。",
+      "cancelled": "此鏡頭在完成前已停止。",
+      "unknown": "此鏡頭未能產生。",
+      "actionEdit": "編輯提示詞",
+      "actionSmallerSized": "以草稿尺寸製作（{size}）",
+      "actionSmaller": "以草稿尺寸製作",
+      "actionSmallerTitle": "以較小、佔用記憶體較少的尺寸重新製作此鏡頭。它會變成草稿；之後再選入最終輸出。",
+      "actionVideoModels": "開啟影片模型",
+      "actionImageModels": "開啟影像模型",
+      "actionVideoTools": "安裝影片工具"
     },
     "quality": {
-      "tag": null,
-      "tagNoSize": null,
-      "titleSized": null,
-      "titleDraftOnly": null,
-      "titleNoSize": null
+      "tag": "草稿 {size}",
+      "tagNoSize": "草稿",
+      "titleSized": "草稿，以 {size} 製作，約為影片尺寸的一半，方便快速挑選鏡頭。影片尺寸為 {film}：把此鏡頭選入最終輸出即可製作成該尺寸。",
+      "titleDraftOnly": "草稿，以 {size} 製作，比影片尺寸小，方便快速挑選鏡頭。把此鏡頭選入最終輸出即可製作成完整尺寸。",
+      "titleNoSize": "草稿，製作得比影片尺寸小，方便快速挑選鏡頭。把此鏡頭選入最終輸出即可製作成完整尺寸。"
     }
   },
   "storyProjects": {
@@ -2531,12 +2531,12 @@
       "more": "更多",
       "whyBusy": "轉譯正在進行中。待其結束或您取消後,匯出即會開始。",
       "whyEmpty": "尚無可匯出的內容:沒有任何鏡頭有片段。請在分鏡頁籤中製作片段。",
-      "methodSharp": null,
-      "methodStandard": null,
-      "method": null,
-      "methodNeedsAddon": null,
-      "methodOpenUpscale": null,
-      "anyway": null
+      "methodSharp": "更銳利（AI，需要放大附加元件）",
+      "methodStandard": "標準拉伸",
+      "method": "放大方式",
+      "methodNeedsAddon": "放大附加元件尚未安裝，因此選擇此項時無法開始匯出。請安裝它，或改選「標準拉伸」。",
+      "methodOpenUpscale": "開啟「放大」頁籤",
+      "anyway": "仍然匯出"
     },
     "importAudio": "匯入音訊",
     "importAudioPath": "音訊檔案路徑",
@@ -2613,10 +2613,10 @@
       "render": "轉譯預覽"
     },
     "clipSound": {
-      "muted": null,
-      "playing": null,
-      "mixed": null,
-      "switch": null
+      "muted": "歌曲播放時靜音",
+      "playing": "蓋在歌曲之上播放",
+      "mixed": "部分鏡頭會播放",
+      "switch": "播放片段本身的聲音"
     }
   },
   "aiLabel": {
@@ -2845,8 +2845,8 @@
     "unnamed": "未命名",
     "usedBy": "{n, plural, =0 {尚未被任何鏡頭使用} other {被 # 個鏡頭使用}}",
     "noneShort": "還沒有。",
-    "inEveryShot": null,
-    "inEveryShotHint": null
+    "inEveryShot": "出現在每個鏡頭",
+    "inEveryShotHint": "把這個角色放進每個鏡頭，現在和以後都是。鏡頭仍可在它的編輯器中把他去掉。"
   },
   "exportTab": {
     "bundleBody": "一個 .chaosfilm 檔案,包含鏡頭、版本、角色圖片與聲音,可用於備份專案或在另一台電腦上開啟。",
@@ -2949,8 +2949,8 @@
       "storyboard": "分鏡"
     },
     "tabsLabel": "專案",
-    "more": null,
-    "boardHint": null
+    "more": "更多",
+    "boardHint": "自由擺放鏡頭和角色"
   },
   "templates": {
     "ad30": "30 秒廣告",
@@ -3034,8 +3034,8 @@
     "metaFormat": "{aspect} · {resolution} · {fps} fps · {shots, plural, one {# 個鏡頭} other {# 個鏡頭}}",
     "sets": "{name} 已將格式設為 {aspect}、{resolution}、{fps} fps。可在下方變更。",
     "sample": "範例影片",
-    "musicVideoMeta": null,
-    "musicVideoNote": null
+    "musicVideoMeta": "從歌曲開始",
+    "musicVideoNote": "開啟後進入「歌曲」階段：先新增歌曲，再把它剪成鏡頭。格式 {aspect}、{resolution}、{fps} fps；可在下方變更。"
   },
   "voicePicker": {
     "automatic": "無聲音（自動）",
@@ -3068,15 +3068,15 @@
     "needStills": "{n, plural, one {# 個鏡頭待處理} other {# 個鏡頭待處理}}:{stills, plural, one {# 個已有靜態圖,需製作其片段} other {# 個已有靜態圖,需製作其片段}}",
     "stale": "{n} 個已過時",
     "choice": {
-      "finalPass": null,
-      "label": null,
-      "draft": null,
-      "about": null,
-      "draftWhy": null,
-      "final": null,
-      "peak": null
+      "finalPass": "最終輸出會以 {size} 重新製作已選的鏡頭，再產生它們的片段。",
+      "label": "草稿或最終輸出",
+      "draft": "先出草稿：{size}",
+      "about": "約 {time}",
+      "draftWhy": "一半尺寸，用來挑選你喜歡的鏡頭。之後再把它們做成完整尺寸。",
+      "final": "直接最終輸出：{size}",
+      "peak": "尖峰 {peak}，共 {total}"
     },
-    "more": null
+    "more": "更多製作方式"
   },
   "slowRow": {
     "label": "此電腦上執行較慢",
@@ -3120,161 +3120,161 @@
     "hint": "從其他畫面開始,例如分鏡批次。請等待其完成後再開始另一項。"
   },
   "videoUpscale": {
-    "statusFailed": null,
+    "statusFailed": "無法讀取放大器狀態：{error}",
     "install": {
-      "title": null,
-      "body": null,
-      "licence": null,
-      "phasePackages": null,
-      "phaseWeights": null,
-      "phaseCheck": null,
-      "step": null,
-      "button": null,
-      "retry": null,
-      "failed": null,
-      "unknownError": null
+      "title": "安裝影片放大器",
+      "body": "這會在它們自己的資料夾中加入兩個放大模型（Real-ESRGAN，作者 xinntao）和執行它們的小型程式庫。約 {size} MB，只下載一次。你電腦上的其他內容都不會改變。",
+      "licence": "模型授權：{licence}。",
+      "phasePackages": "正在安裝執行模型的程式庫…",
+      "phaseWeights": "正在下載放大模型…",
+      "phaseCheck": "正在檢查安裝…",
+      "step": "第 {step} 步，共 3 步：{phase}",
+      "button": "安裝（約 {size} MB）",
+      "retry": "重新安裝",
+      "failed": "安裝失敗：{error}",
+      "unknownError": "未提供原因。"
     },
     "source": {
-      "label": null,
-      "placeholder": null,
-      "browse": null,
-      "browseTitle": null,
-      "filterName": null,
-      "browseFailed": null,
-      "hint": null,
-      "chosenSized": null
+      "label": "影片",
+      "placeholder": "這台電腦上影片檔案的完整路徑",
+      "browse": "瀏覽…",
+      "browseTitle": "選擇要放大的影片",
+      "filterName": "影片",
+      "browseFailed": "這裡無法使用檔案選擇器。請改為貼上影片的完整路徑。",
+      "hint": "也可以在影片圖庫中，對某個片段使用「放大此片段」。新影片會儲存在你的影片資料夾中的 upscaled 底下。",
+      "chosenSized": "{name}，{width} × {height}"
     },
     "quality": {
-      "label": null,
-      "notInstalled": null,
-      "wontFit": null,
-      "downloadMissing": null
+      "label": "品質",
+      "notInstalled": "尚未下載",
+      "wontFit": "需要的顯示卡記憶體比這台電腦擁有的更多",
+      "downloadMissing": "下載缺少的模型"
     },
     "size": {
-      "label": null,
-      "x2": null,
-      "x4": null,
-      "target": null,
-      "result": null,
-      "limit": null,
-      "needsSize": null,
-      "notBigger": null
+      "label": "尺寸",
+      "x2": "2x",
+      "x4": "4x",
+      "target": "{height}p",
+      "result": "結果將是 {width} × {height}。",
+      "limit": "結果將是 {width}x{height}；每邊上限為 {max} 像素。請選擇較小的倍數或較小的目標尺寸。",
+      "needsSize": "目標尺寸需要知道影片的尺寸，它會在你選擇檔案時讀取。在讀取完成前，請選擇 2x 或 4x。",
+      "notBigger": "影片已經是這個高度或更高。"
     },
-    "deinterlace": null,
-    "start": null,
-    "oneAtATime": null,
+    "deinterlace": "先去交錯（適用於移動時出現梳狀條紋的電視或錄影帶錄製內容）",
+    "start": "開始放大",
+    "oneAtATime": "一次只能放大一個：請等待目前這個完成，或取消它。",
     "job": {
-      "target": null,
-      "queued": null,
-      "running": null,
-      "done": null,
-      "failed": null,
-      "cancelled": null,
-      "interrupted": null,
-      "frames": null,
-      "speed": null,
-      "etaSeconds": null,
-      "etaMinutes": null,
-      "etaHours": null,
-      "progressLabel": null,
-      "parts": null,
-      "savedAs": null,
-      "cancel": null,
-      "resume": null,
-      "open": null,
-      "reveal": null,
-      "dismiss": null,
-      "play": null,
-      "playLoading": null
+      "target": "放大到 {width} × {height}",
+      "queued": "正在等待 GPU 上的另一項工作完成。",
+      "running": "放大中…",
+      "done": "完成。",
+      "failed": "因錯誤而停止：{error}",
+      "cancelled": "已取消。已完成的部分會保留，因此「繼續」會從那裡接著做。",
+      "interrupted": "應用程式關閉時已停止。「繼續」會從停止的地方接著做。",
+      "frames": "{done, number} / {total, number} 幀",
+      "speed": "每秒 {fps} 幀",
+      "etaSeconds": "還剩約 {count} 秒",
+      "etaMinutes": "還剩約 {count} 分鐘",
+      "etaHours": "還剩約 {hours} 小時 {minutes} 分鐘",
+      "progressLabel": "放大進度",
+      "parts": "影片分成 {segments} 段製作；工作中途停止時，每個已完成的段都會保留。",
+      "savedAs": "已儲存為 {path}",
+      "cancel": "取消",
+      "resume": "繼續",
+      "open": "開啟結果",
+      "reveal": "在資料夾中顯示",
+      "dismiss": "關閉",
+      "play": "播放結果",
+      "playLoading": "正在載入影片…"
     },
     "compare": {
-      "before": null,
-      "beforeMissing": null,
-      "after": null,
-      "afterOpen": null,
-      "beforeAlt": null,
-      "afterAlt": null,
-      "loading": null,
-      "playMissing": null,
-      "playFailed": null
+      "before": "之前",
+      "beforeMissing": "應用程式內沒有此檔案的預覽。",
+      "after": "之後（{width} × {height}）",
+      "afterOpen": "開啟結果，即可以完整尺寸比較。",
+      "beforeAlt": "原始影片的第一幀",
+      "afterAlt": "放大後影片的第一幀",
+      "loading": "正在載入第一幀…",
+      "playMissing": "應用程式已無法自行播放此影片（之後它重新啟動過）。請使用「開啟結果」或「在資料夾中顯示」。",
+      "playFailed": "無法載入影片：{error}"
     },
-    "deinterlaceUnavailable": null,
+    "deinterlaceUnavailable": "無法去交錯：這台電腦上的影片工具辦不到。",
     "probe": {
-      "line": null,
-      "withSound": null,
-      "noSound": null,
-      "reading": null,
-      "interlaced": null
+      "line": "{name}：{width} × {height}，每秒 {fps} 幀，{duration}，{audio}",
+      "withSound": "有聲音",
+      "noSound": "無聲音",
+      "reading": "正在讀取影片…",
+      "interlaced": "此影片看起來是交錯式的，所以已勾選該選項。"
     },
     "recent": {
-      "label": null,
-      "queued": null,
-      "running": null,
-      "done": null,
-      "failed": null,
-      "cancelled": null,
-      "interrupted": null
+      "label": "最近的放大",
+      "queued": "等待中",
+      "running": "放大中",
+      "done": "完成",
+      "failed": "失敗",
+      "cancelled": "已取消",
+      "interrupted": "已停止"
     }
   },
   "guide": {
     "stage": {
-      "song": null,
-      "look": null,
-      "shots": null,
-      "drafts": null,
-      "final": null,
-      "lipsync": null,
-      "sound": null,
-      "check": null,
-      "export": null
+      "song": "歌曲",
+      "look": "樣式",
+      "shots": "鏡頭",
+      "drafts": "草稿",
+      "final": "最終輸出",
+      "lipsync": "嘴型同步",
+      "sound": "聲音",
+      "check": "檢查",
+      "export": "匯出"
     },
     "look": {
-      "done": null,
-      "current": null,
-      "attention": null,
-      "progress": null,
-      "skipped": null,
-      "todo": null
+      "done": "完成",
+      "current": "目前",
+      "attention": "需要看一下",
+      "progress": "進行中",
+      "skipped": "已略過",
+      "todo": "待辦"
     },
     "action": {
-      "attachSong": null,
-      "openCast": null,
-      "cutPlan": null,
-      "planShots": null,
-      "openStoryboard": null,
-      "watchBatch": null,
-      "resumeBatch": null,
-      "retryFailed": null,
-      "makeDrafts": null,
-      "makeMissing": null,
-      "makeFinal": null,
-      "chooseFinal": null,
-      "makeClips": null,
-      "remakeStale": null,
-      "assignVocals": null,
-      "makeLipsync": null,
-      "openCoverage": null,
-      "openMixer": null,
-      "openCheck": null,
-      "export": null
+      "attachSong": "新增歌曲",
+      "openCast": "開啟角色",
+      "cutPlan": "把歌曲剪成鏡頭",
+      "planShots": "規劃鏡頭",
+      "openStoryboard": "開啟分鏡",
+      "watchBatch": "查看進度",
+      "resumeBatch": "繼續",
+      "retryFailed": "重新製作它們",
+      "makeDrafts": "製作草稿",
+      "makeMissing": "製作缺少的鏡頭",
+      "makeFinal": "製作完整尺寸",
+      "chooseFinal": "選擇鏡頭",
+      "makeClips": "製作片段",
+      "remakeStale": "重新製作",
+      "assignVocals": "為每個鏡頭配上人聲",
+      "makeLipsync": "製作嘴型同步片段",
+      "openCoverage": "查看哪些鏡頭在唱",
+      "openMixer": "開啟混音器",
+      "openCheck": "匯出前檢查",
+      "export": "開啟匯出"
     },
-    "label": null
+    "label": "影片的各個階段"
   },
   "exportCheck": {
     "line": {
-      "upscaleSharp": null
+      "upscaleSharp": "最後會用 AI 放大器放大到 {size}。"
     },
-    "stops": null,
-    "worthFixing": null,
-    "forInfo": null,
-    "stopsNone": null,
-    "worthFixingNone": null,
+    "stops": "會阻止匯出",
+    "worthFixing": "值得修正",
+    "forInfo": "僅供參考",
+    "stopsNone": "沒有會阻止匯出的問題。",
+    "worthFixingNone": "沒有需要修正的。",
     "fix": {
-      "plan": null,
-      "song": null,
-      "cast": null,
-      "shot": null
+      "plan": "開啟規劃",
+      "song": "開啟歌曲步驟",
+      "cast": "開啟角色",
+      "shot": "開啟鏡頭 {n}"
     },
-    "title": null
+    "title": "可以匯出了嗎？"
   }
 }

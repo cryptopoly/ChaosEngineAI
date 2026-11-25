@@ -42,7 +42,7 @@
     "storyBoard": "分鏡板",
     "storyMixer": "混音台",
     "projects": "專案",
-    "videoUpscale": null
+    "videoUpscale": "放大"
   },
   "tabCaptions": {
     "dashboard": "系統概覽",
@@ -79,7 +79,7 @@
     "storyBoard": "鏡頭、版本和提示詞",
     "storyMixer": "畫面、聲音和匯出",
     "projects": "分鏡影片：鏡頭、聲音、匯出",
-    "videoUpscale": null
+    "videoUpscale": "讓影片更清晰、更大"
   },
   "tabShortLabels": {
     "chat": "對話",
@@ -107,7 +107,7 @@
     "storyProjects": "專案",
     "storyBoard": "分鏡板",
     "storyMixer": "混音台",
-    "videoUpscale": null
+    "videoUpscale": "放大"
   },
   "tabGroups": {
     "chat": "對話",
@@ -1585,15 +1585,15 @@
     "note": "金鑰在畫面上已隱藏。「複製」一律複製真正的金鑰。"
   },
   "memoryBar": {
-    "aria": null,
-    "usedNow": null,
-    "weights": null,
-    "cache": null,
-    "summary": null,
-    "limitMetal": null,
-    "limitVram": null,
-    "limitRam": null,
-    "overLimit": null,
-    "overFree": null
+    "aria": "記憶體：目前使用 {used} GB，模型權重 {weights} GB，快取 {cache} GB，總共 {total} GB",
+    "usedNow": "目前使用 {value} GB",
+    "weights": "模型 {value} GB",
+    "cache": "快取 {value} GB",
+    "summary": "需要 {need} GB。目前可用 {free} GB。{label} {limit} GB。",
+    "limitMetal": "GPU 上限",
+    "limitVram": "顯示卡記憶體",
+    "limitRam": "可用 RAM",
+    "overLimit": "這次啟動所需的記憶體超過了{label}允許的範圍，因此無法照目前的設定啟動。",
+    "overFree": "超過了目前的可用記憶體。仍可啟動，但其他應用程式會被移出 RAM，可能會用到交換。建議先關閉一些應用程式。"
   }
 }

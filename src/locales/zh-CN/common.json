@@ -42,7 +42,7 @@
     "storyBoard": "分镜板",
     "storyMixer": "混音台",
     "projects": "项目",
-    "videoUpscale": null
+    "videoUpscale": "放大"
   },
   "tabCaptions": {
     "dashboard": "系统概览",
@@ -79,7 +79,7 @@
     "storyBoard": "镜头、版本和提示词",
     "storyMixer": "画面、声音和导出",
     "projects": "故事板影片：镜头、声音、导出",
-    "videoUpscale": null
+    "videoUpscale": "让视频更清晰、更大"
   },
   "tabShortLabels": {
     "chat": "对话",
@@ -107,7 +107,7 @@
     "storyProjects": "项目",
     "storyBoard": "分镜板",
     "storyMixer": "混音台",
-    "videoUpscale": null
+    "videoUpscale": "放大"
   },
   "tabGroups": {
     "chat": "对话",
@@ -1585,15 +1585,15 @@
     "note": "密钥在屏幕上已隐藏。复制时始终复制真实密钥。"
   },
   "memoryBar": {
-    "aria": null,
-    "usedNow": null,
-    "weights": null,
-    "cache": null,
-    "summary": null,
-    "limitMetal": null,
-    "limitVram": null,
-    "limitRam": null,
-    "overLimit": null,
-    "overFree": null
+    "aria": "内存：当前已用 {used} GB，模型权重 {weights} GB，缓存 {cache} GB，总共 {total} GB",
+    "usedNow": "当前已用 {value} GB",
+    "weights": "模型 {value} GB",
+    "cache": "缓存 {value} GB",
+    "summary": "需要 {need} GB。当前空闲 {free} GB。{label} {limit} GB。",
+    "limitMetal": "GPU 上限",
+    "limitVram": "显存",
+    "limitRam": "可用 RAM",
+    "overLimit": "这次启动所需的内存超过了{label}允许的范围，因此无法按当前设置启动。",
+    "overFree": "超过了当前的空闲内存。仍可启动，但其他应用会被移出 RAM，可能会用到交换。建议先关闭一些应用。"
   }
 }

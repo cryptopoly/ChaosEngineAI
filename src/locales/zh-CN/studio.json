@@ -671,7 +671,7 @@
       "delete": "删除",
       "soundOn": "开启声音",
       "soundOff": "静音",
-      "upscale": null
+      "upscale": "放大此片段"
     }
   },
   "voice": {
@@ -1487,7 +1487,7 @@
       "stepsNumber": "步数",
       "stepsNote": "步数越少速度越快，但听感可能变差。{n} 是模型作者的设置。",
       "summarySteps": "{n} 步",
-      "random": null
+      "random": "随机"
     },
     "artistWarning": "写出艺术家的名字可能会生成其风格的仿作。请改为描述声音本身。",
     "cancel": "取消",
@@ -1645,7 +1645,7 @@
       "title": "正在制作镜头",
       "titleDraft": "制作草稿",
       "titleFinal": "定稿渲染",
-      "failedSoFar": null
+      "failedSoFar": "{n, plural, other {# 个镜头未能生成。它们的卡片会说明原因和处理方法。}}"
     },
     "conflictNotice": "已在别处更改；显示的是最新版本",
     "defaults": {
@@ -1709,23 +1709,23 @@
       "vocalTakesDefault": "默认（{count}）",
       "vocalTakesBest": "4（最佳质量）",
       "vocalTakesHint": "演唱人声：使用人声分轨，配一张嘴巴闭合的正面特写静帧，并在乐句开始前约 0.4 秒起始。每个版本使用各自的种子；同步评分会保留最佳版本，其余留在视频图库中。",
-      "castInShot": null,
-      "castNone": null,
-      "castEveryShot": null,
-      "leaveOut": null,
-      "lipSyncSeparate": null,
-      "clipSound": null,
-      "clipSoundOn": null,
-      "clipSoundOff": null,
-      "endFrame": null,
-      "endFrameHint": null,
-      "endFrameAlt": null,
-      "endFrameChange": null,
-      "endFramePick": null,
-      "endFrameRemove": null,
-      "endFramePickerTitle": null,
-      "vocalHintShot": null,
-      "vocalOptional": null
+      "castInShot": "此镜头中的角色：{names}",
+      "castNone": "此镜头中没有角色。",
+      "castEveryShot": "出现在每个镜头",
+      "leaveOut": "不放入此镜头",
+      "lipSyncSeparate": "镜头中的角色不一定要唱歌。口型同步按每个镜头单独设置，在“用于口型同步的人声”下。",
+      "clipSound": "播放片段自带声音",
+      "clipSoundOn": "此片段自带的声音会盖在歌曲之上播放。",
+      "clipSoundOff": "歌曲播放时静音。",
+      "endFrame": "结束帧",
+      "endFrameHint": "片段应当结束在的画面。只有 LTX-2 视频模型会用到它；其他模型会提示你把它移除。",
+      "endFrameAlt": "镜头 {number} 的结束帧",
+      "endFrameChange": "更换结束帧",
+      "endFramePick": "选择结束帧",
+      "endFrameRemove": "移除结束帧",
+      "endFramePickerTitle": "镜头 {number} 的结束帧",
+      "vocalHintShot": "供口型跟随的 WAV 或 FLAC：片段从此镜头的静帧开始，并保留这段声音。需要将 LTX-2.3 作为视频模型（NVIDIA 的 4 位模型需要 24 GB 显卡）。",
+      "vocalOptional": "镜头不一定要唱歌：移除它的人声后，它就作为普通片段播放。"
     },
     "empty": "还没有镜头。添加一个镜头，然后写提示词或导入素材。",
     "estimate": {
@@ -1816,11 +1816,11 @@
       "makeClip": "生成片段",
       "makeClipTitle": "用此镜头的静帧生成片段。",
       "referenceAdded": "已用此静帧将 {name} 加入角色。",
-      "tagsLabel": null,
-      "hideStaleTitle": null,
-      "hideStale": null,
-      "chooseForFinalTitle": null,
-      "chooseForFinal": null
+      "tagsLabel": "口型同步和角色",
+      "hideStaleTitle": "隐藏此警告。镜头保持原样，不会重新制作任何内容。",
+      "hideStale": "隐藏此警告",
+      "chooseForFinalTitle": "定稿渲染会用高质量模型，以影片的完整尺寸重新制作你选中的镜头。",
+      "chooseForFinal": "选入定稿"
     },
     "shots": "镜头",
     "subtitle": "{shots, plural, other {# 个镜头}} · {seconds} 秒 · {stale} 个已过期",
@@ -1841,11 +1841,11 @@
       "draftTimed": "制作草稿 · 约 {time}",
       "withClips": "带片段的草稿",
       "draftPer": "每个草稿约 {time}。",
-      "draftTitleChoose": null,
-      "finalChosenTimed": null,
-      "finalChosen": null,
-      "finalChosenTitle": null,
-      "chooseHint": null
+      "draftTitleChoose": "用 {model} 以 {width} x {height} 快速生成静帧。选出你喜欢的镜头加入定稿，然后运行定稿渲染。",
+      "finalChosenTimed": "对 {n, plural, other {# 个选定镜头}} 进行定稿渲染 · 约 {time}",
+      "finalChosen": "对 {n, plural, other {# 个选定镜头}} 进行定稿渲染",
+      "finalChosenTitle": "用 {model} 以 {width} x {height} 重新制作每个选定的镜头，再用新静帧生成它的片段。",
+      "chooseHint": "在镜头上使用“选入定稿”，即可把它加入定稿渲染。"
     },
     "exportDrafts": "{n, plural, other {# 个镜头使用草稿版本。}}保留它们并运行定稿渲染以获得全质量，或按原样导出草稿。",
     "preview": {
@@ -1877,7 +1877,7 @@
       "titleCard": "片头字幕卡",
       "endCard": "片尾字幕卡",
       "legendCard": "片头或片尾字幕卡（品牌套件）",
-      "draftNoteSized": null
+      "draftNoteSized": "{n, plural, other {# 个镜头播放的是草稿版本。}}草稿比影片尺寸小。选入定稿并运行定稿渲染，即可得到完整尺寸。"
     },
     "captions": {
       "toggle": "显示字幕（C）",
@@ -1933,7 +1933,7 @@
       "open": "比较版本",
       "openTitle": "并排比较两个版本，以及各自的生成参数。",
       "short": "比较",
-      "noClipYet": null
+      "noClipYet": "此版本还没有片段。"
     },
     "remake": {
       "clip": "仅重做片段",
@@ -2234,7 +2234,7 @@
         "replaceNote": "这些镜头将替换画板上的 {n, plural, other {# 个镜头}}；选择“保留提示词”时，镜头 1 会保留今天镜头 1 的提示词，依此类推。撤销可恢复旧镜头。",
         "title": "剪辑计划：{n, plural, other {# 个镜头}}，共 {time}",
         "use": "{n, plural, other {使用这 # 个镜头}}",
-        "useSinging": null
+        "useSinging": "{n, plural, other {使用这 # 个镜头，并为每个镜头分配人声}}"
       },
       "cutting": "正在按音乐剪辑…",
       "fromFile": "或音频文件（WAV、FLAC、MP3、OGG、M4A）",
@@ -2274,38 +2274,38 @@
         "working": "正在剪切人声…",
         "attach": "为每个镜头分配人声",
         "done": "{attached, plural, =0 {没有镜头获得人声} other {# 个镜头获得了人声}}，来源：{source, select, stem {分轨} other {歌曲}}。",
-        "hintEach": null,
-        "again": null,
-        "unassigned": null
+        "hintEach": "每个镜头会得到它对应的那段人声：从镜头开始前 0.4 s 起，标记为演唱，并制作 3 个版本。",
+        "again": "会对每个镜头重新运行，包括你已移除人声的镜头。",
+        "unassigned": "{n, plural, other {# 个镜头还没有人声。}}"
       },
       "coverage": {
-        "title": null,
-        "source": null,
-        "counts": null,
-        "empty": null,
+        "title": "口型同步：{total, plural, other {# 个镜头}}中有 {sings} 个在演唱",
+        "source": "{source, select, stem {人声来自分轨} other {人声来自歌曲}}",
+        "counts": "已同步 {synced} · 等待片段 {waiting} · 不做口型同步 {skipped} · 没有人声 {unassigned}",
+        "empty": "还没有镜头。",
         "col": {
-          "shot": null,
-          "time": null,
-          "length": null,
-          "state": null
+          "shot": "镜头",
+          "time": "歌曲时间",
+          "length": "时长",
+          "state": "口型同步"
         },
-        "makeAll": null,
-        "batchRunning": null
+        "makeAll": "{n, plural, other {制作 # 个口型同步片段}}",
+        "batchRunning": "等待正在制作的镜头完成。"
       },
       "sing": {
-        "question": null,
-        "yes": null,
-        "yesHint": null,
-        "stemHint": null,
-        "perShot": null,
-        "no": null,
-        "noHint": null,
-        "cut": null,
-        "keepShots": null,
-        "choose": null,
-        "review": null
+        "question": "画面中有人在唱歌吗？",
+        "yes": "有，为演唱做口型同步",
+        "yesHint": "把歌曲剪成 {min} 到 {max} s 的镜头，再为每个镜头分配它对应的那段人声。",
+        "stemHint": "人声分轨（单独的人声）效果最好；没有分轨时会使用歌曲本身。",
+        "perShot": "不是每个镜头都要唱：没有演唱的镜头作为普通片段播放，任何镜头也都可以在它的编辑器中去掉人声。",
+        "no": "没有，只要画面",
+        "noHint": "按节拍剪辑，不做口型同步。",
+        "cut": "把歌曲剪成镜头",
+        "keepShots": "保留我的镜头，并为每个镜头分配人声",
+        "choose": "请先选择一个答案。",
+        "review": "你会先查看剪辑计划；此时还不会制作任何内容。"
       },
-      "cutSongIntoShots": null
+      "cutSongIntoShots": "把歌曲剪成镜头"
     },
     "unsaved": {
       "title": "你的文字未保存",
@@ -2318,56 +2318,56 @@
       "discard": "放弃我的文字"
     },
     "chip": {
-      "noCharacterTitle": null,
-      "noCharacter": null,
-      "reasonSpeed": null,
-      "reasonLocked": null,
-      "reasonOutside": null,
-      "reasonShort": null,
-      "reasonLong": null,
-      "reasonNoSinging": null,
-      "reasonNoVocal": null,
-      "titleSpeed": null,
-      "titleLocked": null,
-      "titleOutside": null,
-      "titleShort": null,
-      "titleLong": null,
-      "titleNoSinging": null,
-      "titleNoVocal": null,
-      "sings": null,
-      "singsTitle": null,
-      "willSing": null,
-      "willSingTitle": null,
-      "noLipSync": null,
-      "plainClip": null
+      "noCharacterTitle": "此镜头中没有角色，所以画面会在没有角色的情况下生成。打开镜头即可添加。",
+      "noCharacter": "无角色",
+      "reasonSpeed": "其他速度",
+      "reasonLocked": "已锁定",
+      "reasonOutside": "在歌曲之外",
+      "reasonShort": "太短",
+      "reasonLong": "太长",
+      "reasonNoSinging": "这里没有演唱",
+      "reasonNoVocal": "还没有人声",
+      "titleSpeed": "此镜头以其他速度播放。口型同步需要正常速度。",
+      "titleLocked": "此镜头已锁定，因此口型同步会跳过它。",
+      "titleOutside": "此镜头在歌曲之外，没有可唱的内容。",
+      "titleShort": "此镜头太短，无法做口型同步。至少需要 {min} s。",
+      "titleLong": "此镜头太长，无法做口型同步。最长只能 {max} s。",
+      "titleNoSinging": "歌曲的这一部分，人声里没有演唱。",
+      "titleNoVocal": "此镜头还没有人声。先为每个镜头分配人声，才能做口型同步。",
+      "sings": "演唱",
+      "singsTitle": "此镜头的片段已与歌曲做了口型同步。",
+      "willSing": "将演唱",
+      "willSingTitle": "此镜头已有人声。制作它的口型同步片段，即可看到它演唱。",
+      "noLipSync": "无口型同步：{reason}",
+      "plainClip": "它作为普通片段播放。"
     },
     "failure": {
-      "details": null,
-      "outOfMemory": null,
-      "modelMissing": null,
-      "lipsyncModel": null,
-      "downloadBlocked": null,
-      "videoToolsMissing": null,
-      "sizeOverCap": null,
-      "referencesUnsupported": null,
-      "noPrompt": null,
-      "diskFull": null,
-      "cancelled": null,
-      "unknown": null,
-      "actionEdit": null,
-      "actionSmallerSized": null,
-      "actionSmaller": null,
-      "actionSmallerTitle": null,
-      "actionVideoModels": null,
-      "actionImageModels": null,
-      "actionVideoTools": null
+      "details": "详情",
+      "outOfMemory": "空闲内存不足，无法以此尺寸制作此镜头。",
+      "modelMissing": "此镜头需要的模型尚未安装。",
+      "lipsyncModel": "此项目中的视频模型无法为此镜头的人声做口型同步。",
+      "downloadBlocked": "无法下载该模型。可能需要先接受它的许可协议，或者网络已断开。",
+      "videoToolsMissing": "视频工具尚未安装。",
+      "sizeOverCap": "此镜头的尺寸超出了模型能生成的范围。",
+      "referencesUnsupported": "该模型无法使用此镜头的图片（起始图、结束图或参考图）。",
+      "noPrompt": "此镜头没有可用来生成的内容。请先写好它的提示词。",
+      "diskFull": "磁盘已满，无法保存此镜头。请释放一些空间后重试。",
+      "cancelled": "此镜头在完成前已停止。",
+      "unknown": "此镜头未能生成。",
+      "actionEdit": "编辑提示词",
+      "actionSmallerSized": "以草稿尺寸制作（{size}）",
+      "actionSmaller": "以草稿尺寸制作",
+      "actionSmallerTitle": "以更小、占用内存更少的尺寸重新制作此镜头。它会变成草稿；之后再选入定稿。",
+      "actionVideoModels": "打开视频模型",
+      "actionImageModels": "打开图像模型",
+      "actionVideoTools": "安装视频工具"
     },
     "quality": {
-      "tag": null,
-      "tagNoSize": null,
-      "titleSized": null,
-      "titleDraftOnly": null,
-      "titleNoSize": null
+      "tag": "草稿 {size}",
+      "tagNoSize": "草稿",
+      "titleSized": "草稿，以 {size} 制作，约为影片尺寸的一半，方便快速挑选镜头。影片尺寸为 {film}：把此镜头选入定稿即可制作成该尺寸。",
+      "titleDraftOnly": "草稿，以 {size} 制作，比影片尺寸小，方便快速挑选镜头。把此镜头选入定稿即可制作成完整尺寸。",
+      "titleNoSize": "草稿，制作得比影片尺寸小，方便快速挑选镜头。把此镜头选入定稿即可制作成完整尺寸。"
     }
   },
   "storyProjects": {
@@ -2531,12 +2531,12 @@
       "more": "更多",
       "whyBusy": "正在渲染。导出将在渲染结束或你取消后开始。",
       "whyEmpty": "尚无可导出的内容：没有镜头有片段。请在分镜板标签中制作片段。",
-      "methodSharp": null,
-      "methodStandard": null,
-      "method": null,
-      "methodNeedsAddon": null,
-      "methodOpenUpscale": null,
-      "anyway": null
+      "methodSharp": "更锐利（AI，需要放大附加组件）",
+      "methodStandard": "标准拉伸",
+      "method": "放大方式",
+      "methodNeedsAddon": "放大附加组件尚未安装，因此选择此项时导出无法开始。请安装它，或改选“标准拉伸”。",
+      "methodOpenUpscale": "打开“放大”标签",
+      "anyway": "仍然导出"
     },
     "importAudio": "导入音频",
     "importAudioPath": "音频文件路径",
@@ -2613,10 +2613,10 @@
       "render": "渲染预览"
     },
     "clipSound": {
-      "muted": null,
-      "playing": null,
-      "mixed": null,
-      "switch": null
+      "muted": "歌曲播放时静音",
+      "playing": "盖在歌曲之上播放",
+      "mixed": "部分镜头会播放",
+      "switch": "播放片段自带声音"
     }
   },
   "aiLabel": {
@@ -2845,8 +2845,8 @@
     "unnamed": "未命名",
     "usedBy": "{n, plural, =0 {尚未被任何镜头使用} other {被 # 个镜头使用}}",
     "noneShort": "还没有。",
-    "inEveryShot": null,
-    "inEveryShotHint": null
+    "inEveryShot": "出现在每个镜头",
+    "inEveryShotHint": "把这个角色放进每个镜头，现在和以后都是。镜头仍可在它的编辑器中把他去掉。"
   },
   "exportTab": {
     "bundleBody": "一个 .chaosfilm 文件，包含镜头、版本、角色图片和声音，用于备份项目或在另一台电脑上打开。",
@@ -2949,8 +2949,8 @@
       "storyboard": "故事板"
     },
     "tabsLabel": "项目",
-    "more": null,
-    "boardHint": null
+    "more": "更多",
+    "boardHint": "自由摆放镜头和角色"
   },
   "templates": {
     "ad30": "30 秒广告",
@@ -3034,8 +3034,8 @@
     "metaFormat": "{aspect} · {resolution} · {fps} fps · {shots, plural, other {# 个镜头}}",
     "sets": "{name} 已将格式设为 {aspect}、{resolution}、{fps} fps。可在下方更改。",
     "sample": "示例影片",
-    "musicVideoMeta": null,
-    "musicVideoNote": null
+    "musicVideoMeta": "从歌曲开始",
+    "musicVideoNote": "打开后进入“歌曲”阶段：先添加歌曲，再把它剪成镜头。格式 {aspect}、{resolution}、{fps} fps；可在下方更改。"
   },
   "voicePicker": {
     "automatic": "无声音（自动）",
@@ -3068,15 +3068,15 @@
     "needStills": "{n, plural, other {# 个镜头需要处理}}：{stills, plural, other {# 个已有静帧，还需要片段}}",
     "stale": "{n} 个已过时",
     "choice": {
-      "finalPass": null,
-      "label": null,
-      "draft": null,
-      "about": null,
-      "draftWhy": null,
-      "final": null,
-      "peak": null
+      "finalPass": "定稿渲染会以 {size} 重新制作选定的镜头，再生成它们的片段。",
+      "label": "草稿还是定稿",
+      "draft": "先出草稿：{size}",
+      "about": "约 {time}",
+      "draftWhy": "一半尺寸，用来挑选你喜欢的镜头。之后再把它们做成完整尺寸。",
+      "final": "直接定稿：{size}",
+      "peak": "峰值 {peak}，共 {total}"
     },
-    "more": null
+    "more": "更多制作方式"
   },
   "slowRow": {
     "label": "在此电脑上较慢",
@@ -3120,161 +3120,161 @@
     "hint": "由其他页面启动，例如分镜板的批量任务。请等待其完成后再启动另一项任务。"
   },
   "videoUpscale": {
-    "statusFailed": null,
+    "statusFailed": "无法读取放大器状态：{error}",
     "install": {
-      "title": null,
-      "body": null,
-      "licence": null,
-      "phasePackages": null,
-      "phaseWeights": null,
-      "phaseCheck": null,
-      "step": null,
-      "button": null,
-      "retry": null,
-      "failed": null,
-      "unknownError": null
+      "title": "安装视频放大器",
+      "body": "这会在它们自己的文件夹中添加两个放大模型（Real-ESRGAN，作者 xinntao）和运行它们的小型库。约 {size} MB，只下载一次。你电脑上的其他内容不会改变。",
+      "licence": "模型许可证：{licence}。",
+      "phasePackages": "正在安装运行模型的库…",
+      "phaseWeights": "正在下载放大模型…",
+      "phaseCheck": "正在检查安装…",
+      "step": "第 {step} 步，共 3 步：{phase}",
+      "button": "安装（约 {size} MB）",
+      "retry": "重试安装",
+      "failed": "安装失败：{error}",
+      "unknownError": "未给出原因。"
     },
     "source": {
-      "label": null,
-      "placeholder": null,
-      "browse": null,
-      "browseTitle": null,
-      "filterName": null,
-      "browseFailed": null,
-      "hint": null,
-      "chosenSized": null
+      "label": "视频",
+      "placeholder": "此电脑上视频文件的完整路径",
+      "browse": "浏览…",
+      "browseTitle": "选择要放大的视频",
+      "filterName": "视频",
+      "browseFailed": "此处无法使用文件选择器。请改为粘贴视频的完整路径。",
+      "hint": "也可以在视频图库中，对某个片段使用“放大此片段”。新影片会保存在你的视频文件夹中的 upscaled 下。",
+      "chosenSized": "{name}，{width} × {height}"
     },
     "quality": {
-      "label": null,
-      "notInstalled": null,
-      "wontFit": null,
-      "downloadMissing": null
+      "label": "质量",
+      "notInstalled": "尚未下载",
+      "wontFit": "需要的显存比这台电脑拥有的更多",
+      "downloadMissing": "下载缺少的模型"
     },
     "size": {
-      "label": null,
-      "x2": null,
-      "x4": null,
-      "target": null,
-      "result": null,
-      "limit": null,
-      "needsSize": null,
-      "notBigger": null
+      "label": "尺寸",
+      "x2": "2x",
+      "x4": "4x",
+      "target": "{height}p",
+      "result": "结果将是 {width} × {height}。",
+      "limit": "结果将是 {width}x{height}；每边上限为 {max} 像素。请选择更小的倍数或更小的目标尺寸。",
+      "needsSize": "目标尺寸需要知道视频的尺寸，它会在你选择文件时读取。在读取完成前，请选择 2x 或 4x。",
+      "notBigger": "视频已经是这个高度或更高。"
     },
-    "deinterlace": null,
-    "start": null,
-    "oneAtATime": null,
+    "deinterlace": "先去隔行（适用于运动时出现梳状条纹的电视或录像带录制内容）",
+    "start": "开始放大",
+    "oneAtATime": "一次只能放大一个：请等待当前这个完成，或取消它。",
     "job": {
-      "target": null,
-      "queued": null,
-      "running": null,
-      "done": null,
-      "failed": null,
-      "cancelled": null,
-      "interrupted": null,
-      "frames": null,
-      "speed": null,
-      "etaSeconds": null,
-      "etaMinutes": null,
-      "etaHours": null,
-      "progressLabel": null,
-      "parts": null,
-      "savedAs": null,
-      "cancel": null,
-      "resume": null,
-      "open": null,
-      "reveal": null,
-      "dismiss": null,
-      "play": null,
-      "playLoading": null
+      "target": "放大到 {width} × {height}",
+      "queued": "正在等待 GPU 上的另一个任务完成。",
+      "running": "放大中…",
+      "done": "完成。",
+      "failed": "因错误而停止：{error}",
+      "cancelled": "已取消。已完成的部分会保留，因此“继续”会从那里接着做。",
+      "interrupted": "应用关闭时已停止。“继续”会从停止的地方接着做。",
+      "frames": "{done, number} / {total, number} 帧",
+      "speed": "每秒 {fps} 帧",
+      "etaSeconds": "还剩约 {count} s",
+      "etaMinutes": "还剩约 {count} min",
+      "etaHours": "还剩约 {hours} h {minutes} min",
+      "progressLabel": "放大进度",
+      "parts": "影片分成 {segments} 段制作；任务中途停止时，每个已完成的段都会保留。",
+      "savedAs": "已保存为 {path}",
+      "cancel": "取消",
+      "resume": "继续",
+      "open": "打开结果",
+      "reveal": "在文件夹中显示",
+      "dismiss": "关闭",
+      "play": "播放结果",
+      "playLoading": "正在加载影片…"
     },
     "compare": {
-      "before": null,
-      "beforeMissing": null,
-      "after": null,
-      "afterOpen": null,
-      "beforeAlt": null,
-      "afterAlt": null,
-      "loading": null,
-      "playMissing": null,
-      "playFailed": null
+      "before": "之前",
+      "beforeMissing": "应用内没有此文件的预览。",
+      "after": "之后（{width} × {height}）",
+      "afterOpen": "打开结果，即可以完整尺寸对比。",
+      "beforeAlt": "原视频的第一帧",
+      "afterAlt": "放大后视频的第一帧",
+      "loading": "正在加载第一帧…",
+      "playMissing": "应用已无法自行播放此影片（此后它重启过）。请使用“打开结果”或“在文件夹中显示”。",
+      "playFailed": "无法加载影片：{error}"
     },
-    "deinterlaceUnavailable": null,
+    "deinterlaceUnavailable": "无法去隔行：这台电脑上的视频工具做不到。",
     "probe": {
-      "line": null,
-      "withSound": null,
-      "noSound": null,
-      "reading": null,
-      "interlaced": null
+      "line": "{name}：{width} × {height}，每秒 {fps} 帧，{duration}，{audio}",
+      "withSound": "有声音",
+      "noSound": "无声音",
+      "reading": "正在读取视频…",
+      "interlaced": "此视频看起来是隔行扫描的，所以已勾选该选项。"
     },
     "recent": {
-      "label": null,
-      "queued": null,
-      "running": null,
-      "done": null,
-      "failed": null,
-      "cancelled": null,
-      "interrupted": null
+      "label": "最近的放大",
+      "queued": "等待中",
+      "running": "放大中",
+      "done": "完成",
+      "failed": "失败",
+      "cancelled": "已取消",
+      "interrupted": "已停止"
     }
   },
   "guide": {
     "stage": {
-      "song": null,
-      "look": null,
-      "shots": null,
-      "drafts": null,
-      "final": null,
-      "lipsync": null,
-      "sound": null,
-      "check": null,
-      "export": null
+      "song": "歌曲",
+      "look": "外观",
+      "shots": "镜头",
+      "drafts": "草稿",
+      "final": "定稿",
+      "lipsync": "口型同步",
+      "sound": "声音",
+      "check": "检查",
+      "export": "导出"
     },
     "look": {
-      "done": null,
-      "current": null,
-      "attention": null,
-      "progress": null,
-      "skipped": null,
-      "todo": null
+      "done": "完成",
+      "current": "当前",
+      "attention": "需要看一下",
+      "progress": "进行中",
+      "skipped": "已跳过",
+      "todo": "待办"
     },
     "action": {
-      "attachSong": null,
-      "openCast": null,
-      "cutPlan": null,
-      "planShots": null,
-      "openStoryboard": null,
-      "watchBatch": null,
-      "resumeBatch": null,
-      "retryFailed": null,
-      "makeDrafts": null,
-      "makeMissing": null,
-      "makeFinal": null,
-      "chooseFinal": null,
-      "makeClips": null,
-      "remakeStale": null,
-      "assignVocals": null,
-      "makeLipsync": null,
-      "openCoverage": null,
-      "openMixer": null,
-      "openCheck": null,
-      "export": null
+      "attachSong": "添加歌曲",
+      "openCast": "打开角色",
+      "cutPlan": "把歌曲剪成镜头",
+      "planShots": "规划镜头",
+      "openStoryboard": "打开故事板",
+      "watchBatch": "查看进度",
+      "resumeBatch": "继续",
+      "retryFailed": "重新制作它们",
+      "makeDrafts": "制作草稿",
+      "makeMissing": "制作缺少的镜头",
+      "makeFinal": "制作完整尺寸",
+      "chooseFinal": "选择镜头",
+      "makeClips": "制作片段",
+      "remakeStale": "重新制作",
+      "assignVocals": "为每个镜头分配人声",
+      "makeLipsync": "制作口型同步片段",
+      "openCoverage": "查看哪些镜头在唱",
+      "openMixer": "打开混音台",
+      "openCheck": "导出前检查",
+      "export": "打开导出"
     },
-    "label": null
+    "label": "影片的各个阶段"
   },
   "exportCheck": {
     "line": {
-      "upscaleSharp": null
+      "upscaleSharp": "最后会用 AI 放大器放大到 {size}。"
     },
-    "stops": null,
-    "worthFixing": null,
-    "forInfo": null,
-    "stopsNone": null,
-    "worthFixingNone": null,
+    "stops": "会阻止导出",
+    "worthFixing": "值得修正",
+    "forInfo": "供参考",
+    "stopsNone": "没有会阻止导出的问题。",
+    "worthFixingNone": "没有需要修正的。",
     "fix": {
-      "plan": null,
-      "song": null,
-      "cast": null,
-      "shot": null
+      "plan": "打开规划",
+      "song": "打开歌曲步骤",
+      "cast": "打开角色",
+      "shot": "打开镜头 {n}"
     },
-    "title": null
+    "title": "可以导出了吗？"
   }
 }

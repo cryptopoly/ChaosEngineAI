@@ -113,7 +113,7 @@ describe("Make drafts tooltip (S-O item 5)", () => {
 
   it("names the draft model, its size and the time per draft", () => {
     expect(draftPassTitle(t, draft)).toBe(
-      "Quick stills with Iris-3B Turbo at 640 x 360. Mark the shots you like with Keep, then run the final pass. About 15 s per draft.",
+      "Quick stills with Iris-3B Turbo at 640 x 360. Choose the shots you like for final, then run the final pass. About 15 s per draft.",
     );
     expect(draftPassTitle(t, { ...draft, stillSeconds: null })).not.toContain("per draft");
     expect(draftPassTitle(t, { ...draft, imageModel: null })).toBeUndefined();

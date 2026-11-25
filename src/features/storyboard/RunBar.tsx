@@ -1,19 +1,21 @@
 /**
- * The Storyboard tab's run bar (D-65 4.6): sticky at the bottom of the tab. What needs a take, the estimate for
- * Make missing (time, peak memory, disk; Estimated until a run here measures it), the Make buttons with the count
- * and time on the primary one, a red state with an acknowledgement when it will not fit, and the batch progress
- * with Cancel while a batch runs. Below them the two passes (S6): Make drafts (the fast still model at a smaller
- * size, clips optional) and Final pass on kept shots (the quality model at full size, then clips), each with its time.
- * One of Make missing and Make drafts is primary, as `primaryPass` in storyboardLogic decides.
+ * The Storyboard tab's run bar (D-65 4.6): sticky at the bottom of the tab. What needs a take, the draft-or-final
+ * choice in sizes and time (audit change 2), the estimate for the one primary action (time, peak memory, disk;
+ * Estimated until a run here measures it), a red state with an acknowledgement when it will not fit, and the batch
+ * progress with Cancel while a batch runs. There is one primary action at a time (audit change 11): Make missing,
+ * Make drafts (`primaryPass` in storyboardLogic decides) or, when nothing is missing, the final pass on the chosen
+ * shots. Every other way to make shots sits under "More ways to make".
  */
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { StoryboardEstimate, StoryboardPassEstimate } from "../../api/storyboard";
 import { RunEstimateStrip, formatDuration, memoryRisk } from "../../components/RunEstimateStrip";
-import type { JobProgress, StoryboardBatchRecord, StoryboardPausedProgress } from "../../types";
+import type { JobProgress, StoryboardBatchRecord, StoryboardPausedProgress, StoryboardQuality } from "../../types";
 import { BatchBar } from "./BatchBar";
 import { PausedBatchBar } from "./PausedBatchBar";
+import { draftChoiceText, finalChoiceText, sizeText, startChoice } from "./qualityText";
 import { modelsMissingReason, type PrimaryPass } from "./storyboardLogic";
+import "./quality.css";
 
 export interface RunBarProps {
   missing: number;
@@ -28,7 +30,7 @@ export interface RunBarProps {
   onMakeMissing: () => void;
   onMakeAll: () => void;
   onCancel: () => void;
-  /** Shots marked Keep, and how many of them the final pass would redo. */
+  /** Shots chosen for final, and how many of them the final pass would redo. */
   kept?: number;
   finalShots?: number;
   onMakeDrafts?: (withClips: boolean) => void;
@@ -39,6 +41,8 @@ export interface RunBarProps {
   onPause?: () => void;
   onResume?: () => void;
   pausing?: boolean;
+  /** `guide.quality`: the film's size and the draft size, so the bar says what each choice makes. */
+  quality?: StoryboardQuality | null;
 }
 
 export type TFn = (key: string, options: Record<string, unknown>) => string;
@@ -49,8 +53,8 @@ export type TFn = (key: string, options: Record<string, unknown>) => string;
  */
 export function draftPassTitle(t: TFn, draft: StoryboardPassEstimate | null | undefined): string | undefined {
   if (!draft?.imageModel) return undefined;
-  const base = t("board.passes.draftTitle", {
-    defaultValue: "Quick stills with {model} at {width} x {height}. Mark the shots you like with Keep, then run the final pass.",
+  const base = t("board.passes.draftTitleChoose", {
+    defaultValue: "Quick stills with {model} at {width} x {height}. Choose the shots you like for final, then run the final pass.",
     model: draft.imageModel,
     width: draft.width,
     height: draft.height,
@@ -63,70 +67,13 @@ export function draftPassTitle(t: TFn, draft: StoryboardPassEstimate | null | un
   return `${base} ${per}`;
 }
 
-function PassesRow({ missing, kept = 0, finalShots = 0, estimate, busy, onMakeDrafts, onFinalPass, primary }: RunBarProps) {
-  const { t } = useTranslation("studio");
-  const [withClips, setWithClips] = useState(false);
-  const draft = estimate?.passes?.draft;
-  const final = estimate?.passes?.final;
-  const tf = t as unknown as TFn;
-  const draftSeconds = draft?.seconds != null ? draft.seconds + (withClips ? (draft.clipSeconds ?? 0) : 0) : null;
-  const draftLabel =
-    missing > 0 && draftSeconds != null
-      ? t("board.passes.draftTimed", { defaultValue: "Make drafts · about {time}", time: formatDuration(tf, draftSeconds) })
-      : t("board.passes.draft", { defaultValue: "Make drafts" });
-  const finalSeconds = final && !final.assumedAllKept && finalShots > 0 ? final.seconds : null;
-  const finalLabel =
-    finalSeconds != null
-      ? t("board.passes.finalTimed", {
-          defaultValue: "Final pass on {n, plural, one {# kept shot} other {# kept shots}} · about {time}",
-          n: finalShots,
-          time: formatDuration(tf, finalSeconds),
-        })
-      : t("board.passes.final", {
-          defaultValue: "Final pass on {n, plural, one {# kept shot} other {# kept shots}}",
-          n: finalShots,
-        });
-  const draftTitle = draftPassTitle(tf, draft);
-  const noModelReason = modelsMissingReason(estimate);
-  const finalTitle = final?.imageModel
-    ? t("board.passes.finalTitle", {
-        defaultValue: "Makes each kept shot again with {model} at {width} x {height}, then its clip from the new still.",
-        model: final.imageModel,
-        width: final.width,
-        height: final.height,
-      })
-    : undefined;
-  return (
-    <div className="run-bar__passes" role="group" aria-label={t("board.passes.label", { defaultValue: "Draft and final passes" })}>
-      {/* Drafts only make what is missing: with every shot made they would be a dead control. */}
-      {missing > 0 ? (
-        <>
-          <label className="run-bar__passes-clips">
-            <input type="checkbox" checked={withClips} disabled={busy} onChange={(event) => setWithClips(event.target.checked)} />
-            {t("board.passes.withClips", { defaultValue: "Drafts with clips" })}
-          </label>
-          <button type="button" className={primary === "drafts" ? "primary-button" : "secondary-button"}
-            disabled={busy || noModelReason !== null} title={noModelReason ?? draftTitle}
-            onClick={() => onMakeDrafts?.(withClips)}>
-            {draftLabel}
-          </button>
-        </>
-      ) : null}
-      <button type="button" className="secondary-button" disabled={busy || finalShots === 0} title={finalTitle}
-        onClick={onFinalPass}>
-        {finalLabel}
-      </button>
-      {kept === 0 ? (
-        <span className="muted-text">{t("board.passes.keepHint", { defaultValue: "Mark shots with Keep for final to choose them for the final pass." })}</span>
-      ) : null}
-    </div>
-  );
-}
-
 export function RunBar(props: RunBarProps) {
   const { missing, stills, stale, unlocked, estimate, batch, batchProgress, running, busy, onMakeMissing, onMakeAll, onCancel } = props;
+  const { kept = 0, finalShots = 0, quality } = props;
   const { t } = useTranslation("studio");
+  const tf = t as unknown as TFn;
   const [ack, setAck] = useState(false);
+  const [withClips, setWithClips] = useState(false);
   if (running && batch) {
     return (
       <div className="run-bar run-bar--running">
@@ -146,6 +93,14 @@ export function RunBar(props: RunBarProps) {
   // FU-474: the sentences listed above say which model is not installed; Make stays off until it is.
   const noModelReason = modelsMissingReason(estimate);
   const seconds = estimate?.seconds ?? null;
+  const draft = estimate?.passes?.draft;
+  const final = estimate?.passes?.final;
+
+  const canDrafts = missing > 0 && Boolean(props.onMakeDrafts);
+  const draftsPrimary = canDrafts && props.primary === "drafts";
+  const makePrimary = missing > 0 && !draftsPrimary;
+  const finalPrimary = missing === 0 && finalShots > 0 && Boolean(props.onFinalPass);
+
   const makeLabel =
     missing === 0
       ? t("runBar.makeNone", { defaultValue: "Make missing" })
@@ -153,7 +108,7 @@ export function RunBar(props: RunBarProps) {
         ? t("runBar.makeTimed", {
             defaultValue: "Make {n} missing · about {time}",
             n: missing,
-            time: formatDuration(t as unknown as TFn, seconds),
+            time: formatDuration(tf, seconds),
           })
         : t("runBar.make", { defaultValue: "Make {n} missing", n: missing });
   const need =
@@ -170,8 +125,35 @@ export function RunBar(props: RunBarProps) {
             n: missing,
           });
 
-  const makeAll = (
+  const draftSeconds = draft?.seconds != null ? draft.seconds + (withClips ? (draft.clipSeconds ?? 0) : 0) : null;
+  const draftLabel =
+    missing > 0 && draftSeconds != null
+      ? t("board.passes.draftTimed", { defaultValue: "Make drafts · about {time}", time: formatDuration(tf, draftSeconds) })
+      : t("board.passes.draft", { defaultValue: "Make drafts" });
+  const finalSeconds = final && !final.assumedAllKept && finalShots > 0 ? final.seconds : null;
+  const finalLabel =
+    finalSeconds != null
+      ? t("board.passes.finalChosenTimed", {
+          defaultValue: "Final pass on {n, plural, one {# chosen shot} other {# chosen shots}} · about {time}",
+          n: finalShots,
+          time: formatDuration(tf, finalSeconds),
+        })
+      : t("board.passes.finalChosen", {
+          defaultValue: "Final pass on {n, plural, one {# chosen shot} other {# chosen shots}}",
+          n: finalShots,
+        });
+  const finalTitle = final?.imageModel
+    ? t("board.passes.finalChosenTitle", {
+        defaultValue: "Makes each chosen shot again with {model} at {width} x {height}, then its clip from the new still.",
+        model: final.imageModel,
+        width: final.width,
+        height: final.height,
+      })
+    : undefined;
+
+  const makeAllBtn = (
     <button
+      key="all"
       type="button"
       className="secondary-button"
       disabled={busy || unlocked === 0 || noModelReason !== null}
@@ -181,9 +163,91 @@ export function RunBar(props: RunBarProps) {
       {t("board.makeAll", { defaultValue: "Make all unlocked" })}
     </button>
   );
+  const makeMissingBtn = (primary: boolean) => (
+    <button
+      key="missing"
+      type="button"
+      className={primary ? "primary-button" : "secondary-button"}
+      disabled={busy || missing === 0 || blockedByRisk || noModelReason !== null}
+      title={noModelReason ?? undefined}
+      onClick={onMakeMissing}
+    >
+      {makeLabel}
+    </button>
+  );
+  const clipsToggle = (
+    <label key="clips" className="run-bar__passes-clips">
+      <input type="checkbox" checked={withClips} disabled={busy} onChange={(event) => setWithClips(event.target.checked)} />
+      {t("board.passes.withClips", { defaultValue: "Drafts with clips" })}
+    </label>
+  );
+  const draftsBtn = (primary: boolean) => (
+    <button
+      key="drafts"
+      type="button"
+      className={primary ? "primary-button" : "secondary-button"}
+      disabled={busy || noModelReason !== null}
+      title={noModelReason ?? draftPassTitle(tf, draft)}
+      onClick={() => props.onMakeDrafts?.(withClips)}
+    >
+      {draftLabel}
+    </button>
+  );
+  const finalBtn = (primary: boolean) => (
+    <button
+      key="final"
+      type="button"
+      className={primary ? "primary-button" : "secondary-button"}
+      disabled={busy || finalShots === 0}
+      title={finalTitle}
+      onClick={props.onFinalPass}
+    >
+      {finalLabel}
+    </button>
+  );
+
+  // The draft-or-final choice, in sizes and time (audit change 2).
+  const choice = missing > 0 && canDrafts ? startChoice(quality, estimate, withClips) : null;
+  const finalNote =
+    finalShots > 0 && quality?.target
+      ? t("runBar.choice.finalPass", {
+          defaultValue: "The final pass makes the chosen shots again at {size}, then their clips.",
+          size: sizeText(quality.target),
+        })
+      : null;
+
+  const more: ReactNode[] = [];
+  if (missing > 0 && !makePrimary) more.push(makeMissingBtn(false));
+  if (canDrafts && !draftsPrimary) more.push(clipsToggle, draftsBtn(false));
+  more.push(makeAllBtn);
+  if (props.onFinalPass && !finalPrimary) more.push(finalBtn(false));
+  if (props.onFinalPass && kept === 0) {
+    more.push(
+      <span key="hint" className="muted-text">
+        {t("board.passes.chooseHint", { defaultValue: "Use Choose for final on a shot to put it in the final pass." })}
+      </span>,
+    );
+  }
+  // Make missing can be held by the memory check while another button is primary: the acknowledgement lives here then.
+  if (missing > 0 && !makePrimary && risk === "danger") {
+    more.push(
+      <label key="ack" className="check-row run-estimate__ack">
+        <input type="checkbox" checked={ack} onChange={(event) => setAck(event.target.checked)} />
+        {t("estimate.dangerAck", { defaultValue: "Run anyway. I accept that the backend may crash." })}
+      </label>,
+    );
+  }
+
+  const primaryButton = makePrimary ? makeMissingBtn(true) : draftsPrimary ? (
+    <>
+      {clipsToggle}
+      {draftsBtn(true)}
+    </>
+  ) : null;
+  const stripRisk = makePrimary ? risk : "safe";
 
   return (
-    <div className={`run-bar${risk === "danger" ? " run-bar--danger" : ""}`} role="region" aria-label={t("runBar.label", { defaultValue: "Make shots" })}>
+    <div className={`run-bar${stripRisk === "danger" ? " run-bar--danger" : ""}`} role="region" aria-label={t("runBar.label", { defaultValue: "Make shots" })}>
       <p className="run-bar__need">
         {need}
         {stale > 0 ? ` · ${t("runBar.stale", { defaultValue: "{n} stale", n: stale })}` : ""}
@@ -195,43 +259,33 @@ export function RunBar(props: RunBarProps) {
           ))}
         </ul>
       ) : null}
-      {missing === 0 ? (
-        // Nothing to make: no estimate to show and no disabled primary button, only the deliberate remake.
-        <div className="run-estimate run-estimate--safe">
-          <div className="run-estimate__row">
-            <div className="run-estimate__items" />
-            <div className="run-estimate__action">
-              <div className="board-estimate__actions">{makeAll}</div>
-            </div>
-          </div>
-        </div>
-      ) : (
-      <RunEstimateStrip
-        compactUnknown
-        seconds={missing > 0 ? seconds : null}
-        peakGb={missing > 0 ? (estimate?.peakGb ?? null) : null}
-        totalGb={missing > 0 ? (estimate?.totalGb ?? null) : null}
-        diskMb={missing > 0 ? (estimate?.diskMb ?? null) : null}
-        basis={missing > 0 && (seconds != null || estimate?.peakGb != null) ? (estimate?.basis ?? null) : null}
-        risk={risk}
-        ack={{ checked: ack, onChange: setAck }}
-        action={
-          <div className="board-estimate__actions">
-            {makeAll}
-            <button
-              type="button"
-              className={props.primary === "drafts" ? "secondary-button" : "primary-button"}
-              disabled={busy || missing === 0 || blockedByRisk || noModelReason !== null}
-              title={noModelReason ?? undefined}
-              onClick={onMakeMissing}
-            >
-              {makeLabel}
-            </button>
-          </div>
-        }
-      />
-      )}
-      {props.onMakeDrafts ? <PassesRow {...props} /> : null}
+      {choice && (choice.draft || choice.final) ? (
+        <ul className="run-bar__choice" aria-label={t("runBar.choice.label", { defaultValue: "Drafts or final" })}>
+          {choice.draft ? <li className={draftsPrimary ? "is-primary" : undefined}>{draftChoiceText(tf, choice.draft)}</li> : null}
+          {choice.final ? <li className={makePrimary ? "is-primary" : undefined}>{finalChoiceText(tf, choice.final)}</li> : null}
+        </ul>
+      ) : finalNote && missing === 0 ? (
+        <p className="run-bar__choice">{finalNote}</p>
+      ) : null}
+      {missing > 0 ? (
+        <RunEstimateStrip
+          compactUnknown
+          seconds={makePrimary ? seconds : draftSeconds}
+          peakGb={makePrimary ? (estimate?.peakGb ?? null) : null}
+          totalGb={makePrimary ? (estimate?.totalGb ?? null) : null}
+          diskMb={makePrimary ? (estimate?.diskMb ?? null) : null}
+          basis={makePrimary ? (seconds != null || estimate?.peakGb != null ? (estimate?.basis ?? null) : null) : (draft?.basis ?? null)}
+          risk={stripRisk}
+          ack={makePrimary ? { checked: ack, onChange: setAck } : undefined}
+          action={<div className="board-estimate__actions">{primaryButton}</div>}
+        />
+      ) : finalPrimary ? (
+        <div className="run-bar__primary">{finalBtn(true)}</div>
+      ) : null}
+      <details className="run-bar__more">
+        <summary>{t("runBar.more", { defaultValue: "More ways to make" })}</summary>
+        <div className="run-bar__more-body">{more}</div>
+      </details>
     </div>
   );
 }

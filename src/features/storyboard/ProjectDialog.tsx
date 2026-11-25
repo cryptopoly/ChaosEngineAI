@@ -66,7 +66,9 @@ export function ProjectDialog({
 
   const templateLabel = (item: ProjectTemplate) => t(`templates.${item.id}`, { defaultValue: item.label });
   const templateMeta = (item: ProjectTemplate) =>
-    item.shots.length === 0
+    item.musicVideo
+      ? t("templates.musicVideoMeta", { defaultValue: "Starts with the song" })
+      : item.shots.length === 0
       ? t("templates.empty", { defaultValue: "No shots" })
       : t("templates.metaFormat", {
           defaultValue: "{aspect} · {resolution} · {fps} fps · {shots, plural, one {# shot} other {# shots}}",
@@ -128,6 +130,15 @@ export function ProjectDialog({
                   <p className="muted-text" role="status">
                     {t("board.sample.templateNote", {
                       defaultValue: "Copies a finished four-shot film (16:9, 480p, 24 fps) with its stills and clips. Change anything once it is open.",
+                    })}
+                  </p>
+                ) : templateById(template).musicVideo ? (
+                  <p className="muted-text" role="status">
+                    {t("templates.musicVideoNote", {
+                      defaultValue: "Opens on the Song stage: add the song, then cut it into shots. Format {aspect}, {resolution}, {fps} fps; change it below.",
+                      aspect,
+                      resolution: RESOLUTION_ALIAS[resolution] ?? resolution,
+                      fps,
                     })}
                   </p>
                 ) : template !== "blank" ? (

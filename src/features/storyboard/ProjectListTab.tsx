@@ -15,6 +15,7 @@ import { ProjectDialog, type ProjectDialogResult } from "./ProjectDialog";
 import { SampleProjectCard } from "./SampleProjectCard";
 import { newProjectDefaults, type VideoFitSource } from "./formatLogic";
 import { downloadProjectBundle, formatBundleBytes } from "./projectFiles";
+import { markMusicVideo } from "./projectRoute";
 import { LIST_SORTS, filterAndSort, isBundleName, readListSort, writeListSort, type ListSort } from "./projectShellLogic";
 import { templateById, templateShotArgs } from "./projectTemplates";
 import { useStoryboardProjects, type ProjectCardData } from "./useStoryboardProjects";
@@ -76,6 +77,8 @@ export function ProjectListTab({ backendOnline, onOpenProject, videoFit, imageMo
     for (const args of shots) {
       payload = await runStoryboardOp(payload.project.id, payload.project.revision, "add_shot", args);
     }
+    // Audit change 9: a music video opens with the stage rail on its Song stage.
+    if (templateById(result.template).musicVideo) markMusicVideo(payload.project.id);
     return payload.project.id;
   }
 

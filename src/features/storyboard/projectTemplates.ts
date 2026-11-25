@@ -1,8 +1,9 @@
 /**
  * Start-from templates for a new project (D-65): client-side data only. A template fills the format and a few
  * titled shots with an example still prompt; nothing else. Blank is the default, and "Scene / b-roll" has no
- * character at all: a cast is optional everywhere. "Sample film" (S12) is different: it copies the bundled,
- * finished four-shot film (its shots here only give the count and titles shown in the dialog).
+ * character at all: a cast is optional everywhere. "Music video" (audit change 9) adds no shots: the project opens
+ * on the Song stage and its shots come from cutting the song. "Sample film" (S12) is different: it copies the
+ * bundled, finished four-shot film (its shots here only give the count and titles shown in the dialog).
  */
 import type { StoryboardExportPreset, StoryboardResolution } from "../../types";
 
@@ -15,7 +16,7 @@ export interface TemplateShot {
 }
 
 export interface ProjectTemplate {
-  id: "blank" | "ad30" | "vertical" | "story" | "broll" | "sample";
+  id: "blank" | "musicVideo" | "ad30" | "vertical" | "story" | "broll" | "sample";
   label: string;
   aspect: StoryboardExportPreset;
   resolution: StoryboardResolution;
@@ -23,10 +24,13 @@ export interface ProjectTemplate {
   shots: TemplateShot[];
   /** Copies the bundled sample film instead of making an empty project from the format and shots. */
   sample?: boolean;
+  /** Audit change 9: the project opens on the Song stage of the stage rail; its shots come from cutting the song. */
+  musicVideo?: boolean;
 }
 
 export const PROJECT_TEMPLATES: ProjectTemplate[] = [
   { id: "blank", label: "Blank", aspect: "16:9", resolution: "720p", fps: 24, shots: [] },
+  { id: "musicVideo", label: "Music video", aspect: "16:9", resolution: "720p", fps: 24, shots: [], musicVideo: true },
   {
     id: "ad30",
     label: "30 s ad",

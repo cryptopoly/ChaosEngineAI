@@ -4,7 +4,8 @@
  * lives in local storage so the sidebar entry reopens where the user left off, and each project remembers
  * its own last tab. Anything that sends the user into a project (a gallery's "Use in storyboard", an old tab
  * id) writes the route first and then moves to the "storyboard" tab; an already open view hears the change
- * through a window event. The old single "open project" key is read once and migrated.
+ * through a window event. The old single "open project" key is read once and migrated. Projects started from the
+ * Music video template are remembered here too, so their stage rail leads with the Song stage.
  */
 import { useCallback, useEffect, useState } from "react";
 
@@ -131,6 +132,50 @@ export function readOpenProjectId(): string | null {
 
 export function writeOpenProjectId(id: string | null): void {
   openProjectAt(id);
+}
+
+/**
+ * Audit change 12: the Board tab sits behind "More" until the board has cards placed on it (a saved position), so
+ * it does not read as a second Storyboard. While it is the open tab it shows in the row. The id stays `freestyle`,
+ * so remembered routes still open it.
+ */
+export function boardInUse(project: { board?: { pos?: Record<string, unknown> } } | null | undefined): boolean {
+  return Object.keys(project?.board?.pos ?? {}).length > 0;
+}
+
+/** The tabs in the row, in order; `freestyle` only when the board is in use or open. */
+export function visibleTabs(project: { board?: { pos?: Record<string, unknown> } } | null | undefined, tab: ProjectTabId): ProjectTabId[] {
+  const showBoard = boardInUse(project) || tab === "freestyle";
+  return PROJECT_TABS.filter((id) => id !== "freestyle" || showBoard);
+}
+
+// ---- projects started as a music video (audit change 9) ----
+export const MUSIC_VIDEO_KEY = "chaos.storyboard.musicVideos";
+/** At most this many project ids are remembered as music videos. */
+const MUSIC_VIDEO_KEEP = 200;
+
+function readMusicVideos(): string[] {
+  try {
+    const parsed: unknown = JSON.parse(storage()?.getItem(MUSIC_VIDEO_KEY) ?? "[]");
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string" && id.length > 0) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** A project made from the Music video template: its stage rail shows and leads with the Song stage. */
+export function markMusicVideo(projectId: string): void {
+  const ids = readMusicVideos().filter((id) => id !== projectId);
+  ids.push(projectId);
+  try {
+    storage()?.setItem(MUSIC_VIDEO_KEY, JSON.stringify(ids.slice(-MUSIC_VIDEO_KEEP)));
+  } catch {
+    // not remembered: the rail shows the Song stage once a song is attached
+  }
+}
+
+export function isMusicVideo(projectId: string | null | undefined): boolean {
+  return Boolean(projectId) && readMusicVideos().includes(projectId as string);
 }
 
 // ---- the open project's name, for the page header ----

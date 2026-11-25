@@ -1,7 +1,7 @@
 /**
  * The song a music video is cut to (S-M2, on the S-M1 routes), on the Plan tab: attach one from the Music library or a
  * file; then its length, tempo and sections as a ruler with labels to rename, the rough-analysis note, the one
- * question "Does someone sing on screen?" (audit change 8) that leads to one cut: singing shots of 3 to 5 s followed by
+ * question "Does someone sing on screen?" (audit change 8) that leads to one cut: singing shots of 2 to 5 s followed by
  * each shot's vocal, or the ordinary cut to the beat. The cut is reviewed before it replaces the board's shots in one
  * Undo. Under it the lip-sync section with the coverage table (audit change 3), then the lyrics and Remove. Attaching
  * and every edit go through the project's op queue, so Undo and the revision check hold.
@@ -127,7 +127,7 @@ export function SongPanel({ story, project, onOpenShot }: SongPanelProps) {
     <section className="song-panel" aria-labelledby="song-panel-title" ref={panel}>
       <div className="plan-section-head">
         <div>
-          <h3 id="song-panel-title">{t("board.song.title", { defaultValue: "Song" })}</h3>
+          <h3 id="song-panel-title" tabIndex={-1}>{t("board.song.title", { defaultValue: "Song" })}</h3>
           <p className="muted-text">
             {song
               ? t("board.song.summary", {
@@ -192,6 +192,7 @@ export function SongPanel({ story, project, onOpenShot }: SongPanelProps) {
             disabled={story.busy || working === "attach"}
             working={working === "cut" || working === "vocals" ? working : null}
             hasShots={project.shots.length > 0}
+            hasTakes={project.shots.some((shot) => shot.takes.length > 0)}
             onCut={() => void cut()}
             onVocalsOnly={() => void assignVocals()}
           />

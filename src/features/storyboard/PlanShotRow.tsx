@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import type { StoryboardShot } from "../../types";
 import { takeStyle } from "./planLogic";
 import { PlanReworkChat } from "./PlanReworkChat";
+import { roundSeconds, shotSeconds } from "./planLogic";
 import type { UseStoryboardResult } from "./useStoryboard";
 import { useCardTabStops } from "./useCardTabStops";
 import { useRework } from "./useRework";
@@ -29,17 +30,17 @@ export function PlanShotRow({ story, projectId, shot, number, canAsk, tabbable =
   const { t } = useTranslation("studio");
   const rowRef = useRef<HTMLLIElement>(null);
   useCardTabStops(rowRef, tabbable);
-  const [fields, setFields] = useState({ title: shot.title, stillPrompt: shot.stillPrompt, motionPrompt: shot.motionPrompt, seconds: String(shot.seconds) });
-  const saved = useRef({ title: shot.title, stillPrompt: shot.stillPrompt, motionPrompt: shot.motionPrompt, seconds: shot.seconds });
+  const [fields, setFields] = useState({ title: shot.title, stillPrompt: shot.stillPrompt, motionPrompt: shot.motionPrompt, seconds: shotSeconds(shot.seconds) });
+  const saved = useRef({ title: shot.title, stillPrompt: shot.stillPrompt, motionPrompt: shot.motionPrompt, seconds: roundSeconds(shot.seconds) });
   useEffect(() => {
     // Take what the project now says (an Undo, a rework, the direction chat), but keep a field being typed in.
-    const next = { title: shot.title, stillPrompt: shot.stillPrompt, motionPrompt: shot.motionPrompt, seconds: shot.seconds };
+    const next = { title: shot.title, stillPrompt: shot.stillPrompt, motionPrompt: shot.motionPrompt, seconds: roundSeconds(shot.seconds) };
     const before = saved.current; // read now: the updater below runs later, after `saved` has moved on
     setFields((current) => ({
       title: current.title === before.title ? next.title : current.title,
       stillPrompt: current.stillPrompt === before.stillPrompt ? next.stillPrompt : current.stillPrompt,
       motionPrompt: current.motionPrompt === before.motionPrompt ? next.motionPrompt : current.motionPrompt,
-      seconds: Number(current.seconds) === before.seconds ? String(next.seconds) : current.seconds,
+      seconds: Number(current.seconds) === before.seconds ? shotSeconds(next.seconds) : current.seconds,
     }));
     saved.current = next;
   }, [shot.title, shot.stillPrompt, shot.motionPrompt, shot.seconds]);
@@ -76,7 +77,7 @@ export function PlanShotRow({ story, projectId, shot, number, canAsk, tabbable =
   function saveSeconds() {
     const value = Math.round(Number(fields.seconds) * 10) / 10;
     if (!Number.isFinite(value) || value < 0.5 || value > 60) {
-      setFields((current) => ({ ...current, seconds: String(saved.current.seconds) }));
+      setFields((current) => ({ ...current, seconds: shotSeconds(saved.current.seconds) }));
       return;
     }
     if (value === saved.current.seconds) return;

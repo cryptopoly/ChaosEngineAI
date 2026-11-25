@@ -44,7 +44,12 @@ describe("ShotCard", () => {
     expect(html).toMatch(/aria-pressed="true"[^>]*>Choose for final/);
     const plain = card({ status: "done", shot: shot({ takes: [{ ...take("t1"), clip: "media/c.mp4" }], activeTake: "t1" }), onToggleKept: noop });
     expect(plain).not.toContain(">Draft</span>");
-    expect(plain).toMatch(/aria-pressed="false"[^>]*>Choose for final/);
+    // A take that is already final has nothing to choose, unless the shot is marked (so the mark can come off).
+    expect(plain).not.toContain("Choose for final");
+    const markedFinal = card({ status: "done", shot: shot({ takes: [{ ...take("t1"), clip: "media/c.mp4" }], activeTake: "t1", kept: true }), onToggleKept: noop });
+    expect(markedFinal).toMatch(/aria-pressed="true"[^>]*>Choose for final/);
+    const unmarkedDraft = card({ status: "done", shot: shot({ takes: [draft], activeTake: "t1" }), onToggleKept: noop });
+    expect(unmarkedDraft).toMatch(/aria-pressed="false"[^>]*>Choose for final/);
     // Nothing to keep before the first take.
     expect(card({ shot: shot(), onToggleKept: noop })).not.toContain("Choose for final");
   });
@@ -62,7 +67,7 @@ describe("ShotCard", () => {
     const clip = { ...take("t1"), clip: "media/shots/s_1/t1/clip.mp4" };
     const html = card({ status: "done", shot: shot({ status: "done", takes: [clip], activeTake: "t1" }) });
     expect(html).toContain("shot-card--done");
-    expect(html).toContain("Done · 4.04 s");
+    expect(html).toContain("Done · 4.0 s");
   });
 
   it("says Still only for a take with no clip, shows the prompt line and the cast chips", () => {

@@ -14,6 +14,7 @@ import type {
   StoryboardTakeQuality,
 } from "../../types";
 import type { TFn } from "./qualityText";
+import { castOutOf, isInEveryShot } from "./castLock";
 
 export interface ShotCardGuide {
   /** takeId to what it was made at (`guide.quality.takes[shotId]`). */
@@ -26,7 +27,7 @@ export interface ShotCardGuide {
   failure?: StoryboardFailure | null;
   /** The shot's lip-sync row, when lip sync is in use in this project. */
   sync?: StoryboardLipSyncRow | null;
-  /** The project has a character and this shot's effective cast has none. */
+  /** A character is locked "In every shot", this shot leaves it out and its effective cast has no character. */
   noCharacter?: boolean;
 }
 
@@ -43,6 +44,10 @@ export function shotCardGuide(
 ): ShotCardGuide {
   if (!guide) return {};
   const characters = new Set(project.references.characters.map((c) => c.id));
+  // Only a shot that left out a locked ("In every shot") character is worth a chip: without a lock, a shot with no
+  // character is normal (its prompt can describe the singer in words).
+  const leftOut = castOutOf(shot);
+  const lockedOut = project.references.characters.some((c) => isInEveryShot(c) && leftOut.includes(c.id));
   const cast = guide.cast?.[shot.id];
   return {
     takes: guide.quality?.takes?.[shot.id],
@@ -50,8 +55,7 @@ export function shotCardGuide(
     draftSize: guide.quality?.draftSize ?? null,
     failure: guide.failures?.find((f) => f.shotId === shot.id) ?? null,
     sync: lipSyncInUse(guide) ? (guide.coverage?.shots.find((row) => row.shotId === shot.id) ?? null) : null,
-    // Only a project that has a character can leave a shot without one; a street or a crowd is fine on its own.
-    noCharacter: characters.size > 0 && cast != null && !cast.some((id) => characters.has(id)),
+    noCharacter: lockedOut && cast != null && !cast.some((id) => characters.has(id)),
   };
 }
 

@@ -1,6 +1,6 @@
 /**
  * The one question after the song is analysed (audit change 8): "Does someone sing on screen?". Yes cuts the song
- * into singing shots of 3 to 5 s and then gives each shot its part of the vocal (a vocal stem follows best); No cuts
+ * into singing shots of 2 to 5 s and then gives each shot its part of the vocal (a vocal stem follows best); No cuts
  * to the beat with no lip sync. Either way the cut is shown for review first and nothing is made. A shot without
  * singing plays as an ordinary clip, and any shot can drop its vocal in its editor.
  */
@@ -18,11 +18,13 @@ export interface SingQuestionProps {
   working: "cut" | "vocals" | null;
   /** The board already has shots: offer giving them their vocal without cutting again. */
   hasShots: boolean;
+  /** Some shot already has a take: cutting again would replace the shots, so it is not the main button. */
+  hasTakes?: boolean;
   onCut: () => void;
   onVocalsOnly: () => void;
 }
 
-export function SingQuestion({ answer, onAnswer, stem, onStem, disabled, working, hasShots, onCut, onVocalsOnly }: SingQuestionProps) {
+export function SingQuestion({ answer, onAnswer, stem, onStem, disabled, working, hasShots, hasTakes, onCut, onVocalsOnly }: SingQuestionProps) {
   const { t } = useTranslation("studio");
   const busy = disabled || working !== null;
   return (
@@ -84,10 +86,12 @@ export function SingQuestion({ answer, onAnswer, stem, onStem, disabled, working
         </label>
       </fieldset>
       <div className="song-panel__actions">
-        <button type="button" className="primary-button" disabled={busy || answer === null} onClick={onCut}>
+        <button type="button" className={hasTakes ? "secondary-button" : "primary-button"} disabled={busy || answer === null} onClick={onCut}>
           {working === "cut"
             ? t("board.song.cutting", { defaultValue: "Cutting to the music…" })
-            : t("board.song.sing.cut", { defaultValue: "Cut the song into shots" })}
+            : hasTakes
+              ? t("board.song.sing.cutAgain", { defaultValue: "Cut the song again" })
+              : t("board.song.sing.cut", { defaultValue: "Cut the song into shots" })}
         </button>
         {answer === "yes" && hasShots ? (
           <button type="button" className="secondary-button" disabled={busy} onClick={onVocalsOnly}>

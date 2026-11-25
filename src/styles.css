@@ -13446,6 +13446,8 @@ button.licence-chip:focus-visible {
   cursor: grab;
   touch-action: none;
   user-select: none;
+  /* So a narrow clip can drop its dB reading (the container query under .timeline__level-text). */
+  container-type: inline-size;
 }
 .timeline__clip--picture {
   border-color: color-mix(in srgb, var(--accent-storyboard) 50%, var(--border));
@@ -13561,6 +13563,12 @@ button.licence-chip:focus-visible {
   flex-shrink: 0;
   font-size: 0.7rem;
   color: var(--muted-strong);
+}
+/* A short clip has no room for the reading beside the level bar: the bar stays and the title has the dB. */
+@container (max-width: 80px) {
+  .timeline__level-text {
+    display: none;
+  }
 }
 .timeline__missing {
   position: absolute;
@@ -13834,7 +13842,7 @@ button.licence-chip:focus-visible {
     height: 220px;
   }
   .timeline {
-    --timeline-label-w: 72px;
+    --timeline-label-w: 96px;
   }
   .timeline__lane-label {
     flex-direction: column;
@@ -13843,6 +13851,14 @@ button.licence-chip:focus-visible {
     gap: 2px;
     padding: 0 4px;
     font-size: 0.74rem;
+  }
+  /* The add button keeps one small size: at a coarse pointer the shell stretches buttons to 44 px, which made the
+     lane header taller than the lane. */
+  .project-shell .timeline__lane-label .timeline__lane-add {
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    min-height: 36px;
   }
   /* The inspector becomes a drawer under the timeline, like the Board's editor. */
   .mixer__inspector {

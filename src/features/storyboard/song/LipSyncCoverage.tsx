@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import type { StoryboardLipSyncCoverage, StoryboardShot } from "../../../types";
 import { fixAction, fixLabel, reasonText, rowFix, stateLabel, waitingShotIds, type FixAction, type Text } from "./coverageLogic";
 import { clock } from "./songLogic";
+import { shotSeconds } from "../planLogic";
 import "./coverage.css";
 
 export interface LipSyncCoverageProps {
@@ -81,7 +82,7 @@ export function LipSyncCoverage({ coverage, shots, busy, batchRunning, canOpenSh
                       {title ? <span className="lip-sync-coverage__title">{title}</span> : null}
                     </th>
                     <td>{`${clock(row.songStart)} – ${clock(row.songEnd)}`}</td>
-                    <td>{t("board.plan.seconds", { defaultValue: "{n} s", n: Math.round(row.seconds * 10) / 10 })}</td>
+                    <td>{t("board.plan.seconds", { defaultValue: "{n} s", n: shotSeconds(row.seconds) })}</td>
                     <td>
                       <span className={`lip-sync-coverage__state lip-sync-coverage__state--${row.state}`}>{say(stateLabel(row.state))}</span>
                       {row.code ? <span className="muted-text lip-sync-coverage__reason">{say(reasonText(row.code, row))}</span> : null}

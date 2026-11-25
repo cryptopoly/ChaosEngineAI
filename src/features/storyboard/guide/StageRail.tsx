@@ -13,7 +13,7 @@ import type { ProjectTabId } from "../projectRoute";
 import { modelsMissingReason } from "../storyboardLogic";
 import { useProjectEstimate } from "../useProjectEstimate";
 import type { UseStoryboardResult } from "../useStoryboard";
-import { batchArgs, destinationOf, railStages, shownStage, type StageLook } from "./stageLogic";
+import { batchArgs, destinationOf, focusSongSection, opensSongSection, railStages, shownStage, type StageLook } from "./stageLogic";
 import "./guide.css";
 
 export interface StageRailProps {
@@ -94,6 +94,7 @@ export function StageRail({ guide, project, story, musicVideo = false, onTab, in
     if (destination.kind === "resume") void story.resumeBatch?.();
     else if (destination.kind === "batch" && batch) void story.startBatch(batch.what, batch.shotIds, batch.force, batch.draft);
     onTab(destination.tab);
+    if (action && opensSongSection(action)) focusSongSection();
   }
 
   // A batch button waits while another batch runs or a change is saving; opening a tab never waits.

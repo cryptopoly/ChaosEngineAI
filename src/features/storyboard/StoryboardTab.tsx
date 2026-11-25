@@ -16,6 +16,7 @@ import type {
   VideoOutputArtifact,
 } from "../../types";
 import { shotCardGuide } from "./cardGuide";
+import { shotSeconds } from "./planLogic";
 import { RunBar } from "./RunBar";
 import { RoughCutButton } from "./preview/RoughCutButton";
 import { useProjectEstimate } from "./useProjectEstimate";
@@ -271,8 +272,8 @@ export function StoryboardTab({
                 // adds no tab stop per shot.
                 tabIndex={-1}
                 style={{ flexGrow: Math.max(0.2, span.duration) }}
-                title={t("board.lengthStripPart", { defaultValue: "Shot {n} · {seconds} s", n: index + 1, seconds: Math.round(span.duration * 10) / 10 })}
-                aria-label={t("board.lengthStripPart", { defaultValue: "Shot {n} · {seconds} s", n: index + 1, seconds: Math.round(span.duration * 10) / 10 })}
+                title={t("board.lengthStripPart", { defaultValue: "Shot {n} · {seconds} s", n: index + 1, seconds: shotSeconds(span.duration) })}
+                aria-label={t("board.lengthStripPart", { defaultValue: "Shot {n} · {seconds} s", n: index + 1, seconds: shotSeconds(span.duration) })}
                 onClick={() => focusCard(span.id)}
               >
                 {index + 1}

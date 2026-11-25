@@ -21,6 +21,7 @@ import type {
 } from "../../types";
 import { CAST_OUT } from "../../types/storyboard";
 import { castOutOf } from "./castLock";
+import { roundSeconds, shotSeconds } from "./planLogic";
 
 // The open project now lives in the Projects route (D-65); these stay importable from here for one release.
 export { readOpenProjectId, writeOpenProjectId } from "./projectRoute";
@@ -354,7 +355,7 @@ export function draftFromShot(shot: StoryboardShot): ShotDraft {
     stillPrompt: shot.stillPrompt,
     motionPrompt: shot.motionPrompt,
     startFrom: shot.startFrom,
-    seconds: String(shot.seconds),
+    seconds: shotSeconds(shot.seconds),
     seed: shot.seed == null ? "" : String(shot.seed),
     trimIn: String(shot.trimIn),
     trimOut: shot.trimOut == null ? "" : String(shot.trimOut),
@@ -377,7 +378,8 @@ export function shotPatchFromDraft(shot: StoryboardShot, draft: ShotDraft): Reco
   if (draft.motionPrompt !== shot.motionPrompt) patch.motionPrompt = draft.motionPrompt;
   if (draft.startFrom !== shot.startFrom) patch.startFrom = draft.startFrom;
   const seconds = numberOr(draft.seconds, shot.seconds);
-  if (seconds !== shot.seconds) patch.seconds = seconds;
+  // The draft shows one decimal, so an untouched length (3.431) is not a change.
+  if (seconds !== roundSeconds(shot.seconds)) patch.seconds = seconds;
   const seed = draft.seed.trim() === "" ? null : Math.trunc(numberOr(draft.seed, shot.seed ?? 0));
   if (seed !== shot.seed) patch.seed = seed;
   const trimIn = numberOr(draft.trimIn, shot.trimIn);

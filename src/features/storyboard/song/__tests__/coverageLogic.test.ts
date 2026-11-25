@@ -69,8 +69,8 @@ describe("hint text", () => {
 describe("flow choice", () => {
   const project = (extra: Partial<StoryboardProject>) => ({ shots: [], song: null, ...extra }) as unknown as StoryboardProject;
 
-  it("asks for singing shots of 3 to 5 s on Yes and the ordinary cut otherwise", () => {
-    expect(cutOptions("yes")).toEqual({ minShotSeconds: 3, maxShotSeconds: 5 });
+  it("asks for singing shots of 2 to 5 s on Yes and the ordinary cut otherwise", () => {
+    expect(cutOptions("yes")).toEqual({ minShotSeconds: 2, maxShotSeconds: 5 });
     expect(cutOptions("no")).toEqual({});
     expect(cutOptions(null)).toEqual({});
   });

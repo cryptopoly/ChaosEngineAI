@@ -72,6 +72,31 @@ export function destinationOf(action: StoryboardGuideAction): StageDestination {
   }
 }
 
+/** The actions whose work is in the Plan tab's Song section, below the brief: the button scrolls to it. */
+export function opensSongSection(action: StoryboardGuideAction): boolean {
+  return action === "attach-song" || action === "cut-plan" || action === "assign-vocals" || action === "make-lipsync" || action === "open-coverage";
+}
+
+/**
+ * Bring the Song section into view and put focus on its heading. The tab it lives in renders after the click, so
+ * this looks for the heading for a few frames. Returns a function that stops the search.
+ */
+export function focusSongSection(doc: Document = document, frames = 20): () => void {
+  let left = frames;
+  let handle = 0;
+  const look = () => {
+    const heading = doc.getElementById("song-panel-title");
+    if (heading) {
+      heading.focus();
+      heading.scrollIntoView?.({ block: "start" });
+      return;
+    }
+    if (--left > 0) handle = requestAnimationFrame(look);
+  };
+  handle = requestAnimationFrame(look);
+  return () => cancelAnimationFrame(handle);
+}
+
 /** The arguments of `story.startBatch` for a stage batch, or null when it has no shot to work on. */
 export interface StageBatchArgs {
   what: StoryboardBatchWhat;

@@ -1,6 +1,6 @@
 /**
- * The voice runtime's download size: the one place these figures live (Models' runtime panel, its add-on labels and
- * the Studio gate all read them). Base: the speech packages, turn detection and speaker labels, about 2.3 GB on the
+ * The voice runtime's download size: the one place these figures live (the Voice setup card, its presets and its
+ * Choose parts labels all read them). Base: the speech packages, turn detection and speaker labels, about 2.3 GB on the
  * portable lane. The speech GPU add-on brought the speech packages to 8.0 GB on the RTX 4090 run (2026-11), so about
  * 5.7 GB of its own; the speech-to-text GPU add-on's figure is the label's estimate (not measured alone).
  */

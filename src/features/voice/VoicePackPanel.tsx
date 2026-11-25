@@ -1,157 +1,27 @@
 /**
- * The voice runtime (D-73 M4, M5; called the voice pack before): install, update, repair and cancel with progress and
- * the install log; the four parts with their size; what is in memory now with Unload and the idle minutes; the
- * add-ons as tick boxes (tick installs, untick removes); Troubleshooting with Reinstall and Remove voice runtime. The
- * job hook and the progress piece are shared with the Mandarin card on Speak and Voices.
+ * Voice setup on Voice > Models (the voice runtime, D-73 M4, M5; voice studio UX audit, change 1): the setup card
+ * (tasks, presets, Install what is missing, Choose parts), the runtime's parts with their size, what is in memory now
+ * with Unload and the idle minutes, and Troubleshooting with Reinstall and Remove. The install job hook and its
+ * progress row live in ``setup/voicePackJob.tsx`` and are re-exported here for the Mandarin card.
  */
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import i18next from "i18next";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
-import {
-  cancelVoiceInstall,
-  getVoiceInstallStatus,
-  removeVoiceExtra,
-  startVoiceInstall,
-  stopVoiceWorker,
-  uninstallVoiceRuntime,
-} from "../../api";
-import type { VoiceExtra, VoiceInstallJob, VoiceRuntime } from "../../types";
+import { stopVoiceWorker, uninstallVoiceRuntime } from "../../api";
+import type { VoiceRuntime } from "../../types";
 import { useVoice } from "./VoiceContext";
 import { runtimeRemoveConfirmText } from "./models/voiceModelsLogic";
-import { addonSizeText, runtimeInstallGb } from "./runtimeSize";
+import { VoiceSetupCard, laneDescription, type SetupCatalog } from "./setup/VoiceSetupCard";
+import type { VoicePackJob } from "./setup/voicePackJob";
 import { kokoroInstalled, runtimePartsSummary, voicePackMode } from "./voicePackState";
 
-function laneDescription(runtime: VoiceRuntime): string {
-  if (runtime.lane === "mlx") return i18next.t("studio:voice.lane.mlxRuntime", { defaultValue: "Apple Silicon" });
-  if (runtime.cuda || runtime.nvidiaGpu) return i18next.t("studio:voice.lane.nvidiaRuntime", { defaultValue: "NVIDIA GPU" });
-  return i18next.t("studio:voice.lane.cpuRuntime", { defaultValue: "CPU" });
-}
-
-export function useVoicePackJob(runtime: VoiceRuntime, onChanged: () => void) {
-  const [job, setJob] = useState<VoiceInstallJob>(runtime.install);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!job.running) return;
-    const timer = window.setInterval(() => {
-      void getVoiceInstallStatus()
-        .then((next) => {
-          setJob(next);
-          // The runtime status (installed, extras, voices) changed under us: fetch it again.
-          if (!next.running) onChanged();
-        })
-        .catch(() => {});
-    }, 1500);
-    return () => window.clearInterval(timer);
-  }, [job.running, onChanged]);
-
-  // Extras already in the runtime are kept by the backend; `add` names the ones to add.
-  const start = async (add: string[] = []) => {
-    setError(null);
-    try {
-      const installedExtras = runtime.extras.filter((e) => e.installed).map((e) => e.id);
-      setJob(await startVoiceInstall([...new Set([...installedExtras, ...add])]));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  };
-  const cancel = () => void cancelVoiceInstall().then(setJob);
-  return { job, error, setError, start, cancel };
-}
-
-export type VoicePackJob = ReturnType<typeof useVoicePackJob>;
+export { InstallLog, InstallProgress, useVoicePackJob, type VoicePackJob } from "./setup/voicePackJob";
 
 function formatInstalledAt(value: string | null | undefined): string {
   if (!value) return "";
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString(i18next.language, { day: "numeric", month: "short", year: "numeric" });
-}
-
-export function InstallProgress({ pack }: { pack: VoicePackJob }) {
-  const { t } = useTranslation("studio");
-  const { job } = pack;
-  return (
-    <div className="progress-row">
-      <div className="progress-meta">
-        <span>
-          {job.phaseLabel} ({job.phaseIndex}/{job.phaseTotal})
-        </span>
-        <button type="button" className="secondary-button" onClick={pack.cancel}>
-          {t("voice.pack.cancel", { defaultValue: "Cancel" })}
-        </button>
-      </div>
-      <div className="progress-track">
-        <div className="progress-fill" style={{ width: `${Math.max(4, job.percent)}%` }} />
-      </div>
-    </div>
-  );
-}
-
-export function InstallLog({ pack }: { pack: VoicePackJob }) {
-  const { t } = useTranslation("studio");
-  const { job, error } = pack;
-  return (
-    <>
-      {job.phase === "error" || job.phase === "cancelled" || error ? (
-        <p className="voice-error" role="alert">
-          {error ?? job.error}
-        </p>
-      ) : null}
-      {job.log.length > 0 ? (
-        <details className="install-log-panel">
-          <summary className="install-log-summary">{t("voice.pack.log", { defaultValue: "Install log" })}</summary>
-          <pre className="install-log-terminal">{job.log.join("\n")}</pre>
-        </details>
-      ) : null}
-    </>
-  );
-}
-
-// i18n-extract: voice.runtime.addon.kokoro
-// i18n-extract: voice.runtime.addon.chinese
-// i18n-extract: voice.runtime.addon.speech-gpu
-// i18n-extract: voice.runtime.addon.stt-gpu
-const ADDON_LABELS: Record<string, string> = {
-  kokoro: "Kokoro quick voices (about 330 MB)",
-  chinese: "Mandarin Chinese quick voices (8 voices, about 60 MB)",
-  "speech-gpu": "Speech GPU add-on: Qwen3-TTS, Chatterbox, VoxCPM2 and Orpheus natural voices, voice design and cloning on the NVIDIA GPU (about {size})",
-  "stt-gpu": "Speech-to-text GPU add-on: Qwen3-ASR, Parakeet, Nemotron and Granite on the NVIDIA GPU (about {size})",
-};
-
-/** The add-ons as tick boxes. Before install they choose what the install adds; after it, ticking installs the add-on
- * and unticking removes it. */
-function AddOns({
-  extras,
-  chosen,
-  onToggle,
-  disabled,
-  installed,
-}: {
-  extras: VoiceExtra[];
-  chosen: (extra: VoiceExtra) => boolean;
-  onToggle: (extra: VoiceExtra, on: boolean) => void;
-  disabled: boolean;
-  installed: boolean;
-}) {
-  const { t } = useTranslation("studio");
-  if (extras.length === 0) return null;
-  return (
-    <fieldset className="voice-runtime__addons" disabled={disabled}>
-      <legend>{t("voice.runtime.addons", { defaultValue: "Add-ons" })}</legend>
-      {extras.map((extra) => (
-        <label key={extra.id} className="checkbox-label">
-          <input type="checkbox" checked={chosen(extra)} onChange={(e) => onToggle(extra, e.target.checked)} />
-          {t(`voice.runtime.addon.${extra.id}`, { defaultValue: ADDON_LABELS[extra.id] ?? extra.label, size: addonSizeText(extra.id) })}
-        </label>
-      ))}
-      <small className="muted-text">
-        {installed
-          ? t("voice.runtime.addonsHint", { defaultValue: "Installs when ticked; untick to remove." })
-          : t("voice.runtime.addonsHintInstall", { defaultValue: "Ticked add-ons install with the runtime; you can change them later." })}
-      </small>
-    </fieldset>
-  );
 }
 
 function InMemory({ runtime }: { runtime: VoiceRuntime }) {
@@ -206,13 +76,25 @@ function InMemory({ runtime }: { runtime: VoiceRuntime }) {
   );
 }
 
-export function VoiceRuntimePanel({ runtime, pack, actions }: { runtime: VoiceRuntime; pack: VoicePackJob; actions?: ReactNode }) {
+const NO_CATALOG: SetupCatalog = { models: [], loaded: false, refresh: async () => {} };
+
+export function VoiceRuntimePanel({
+  runtime,
+  pack,
+  actions,
+  catalog = NO_CATALOG,
+  onOpenClone,
+}: {
+  runtime: VoiceRuntime;
+  pack: VoicePackJob;
+  actions?: ReactNode;
+  /** The speech models, for the natural voice and cloning rows and the Full preset's model. */
+  catalog?: SetupCatalog;
+  onOpenClone?: () => void;
+}) {
   const { t } = useTranslation("studio");
   const { refresh } = useVoice();
-  const { job, start } = pack;
-  // Kokoro is ticked by default at install (D-75); unticked, the runtime installs without it.
-  const [wanted, setWanted] = useState<Set<string>>(() => new Set(["kokoro"]));
-  const [busyExtra, setBusyExtra] = useState<string | null>(null);
+  const { job } = pack;
   const [alsoModels, setAlsoModels] = useState(false);
   const [removing, setRemoving] = useState(false);
   const mode = voicePackMode({
@@ -227,45 +109,17 @@ export function VoiceRuntimePanel({ runtime, pack, actions }: { runtime: VoiceRu
   const withKokoro = kokoroInstalled(runtime.extras, runtime.ttsModelInstalled);
   const partsText = parts
     ? withKokoro
-      ? t("voice.runtime.parts", {
+      ? t("voice.setup.parts", {
           defaultValue: "{total} GB on disk: speech packages {packages} GB, Kokoro quick voices {kokoro} GB, turn detection and speaker labels {small} GB. Nothing is sent online.",
           ...parts,
         })
-      : t("voice.runtime.partsNoKokoro", {
+      : t("voice.setup.partsNoKokoro", {
           defaultValue: "{total} GB on disk: speech packages {packages} GB, turn detection and speaker labels {small} GB; the Kokoro quick voices are not installed. Nothing is sent online.",
           ...parts,
         })
-    : t("voice.runtime.aboutTickedGb", {
-        defaultValue:
-          "About {gb} GB with the add-ons ticked below: the speech packages, turn detection and speaker labels, plus each ticked add-on. Dictation and speech models are separate downloads on this page. Nothing is sent online.",
-        gb: runtimeInstallGb(runtime.extras.filter((extra) => wanted.has(extra.id)).map((extra) => extra.id)).toFixed(1),
+    : t("voice.setup.beforeInstall", {
+        defaultValue: "Everything runs on this computer and nothing is sent online. Speech-to-text and speech models are separate downloads on this page.",
       });
-
-  const toggleExtra = async (extra: VoiceExtra, on: boolean) => {
-    if (!runtime.installed) {
-      setWanted((previous) => {
-        const next = new Set(previous);
-        if (on) next.add(extra.id);
-        else next.delete(extra.id);
-        return next;
-      });
-      return;
-    }
-    if (on) {
-      await start([extra.id]);
-      return;
-    }
-    pack.setError(null);
-    setBusyExtra(extra.id);
-    try {
-      await removeVoiceExtra(extra.id);
-      refresh();
-    } catch (err) {
-      pack.setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusyExtra(null);
-    }
-  };
 
   const removeRuntime = async () => {
     if (!window.confirm(runtimeRemoveConfirmText(parts ? Number(parts.total) : null))) return;
@@ -274,7 +128,7 @@ export function VoiceRuntimePanel({ runtime, pack, actions }: { runtime: VoiceRu
     try {
       await uninstallVoiceRuntime(alsoModels);
     } catch (err) {
-      pack.setError(err instanceof Error ? err.message : String(err));
+      pack.setError(err);
     } finally {
       setRemoving(false);
       refresh();
@@ -284,9 +138,9 @@ export function VoiceRuntimePanel({ runtime, pack, actions }: { runtime: VoiceRu
   return (
     <Panel
       actions={actions}
-      title={t("voice.runtime.title", { defaultValue: "Voice runtime" })}
-      subtitle={t("voice.runtime.subtitle", {
-        defaultValue: "{lane}. Everything voice needs that is not a model you choose.",
+      title={t("voice.setup.title", { defaultValue: "Voice setup" })}
+      subtitle={t("voice.setup.subtitle", {
+        defaultValue: "{lane}. What voice can do on this computer, and what it still needs.",
         lane: laneDescription(runtime),
       })}
       className="span-2 voice-runtime"
@@ -307,34 +161,9 @@ export function VoiceRuntimePanel({ runtime, pack, actions }: { runtime: VoiceRu
           <span className="muted-text">{partsText}</span>
         </div>
 
+        <VoiceSetupCard runtime={runtime} pack={pack} catalog={catalog} onRuntimeChanged={refresh} onOpenClone={onOpenClone} busy={removing} />
+
         {runtime.installed ? <InMemory runtime={runtime} /> : null}
-
-        <AddOns
-          extras={runtime.extras}
-          installed={runtime.installed}
-          disabled={job.running || busyExtra !== null || removing}
-          chosen={(extra) =>
-            runtime.installed
-              ? // Ticked while its install runs; unticked while its removal runs.
-                (extra.installed || (job.running && job.extras.includes(extra.id))) && busyExtra !== extra.id
-              : wanted.has(extra.id)
-          }
-          onToggle={(extra, on) => void toggleExtra(extra, on)}
-        />
-
-        {job.running ? (
-          <InstallProgress pack={pack} />
-        ) : mode !== "healthy" ? (
-          <div className="button-row">
-            <button type="button" className="primary-button" onClick={() => void start(runtime.installed ? [] : [...wanted].filter((id) => runtime.extras.some((extra) => extra.id === id)))}>
-              {mode === "install"
-                ? t("voice.runtime.install", { defaultValue: "Install voice runtime" })
-                : mode === "update"
-                  ? t("voice.runtime.update", { defaultValue: "Update voice runtime" })
-                  : t("voice.runtime.repair", { defaultValue: "Repair voice runtime" })}
-            </button>
-          </div>
-        ) : null}
 
         {mode === "update" && !job.running ? (
           <p className="muted-text">
@@ -354,7 +183,7 @@ export function VoiceRuntimePanel({ runtime, pack, actions }: { runtime: VoiceRu
               })}
             </p>
             <div className="button-row">
-              <button type="button" className="secondary-button" disabled={removing} onClick={() => void start()}>
+              <button type="button" className="secondary-button" disabled={removing} onClick={() => void pack.start()}>
                 {t("voice.pack.reinstallSmall", { defaultValue: "Reinstall" })}
               </button>
               <button type="button" className="secondary-button danger-text" disabled={removing} onClick={() => void removeRuntime()}>
@@ -365,13 +194,12 @@ export function VoiceRuntimePanel({ runtime, pack, actions }: { runtime: VoiceRu
             </div>
             <label className="checkbox-label">
               <input type="checkbox" checked={alsoModels} onChange={(e) => setAlsoModels(e.target.checked)} />
-              {t("voice.runtime.alsoModels", {
-                defaultValue: "Also delete the Kokoro quick voices, turn detection and speaker labels. Downloaded dictation and speech models always stay.",
+              {t("voice.setup.alsoModels", {
+                defaultValue: "Also delete the Kokoro quick voices, turn detection and speaker labels. Downloaded speech-to-text and speech models always stay.",
               })}
             </label>
           </details>
         ) : null}
-        <InstallLog pack={pack} />
       </div>
     </Panel>
   );

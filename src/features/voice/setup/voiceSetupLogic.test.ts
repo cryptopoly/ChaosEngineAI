@@ -141,6 +141,13 @@ describe("first install presets (D0141)", () => {
     expect(cpu.preferred).toBe("basic");
   });
 
+  it("leaves the model out of Full until the model list names it, and has no Full on a Mac without one", () => {
+    const early = setupPresets(pc({ models: [], modelsLoaded: false }));
+    expect(early.full).toEqual({ addons: ["kokoro", "speech-gpu", "stt-gpu"], modelKey: null, gb: 11.2, partial: true });
+    const mac = setupPresets(pc({ lane: "mlx", extras: [{ id: "kokoro", installed: false }], models: [], modelsLoaded: false }));
+    expect(mac.full).toBeNull();
+  });
+
   it("formats sizes", () => {
     expect(gbText(15.8)).toBe("15.8");
     expect(gbText(0.04)).toBe("0.04");

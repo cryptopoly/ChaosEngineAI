@@ -207,23 +207,29 @@ export interface PresetChoice {
  */
 export function setupPresets(input: SetupInput): { basic: PresetChoice; full: PresetChoice | null; preferred: SetupPreset } {
   const ids = (list: string[]) => list.filter((id) => offered(input, id));
-  const size = (addons: string[]) => RUNTIME_BASE_GB + addons.reduce((sum, id) => sum + (ADDON_GB[id] ?? 0), 0);
-  const round = (gb: number) => Math.round(gb * 10) / 10;
   const basicAddons = ids(["kokoro"]);
-  const basic: PresetChoice = { addons: basicAddons, modelKey: null, gb: round(size(basicAddons)), partial: false };
+  const basic: PresetChoice = { addons: basicAddons, modelKey: null, gb: installGb(basicAddons, null), partial: false };
 
   const natural = speechModelTask("natural", input);
   const fullAddons = ids(["kokoro", "speech-gpu", "stt-gpu"]);
-  const model = natural.state === "missing" ? natural.parts.find((p) => p.id === "natural-model") : undefined;
+  const modelPartFound = natural.state === "missing" ? natural.parts.find((p) => p.id === "natural-model") : undefined;
+  // A model counts once the list names it; before that Full is its add-ons, marked as more to come.
+  const model = modelPartFound?.modelKey ? modelPartFound : undefined;
   if (fullAddons.length === basicAddons.length && !model) return { basic, full: null, preferred: "basic" };
   const full: PresetChoice = {
     addons: fullAddons,
     modelKey: model?.modelKey ?? null,
-    gb: round(size(fullAddons) + (model?.gb ?? 0)),
-    partial: Boolean(model && model.gb == null),
+    gb: installGb(fullAddons, model?.gb ?? null),
+    partial: Boolean(modelPartFound && !model),
   };
   // Full is preselected when this GPU can run the natural voices; a GPU too small or too old starts on Basic.
   return { basic, full, preferred: natural.state === "unavailable" ? "basic" : "full" };
+}
+
+/** A first install's size: the runtime, these add-ons and the model, rounded once to one decimal. */
+export function installGb(addons: string[], modelGb: number | null): number {
+  const total = RUNTIME_BASE_GB + addons.reduce((sum, id) => sum + (ADDON_GB[id] ?? 0), 0) + (modelGb ?? 0);
+  return Math.round(total * 10) / 10;
 }
 
 /** The GB figure as the card prints it: one decimal, "0.3" rather than "0". */

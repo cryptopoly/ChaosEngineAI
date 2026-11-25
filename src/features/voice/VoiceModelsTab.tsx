@@ -1,8 +1,9 @@
 /**
- * Voice > Models (D-73): the voice runtime, the dictation models and the speech models on one page, each with Delete.
- * A model is on Models, a voice is on Voices, a setting sits next to the thing it changes: the dictation language in
- * the dictation panel, memory in the runtime panel.
+ * Voice > Models (D-73): Voice setup, the speech-to-text models and the speech models on one page, each with Delete.
+ * A model is on Models, a voice is in the Studio, a setting sits next to the thing it changes: the speech-to-text
+ * language in its panel, memory in Voice setup.
  */
+import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Panel } from "../../components/Panel";
 import type { ModelAvailabilityFilter } from "../../components/models";
@@ -57,14 +58,22 @@ function VoiceModelsBody({
   onOpenExternalUrl,
 }: VoiceModelsTabProps & { voiceRuntime: VoiceRuntime }) {
   const { t } = useTranslation("studio");
-  const pack = useVoicePackJob(voiceRuntime, onRefreshVoiceRuntime);
-  const catalog = useVoiceCatalog(voiceRuntime.installed, voiceRuntime.lane);
+  // The speech model list also before the install: Voice setup sizes the natural voice model from it.
+  const catalog = useVoiceCatalog(true, voiceRuntime.lane);
+  const refreshModels = catalog.refresh;
+  const onInstallDone = useCallback(() => {
+    onRefreshVoiceRuntime();
+    void refreshModels();
+  }, [onRefreshVoiceRuntime, refreshModels]);
+  const pack = useVoicePackJob(voiceRuntime, onInstallDone);
 
   return (
     <div className="content-grid discover-page voice-page">
       <VoiceRuntimePanel
         runtime={voiceRuntime}
         pack={pack}
+        catalog={catalog}
+        onOpenClone={onOpenStudio ? () => onOpenStudio({ mode: "clone" }) : undefined}
         actions={
           voiceRuntime.installed && onOpenStudio ? (
             <button type="button" className="primary-button" onClick={() => onOpenStudio()}>

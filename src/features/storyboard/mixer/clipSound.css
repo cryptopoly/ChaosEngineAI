@@ -1,0 +1,35 @@
+/* The Shot sound lane under a song: a status line and the "Let clip sound play" switch in the lane header. */
+.timeline__lane.timeline__lane--clip-sound {
+  min-height: 78px;
+}
+.timeline__lane--clip-sound .timeline__lane-label {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+}
+.clip-sound {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+.clip-sound__status {
+  color: var(--muted);
+}
+.clip-sound__switch {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  cursor: pointer;
+}
+.clip-sound__switch input {
+  margin: 1px 0 0;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
+.clip-sound__switch span {
+  min-width: 0;
+}

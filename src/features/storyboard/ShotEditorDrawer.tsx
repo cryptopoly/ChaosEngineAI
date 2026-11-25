@@ -12,6 +12,7 @@ import { ShotVocalFields } from "./ShotVocalFields";
 import type { RunOp } from "./useStoryboard";
 import { canRedoClip, canRedoStill } from "./remakeLogic";
 import { castInShot, isInEveryShot, toggleCastOut } from "./castLock";
+import { clipSoundDraftOn, clipSoundDraftValue, hasSong } from "./mixer/clipSound";
 import { useShotEstimates } from "./useShotEstimates";
 import {
   draftFromShot,
@@ -219,6 +220,24 @@ export function ShotEditorDrawer({
             <span className="eyebrow">{t("board.editor.nativeSound", { defaultValue: "Shot sound level (dB)" })}</span>
             <input type="number" min={-60} max={12} step={1} value={draft.nativeSoundDb} onChange={(e) => set("nativeSoundDb", e.target.value)} />
           </label>
+          {hasSong(project) ? (
+            <label className="check-row">
+              <input
+                type="checkbox"
+                role="switch"
+                checked={clipSoundDraftOn(draft.nativeSoundDb)}
+                onChange={(e) => set("nativeSoundDb", clipSoundDraftValue(e.target.checked))}
+              />
+              <span>
+                {t("board.editor.clipSound", { defaultValue: "Let clip sound play" })}{" "}
+                <span className="muted-text">
+                  {clipSoundDraftOn(draft.nativeSoundDb)
+                    ? t("board.editor.clipSoundOn", { defaultValue: "This clip's own sound plays over the song." })
+                    : t("board.editor.clipSoundOff", { defaultValue: "Muted under the song." })}
+                </span>
+              </span>
+            </label>
+          ) : null}
           <label className="control-stack">
             <span className="eyebrow">{t("board.editor.trimIn", { defaultValue: "Trim in (s)" })}</span>
             <input type="number" min={0} step={0.1} value={draft.trimIn} onChange={(e) => set("trimIn", e.target.value)} />

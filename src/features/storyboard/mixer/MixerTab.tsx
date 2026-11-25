@@ -60,6 +60,7 @@ import { RoughCutStage } from "../preview/RoughCutStage";
 import { captionAt, pieceIndexAt, type CutPiece } from "../preview/roughCutLogic";
 import { useMixerRoughCut } from "./useMixerRoughCut";
 import "./mixerCut.css";
+import { clipSoundPatches, clipSoundState, hasSong } from "./clipSound";
 import { VideoToolsPrompt } from "../../videotools/VideoToolsPrompt";
 import { useVideoTools } from "../../videotools/useVideoTools";
 
@@ -709,6 +710,18 @@ export function MixerTab({ story, project, timeline, dataDirectory, onOpenShot, 
               onAdd={(lane) => setAddLane((current) => (current === lane ? null : lane))}
               onSeek={seek}
               onClearSelection={() => setSelection(null)}
+              clipSound={
+                hasSong(project) && project.shots.length > 0
+                  ? {
+                      state: clipSoundState(project.shots),
+                      disabled,
+                      // One edit_shot per shot that changes, each against the newest project.
+                      onToggle: (on) => {
+                        for (const patch of clipSoundPatches(project.shots, on)) void story.opFrom("edit_shot", () => patch);
+                      },
+                    }
+                  : undefined
+              }
               scrollRef={scroller}
               innerRef={timelineInner}
             />

@@ -22,13 +22,42 @@ const models: VoiceModelRow[] = [
 const catalog: VoiceCatalog = { voices, models, modelsAvailable: true, cloneAllowed: true, loaded: true, error: null, refresh: async () => {}, download: async () => {} };
 
 describe("SpeakScreen", () => {
-  it("greys the style box and chips for a voice without style, with a note", () => {
+  it("hides the style box and chips for a voice without style: one sentence and one button instead", () => {
     const html = renderToStaticMarkup(<SpeakScreen catalog={catalog} voiceId="af_heart" onVoiceChange={() => {}} />);
-    expect(html).toMatch(/<textarea[^>]*disabled=""[^>]*placeholder="Tone, pace, accent, in your own words/);
-    expect(html).toContain("have no style control");
-    expect(html).toContain(">Angry<");
+    expect(html).not.toContain("Tone, pace, accent, in your own words");
+    expect(html).not.toContain(">Angry<");
+    expect(html).toContain("Style needs a natural voice.");
+    expect(html).toContain(">Get one, 3.1 GB<");
+    // The install card would repeat that button.
+    expect(html).not.toContain("Install a better voice");
     expect(html).toContain("Runs with Kokoro");
     expect(html).toContain("Advanced");
+  });
+
+  it("says what the voice can do in one line under the voice row", () => {
+    const quick = renderToStaticMarkup(<SpeakScreen catalog={catalog} voiceId="af_heart" onVoiceChange={() => {}} />);
+    expect(quick).toContain("This voice can: speed. Languages: English (US).");
+    expect(quick.indexOf("This voice can")).toBeGreaterThan(quick.indexOf("voice-row"));
+    expect(quick.indexOf("This voice can")).toBeLessThan(quick.indexOf("voice-speak__style"));
+    const natural = renderToStaticMarkup(
+      <SpeakScreen catalog={{ ...catalog, models: models.map((m) => ({ ...m, installed: true })) }} voiceId="qwen3:Ryan" onVoiceChange={() => {}} />,
+    );
+    expect(natural).toContain("This voice can: speed, style. Languages: English.");
+  });
+
+  it("moves Pitch under Advanced and disables it with the reason up front when ffmpeg is missing", () => {
+    const ok = renderToStaticMarkup(<SpeakScreen catalog={catalog} voiceId="af_heart" onVoiceChange={() => {}} />);
+    expect(ok.indexOf("Pitch (0)")).toBeGreaterThan(ok.indexOf("Advanced"));
+    expect(ok).not.toContain("needs ffmpeg");
+    const noFfmpeg = { ...catalog, voices: voices.map((v) => ({ ...v, needsFfmpeg: true })) };
+    const quick = renderToStaticMarkup(<SpeakScreen catalog={noFfmpeg} voiceId="af_heart" onVoiceChange={() => {}} />);
+    expect(quick).toMatch(/Pitch \(0\)<\/span><input[^>]*disabled=""/);
+    expect(quick).toContain("Pitch needs ffmpeg, which is not installed.");
+    // Quick voices change speed themselves; the others need ffmpeg for it too.
+    expect(quick).not.toContain("Speed for this voice needs ffmpeg");
+    const natural = renderToStaticMarkup(<SpeakScreen catalog={noFfmpeg} voiceId="qwen3:Ryan" onVoiceChange={() => {}} />);
+    expect(natural).toContain("Speed for this voice needs ffmpeg");
+    expect(natural).toMatch(/Speed \(1\.0×\)<\/span><input[^>]*disabled=""/);
   });
 
   it("shows one voice row with Change voice instead of the picker, so the form and Generate come first (D-73 S1)", () => {
@@ -43,10 +72,11 @@ describe("SpeakScreen", () => {
     expect([...order].sort((a, b) => a - b)).toEqual(order);
   });
 
-  it("explains the small model and offers the style model download", () => {
+  it("explains the small model and offers the style model download with its size, in place of the style box", () => {
     const html = renderToStaticMarkup(<SpeakScreen catalog={catalog} voiceId="qwen3:Ryan" onVoiceChange={() => {}} />);
     expect(html).toContain("The small model ignores style");
-    expect(html).toContain("Download Qwen3-TTS 1.7B CustomVoice for style");
+    expect(html).toContain("Download Qwen3-TTS 1.7B CustomVoice for style, 3.1 GB");
+    expect(html).not.toContain("Tone, pace, accent, in your own words");
   });
 
   it("keeps the cloning statement off Speak: it lives in the New cloned voice form (D-73 S2)", () => {
@@ -143,9 +173,26 @@ describe("SpeakScreen cloning model and voice picker", () => {
     expect(html).toContain("use the Expression slider");
   });
 
-  it("links the greyed-out style box to its reason", () => {
-    const html = renderToStaticMarkup(<SpeakScreen catalog={catalog} voiceId="af_heart" onVoiceChange={() => {}} />);
-    expect(html).toContain('aria-describedby="voice-speak-style-reason"');
-    expect(html).toContain('id="voice-speak-style-reason"');
+  it("shows the style box, with its chips, only for a voice that can use it", () => {
+    const styled = { ...catalog, models: models.map((m) => ({ ...m, installed: true })) };
+    const html = renderToStaticMarkup(<SpeakScreen catalog={styled} voiceId="qwen3:Ryan" onVoiceChange={() => {}} />);
+    expect(html).toMatch(/<textarea[^>]*placeholder="Tone, pace, accent, in your own words/);
+    expect(html).not.toMatch(/<textarea[^>]*disabled=""[^>]*placeholder="Tone/);
+    expect(html).toContain(">Angry<");
+    expect(html).not.toContain("voice-speak-style-reason");
+  });
+
+  it("offers a natural voice to choose when the style model is already downloaded and a quick voice is picked", () => {
+    const styled = { ...catalog, models: models.map((m) => ({ ...m, installed: true })) };
+    const html = renderToStaticMarkup(<SpeakScreen catalog={styled} voiceId="af_heart" onVoiceChange={() => {}} />);
+    expect(html).toContain("Style needs a natural voice.");
+    expect(html).toContain(">Choose a natural voice<");
+    expect(html).not.toContain("Get one");
+  });
+
+  it("gives a quick voice no button when natural voices cannot run here", () => {
+    const html = renderToStaticMarkup(<SpeakScreen catalog={{ ...catalog, modelsAvailable: false, models: [] }} voiceId="af_heart" onVoiceChange={() => {}} />);
+    expect(html).toContain("Quick voices have no style control");
+    expect(html).not.toContain("Get one");
   });
 });

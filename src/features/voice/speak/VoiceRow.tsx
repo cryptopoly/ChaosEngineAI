@@ -5,7 +5,8 @@
 import { useTranslation } from "react-i18next";
 import type { VoiceEntry, VoiceModelRow } from "../../../types";
 import { useCostText } from "./costText";
-import { costLabel } from "./speakLogic";
+import { languageName } from "./SpeakControls";
+import { costLabel, type VoiceAbilities } from "./speakLogic";
 import { canPlaySample } from "./useVoiceSample";
 import { SampleIcon } from "./VoiceCard";
 
@@ -40,6 +41,39 @@ export function voiceAbout(voice: VoiceEntry, t: (key: string, options?: Record<
         ? t("voice.voices.female", { defaultValue: "female" })
         : "";
   return [voice.languageLabel ?? voice.language, gender, voice.about].filter(Boolean).join(", ");
+}
+
+/**
+ * One line under the voice row: what this voice can do (speed, style, sound tags) and its languages. Controls it cannot
+ * use are not drawn; Speak says why in the place they would be.
+ */
+export function VoiceCanLine({ abilities }: { abilities: VoiceAbilities | null }) {
+  const { t } = useTranslation("studio");
+  const tf = t as unknown as (key: string, options?: Record<string, unknown>) => string;
+  if (!abilities) return null;
+  const can = [
+    abilities.speed ? t("voice.speak.can.speed", { defaultValue: "speed" }) : null,
+    abilities.style ? t("voice.speak.can.style", { defaultValue: "style" }) : null,
+    abilities.tags ? t("voice.speak.can.tags", { defaultValue: "sound tags" }) : null,
+  ].filter((item): item is string => Boolean(item));
+  const languages = abilities.languages;
+  const languageText = !languages
+    ? ""
+    : languages.kind === "any"
+      ? t("voice.speak.can.anyLanguage", { defaultValue: "any language" })
+      : languages.kind === "own"
+        ? languages.label
+        : languages.codes.length > 3
+          ? t("voice.speak.can.nLanguages", { defaultValue: "{n} languages", n: languages.codes.length })
+          : languages.codes.map((code) => languageName(tf, code)).join(", ");
+  return (
+    <p className="muted-text voice-speak__hint voice-speak__can">
+      {can.length > 0
+        ? t("voice.speak.can.line", { defaultValue: "This voice can: {list}.", list: can.join(", ") })
+        : t("voice.speak.can.none", { defaultValue: "This voice reads the text as it is." })}
+      {languageText ? ` ${t("voice.speak.can.languages", { defaultValue: "Languages: {list}.", list: languageText })}` : ""}
+    </p>
+  );
 }
 
 export interface VoiceRowProps {

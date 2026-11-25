@@ -8,19 +8,23 @@ import { useVoice } from "../VoiceContext";
 import { joinWavs, splitSpeech, type SpeechPart } from "../studio/speech";
 import { requestLibraryFilter } from "../libraryVoice";
 import { unsupportedModelText } from "../models/voiceModelsLogic";
+import { describeVoiceError, type VoiceErrorView } from "../voiceErrorText";
 import { SpeakResultRow, type SpeakOutput } from "./SpeakResultRow";
 import { VoicePicker } from "./VoicePicker";
-import { VoiceRow } from "./VoiceRow";
+import { VoiceCanLine, VoiceRow } from "./VoiceRow";
 import {
   MAX_REQUEST_CHARS,
   MAX_SPEAK_CHARS,
   STYLE_CHIPS,
+  addRecent,
   canGenerate,
   cloneRequestText,
   costLabel,
   cloneTextTooLong,
   defaultLanguage,
-  ffmpegBlocked,
+  downloadSizeGb,
+  errorTarget,
+  ffmpegLimits,
   insertTag,
   installedCloneModels,
   installedDesignModels,
@@ -28,10 +32,12 @@ import {
   recommendedNaturalModel,
   sampleTooShort,
   showInstallCard,
+  styleGap,
   styleState,
+  voiceAbilities,
   voiceControls,
 } from "./speakLogic";
-import { GuidanceSlider, LanguageAndExpression, TagChips } from "./SpeakControls";
+import { GuidanceSlider, LanguageAndExpression, SpeakError, StyleGapNote, TagChips } from "./SpeakControls";
 import { InstallVoiceCard } from "./InstallVoiceCard";
 import { useCostText } from "./costText";
 import type { VoiceCatalog } from "./useVoiceCatalog";
@@ -88,9 +94,11 @@ export function SpeakScreen({
   const [seed, setSeed] = useState("");
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const queueLine = speakQueueLineKey(useSpeakQueue(progress !== null));
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<VoiceErrorView | null>(null);
   const [notes, setNotes] = useState<string[]>([]);
-  const [output, setOutput] = useState<SpeakOutput | null>(null);
+  // The session's last five clips stay under Generate, newest first.
+  const [clips, setClips] = useState<SpeakOutput[]>([]);
+  const clipsRef = useRef<SpeakOutput[]>([]);
   // The picker is a drawer behind "Change voice", so the form and Generate stay above the fold (D-73 S1).
   const [picking, setPicking] = useState(false);
   const cancelRef = useRef(false);
@@ -98,12 +106,7 @@ export function SpeakScreen({
   const sample = useVoiceSample(speed);
   const costs = useCostText();
 
-  useEffect(
-    () => () => {
-      if (output) URL.revokeObjectURL(output.url);
-    },
-    [output],
-  );
+  useEffect(() => () => clipsRef.current.forEach((clip) => URL.revokeObjectURL(clip.url)), []);
 
   useEffect(() => {
     if (textRequest) setText(textRequest.text);
@@ -119,7 +122,10 @@ export function SpeakScreen({
   const note = modelNote(voice, catalog.models, designing ? designModelKey : cloneModelKey);
   const styleInfo = styleState(voice, catalog.models, note.model);
   const activeStyle = styleInfo.enabled ? style.trim() : "";
-  const installModel = showInstallCard(catalog.models, catalog.modelsAvailable) ? recommendedNaturalModel(catalog.models) : null;
+  const gap = styleGap(styleInfo, catalog.models, catalog.modelsAvailable);
+  // The "Style needs a natural voice" line carries its own download, so the card would only repeat it.
+  const installModel =
+    showInstallCard(catalog.models, catalog.modelsAvailable) && gap?.kind !== "needsNatural" ? recommendedNaturalModel(catalog.models) : null;
   const cloneChoices = installedCloneModels(voice, catalog.models);
   const designChoices = installedDesignModels(voice, catalog.models);
   const controls = voiceControls(note.model);
@@ -147,8 +153,12 @@ export function SpeakScreen({
   };
   const parts: SpeechPart[] = cloned ? (text.trim() ? [{ text: cloneRequestText(text), gapAfter: 0 }] : []) : splitSpeech(text);
   const tooLong = cloned && cloneTextTooLong(text);
-  const needsFfmpeg = ffmpegBlocked(voice, speed, pitch);
-  const ready = canGenerate(voice, text, activeStyle, note) && !tooLong && !needsFfmpeg && !shortSample;
+  // Without ffmpeg the pitch slider (and speed, on voices that need it) is disabled up front, and the request ignores it.
+  const limits = ffmpegLimits(voice);
+  const requestSpeed = limits.speed ? speed : 1;
+  const requestPitch = limits.pitch ? pitch : 0;
+  const abilities = voiceAbilities(voice, controls, styleInfo.enabled);
+  const ready = canGenerate(voice, text, activeStyle, note) && !tooLong && !shortSample;
   const seedValue = seed.trim() === "" ? null : Math.max(0, Math.min(2 ** 31 - 1, Math.floor(Number(seed))));
 
   const generate = async () => {
@@ -170,8 +180,8 @@ export function SpeakScreen({
             text: part.text,
             voice: voice.id,
             style: activeStyle,
-            speed,
-            pitch,
+            speed: requestSpeed,
+            pitch: requestPitch,
             seed: Number.isFinite(seedValue) ? seedValue : null,
             // A cloned or designed voice runs with the model shown on the model line (the backend would otherwise take
             // its default).
@@ -195,7 +205,7 @@ export function SpeakScreen({
       let libraryId = last.libraryId;
       if (!libraryId) {
         try {
-          libraryId = (await saveSpeech(joined.blob, { text, voice: voice.id, speed, voiceName, voiceKind: voice.kind })).id;
+          libraryId = (await saveSpeech(joined.blob, { text, voice: voice.id, speed: requestSpeed, voiceName, voiceKind: voice.kind })).id;
         } catch (err) {
           seen.push(
             t("voice.speak.autosaveFailed", {
@@ -206,7 +216,7 @@ export function SpeakScreen({
         }
       }
       setNotes(seen);
-      setOutput({
+      const kept = addRecent(clipsRef.current, {
         url: URL.createObjectURL(joined.blob),
         blob: joined.blob,
         durationS: joined.durationS,
@@ -214,12 +224,15 @@ export function SpeakScreen({
         voice: voice.id,
         voiceName,
         voiceKind: voice.kind,
-        speed,
+        speed: requestSpeed,
         cloned: last.clonedVoice,
         libraryId,
       });
+      kept.dropped.forEach((clip) => URL.revokeObjectURL(clip.url));
+      clipsRef.current = kept.list;
+      setClips(kept.list);
     } catch (err) {
-      if (!cancelRef.current) setError(err instanceof Error ? err.message : String(err));
+      if (!cancelRef.current) setError(describeVoiceError(err));
     } finally {
       abortRef.current = null;
       setProgress(null);
@@ -232,18 +245,29 @@ export function SpeakScreen({
     void cancelSpeak(); // the abort alone leaves the backend job running
   };
 
-  const styleReason =
-    styleInfo.reason === "builtin"
-      ? t("voice.speak.styleBuiltin", { defaultValue: "Quick voices have no style control. Pick a natural voice to use it." })
-      : styleInfo.reason === "clone"
-        ? t("voice.speak.styleClone", { defaultValue: "Cloned voices have no style control." })
-        : styleInfo.reason === "smallModel"
-          ? t("voice.speak.styleSmall", { defaultValue: "The small model ignores style. The 1.7B model reads it." })
-          : styleInfo.reason === "tags"
-            ? t("voice.speak.styleTags", { defaultValue: "This voice takes sound tags in the text, such as [laugh], not a style." })
-            : styleInfo.reason === "expression"
-              ? t("voice.speak.styleExpression", { defaultValue: "Chatterbox has no style box; use the Expression slider." })
-              : "";
+  /** The button on a coded error does what its action says; null when nothing here can do it. */
+  const errorHandler = (view: VoiceErrorView): (() => void) | null => {
+    switch (errorTarget(view.action)) {
+      case "retry":
+        return () => void generate();
+      case "models":
+        return onTabChange ? () => onTabChange("voice-models") : null;
+      case "settings":
+        return onTabChange ? () => onTabChange("settings") : null;
+      case "download":
+        if (note.model && note.model.supported && !note.model.installed && !note.downloading) {
+          const key = note.model.key;
+          return () => void catalog.download(key);
+        }
+        return onTabChange ? () => onTabChange("voice-models") : null;
+      case "picker":
+        return () => setPicking(true);
+      case "clone":
+        return onNewClone ?? (() => setPicking(true));
+      default:
+        return null;
+    }
+  };
 
   return (
     <Panel
@@ -279,6 +303,7 @@ export function SpeakScreen({
           }}
           onChange={() => setPicking(true)}
         />
+        <VoiceCanLine abilities={abilities} />
         {installModel ? <InstallVoiceCard model={installModel} onDownload={() => void catalog.download(installModel.key)} /> : null}
 
         {designing && designChoices.length >= 2 ? (
@@ -310,47 +335,50 @@ export function SpeakScreen({
         <TagChips controls={controls} onInsert={addTag} />
 
         <div className="voice-speak__style">
-          <label className="voice-settings__field">
-            <span>{designing ? t("voice.speak.describe", { defaultValue: "Describe the voice" }) : t("voice.speak.style", { defaultValue: "Style" })}</span>
-            <textarea
-              className="text-input voice-textarea voice-speak__style-box"
-              value={style}
-              maxLength={500}
-              disabled={!styleInfo.enabled}
-              aria-describedby={styleReason ? "voice-speak-style-reason" : undefined}
-              onChange={(e) => setStyle(e.target.value)}
-              placeholder={
-                designing
-                  ? t("voice.speak.describePlaceholder", { defaultValue: "A warm woman in her thirties, calm and clear, speaking at an easy pace." })
-                  : t("voice.speak.stylePlaceholderFree", { defaultValue: "Tone, pace, accent, in your own words. For example: a tired, gentle bedtime voice, slow, slight Irish accent." })
-              }
+          {styleInfo.enabled ? (
+            <>
+              <label className="voice-settings__field">
+                <span>{designing ? t("voice.speak.describe", { defaultValue: "Describe the voice" }) : t("voice.speak.style", { defaultValue: "Style" })}</span>
+                <textarea
+                  className="text-input voice-textarea voice-speak__style-box"
+                  value={style}
+                  maxLength={500}
+                  onChange={(e) => setStyle(e.target.value)}
+                  placeholder={
+                    designing
+                      ? t("voice.speak.describePlaceholder", { defaultValue: "A warm woman in her thirties, calm and clear, speaking at an easy pace." })
+                      : t("voice.speak.stylePlaceholderFree", { defaultValue: "Tone, pace, accent, in your own words. For example: a tired, gentle bedtime voice, slow, slight Irish accent." })
+                  }
+                />
+              </label>
+              {!designing ? (
+                <div className="voice-speak__chips" role="group" aria-label={t("voice.speak.styleChips", { defaultValue: "Style shortcuts" })}>
+                  {STYLE_CHIPS.map((chip) => (
+                    <button
+                      key={chip.id}
+                      type="button"
+                      className={`voice-speak__chip${style === chip.instruction && chip.instruction !== "" ? " voice-speak__chip--on" : ""}`}
+                      onClick={() => setStyle(chip.instruction)}
+                    >
+                      {t(`voice.speak.chips.${chip.id}`, { defaultValue: CHIP_LABELS[chip.id] })}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </>
+          ) : gap ? (
+            <StyleGapNote
+              gap={gap}
+              onDownload={(key) => void catalog.download(key)}
+              onChoose={() => setPicking(true)}
+              sizeGb={gap.model ? downloadSizeGb(gap.model) : 0}
             />
-          </label>
-          {!designing ? (
-            <div className="voice-speak__chips" role="group" aria-label={t("voice.speak.styleChips", { defaultValue: "Style shortcuts" })}>
-              {STYLE_CHIPS.map((chip) => (
-                <button
-                  key={chip.id}
-                  type="button"
-                  className={`voice-speak__chip${style === chip.instruction && chip.instruction !== "" ? " voice-speak__chip--on" : ""}`}
-                  disabled={!styleInfo.enabled}
-                  onClick={() => setStyle(chip.instruction)}
-                >
-                  {t(`voice.speak.chips.${chip.id}`, { defaultValue: CHIP_LABELS[chip.id] })}
-                </button>
-              ))}
-            </div>
           ) : null}
           {designing ? (
             <p className="muted-text voice-speak__hint">
               {t("voice.speak.describeHint", {
                 defaultValue: "Say the age, gender, pitch, tone, accent and pace. The voice changes on every run; set a seed under Advanced to keep it.",
               })}
-            </p>
-          ) : null}
-          {styleReason ? (
-            <p id="voice-speak-style-reason" className="muted-text voice-speak__hint">
-              {styleReason}
             </p>
           ) : null}
           {steered ? (
@@ -373,21 +401,49 @@ export function SpeakScreen({
         <div className="voice-studio__row">
           <label className="voice-settings__field">
             <span>
-              {t("voice.speak.speed", { defaultValue: "Speed" })} ({speed.toFixed(1)}×)
+              {t("voice.speak.speed", { defaultValue: "Speed" })} ({requestSpeed.toFixed(1)}×)
             </span>
-            <input type="range" min={0.5} max={2} step={0.1} value={speed} onChange={(e) => setSpeed(parseFloat(e.target.value))} />
-          </label>
-          <label className="voice-settings__field">
-            <span>
-              {t("voice.speak.pitch", { defaultValue: "Pitch" })} ({pitch > 0 ? "+" : ""}
-              {pitch})
-            </span>
-            <input type="range" min={-12} max={12} step={1} value={pitch} onChange={(e) => setPitch(parseInt(e.target.value, 10))} />
+            <input
+              type="range"
+              min={0.5}
+              max={2}
+              step={0.1}
+              value={requestSpeed}
+              disabled={!limits.speed}
+              aria-describedby={limits.speed ? undefined : "voice-speak-speed-reason"}
+              onChange={(e) => setSpeed(parseFloat(e.target.value))}
+            />
           </label>
         </div>
+        {limits.speed ? null : (
+          <p id="voice-speak-speed-reason" className="muted-text voice-speak__hint">
+            {t("voice.speak.speedNeedsFfmpeg", { defaultValue: "Speed for this voice needs ffmpeg, which is not installed. Install it from Settings." })}
+          </p>
+        )}
 
         <details className="voice-speak__advanced">
           <summary>{t("voice.speak.advanced", { defaultValue: "Advanced" })}</summary>
+          <label className="voice-settings__field">
+            <span>
+              {t("voice.speak.pitch", { defaultValue: "Pitch" })} ({requestPitch > 0 ? "+" : ""}
+              {requestPitch})
+            </span>
+            <input
+              type="range"
+              min={-12}
+              max={12}
+              step={1}
+              value={requestPitch}
+              disabled={!limits.pitch}
+              aria-describedby={limits.pitch ? undefined : "voice-speak-pitch-reason"}
+              onChange={(e) => setPitch(parseInt(e.target.value, 10))}
+            />
+          </label>
+          {limits.pitch ? null : (
+            <p id="voice-speak-pitch-reason" className="muted-text voice-speak__hint">
+              {t("voice.speak.pitchNeedsFfmpeg", { defaultValue: "Pitch needs ffmpeg, which is not installed. Install it from Settings." })}
+            </p>
+          )}
           <label className="voice-settings__field">
             <span>{t("voice.speak.seed", { defaultValue: "Seed (leave empty for a different take each time)" })}</span>
             <input
@@ -423,11 +479,6 @@ export function SpeakScreen({
               {t("voice.models.download", { defaultValue: "Download" })}
             </button>
           ) : null}
-          {styleInfo.unlockWith && styleInfo.unlockWith.key !== note.model?.key && !styleInfo.unlockWith.installed && styleInfo.unlockWith.download.state !== "downloading" ? (
-            <button type="button" className="secondary-button" onClick={() => void catalog.download(styleInfo.unlockWith!.key)}>
-              {t("voice.speak.downloadForStyle", { defaultValue: "Download {name} for style", name: styleInfo.unlockWith.name })}
-            </button>
-          ) : null}
           {voice && onTabChange ? (
             <>
               {" "}
@@ -438,15 +489,6 @@ export function SpeakScreen({
           ) : null}
         </p>
 
-        {needsFfmpeg ? (
-          <p className="voice-error" role="alert">
-            {voice?.kind === "builtin"
-              ? t("voice.speak.ffmpegPitch", { defaultValue: "Changing the pitch needs ffmpeg. Install it from Settings, or set pitch back to 0." })
-              : t("voice.speak.ffmpegSpeedPitch", {
-                  defaultValue: "Speed and pitch for this voice need ffmpeg. Install it from Settings, or set speed to 1.0 and pitch to 0.",
-                })}
-          </p>
-        ) : null}
         {shortSample && note.model ? (
           <p className="voice-error" role="alert">
             {t("voice.speak.sampleTooShort", {
@@ -465,11 +507,7 @@ export function SpeakScreen({
         {designing && !style.trim() ? (
           <p className="muted-text voice-speak__hint">{t("voice.speak.describeFirst", { defaultValue: "Describe the voice you want before generating." })}</p>
         ) : null}
-        {error ? (
-          <p className="voice-error" role="alert">
-            {error}
-          </p>
-        ) : null}
+        {error ? <SpeakError error={error} onAction={errorHandler(error)} /> : null}
         {notes.map((line) => (
           <p key={line} className="muted-text voice-speak__hint">
             {line}
@@ -499,21 +537,28 @@ export function SpeakScreen({
             </button>
           )}
         </div>
-        {output ? (
-          <SpeakResultRow
-            key={output.url}
-            output={output}
-            onTabChange={onTabChange}
-            onError={setError}
-            onOpenLibrary={
-              onTabChange
-                ? () => {
-                    requestLibraryFilter("speech");
-                    onTabChange("voice-gallery");
-                  }
-                : undefined
-            }
-          />
+        {clips.length > 0 ? (
+          <section className="voice-speak__recent" aria-label={t("voice.speak.recent", { defaultValue: "Recent clips" })}>
+            <p className="muted-text voice-speak__hint">
+              <strong>{t("voice.speak.recent", { defaultValue: "Recent clips" })}</strong>
+            </p>
+            {clips.map((clip) => (
+              <SpeakResultRow
+                key={clip.url}
+                output={clip}
+                onTabChange={onTabChange}
+                onError={(err) => setError(describeVoiceError(err))}
+                onOpenLibrary={
+                  onTabChange
+                    ? () => {
+                        requestLibraryFilter("speech");
+                        onTabChange("voice-gallery");
+                      }
+                    : undefined
+                }
+              />
+            ))}
+          </section>
         ) : null}
       </div>
       {picking ? (

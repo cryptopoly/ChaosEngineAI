@@ -1,6 +1,6 @@
 /** Pure rules for the Speak and Voices screens: which model runs, whether the style box is usable. */
 
-import type { VoiceEntry, VoiceModelRow, VoiceSliderRange } from "../../../types";
+import type { VoiceEntry, VoiceErrorAction, VoiceModelRow, VoiceSliderRange } from "../../../types";
 
 export const DESIGN_VOICE_ID = "design";
 export const MAX_SPEAK_CHARS = 200_000;
@@ -437,4 +437,123 @@ export function showInstallCard(models: VoiceModelRow[], modelsAvailable: boolea
   if (!modelsAvailable) return false;
   const custom = models.filter((m) => m.kind === "custom");
   return custom.length > 0 && !custom.some((m) => m.installed);
+}
+
+/** The size a Download button fetches, in GB with one decimal: the model plus companions when the catalogue says so. */
+export function downloadSizeGb(model: VoiceModelRow): number {
+  return oneDecimal(model.downloadGb ?? model.sizeGb);
+}
+
+/** What ffmpeg's absence takes away: pitch on every voice, speed on every voice except the quick ones (they set speed themselves). */
+export function ffmpegLimits(voice: VoiceEntry | null): { speed: boolean; pitch: boolean } {
+  if (!voice?.needsFfmpeg) return { speed: true, pitch: true };
+  return { speed: voice.kind === "builtin", pitch: false };
+}
+
+/** Where a voice's language comes from, for the "This voice can" line. */
+export type VoiceLanguages = { kind: "select"; codes: string[] } | { kind: "own"; label: string } | { kind: "any" } | null;
+
+export interface VoiceAbilities {
+  speed: boolean;
+  style: boolean;
+  tags: boolean;
+  languages: VoiceLanguages;
+}
+
+/**
+ * What the chosen voice can do, for the one "This voice can" line under the voice row. ``style`` is whether the style
+ * box (or a designed voice's description) works; ``languages`` is the model's language select when it has one, else the
+ * voice's own language, "any" for a designed voice, and nothing for a cloned voice whose language is not recorded.
+ */
+export function voiceAbilities(voice: VoiceEntry | null, controls: VoiceControls, styleEnabled: boolean): VoiceAbilities | null {
+  if (!voice) return null;
+  let languages: VoiceLanguages = null;
+  if (controls.languages.length > 0) languages = { kind: "select", codes: controls.languages };
+  else if (voice.kind === "design") languages = { kind: "any" };
+  else if (voice.language && voice.language !== "auto") languages = { kind: "own", label: voice.languageLabel ?? voice.language };
+  return {
+    speed: ffmpegLimits(voice).speed,
+    style: styleEnabled,
+    tags: controls.tags.length > 0,
+    languages,
+  };
+}
+
+/** The sentence that stands where an unusable style box was. */
+export type StyleGapKind = "needsNatural" | "builtinNone" | "clone" | "smallModel" | "tags" | "expression";
+
+export interface StyleGap {
+  kind: StyleGapKind;
+  /** The one button: download ``model``, open the voice picker, or nothing (``downloading`` shows progress text instead). */
+  action: "download" | "choose" | "downloading" | null;
+  model: VoiceModelRow | null;
+}
+
+/**
+ * Why the style box is gone and what fixes it. A quick voice with a natural model to get: "Style needs a natural voice"
+ * with that model's Download (the one the install card offers); with one already downloaded: choose a natural voice.
+ * A preset on the small model: download the style-capable one. Null when the style box is usable.
+ */
+export function styleGap(styleInfo: StyleState, models: VoiceModelRow[], modelsAvailable: boolean): StyleGap | null {
+  if (styleInfo.enabled || styleInfo.reason === "none") return null;
+  switch (styleInfo.reason) {
+    case "builtin": {
+      const natural = modelsAvailable ? recommendedNaturalModel(models) : null;
+      if (!natural) return { kind: "builtinNone", action: null, model: null };
+      if (natural.installed) return { kind: "needsNatural", action: "choose", model: natural };
+      return { kind: "needsNatural", action: natural.download.state === "downloading" ? "downloading" : "download", model: natural };
+    }
+    case "smallModel": {
+      const unlock = styleInfo.unlockWith;
+      if (!unlock || unlock.installed) return { kind: "smallModel", action: null, model: null };
+      return { kind: "smallModel", action: unlock.download.state === "downloading" ? "downloading" : "download", model: unlock };
+    }
+    case "clone":
+      return { kind: "clone", action: null, model: null };
+    case "tags":
+      return { kind: "tags", action: null, model: null };
+    case "expression":
+      return { kind: "expression", action: null, model: null };
+  }
+}
+
+/** The session's most recent clips stay under Generate; this many, newest first. */
+export const MAX_RECENT_CLIPS = 5;
+
+/** ``item`` first, the list cut to ``max``; ``dropped`` are the ones that fell off (their object URLs can be freed). */
+export function addRecent<T>(list: T[], item: T, max = MAX_RECENT_CLIPS): { list: T[]; dropped: T[] } {
+  const all = [item, ...list];
+  return { list: all.slice(0, max), dropped: all.slice(max) };
+}
+
+/** What the one button on a voice error does on Speak. */
+export type ErrorTarget = "retry" | "models" | "settings" | "download" | "picker" | "clone";
+
+/**
+ * The place a coded voice error's action leads on Speak: the voice setup (Models) for installs and model choices, the
+ * model's own download when one is chosen and missing, Settings for ffmpeg and a Hugging Face token, the voice picker
+ * for another voice or language, the clone form for a sample or permission. Null for "none" (the sentence stands alone).
+ */
+export function errorTarget(action: VoiceErrorAction): ErrorTarget | null {
+  switch (action) {
+    case "install-voice-runtime":
+    case "install-addon":
+    case "smaller-model":
+    case "pick-another-model":
+      return "models";
+    case "download-model":
+      return "download";
+    case "install-ffmpeg":
+    case "add-hf-token":
+      return "settings";
+    case "pick-another-language":
+      return "picker";
+    case "change-sample":
+    case "confirm-permission":
+      return "clone";
+    case "retry":
+      return "retry";
+    default:
+      return null;
+  }
 }

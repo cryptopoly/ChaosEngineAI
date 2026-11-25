@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SendToStoryboardMenu } from "../../../components/SendToStoryboardMenu";
-import { encodeMp3, getLibraryAudio, getLibraryItem, saveSpeech } from "../../../api";
+import { encodeMp3, getLibraryAudio, getLibraryItem, revealModelPath, saveSpeech } from "../../../api";
 import type { TabId, VoiceEntryKind } from "../../../types";
 import { shotTitleFrom, type SendItem } from "../../storyboard/sendToStoryboardLogic";
 import { useSendToStoryboard } from "../../storyboard/useSendToStoryboard";
-import { downloadBlob, formatClock } from "../audio";
+import { clipFileName, downloadBlob, firstWords, formatClock } from "../audio";
 
 export interface SpeakOutput {
   url: string;
@@ -24,9 +24,10 @@ export interface SpeakOutput {
 }
 
 /**
- * The finished clip: audio, length, WAV, MP3, the Library link and Send to Storyboard. Speak saves every result to
- * the Library, so this row shows "Saved to Library" as a link to it; Save to Library is only offered again when that
- * automatic save failed.
+ * A finished clip: its first words and voice, audio, length, WAV, MP3, the Library link, Show file and Send to
+ * Storyboard. Speak saves every result to the Library, so this row shows "Saved to Library" as a link to it with Show
+ * file beside it; Save to Library is only offered again when that automatic save failed. Downloads are named from the
+ * first words and the voice.
  */
 export function SpeakResultRow({
   output,
@@ -36,7 +37,7 @@ export function SpeakResultRow({
 }: {
   output: SpeakOutput;
   onTabChange?: (tab: TabId) => void;
-  onError: (message: string) => void;
+  onError: (error: unknown) => void;
   /** Open the Voice Library on Speech. */
   onOpenLibrary?: () => void;
 }) {
@@ -44,7 +45,7 @@ export function SpeakResultRow({
   const storyboard = useSendToStoryboard((tab) => onTabChange?.(tab));
   const [savedId, setSavedId] = useState<string | null>(output.libraryId);
   const [busyExport, setBusyExport] = useState(false);
-  const fail = (err: unknown) => onError(err instanceof Error ? err.message : String(err));
+  const fail = (err: unknown) => onError(err);
   const rowRef = useRef<HTMLDivElement>(null);
   // The player lands under the Generate button, below the fold in a short window: bring each new clip into view.
   useEffect(() => {
@@ -55,7 +56,7 @@ export function SpeakResultRow({
     setBusyExport(true);
     try {
       const blob = output.cloned && output.libraryId ? await getLibraryAudio(output.libraryId, "mp3") : await encodeMp3(output.blob);
-      downloadBlob(blob, "speech.mp3");
+      downloadBlob(blob, clipFileName(output.text, output.voiceName, "mp3"));
     } catch (err) {
       fail(err);
     } finally {
@@ -76,6 +77,17 @@ export function SpeakResultRow({
     return item.id;
   };
 
+  const showFile = async () => {
+    try {
+      const path = savedId ? (await getLibraryItem(savedId)).audioPath : null;
+      if (!path) throw new Error(t("voice.speak.noFile", { defaultValue: "This clip has no file to show." }));
+      await revealModelPath(path);
+    } catch (err) {
+      fail(err);
+    }
+  };
+
+  const heading = firstWords(output.text, 6);
   // The clip may only exist in the browser, so sending it saves it to the Library first and reads the file's place.
   const sendItem: SendItem = {
     kind: "voice",
@@ -90,11 +102,15 @@ export function SpeakResultRow({
 
   return (
     <div className="voice-studio__result" ref={rowRef}>
+      <p className="muted-text voice-speak__hint">
+        {heading.words ? `"${heading.words}${heading.truncated ? "…" : ""}"` : ""}
+        {output.voiceName ? ` · ${output.voiceName}` : ""}
+      </p>
       <audio controls src={output.url} />
       <div className="button-row">
         <span className="muted-text">{formatClock(output.durationS)}</span>
         {output.cloned ? <span className="badge">{t("voice.clone.tagged", { defaultValue: "Labelled as AI-made" })}</span> : null}
-        <button type="button" className="secondary-button" onClick={() => downloadBlob(output.blob, "speech.wav")}>
+        <button type="button" className="secondary-button" onClick={() => downloadBlob(output.blob, clipFileName(output.text, output.voiceName, "wav"))}>
           WAV
         </button>
         <button type="button" className="secondary-button" disabled={busyExport} onClick={() => void exportMp3()}>
@@ -113,6 +129,11 @@ export function SpeakResultRow({
             {t("voice.saveToLibrary", { defaultValue: "Save to Library" })}
           </button>
         )}
+        {savedId ? (
+          <button type="button" className="link-button" onClick={() => void showFile()}>
+            {t("voice.speak.showFile", { defaultValue: "Show file" })}
+          </button>
+        ) : null}
         <SendToStoryboardMenu
           item={sendItem}
           projects={storyboard.projects}

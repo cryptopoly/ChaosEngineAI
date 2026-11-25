@@ -234,9 +234,22 @@ def collect() -> list[Row]:
             "Chatterbox", "https://github.com/resemble-ai/chatterbox.git",
             read_pin("backend_service/voice_env.py", r'^CHATTERBOX_REF = "([0-9a-f]{7,40})"'),
         ),
+        check_flashvsr(),
         check_sdcpp(),
         check_playwright(),
     ]
+
+
+def check_flashvsr() -> Row:
+    """FlashVSR+ (the upscaler's quality tier, D0145): the code by commit, its tree digest and the Turbo weights'
+    revision bump together (``quality_addon.py``, ``catalog/video_upscale_models.py``)."""
+    result = check_commit_pin(
+        "FlashVSR+ (upscale quality tier)", "https://github.com/OpenImagingLab/FlashVSR_Plus.git",
+        read_pin("backend_service/video_upscale/quality_addon.py", r'^FLASHVSR_REF = "([0-9a-f]{40})"'),
+    )
+    if result.state == "behind":
+        result.note = "a bump needs CODE_TREE_SHA256 recomputed and a real run (E2E phase 27)"
+    return result
 
 
 def main(argv: list[str] | None = None) -> int:

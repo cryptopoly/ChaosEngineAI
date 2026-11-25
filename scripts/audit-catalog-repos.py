@@ -140,12 +140,15 @@ def main() -> int:
     from backend_service.catalog.music_models import MUSIC_MODEL_FAMILIES
     from backend_service.catalog.text_models import MODEL_FAMILIES
     from backend_service.catalog.video_models import VIDEO_MODEL_FAMILIES
-    from backend_service.catalog.video_upscale_models import VIDEO_UPSCALE_MODELS
+    from backend_service.catalog.video_upscale_models import VIDEO_UPSCALE_MODELS, VIDEO_UPSCALE_QUALITY_MODELS
     from backend_service.catalog.voice_models import VOICE_MODELS
 
     refs = collect_refs({"text": MODEL_FAMILIES, "image": IMAGE_MODEL_FAMILIES, "video": VIDEO_MODEL_FAMILIES})
     refs += collect_pinned_refs("music", [v for family in MUSIC_MODEL_FAMILIES for v in family["variants"]])
     refs += collect_pinned_refs("voice", VOICE_MODELS)
+    # The upscaler's quality tier pins its weights by revision; each file must exist there (the SHA-256 is the installer's).
+    refs += [Ref("upscale-quality", row["id"], row["repo"], entry["path"], "weights", row["revision"])
+             for row in VIDEO_UPSCALE_QUALITY_MODELS for entry in row["files"]]
     targets = sorted({ref.target for ref in refs}, key=lambda t: (t[0], t[1] or ""))
     print(f"Checking {len(targets)} repos ({len(refs)} references) against the Hub ...")
     dead, missing = find_problems(refs, fetch_listings(targets))

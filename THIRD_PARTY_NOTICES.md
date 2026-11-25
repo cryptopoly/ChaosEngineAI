@@ -292,6 +292,40 @@ Weights, downloaded from the ``xinntao/Real-ESRGAN`` GitHub releases on the user
 licence statement and are distributed in the repo's releases under it. The SHA-256 of each file is
 not pinned yet (the release audit fails until it is).
 
+### Video upscale, quality tier (optional add-on, installed on demand, never bundled)
+
+"Install the quality upscaler" in the Upscale tab (NVIDIA on Windows or Linux only) puts these into
+``~/.chaosengine/addons/video-upscale-quality`` (``backend_service/video_upscale/quality_addon.py``); the model runs
+in its own worker process from that folder's own Python environment (``quality_worker.py``).
+
+- **FlashVSR+** (OpenImagingLab, <https://github.com/OpenImagingLab/FlashVSR_Plus>) - Apache-2.0. The code is
+  downloaded from the commit archive of `b515ffc6dba57fdc9ad84c66cadd87d05f27590a` and checked against a pinned
+  digest of its files; it includes its own Triton attention operator (`operators/flashvsr_attn`), same licence.
+- **FlashVSR+ Turbo weights** (`ruchangyao/FlashVSR_plus`, revision `46b79520946ac67dec94d1566490690953c7debc`:
+  `turbo/dit.safetensors`, `turbo/lq_proj_in.safetensors`, `TCDecoder.ckpt`, 7.0 GB, each pinned by SHA-256) -
+  Apache-2.0 (model card). They are fine-tuned from **Wan2.1-T2V-1.3B** (Wan-AI), Apache-2.0.
+
+Pinned packages in that environment (``quality_requirements.txt``), wheels only, from PyPI and the PyTorch CUDA 12.8
+index:
+
+| Package | Version | Licence |
+|---|---|---|
+| torch (PyTorch, with its CUDA 12.8 runtime libraries) | 2.7.1+cu128 | BSD-3-Clause (NVIDIA CUDA libraries: NVIDIA software licence, redistributable as shipped by PyTorch) |
+| triton-windows (Windows only; <https://github.com/triton-lang/triton-windows>) | 3.3.1.post21 | MIT |
+| triton (Linux, brought by torch) | 3.3.1 | MIT |
+| einops | 0.8.1 | MIT |
+| imageio | 2.37.0 | BSD-2-Clause |
+| imageio-ffmpeg (bundles an ffmpeg binary FlashVSR+ imports; the app's own ffmpeg does the decoding and encoding) | 0.6.0 | BSD-2-Clause (the bundled ffmpeg: LGPL/GPL build from imageio-binaries) |
+| numpy | 2.2.6 | BSD-3-Clause |
+| packaging | 26.4 | Apache-2.0 or BSD-2-Clause |
+| opencv-python-headless | 4.12.0.88 | Apache-2.0 (MIT for the wheel packaging) |
+| pillow | 11.3.0 | MIT-CMU (HPND) |
+| safetensors | 0.6.2 | Apache-2.0 |
+| tqdm | 4.67.1 | MPL-2.0 and MIT |
+
+torch also brings filelock, fsspec, jinja2, MarkupSafe, networkx, setuptools, sympy, mpmath and typing-extensions
+(all MIT, BSD or Apache-2.0).
+
 ### Nunchaku and vLLM in WSL (optional, installed by the user, never bundled)
 
 - **Nunchaku** (<https://github.com/nunchaku-ai/nunchaku>, MIT HAN Lab) - Apache-2.0. The FLUX.1 Schnell and Dev

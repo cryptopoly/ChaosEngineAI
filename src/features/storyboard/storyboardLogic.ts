@@ -19,6 +19,8 @@ import type {
   StoryboardTake,
   StoryboardTimeline,
 } from "../../types";
+import { CAST_OUT } from "../../types/storyboard";
+import { castOutOf } from "./castLock";
 
 // The open project now lives in the Projects route (D-65); these stay importable from here for one release.
 export { readOpenProjectId, writeOpenProjectId } from "./projectRoute";
@@ -343,6 +345,8 @@ export interface ShotDraft {
   speed: string;
   nativeSoundDb: string;
   referenceImages: string[];
+  /** In-every-shot characters this shot leaves out. */
+  leftOut: string[];
 }
 
 export function draftFromShot(shot: StoryboardShot): ShotDraft {
@@ -357,6 +361,7 @@ export function draftFromShot(shot: StoryboardShot): ShotDraft {
     speed: String(shot.speed),
     nativeSoundDb: String(shot.nativeSoundDb),
     referenceImages: shot.referenceImages,
+    leftOut: castOutOf(shot),
   };
 }
 
@@ -387,6 +392,9 @@ export function shotPatchFromDraft(shot: StoryboardShot, draft: ShotDraft): Reco
     draft.referenceImages.length === shot.referenceImages.length &&
     draft.referenceImages.every((id, i) => id === shot.referenceImages[i]);
   if (!sameRefs) patch.referenceImages = draft.referenceImages;
+  const leftOut = castOutOf(shot);
+  const sameLeftOut = draft.leftOut.length === leftOut.length && draft.leftOut.every((id) => leftOut.includes(id));
+  if (!sameLeftOut) patch[CAST_OUT] = draft.leftOut;
   return patch;
 }
 

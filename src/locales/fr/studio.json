@@ -1706,7 +1706,12 @@
       "vocalTakes": "Prises",
       "vocalTakesDefault": "Par défaut ({count})",
       "vocalTakesBest": "4 (meilleure qualité)",
-      "vocalTakesHint": "Voix chantée : utilisez le stem vocal, une image fixe de face en gros plan, bouche fermée, et démarrez environ 0,4 s avant une phrase. Chaque prise utilise sa propre graine ; le score de synchro garde la meilleure et les autres restent dans la Galerie vidéo."
+      "vocalTakesHint": "Voix chantée : utilisez le stem vocal, une image fixe de face en gros plan, bouche fermée, et démarrez environ 0,4 s avant une phrase. Chaque prise utilise sa propre graine ; le score de synchro garde la meilleure et les autres restent dans la Galerie vidéo.",
+      "castInShot": null,
+      "castNone": null,
+      "castEveryShot": null,
+      "leaveOut": null,
+      "lipSyncSeparate": null
     },
     "empty": "Pas encore de plans. Ajoutez un plan, puis donnez-lui un prompt ou importez des images.",
     "estimate": {
@@ -2733,7 +2738,9 @@
     "title": "Personnages et lieux",
     "unnamed": "Sans nom",
     "usedBy": "{n, plural, =0 {Pas encore utilisé par un plan} one {Utilisé par # plan} other {Utilisé par # plans}}",
-    "noneShort": "Aucun pour l'instant."
+    "noneShort": "Aucun pour l'instant.",
+    "inEveryShot": null,
+    "inEveryShotHint": null
   },
   "exportTab": {
     "bundleBody": "Un fichier .chaosfilm avec les plans, les prises, les images de distribution et le son, pour sauvegarder le projet ou l'ouvrir sur un autre ordinateur.",

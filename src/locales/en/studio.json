@@ -1706,7 +1706,12 @@
       "vocalTakes": "Takes",
       "vocalTakesDefault": "Default ({count})",
       "vocalTakesBest": "4 (best quality)",
-      "vocalTakesHint": "Sung vocals: use the vocal stem, a close-up frontal still with the mouth closed, and start about 0.4 s before a phrase. Each take uses its own seed; the sync score keeps the best and the others stay in the Video Gallery."
+      "vocalTakesHint": "Sung vocals: use the vocal stem, a close-up frontal still with the mouth closed, and start about 0.4 s before a phrase. Each take uses its own seed; the sync score keeps the best and the others stay in the Video Gallery.",
+      "castInShot": "In this shot: {names}",
+      "castNone": "No character in this shot.",
+      "castEveryShot": "In every shot",
+      "leaveOut": "Leave out of this shot",
+      "lipSyncSeparate": "A character in the shot does not have to sing. Lip sync is set for each shot on its own, under Vocal for lip sync."
     },
     "empty": "No shots yet. Add a shot, then give it a prompt or import footage.",
     "estimate": {
@@ -2733,7 +2738,9 @@
     "title": "Cast and places",
     "unnamed": "Unnamed",
     "usedBy": "{n, plural, =0 {Not used by a shot yet} one {Used by # shot} other {Used by # shots}}",
-    "noneShort": "None yet."
+    "noneShort": "None yet.",
+    "inEveryShot": "In every shot",
+    "inEveryShotHint": "Puts this character in every shot, now and later. A shot can still leave them out in its editor."
   },
   "exportTab": {
     "bundleBody": "One .chaosfilm file with the shots, takes, cast pictures and sound, to back up the project or open it on another computer.",

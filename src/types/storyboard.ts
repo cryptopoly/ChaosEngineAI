@@ -29,6 +29,17 @@ export interface StoryboardRefImage {
   hash: string | null;
 }
 
+/**
+ * Character lock field names (Storyboard UX audit 2026-11). The only place they are spelled: every use goes
+ * through these constants, so a backend rename is a one-line change here.
+ */
+/** On a character: it appears in every shot unless a shot leaves it out. */
+export const IN_EVERY_SHOT = "inEveryShot";
+/** On a shot: ids of in-every-shot characters this shot leaves out. */
+export const CAST_OUT = "castOut";
+/** On a planned shot from the planner: the reference ids of the characters in it. */
+export const PLANNED_CHARACTERS = "characters";
+
 /** A character, place or style: a name, a few words and up to four pictures (front, side, detail...). */
 export interface StoryboardReference {
   id: string;
@@ -37,6 +48,8 @@ export interface StoryboardReference {
   images: StoryboardRefImage[];
   /** A style's main colours (`#rrggbb`), read from its pictures (S15). Empty for characters and places. */
   palette?: string[];
+  /** A character in every shot (absent reads as false). */
+  [IN_EVERY_SHOT]?: boolean;
 }
 
 export interface StoryboardReferences {
@@ -136,6 +149,8 @@ export interface StoryboardShot {
   redo: boolean;
   /** Chosen for the final pass. */
   kept?: boolean;
+  /** In-every-shot characters this shot leaves out (absent reads as none). */
+  [CAST_OUT]?: string[];
 }
 
 export interface StoryboardAudioSource {
@@ -394,6 +409,7 @@ export interface StoryboardShotFields {
   vocalStart?: number;
   vocalSinging?: boolean;
   vocalTakes?: number | null;
+  [CAST_OUT]?: string[];
 }
 
 export interface StoryboardAudioFields {
@@ -413,9 +429,9 @@ export interface StoryboardAudioFields {
 export interface StoryboardOpArgs {
   edit_project: { name?: string; defaults?: Partial<StoryboardDefaults>; export?: Record<string, unknown> };
   /** `image` and `images` take local paths, `upload:` handles, or a `media/` path of this project (a shot still). */
-  add_reference: { kind: StoryboardReferenceKind; name?: string; description?: string; image?: string; images?: string[] };
+  add_reference: { kind: StoryboardReferenceKind; name?: string; description?: string; image?: string; images?: string[]; [IN_EVERY_SHOT]?: boolean };
   /** `image` replaces every picture; `addImage` appends one (four at most); `removeImage` drops one by position; `palette` trims a style's colours. */
-  edit_reference: { refId: string; name?: string; description?: string; image?: string; addImage?: string; removeImage?: number; palette?: string[] };
+  edit_reference: { refId: string; name?: string; description?: string; image?: string; addImage?: string; removeImage?: number; palette?: string[]; [IN_EVERY_SHOT]?: boolean };
   remove_reference: { refId: string };
   add_shot: StoryboardShotFields & { index?: number };
   edit_shot: StoryboardShotFields & { shotId: string };
@@ -476,6 +492,8 @@ export interface StoryboardPlannedShot {
   referenceImages?: string[];
   /** A cut plan sets the out point so the clip ends on the music (S-M1). */
   trimOut?: number | null;
+  /** The planner's characters for this shot (reference ids); applied as the shot's references. */
+  [PLANNED_CHARACTERS]?: string[];
 }
 
 /** `POST .../cut-plan`: shots cut to the song; apply with `apply_plan` (mode replace). */

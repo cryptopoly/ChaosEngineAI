@@ -11,6 +11,7 @@ import { ProjectImage } from "./ProjectMedia";
 import { ShotVocalFields } from "./ShotVocalFields";
 import type { RunOp } from "./useStoryboard";
 import { canRedoClip, canRedoStill } from "./remakeLogic";
+import { castInShot, isInEveryShot, toggleCastOut } from "./castLock";
 import { useShotEstimates } from "./useShotEstimates";
 import {
   draftFromShot,
@@ -52,7 +53,9 @@ export function ShotEditorDrawer({
   const [pickingEnd, setPickingEnd] = useState(false);
   const opener = useRef<HTMLElement | null>(null);
   const root = useRef<HTMLElement>(null);
-  const references = [...project.references.characters, ...project.references.places];
+  const characters = project.references.characters;
+  const references = [...characters, ...project.references.places];
+  const inShot = castInShot(characters, draft);
   const patch = shotPatchFromDraft(shot, draft);
   const dirty = Object.keys(patch).length > 0;
   const number = index + 1;
@@ -244,16 +247,47 @@ export function ShotEditorDrawer({
               {t("board.editor.noCast", { defaultValue: "No cast in this project. That is fine: a shot can stand alone. Add characters or places on the Cast tab to keep a look." })}
             </p>
           ) : (
-            references.map((reference) => (
-              <label key={reference.id} className="check-row">
-                <input
-                  type="checkbox"
-                  checked={draft.referenceImages.includes(reference.id)}
-                  onChange={() => set("referenceImages", toggleReference(draft.referenceImages, reference.id))}
-                />
-                {reference.name || reference.id}
-              </label>
-            ))
+            <>
+              {characters.length > 0 ? (
+                <p className="muted-text">
+                  {inShot.length > 0
+                    ? t("board.editor.castInShot", { defaultValue: "In this shot: {names}", names: inShot.map((c) => c.name || c.id).join(", ") })
+                    : t("board.editor.castNone", { defaultValue: "No character in this shot." })}
+                </p>
+              ) : null}
+              {references.map((reference) =>
+                isInEveryShot(reference) ? (
+                  <div key={reference.id} className="shot-editor__every">
+                    <span>
+                      {reference.name || reference.id}{" "}
+                      <span className="badge subtle">{t("board.editor.castEveryShot", { defaultValue: "In every shot" })}</span>
+                    </span>
+                    <label className="check-row">
+                      <input
+                        type="checkbox"
+                        checked={draft.leftOut.includes(reference.id)}
+                        onChange={() => set("leftOut", toggleCastOut(draft.leftOut, reference.id))}
+                      />
+                      {t("board.editor.leaveOut", { defaultValue: "Leave out of this shot" })}
+                    </label>
+                  </div>
+                ) : (
+                  <label key={reference.id} className="check-row">
+                    <input
+                      type="checkbox"
+                      checked={draft.referenceImages.includes(reference.id)}
+                      onChange={() => set("referenceImages", toggleReference(draft.referenceImages, reference.id))}
+                    />
+                    {reference.name || reference.id}
+                  </label>
+                ),
+              )}
+              {characters.length > 0 ? (
+                <p className="muted-text">
+                  {t("board.editor.lipSyncSeparate", { defaultValue: "A character in the shot does not have to sing. Lip sync is set for each shot on its own, under Vocal for lip sync." })}
+                </p>
+              ) : null}
+            </>
           )}
         </fieldset>
 

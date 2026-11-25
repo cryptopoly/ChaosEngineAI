@@ -12,6 +12,7 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { proposeStoryboardPlan, type StoryboardProposal } from "../../api/storyboardPlan";
 import type { ImageOutputArtifact, StoryboardProject } from "../../types";
+import { plannedShotFromProposal } from "./castLock";
 import { PlanBrief } from "./PlanBrief";
 import { PlanDirection } from "./PlanDirection";
 import { planOf, stylesOf } from "./planLogic";
@@ -78,7 +79,7 @@ export function PlanTab({ story, project, imageGallery, chat, onTab }: PlanTabPr
     if (!proposal) return;
     const ok = await story.op("apply_plan", {
       mode,
-      shots: proposal.shots.map((shot) => ({ title: shot.title, stillPrompt: shot.stillPrompt, motionPrompt: shot.motionPrompt, seconds: shot.seconds })),
+      shots: proposal.shots.map((shot) => plannedShotFromProposal(shot, project)),
     });
     if (ok) {
       setProposal(null);

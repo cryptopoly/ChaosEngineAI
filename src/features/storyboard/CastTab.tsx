@@ -10,7 +10,9 @@ import { uploadStoryboardPicture } from "../../api";
 import { PlusIcon } from "../../components/icons/ActionIcons";
 import type { ImageOutputArtifact, StoryboardProject, StoryboardReference } from "../../types";
 import { MAX_PICTURES, nameFromFile, picturesFrom, usedByCount } from "./pickerLogic";
+import { IN_EVERY_SHOT } from "../../types/storyboard";
 import { BrandKitPanel } from "./BrandKitPanel";
+import { isInEveryShot, startsInEveryShot } from "./castLock";
 import { stylesOf } from "./planLogic";
 import { ReferenceCard } from "./ReferenceCard";
 import { ReferenceImagePicker } from "./ReferenceImagePicker";
@@ -37,9 +39,11 @@ export function CastTab({ story, project, imageGallery }: CastTabProps) {
   // The reference as the project has it now (a name typed just before opening the picker lands meanwhile).
   const picking = pickerFor ? ([...characters, ...places, ...styles].find((r) => r.id === pickerFor.id) ?? pickerFor) : null;
 
-  async function add(kind: Kind, extra: { name?: string; images?: string[] } = {}) {
+  // In a project with a song, the first character starts in every shot (a music video is about them).
+  async function add(kind: Kind, extra: { name?: string; images?: string[] } = {}, first = startsInEveryShot(project)) {
     known.current = new Set(allIds);
-    return await story.op("add_reference", { kind, ...extra });
+    const lock = kind === "character" && first ? { [IN_EVERY_SHOT]: true } : {};
+    return await story.op("add_reference", { kind, ...extra, ...lock });
   }
 
   // A card just added gets the focus: it is the one whose id was not there before the add.
@@ -78,9 +82,11 @@ export function CastTab({ story, project, imageGallery }: CastTabProps) {
     if (files.length === 0) return;
     setProblem(null);
     try {
-      for (const file of files) {
+      // `project` is not refreshed inside this loop: only the first dropped file can be the first character.
+      const first = startsInEveryShot(project);
+      for (const [index, file] of files.entries()) {
         const [handle] = await uploadAll([file]);
-        await add("character", { name: nameFromFile(file.name), images: [handle] });
+        await add("character", { name: nameFromFile(file.name), images: [handle] }, first && index === 0);
       }
     } catch (err) {
       setProblem(err instanceof Error ? err.message : String(err));
@@ -150,7 +156,7 @@ export function CastTab({ story, project, imageGallery }: CastTabProps) {
                   key={reference.id}
                   projectId={project.id}
                   reference={reference}
-                  usedBy={usedByCount(project, reference.id)}
+                  usedBy={usedByCount(project, reference.id, isInEveryShot(reference))}
                   disabled={busy}
                   autoFocus={reference.id === addedId}
                   onEdit={(patch) => story.op("edit_reference", { refId: reference.id, ...patch })}
@@ -164,6 +170,12 @@ export function CastTab({ story, project, imageGallery }: CastTabProps) {
                         onRemoveColour: (index: number) =>
                           void story.op("edit_reference", { refId: reference.id, palette: (reference.palette ?? []).filter((_, i) => i !== index) }),
                         descriptionPlaceholder: t("board.style.describe", { defaultValue: "The look in words: mood, materials, light" }),
+                      }
+                    : {})}
+                  {...(group.kind === "character"
+                    ? {
+                        inEveryShot: isInEveryShot(reference),
+                        onInEveryShot: (on: boolean) => void story.op("edit_reference", { refId: reference.id, [IN_EVERY_SHOT]: on }),
                       }
                     : {})}
                 />

@@ -4,6 +4,7 @@
  * note. No React here so the rules are unit-tested directly.
  */
 import type { ImageOutputArtifact, StoryboardProject, StoryboardReference } from "../../types";
+import { castOutOf } from "./castLock";
 
 /** Pictures per character or place (front, side, detail...). Mirrors MAX_REF_IMAGES in models.py. */
 export const MAX_PICTURES = 4;
@@ -112,7 +113,9 @@ export function nameFromFile(name: string): string {
     .slice(0, 200);
 }
 
-/** How many shots use a reference. */
-export function usedByCount(project: Pick<StoryboardProject, "shots">, refId: string): number {
-  return project.shots.filter((shot) => shot.referenceImages.includes(refId)).length;
+/** How many shots use a reference. A character in every shot counts every shot that does not leave it out. */
+export function usedByCount(project: Pick<StoryboardProject, "shots">, refId: string, inEveryShot = false): number {
+  return project.shots.filter((shot) =>
+    inEveryShot ? !castOutOf(shot).includes(refId) : shot.referenceImages.includes(refId),
+  ).length;
 }

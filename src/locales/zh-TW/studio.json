@@ -1706,7 +1706,12 @@
       "vocalTakes": "版本",
       "vocalTakesDefault": "預設({count})",
       "vocalTakesBest": "4(最佳品質)",
-      "vocalTakesHint": "演唱人聲：使用人聲分軌，搭配一張嘴巴閉合的正面特寫靜態畫面，並在樂句開始前約 0.4 秒起始。每個版本使用各自的種子；同步評分會保留最佳版本，其餘留在影片圖庫中。"
+      "vocalTakesHint": "演唱人聲：使用人聲分軌，搭配一張嘴巴閉合的正面特寫靜態畫面，並在樂句開始前約 0.4 秒起始。每個版本使用各自的種子；同步評分會保留最佳版本，其餘留在影片圖庫中。",
+      "castInShot": null,
+      "castNone": null,
+      "castEveryShot": null,
+      "leaveOut": null,
+      "lipSyncSeparate": null
     },
     "empty": "還沒有鏡頭。新增一個鏡頭，然後寫提示詞或匯入素材。",
     "estimate": {
@@ -2733,7 +2738,9 @@
     "title": "角色與地點",
     "unnamed": "未命名",
     "usedBy": "{n, plural, =0 {尚未被任何鏡頭使用} other {被 # 個鏡頭使用}}",
-    "noneShort": "還沒有。"
+    "noneShort": "還沒有。",
+    "inEveryShot": null,
+    "inEveryShotHint": null
   },
   "exportTab": {
     "bundleBody": "一個 .chaosfilm 檔案,包含鏡頭、版本、角色圖片與聲音,可用於備份專案或在另一台電腦上開啟。",

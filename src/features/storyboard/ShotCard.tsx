@@ -9,9 +9,13 @@ import {
   PlayIcon,
   UnlockIcon,
 } from "../../components/icons/ActionIcons";
-import type { StoryboardShot, StoryboardShotStatus, StoryboardTransition } from "../../types";
+import type { StoryboardFailureAction, StoryboardShot, StoryboardShotStatus, StoryboardTransition } from "../../types";
 import { ActionMenu } from "../../components/ActionMenu";
 import { ProjectImage, ProjectVideo } from "./ProjectMedia";
+import { syncChip, type ShotCardGuide } from "./cardGuide";
+import { failureButton, failureSentence } from "./failureText";
+import { QualityTag } from "./QualityTag";
+import { takeQualityOf, type TFn } from "./qualityText";
 import { StaleBadge, TransitionPicker } from "./ShotParts";
 import { TakeCompare } from "./TakeCompare";
 import { TakesStrip } from "./TakesStrip";
@@ -19,7 +23,7 @@ import { useCardTabStops } from "./useCardTabStops";
 import type { SaveResult } from "./unsavedText";
 import { useUnsavedText } from "./useUnsavedText";
 import { canRedoClip, canRedoStill, clipOutdated } from "./remakeLogic";
-import { activeTakeOf, isDraftTake, shotCardClassName, thumbnailOf } from "./storyboardLogic";
+import { activeTakeOf, shotCardClassName, thumbnailOf } from "./storyboardLogic";
 
 export const SHOT_DRAG_TYPE = "application/x-chaos-shot";
 
@@ -35,8 +39,12 @@ export interface ShotCardProps {
   staleAfter: number | null;
   /** The user chose Keep for the stale badge. */
   kept: boolean;
-  /** Why the last batch failed this shot, if it did. */
+  /** The raw error text of the last batch's failure of this shot, if it failed (shown behind Details). */
   failure: string | null;
+  /** What the guide says about this shot: take quality, its failure, lip sync and cast (`shotCardGuide`). */
+  guide?: ShotCardGuide;
+  /** A failure's button other than Retry and Edit (make a draft, open models, install video tools). */
+  onFailureAction?: (action: StoryboardFailureAction) => void;
   /** Roving tabindex: only one card in the list is a tab stop, and only its inner controls are in the Tab order. */
   tabbable: boolean;
   dragOver: boolean;
@@ -83,6 +91,7 @@ export function ShotCard(props: ShotCardProps) {
     send: (text) => props.onRename(text),
     restore: setTitle,
   });
+  const tf = t as unknown as TFn;
   const [playing, setPlaying] = useState(false);
   const [comparing, setComparing] = useState(false);
   const cardRef = useRef<HTMLElement>(null);
@@ -90,10 +99,18 @@ export function ShotCard(props: ShotCardProps) {
   const take = activeTakeOf(shot);
   const thumb = thumbnailOf(shot);
   const number = index + 1;
+  const guide = props.guide;
+  const takeQuality = take ? takeQualityOf(take, guide?.takes?.[take.id]) : null;
+  const sync = syncChip(tf, guide?.sync);
+  const failButton = failureButton(tf, guide?.failure, {
+    draftSize: guide?.draftSize,
+    canHandle: () => Boolean(props.onFailureAction),
+  });
+  const rawFailure = failure || guide?.failure?.error || null;
   const showStale = status === "stale" && !kept;
   const outdated = status === "stale" && clipOutdated(shot);
   // Every way to make this shot again lives in the menu, next to each other (S6, S11): the card keeps one
-  // pass action (Keep for final) so the row fits one line.
+  // pass action (Choose for final) so the row fits one line.
   const redoItems = [
     ...(shot.takes.length > 1
       ? [{ id: "compare", label: t("board.compare.open", { defaultValue: "Compare takes" }), onSelect: () => setComparing(true) }]
@@ -242,6 +259,8 @@ export function ShotCard(props: ShotCardProps) {
 
       <div className="shot-card__body">
         <div className="shot-card__media">
+          {/* Every draft picture or clip carries its size, also while the clip plays. */}
+          <QualityTag quality={takeQuality} target={guide?.target} />
           {playing && take?.clip ? (
             <ProjectVideo projectId={projectId} rel={take.clip} version={take.hashes.clip} className="shot-card__video" controls autoPlay />
           ) : thumb ? (
@@ -279,6 +298,21 @@ export function ShotCard(props: ShotCardProps) {
               ))}
             </ul>
           ) : null}
+          {sync || guide?.noCharacter ? (
+            <ul className="shot-card__tags" aria-label={t("board.shot.tagsLabel", { defaultValue: "Lip sync and cast" })}>
+              {sync ? (
+                <li className={`shot-card__chip shot-card__chip--${sync.tone}`} title={sync.title}>{sync.text}</li>
+              ) : null}
+              {guide?.noCharacter ? (
+                <li
+                  className="shot-card__chip shot-card__chip--quiet"
+                  title={t("board.chip.noCharacterTitle", { defaultValue: "No character is in this shot, so its picture is made without one. Open the shot to add one." })}
+                >
+                  {t("board.chip.noCharacter", { defaultValue: "No character" })}
+                </li>
+              ) : null}
+            </ul>
+          ) : null}
           {shot.seed != null ? (
             <p className="shot-card__meta">{t("board.shot.seed", { defaultValue: "seed {seed}", seed: shot.seed })}</p>
           ) : null}
@@ -288,11 +322,6 @@ export function ShotCard(props: ShotCardProps) {
             </span>
           ) : null}
           {shot.locked ? <span className="badge muted">{t("board.shot.status.locked", { defaultValue: "Locked" })}</span> : null}
-          {isDraftTake(take) ? (
-            <span className="badge muted" title={t("board.shot.draftTitle", { defaultValue: "A quick draft. Keep this shot and run the final pass for the full-quality take." })}>
-              {t("board.shot.draft", { defaultValue: "Draft" })}
-            </span>
-          ) : null}
           {props.onMakeClip && take?.still && !take.clip && status === "done" ? (
             <button
               type="button"
@@ -335,24 +364,42 @@ export function ShotCard(props: ShotCardProps) {
               {t("board.shot.rerun", { defaultValue: "Re-run" })}
             </button>
           )}
-          <button type="button" className="secondary-button" onClick={props.onKeep}>
-            {t("board.shot.keep", { defaultValue: "Keep as is" })}
+          {/* Only hides the warning: nothing is remade and the shot is not chosen for final. */}
+          <button
+            type="button"
+            className="secondary-button"
+            title={t("board.shot.hideStaleTitle", { defaultValue: "Hides this warning. The shot stays as it is and nothing is made again." })}
+            onClick={props.onKeep}
+          >
+            {t("board.shot.hideStale", { defaultValue: "Hide this warning" })}
           </button>
         </div>
       ) : null}
 
       {status === "failed" ? (
         <div className="callout error shot-card__failed" role="alert">
-          <p>{t("board.shot.failedNote", { defaultValue: "The shot did not render. Try again or edit the prompts." })}</p>
-          {failure ? (
+          <p>{failureSentence(tf, guide?.failure)}</p>
+          <div className="shot-card__failed-actions">
+            <button
+              type="button"
+              className="secondary-button"
+              title={failButton.title}
+              disabled={disabled || (shot.locked && !["edit-shot", "open-models", "install-video-tools"].includes(failButton.action))}
+              onClick={() => {
+                if (failButton.action === "retry") props.onRetry();
+                else if (failButton.action === "edit-shot") props.onEdit();
+                else props.onFailureAction?.(failButton.action);
+              }}
+            >
+              {failButton.label}
+            </button>
+          </div>
+          {rawFailure ? (
             <details className="debug-details">
-              <summary>{t("error.technicalDetails", { defaultValue: "Technical details" })}</summary>
-              <pre>{failure}</pre>
+              <summary>{t("board.failure.details", { defaultValue: "Details" })}</summary>
+              <pre>{rawFailure}</pre>
             </details>
           ) : null}
-          <button type="button" className="secondary-button" disabled={disabled || shot.locked} onClick={props.onRetry}>
-            {t("error.retry", { defaultValue: "Retry" })}
-          </button>
         </div>
       ) : null}
 
@@ -373,6 +420,8 @@ export function ShotCard(props: ShotCardProps) {
         disabled={disabled}
         onCompare={() => setComparing(true)}
         tabStops={tabbable}
+        quality={guide?.takes}
+        target={guide?.target}
       />
 
       <div className="shot-card__actions">
@@ -391,17 +440,19 @@ export function ShotCard(props: ShotCardProps) {
         >
           {shot.locked ? <LockIcon /> : <UnlockIcon />}
         </button>
-        {/* Keep for final picks a take worth redoing at full quality: nothing to keep before the first take. */}
+        {/* Choose for final picks a take worth redoing at full quality: nothing to choose before the first take. */}
         {props.onToggleKept && (take || shot.kept) ? (
           <button
             type="button"
             className={`secondary-button${shot.kept ? " is-active" : ""}`}
             aria-pressed={Boolean(shot.kept)}
-            title={t("board.shot.keepForFinalTitle", { defaultValue: "Final pass on kept shots makes this shot again with the quality model." })}
+            title={t("board.shot.chooseForFinalTitle", {
+              defaultValue: "The final pass makes the shots you choose again with the quality model, at the film's full size.",
+            })}
             disabled={disabled}
             onClick={props.onToggleKept}
           >
-            {t("board.shot.keepForFinal", { defaultValue: "Keep for final" })}
+            {t("board.shot.chooseForFinal", { defaultValue: "Choose for final" })}
           </button>
         ) : null}
         {index > 0 ? <TransitionPicker value={shot.transition} onChange={props.onTransition} disabled={disabled} /> : null}

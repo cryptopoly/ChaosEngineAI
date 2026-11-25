@@ -7,6 +7,7 @@ import { JobProgressLine } from "../../components/JobProgressLine";
 import type { JobProgress, StoryboardBatchRecord } from "../../types";
 import { batchProgress, type BatchProgress } from "./storyboardLogic";
 import "./pause.css";
+import "./quality.css";
 
 type TFn = (key: string, options: Record<string, unknown>) => string;
 
@@ -48,6 +49,8 @@ export function BatchBar({
   const progress = batchProgress(batch);
   const total = progress?.total ?? 0;
   const done = progress?.done ?? 0;
+  // A shot that failed while the run goes on: say so here, the card has the reason and the one button that helps.
+  const failedShots = new Set(batch.results.filter((r) => r.state === "failed").map((r) => r.shotId)).size;
   return (
     <div className="batch-bar" role="status" aria-live="polite">
       <div className="batch-bar__text">
@@ -67,6 +70,14 @@ export function BatchBar({
       </div>
       <JobProgressLine progress={live} running startedAt={batch.createdAt ? batch.createdAt * 1000 : null} />
       <progress className="batch-bar__meter" max={Math.max(1, total)} value={done} aria-hidden="true" />
+      {failedShots > 0 ? (
+        <p className="batch-bar__failed">
+          {t("board.batch.failedSoFar", {
+            defaultValue: "{n, plural, one {# shot did not render. Its card says why and what to do.} other {# shots did not render. Their cards say why and what to do.}}",
+            n: failedShots,
+          })}
+        </p>
+      ) : null}
       <div className="batch-bar__actions">
         {onPause ? (
           <button

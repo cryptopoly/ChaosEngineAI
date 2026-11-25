@@ -1,38 +1,11 @@
 /**
- * The Overview guide (D-65 4.4): one next step computed from the project, and a checklist that ticks as the work
- * happens. Cast is never required: its row is marked optional and the next step never asks for it. No React
- * here so the rules are unit-tested directly.
+ * Overview helpers (D-65): shot counts, the recent activity list and the "Before you export" preflight (stream E
+ * moves `preflight` to its own file). The next step and the checklist that lived here were replaced by the stage
+ * rail (audit change 1, `guide/stageLogic.ts`). No React here so the rules are unit-tested directly.
  */
-import type { StoryboardBatchRecord, StoryboardProject } from "../../types";
+import type { StoryboardProject } from "../../types";
 import type { ProjectTabId } from "./projectRoute";
-import { activeTakeOf, draftShotIds, missingShotIds, type PrimaryPass } from "./storyboardLogic";
-
-export type NextStepId = "writeShots" | "makeMissing" | "makeClips" | "addSound" | "renderPreview" | "export" | "done";
-
-export interface NextStep {
-  id: NextStepId;
-  tab: ProjectTabId;
-  /** Shots the step is about (to make, or still without a clip). */
-  count: number;
-  /** Of those, shots that have a still and need only their clip. */
-  stills?: number;
-}
-
-export interface GuideFacts {
-  /** A preview was rendered and is not older than the project. */
-  previewCurrent: boolean;
-  /** At least one film was exported. */
-  exported: boolean;
-}
-
-export type ChecklistId = "format" | "cast" | "shots" | "takes" | "sound" | "preview" | "export";
-
-export interface ChecklistRow {
-  id: ChecklistId;
-  done: boolean;
-  optional: boolean;
-  tab: ProjectTabId;
-}
+import { activeTakeOf, draftShotIds } from "./storyboardLogic";
 
 /** Shots whose active take has a still but no clip yet. */
 export function stillOnlyCount(project: Pick<StoryboardProject, "shots">): number {
@@ -44,34 +17,6 @@ export function stillOnlyCount(project: Pick<StoryboardProject, "shots">): numbe
 
 export function clipCount(project: Pick<StoryboardProject, "shots">): number {
   return project.shots.filter((shot) => Boolean(activeTakeOf(shot)?.clip)).length;
-}
-
-export function nextStep(project: StoryboardProject, facts: GuideFacts): NextStep {
-  if (project.shots.length === 0) return { id: "writeShots", tab: "storyboard", count: 0 };
-  const missingIds = new Set(missingShotIds(project.shots));
-  if (missingIds.size > 0) {
-    const stills = project.shots.filter((shot) => missingIds.has(shot.id) && activeTakeOf(shot)?.still && !activeTakeOf(shot)?.clip).length;
-    return { id: "makeMissing", tab: "storyboard", count: missingIds.size, stills };
-  }
-  const stills = stillOnlyCount(project);
-  if (stills > 0) return { id: "makeClips", tab: "storyboard", count: stills };
-  if (project.audio.length === 0 && !facts.previewCurrent) return { id: "addSound", tab: "mixer", count: 0 };
-  if (!facts.previewCurrent) return { id: "renderPreview", tab: "mixer", count: 0 };
-  if (!facts.exported) return { id: "export", tab: "export", count: 0 };
-  return { id: "done", tab: "export", count: 0 };
-}
-
-export function checklist(project: StoryboardProject, facts: GuideFacts): ChecklistRow[] {
-  const shots = project.shots.length;
-  return [
-    { id: "format", done: true, optional: false, tab: "overview" },
-    { id: "cast", done: project.references.characters.length + project.references.places.length > 0, optional: true, tab: "cast" },
-    { id: "shots", done: shots > 0, optional: false, tab: "storyboard" },
-    { id: "takes", done: shots > 0 && clipCount(project) === shots, optional: false, tab: "storyboard" },
-    { id: "sound", done: project.audio.length > 0, optional: true, tab: "mixer" },
-    { id: "preview", done: facts.previewCurrent, optional: false, tab: "mixer" },
-    { id: "export", done: facts.exported, optional: false, tab: "export" },
-  ];
 }
 
 export type PreflightId = "format" | "upscale" | "clips" | "stale" | "drafts" | "loudness" | "captions" | "aiTag" | "cloned" | "preview";
@@ -143,28 +88,4 @@ export function recentActivity(project: Pick<StoryboardProject, "batches">, limi
       failed: new Set(batch.results.filter((r) => r.state === "failed").map((r) => r.shotId)).size,
       at: batch.finishedAt ?? batch.createdAt,
     }));
-}
-
-/**
- * What the Overview's next-step card shows (FU-188 item 3 and S-M2's paused batch), matching the run bar so the two
- * never disagree: a running batch shows its progress; a paused one shows Paused with Resume primary (never a new
- * Make that would start a second batch beside it); a fresh film with a slow still model makes "Make drafts" the
- * primary button and "Make N missing" the secondary one (`primaryPass` gives "drafts"); otherwise the step itself.
- */
-export type NextCardMode = "running" | "paused" | "drafts" | "step";
-
-export function nextCardMode(input: {
-  batchState: StoryboardBatchRecord["state"] | null | undefined;
-  step: NextStepId;
-  primary: PrimaryPass;
-}): NextCardMode {
-  if (input.batchState === "queued" || input.batchState === "running") return "running";
-  if (input.batchState === "paused") return "paused";
-  if (input.step === "makeMissing" && input.primary === "drafts") return "drafts";
-  return "step";
-}
-
-/** The checklist hides once every row that is not optional is ticked. */
-export function checklistComplete(rows: ChecklistRow[]): boolean {
-  return rows.every((row) => row.done || row.optional);
 }

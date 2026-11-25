@@ -1,6 +1,7 @@
 /**
- * One open project (D-65): the header with the back link, the name, Undo / Redo and the conflict chip, then
- * seven tabs in the order of the work: Overview, Plan, Cast, Storyboard, Board (the freestyle board, S-M2), Mixer,
+ * One open project (D-65): the header with the back link, the name, Undo / Redo and the conflict chip, the stage
+ * rail (audit change 1: the order of the work and the one next step, on every tab), then the tabs the rail opens:
+ * Overview, Plan, Cast, Storyboard, Board (the freestyle board, S-M2, behind "More" until it has cards), Mixer,
  * Export. The shell owns the project
  * state, so every tab works on this project only, and handles the offline, loading, not-found and error
  * states once for all of them.
@@ -13,10 +14,12 @@ import { CastTab } from "./CastTab";
 import { ExportTab } from "./ExportTab";
 import type { VideoFitSource } from "./formatLogic";
 import { MixerTab } from "./mixer/MixerTab";
+import { StageRail } from "./guide/StageRail";
+import { useGuide } from "./guide/useGuide";
 import { OverviewTab } from "./OverviewTab";
 import { PlanTab, type PlanChatDeps } from "./PlanTab";
 import type { ModelChoice } from "./ProjectDefaultsPanel";
-import { setProjectName, type ProjectTabId } from "./projectRoute";
+import { isMusicVideo, setProjectName, type ProjectTabId } from "./projectRoute";
 import { ProjectShellHeader } from "./ProjectShellHeader";
 import { StoryboardTab } from "./StoryboardTab";
 import { useStoryboard } from "./useStoryboard";
@@ -67,6 +70,8 @@ export function ProjectShell({ projectId, fallbackName, tab, backendOnline, deps
   const { t } = useTranslation("studio");
   const story = useStoryboard(backendOnline, projectId);
   const { project, timeline } = story;
+  const guide = useGuide(project, backendOnline);
+  const musicVideo = isMusicVideo(projectId);
   const [focusShotId, setFocusShotId] = useState<string | null>(null);
   // Bumped by the header's format chips: Overview opens Project settings and focuses it.
   const [settingsRequest, setSettingsRequest] = useState(0);
@@ -163,6 +168,11 @@ export function ProjectShell({ projectId, fallbackName, tab, backendOnline, deps
               setSettingsRequest((n) => n + 1);
               onTab("overview");
             }}
+            rail={
+              state === "ready" && project && guide ? (
+                <StageRail key={projectId} guide={guide} project={project} story={story} musicVideo={musicVideo} onTab={onTab} />
+              ) : null
+            }
           />
           <div className="project-shell__panel" role="tabpanel" id={`project-panel-${tab}`} aria-labelledby={`project-tab-${tab}`}>
             {body}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { StoryboardProject, StoryboardShot } from "../../../types";
-import { checklist, checklistComplete, nextCardMode, nextStep, preflight, recentActivity, stillOnlyCount } from "../overviewLogic";
+import { clipCount, preflight, recentActivity, stillOnlyCount } from "../overviewLogic";
 
 function shot(id: string, take?: { still?: string; clip?: string }): StoryboardShot {
   const takes = take ? [{ id: `${id}-t`, still: take.still ?? null, clip: take.clip ?? null, hashes: {}, settings: {}, measuredSeconds: 4, createdAt: 0, origin: "upload" as const, basis: null }] : [];
@@ -14,8 +14,6 @@ function shot(id: string, take?: { still?: string; clip?: string }): StoryboardS
 function project(shots: StoryboardShot[], extra: Partial<StoryboardProject> = {}): StoryboardProject {
   return { shots, audio: [], references: { characters: [], places: [] }, ...extra } as unknown as StoryboardProject;
 }
-
-const none = { previewCurrent: false, exported: false };
 
 describe("Before you export", () => {
   const exportSettings = { loudnessLufs: -14, captionsSrt: true, captionsBurn: false, aiLabel: { embedTag: false }, upscale: "none" };
@@ -90,47 +88,10 @@ describe("Recent activity", () => {
   });
 });
 
-describe("Overview next step", () => {
-  it("walks write, make, clips, sound, preview, export, done and never asks for a cast", () => {
-    expect(nextStep(project([]), none).id).toBe("writeShots");
-    expect(nextStep(project([shot("a"), shot("b")]), none)).toEqual({ id: "makeMissing", tab: "storyboard", count: 2, stills: 0 });
-    // A still without a clip is missing its clip: Make missing counts it (and makes only the clip).
-    const stillOnly = project([shot("a", { still: "s.png" }), shot("b")]);
-    expect(stillOnlyCount(stillOnly)).toBe(1);
-    expect(nextStep(stillOnly, none)).toEqual({ id: "makeMissing", tab: "storyboard", count: 2, stills: 1 });
-    // A locked still-only shot is not made by a batch; the step points at it.
-    const locked = project([{ ...shot("a", { still: "s.png" }), locked: true }]);
-    expect(nextStep(locked, none).id).toBe("makeClips");
-    const made = project([shot("a", { still: "s.png", clip: "c.mp4" })]);
-    expect(nextStep(made, none).id).toBe("addSound");
-    expect(nextStep({ ...made, audio: [{}] } as unknown as StoryboardProject, none).id).toBe("renderPreview");
-    expect(nextStep(made, { previewCurrent: true, exported: false }).id).toBe("export");
-    expect(nextStep(made, { previewCurrent: true, exported: true }).id).toBe("done");
-  });
-
-  it("ticks the checklist as work happens; cast and sound are optional, so a film without them completes", () => {
-    const made = project([shot("a", { clip: "c.mp4" })]);
-    const rows = checklist(made, { previewCurrent: true, exported: true });
-    expect(rows.find((r) => r.id === "cast")).toMatchObject({ done: false, optional: true });
-    expect(rows.find((r) => r.id === "takes")?.done).toBe(true);
-    expect(checklistComplete(rows)).toBe(true);
-    expect(checklistComplete(checklist(made, none))).toBe(false);
-    expect(checklist(project([shot("a", { still: "s.png" })]), none).find((r) => r.id === "takes")?.done).toBe(false);
-  });
-});
-
-describe("Overview next-step card matches the run bar (S-N)", () => {
-  it("shows a paused batch with Resume, never a new Make beside it", () => {
-    expect(nextCardMode({ batchState: "paused", step: "makeMissing", primary: "make" })).toBe("paused");
-    expect(nextCardMode({ batchState: "paused", step: "makeMissing", primary: "drafts" })).toBe("paused");
-  });
-  it("shows a running or queued batch's progress", () => {
-    expect(nextCardMode({ batchState: "running", step: "makeMissing", primary: "make" })).toBe("running");
-    expect(nextCardMode({ batchState: "queued", step: "export", primary: null })).toBe("running");
-  });
-  it("makes Make drafts primary on a fresh film with a slow still model, like the run bar", () => {
-    expect(nextCardMode({ batchState: null, step: "makeMissing", primary: "drafts" })).toBe("drafts");
-    expect(nextCardMode({ batchState: "done", step: "makeMissing", primary: "make" })).toBe("step");
-    expect(nextCardMode({ batchState: "cancelled", step: "export", primary: null })).toBe("step");
+describe("Overview counts", () => {
+  it("counts shots with a clip and shots with a still but no clip", () => {
+    const p = project([shot("a", { still: "s.png" }), shot("b", { still: "s.png", clip: "c.mp4" }), shot("c")]);
+    expect(stillOnlyCount(p)).toBe(1);
+    expect(clipCount(p)).toBe(1);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { concatChunks, encodeWav, formatTimestamp, levelOf, micErrorMessage, resample, toSrt, toVtt } from "./audio";
+import { clipFileName, concatChunks, encodeWav, firstWords, formatTimestamp, levelOf, micErrorMessage, resample, toSrt, toVtt } from "./audio";
 
 describe("resample", () => {
   it("returns a copy at the same rate", () => {
@@ -60,5 +60,19 @@ describe("helpers", () => {
     expect(micErrorMessage(denied, "Darwin")).toContain("System Settings");
     expect(micErrorMessage(denied, "Windows")).toContain("Privacy & security");
     expect(micErrorMessage(new DOMException("none", "NotFoundError"), "Linux")).toContain("No microphone");
+  });
+});
+
+describe("clip names", () => {
+  it("names a clip from the first words and the voice", () => {
+    expect(clipFileName("Welcome to the studio, everyone. Today we talk about voices.", "Heart", "wav")).toBe("welcome-to-the-studio-everyone-today-heart.wav");
+    expect(firstWords("  one   two three ", 2)).toEqual({ words: "one two", truncated: true });
+    expect(firstWords("one two", 2)).toEqual({ words: "one two", truncated: false });
+  });
+
+  it("keeps non-Latin letters, drops punctuation and bounds the length", () => {
+    expect(clipFileName("你好，世界", "Mei", "mp3")).toBe("你好-世界-mei.mp3");
+    expect(clipFileName("!!! ???", "", "wav")).toBe("speech.wav");
+    expect(clipFileName("x".repeat(200), "A voice described in many words", "wav")).toBe(`${"x".repeat(40)}-a-voice-described.wav`);
   });
 });

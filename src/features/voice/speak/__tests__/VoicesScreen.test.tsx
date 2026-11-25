@@ -40,10 +40,10 @@ function runtime(over: Partial<VoiceRuntime> = {}): VoiceRuntime {
   } as VoiceRuntime;
 }
 
-function render(rt = runtime(), speakVoiceId = "qwen3:Ryan") {
+function render(rt = runtime(), speakVoiceId = "qwen3:Ryan", cat: VoiceCatalog = catalog) {
   return renderToStaticMarkup(
     <VoiceProvider value={{ runtime: rt, platform: "Darwin", refresh: () => {}, saveSettings: async () => {}, openVoiceModels: () => {} }}>
-      <VoicesScreen catalog={catalog} speakVoiceId={speakVoiceId} onUseInSpeak={() => {}} onDesign={() => {}} onGetMore={() => {}} />
+      <VoicesScreen catalog={cat} speakVoiceId={speakVoiceId} onUseInSpeak={() => {}} onDesign={() => {}} onGetMore={() => {}} />
     </VoiceProvider>,
   );
 }
@@ -54,12 +54,7 @@ function row(html: string, name: string): string {
   return rows.find((r) => r.includes(`<strong>${name}</strong>`)) ?? "";
 }
 
-function slot(html: string, use: string): string {
-  const start = html.indexOf(`data-use="${use}"`);
-  return start < 0 ? "" : html.slice(start, html.indexOf("</button>", start));
-}
-
-describe("VoicesScreen (D-73 S2)", () => {
+describe("VoicesScreen as the voice catalogue (D-73 S2, D0142)", () => {
   it("has the actions, kind filters and a language select; the cloning statement, agent switch and chat settings are gone", () => {
     const html = render();
     for (const text of ["New cloned voice", "Design a voice", "Get more voices", "All", "Natural", "Quick", "Cloned", "Designed", "All languages", "Add Mandarin voices"]) {
@@ -71,20 +66,13 @@ describe("VoicesScreen (D-73 S2)", () => {
     expect(render(runtime({ extras: [{ id: "chinese", installed: true }] } as Partial<VoiceRuntime>))).not.toContain("Add Mandarin voices");
   });
 
-  it("shows the main voice for Speak, Chat read-aloud and voice calls, each with Change, and the fallback rule", () => {
+  it("no longer holds Chat's voice choices: no Main voices strip, no Change buttons, no Fallback wording (D0142)", () => {
     const html = render();
-    expect(slot(html, "speak")).toContain("<strong>Ryan</strong>");
-    expect(slot(html, "read")).toContain("<strong>Bella</strong>");
-    expect(slot(html, "read")).toContain("First words after 0.13 s.");
-    // No call voice set: calls use the chat voice.
-    expect(slot(html, "call")).toContain("<strong>Bella</strong>");
-    expect(slot(html, "call")).toContain("(same as Chat)");
-    expect(slot(html, "call")).toContain("Cloned voices are not used in calls.");
-    expect(html.match(/>Change</g)).toHaveLength(4);
-    expect(html).toContain("the fallback voice Heart reads instead and Chat says so");
-    const own = render(runtime({ settings: { ...runtime().settings, callVoice: "qwen3:Ryan" } }));
-    expect(slot(own, "call")).toContain("<strong>Ryan</strong>");
-    expect(slot(own, "call")).not.toContain("(same as Chat)");
+    for (const text of ["Main voices", "Change the voice for", ">Change<", "Voice calls", "Chat read-aloud", "Fallback", "fallback voice", "Use for…"]) {
+      expect(html).not.toContain(text);
+    }
+    expect(html).not.toContain("data-use=");
+    expect(html).toContain("Chat&#x27;s voices are chosen in Chat, under Voice.");
   });
 
   it("groups the list Natural, Quick, Cloned, Designed, with the graded quick shortlist first", () => {
@@ -101,20 +89,21 @@ describe("VoicesScreen (D-73 S2)", () => {
     expect(row(html, "Xiaobei")).toBe("");
   });
 
-  it("gives every row one Use for menu, greyed with W6's reason where a use is not allowed, and marks the uses", () => {
+  it("gives every row one Use in Speak button, and marks where a voice is in use (Backup, not Fallback)", () => {
     const html = render();
     for (const name of ["Heart", "Bella", "Ryan", "Ada"]) {
-      expect(row(html, name)).toContain("Use for…");
       expect(row(html, name)).toContain("Play a sample of");
+      expect(row(html, name)).toContain(`aria-label="Use ${name} in Speak"`);
     }
+    // Ryan is the Speak voice: the button says so and is off.
+    expect(row(html, "Ryan")).toMatch(/disabled="" aria-label="Use Ryan in Speak">In use in Speak/);
+    expect(row(html, "Ryan")).toContain(">Speak<");
     expect(row(html, "Bella")).toContain(">Chat<");
     expect(row(html, "Bella")).toContain(">Calls<");
-    expect(row(html, "Ryan")).toContain(">Speak<");
-    expect(row(html, "Ada")).toMatch(/disabled="" title="Cloned voices are not used in voice calls."/);
-    expect(row(html, "Ryan")).toContain("(slow: 2.4 s)");
-    // Describe a voice keeps a plain Use in Speak (it needs a description each time, so no Chat or calls).
+    expect(row(html, "Heart")).toContain(">Backup<");
+    expect(row(html, "Heart")).not.toContain(">Fallback<");
+    // Describe a voice keeps a plain Use in Speak.
     expect(row(html, "Design a voice")).toContain("Use in Speak");
-    expect(row(html, "Design a voice")).not.toContain("Use for…");
     expect(row(html, "Ada")).toContain("Delete the voice Ada");
     expect(row(html, "Heart")).not.toContain("Delete the voice");
     expect(row(html, "Ryan")).toContain("first audio 2.4 s (4.1 s cold), 3.51 GB");
@@ -125,26 +114,32 @@ describe("VoicesScreen (D-73 S2)", () => {
     expect(VOICE_USE_SETTING).toEqual({ speak: "speakVoice", read: "ttsVoice", call: "callVoice", fallback: "fallbackVoice" });
   });
 
-  it("has a fourth Fallback card naming the fallback in effect, or none (D-75)", () => {
-    const html = render();
-    expect(slot(html, "fallback")).toContain(">Fallback<");
-    expect(slot(html, "fallback")).toContain("<strong>Heart</strong>");
-    expect(slot(html, "fallback")).toContain("Reads when the chat or call voice cannot.");
-    expect(slot(html, "fallback")).toContain('aria-label="Change the voice for Fallback"');
-    expect(row(html, "Heart")).toContain(">Fallback<");
-
-    const chosen = render(runtime({ settings: { ...runtime().settings, fallbackVoice: "clone:1" } }));
-    expect(slot(chosen, "fallback")).toContain("<strong>Ada</strong>");
-    expect(slot(chosen, "fallback")).toContain("Not used in calls.");
-    expect(chosen).toContain("the fallback voice Ada reads instead");
-
-    const none = render(runtime({ settings: { ...runtime().settings, fallbackVoice: "" } }));
-    expect(slot(none, "fallback")).toContain("<strong>None set</strong>");
-    expect(none).toContain("No fallback voice is set");
-    expect(none).not.toContain("Kokoro reads instead");
+  it("greyed New cloned voice and Design a voice say why as text, with the fix button on a PC without the speech GPU add-on", () => {
+    const pc = runtime({ lane: "portable", extras: [{ id: "speech-gpu", label: "", installed: false }] } as Partial<VoiceRuntime>);
+    const html = render(pc, "", { ...catalog, modelsAvailable: false, cloneAllowed: false });
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>New cloned voice/);
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Design a voice/);
+    expect(html.match(/Needs the speech GPU add-on\./g)).toHaveLength(2);
+    expect(html.match(/>Open Voice setup</g)).toHaveLength(2);
+    // The reason is text on the page, not only a tooltip.
+    expect(html).not.toContain('title="Needs the speech GPU');
   });
 
-  it("without Kokoro: the default fallback counts as none and the Quick group says how to add Kokoro", () => {
+  it("a Mac-only model says so in words without a button; a window-only clone says so too", () => {
+    const mac = render(runtime(), "", { ...catalog, modelsAvailable: false });
+    expect(mac).toContain("Voice cloning runs on Apple Silicon Macs for now.");
+    expect(mac).toContain("Designing a voice runs on Apple Silicon Macs for now.");
+    expect(mac).not.toContain("Open Voice setup");
+    const windowOnly = render(runtime(), "", { ...catalog, cloneAllowed: false });
+    expect(windowOnly).toContain("Cloned voices can only be used from the ChaosEngineAI window on this computer.");
+    expect(windowOnly).not.toContain("Designing a voice runs on");
+    // Nothing greyed, nothing to explain.
+    expect(render()).not.toContain("voice-voices__reason");
+    // Before the catalogue loads, no reason is guessed.
+    expect(render(runtime(), "", { ...catalog, loaded: false, modelsAvailable: false })).not.toContain("voice-voices__reason");
+  });
+
+  it("without Kokoro the Quick group says how to add Kokoro", () => {
     const noKokoro: VoiceCatalog = {
       ...catalog,
       voices: voices.map((v) => (v.kind === "builtin" ? { ...v, available: false, addon: null } : v)),
@@ -162,8 +157,6 @@ describe("VoicesScreen (D-73 S2)", () => {
         <VoicesScreen catalog={noKokoro} speakVoiceId="qwen3:Ryan" onUseInSpeak={() => {}} onDesign={() => {}} onGetMore={() => {}} />
       </VoiceProvider>,
     );
-    expect(slot(html, "fallback")).toContain("<strong>None set</strong>");
-    expect(html).toContain("No fallback voice is set");
     expect(html).toContain("The Kokoro quick voices are not installed");
     expect(html).toContain("Open Voice Models");
     expect(html).not.toContain("Add Mandarin voices");

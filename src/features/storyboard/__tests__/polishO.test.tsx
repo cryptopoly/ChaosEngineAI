@@ -73,7 +73,7 @@ describe("A song longer than the film (S-O item 3)", () => {
     const html = renderToStaticMarkup(<SongPanel story={story(p)} project={p} />);
     expect(html).toContain("The song runs 1:04; the shots add up to 0:08. Lines after 0:08 do not show until the film is that long.");
     const longer = html.slice(html.indexOf("song-lyrics__longer"));
-    expect(longer).toMatch(/<button[^>]*>Make a cut plan<\/button>/);
+    expect(longer).toMatch(/<button[^>]*>Cut the song into shots<\/button>/);
   });
 
   it("says nothing when the shots cover the song", () => {

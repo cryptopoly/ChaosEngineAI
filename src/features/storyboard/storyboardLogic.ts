@@ -202,12 +202,12 @@ export function draftShotIds(shots: StoryboardShot[]): string[] {
   return shots.filter((s) => isDraftTake(activeTakeOf(s))).map((s) => s.id);
 }
 
-/** Shots marked to keep for the final pass. */
+/** Shots chosen for the final pass. */
 export function keptShotIds(shots: StoryboardShot[]): string[] {
   return shots.filter((s) => s.kept).map((s) => s.id);
 }
 
-/** What "Final pass on kept shots" would redo. Mirrors `needs_final` in batch.py (locked shots left out). */
+/** What "Final pass on chosen shots" would redo. Mirrors `needs_final` in batch.py (locked shots left out). */
 export function finalPassShotIds(shots: StoryboardShot[]): string[] {
   return shots
     .filter((s) => {

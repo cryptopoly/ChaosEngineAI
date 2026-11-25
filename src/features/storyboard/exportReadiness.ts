@@ -3,7 +3,7 @@
  * (`stops`, `worthFixing`, `forInfo`), each with a plain sentence, the shots it is about and an action code. This file
  * turns them into what the tab shows: the three groups, one fix button per item mapped from the action code to a tab
  * (or one shot's editor), and a few facts only the app knows (loudness, captions, the AI tag, the preview) as extra
- * "for your information" lines. The old preflight in `overviewLogic.ts` is not used here.
+ * "for your information" lines.
  */
 import type {
   StoryboardGuideAction,

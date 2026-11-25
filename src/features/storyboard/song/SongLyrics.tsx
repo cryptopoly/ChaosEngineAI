@@ -124,7 +124,7 @@ export function SongLyrics({ story, song, projectId, filmSeconds, onCutPlan, cut
           </p>
           {onCutPlan ? (
             <button type="button" className="secondary-button" disabled={cutDisabled} onClick={onCutPlan}>
-              {t("board.song.cutPlan", { defaultValue: "Make a cut plan" })}
+              {t("board.song.cutSongIntoShots", { defaultValue: "Cut the song into shots" })}
             </button>
           ) : null}
         </div>

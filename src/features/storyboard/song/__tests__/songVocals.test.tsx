@@ -206,7 +206,8 @@ describe("Song panel: one flow instead of two cut buttons", () => {
     const html = renderToStaticMarkup(<SongPanel story={story(p)} project={p} onOpenShot={noop} />);
     expect(html).toContain("Does someone sing on screen?");
     expect(html).not.toContain("Cut for singing");
-    expect((html.match(/>Cut the song into shots</g) ?? []).length).toBe(1);
+    // One button in the question and, as the song is longer than the empty film, one beside "Time the lyrics".
+    expect((html.match(/>Cut the song into shots</g) ?? []).length).toBe(2);
     expect(html).not.toContain("Lip-sync the song"); // not asked yet, never used
   });
 

@@ -133,9 +133,11 @@ def song_vocals(project_id: str, revision: int, stem_path: str | None, singing: 
     op. With a stem the cuts between sung shots move to phrase starts (FU-607) and each slice runs on past its phrase
     (FU-609). Returns (project, summary). The slices are cut before the project lock is taken."""
     import tempfile
+    import time
     from pathlib import Path
 
     from backend_service import lipsync_runtime
+    from backend_service.storyboard import coverage as coverage_module
     from backend_service.storyboard import media, song
     from backend_service.storyboard import song_vocals as sv
     from backend_service.storyboard.ops import run_op
@@ -150,10 +152,14 @@ def song_vocals(project_id: str, revision: int, stem_path: str | None, singing: 
     else:
         source, voiced = media.inside(store.folder(project_id), project.song.path), None
     plan = sv.plan_vocals(project, voiced, lead_in, tail)
-    summary = {"source": "stem" if stem_path else "song", "attached": len(plan["items"]), "skipped": plan["skipped"],
+    source_kind = "stem" if stem_path else "song"
+    summary = {"source": source_kind, "attached": len(plan["items"]), "skipped": plan["skipped"],
                "snapped": plan["snapped"]}
+    # Audit change 3: the run's per-shot record goes on the song in the same op, so the table outlives this answer.
+    record = coverage_module.record(plan, source_kind, time.time())
     if not plan["items"]:
-        return project, summary
+        project = run_op(store, project_id, revision, "set_shot_vocals", {"coverage": record})
+        return project, {**summary, "coverage": coverage_module.coverage(project)}
     with tempfile.TemporaryDirectory(prefix="chaosengine-vocals-") as tmp:
         items = []
         for item in plan["items"]:
@@ -166,8 +172,8 @@ def song_vocals(project_id: str, revision: int, stem_path: str | None, singing: 
                 raise ValueError(str(exc)) from exc
             items.append({"shotId": item["shotId"], "audio": str(dst), "lead": item["lead"], "length": item["length"],
                           "tail": item["tail"], "singing": singing})
-        project = run_op(store, project_id, revision, "set_shot_vocals", {"items": items})
-    return project, summary
+        project = run_op(store, project_id, revision, "set_shot_vocals", {"items": items, "coverage": record})
+    return project, {**summary, "coverage": coverage_module.coverage(project)}
 
 
 # ---- routes ----

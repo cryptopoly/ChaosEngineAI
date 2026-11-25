@@ -9,9 +9,10 @@ film still shows the shot's own span and the mouth stays on the music. Every sli
 
 Measured recipe (``docs/research/lip-sync-singing-experiments-2026-11.md``): the vocal stem follows best (0.44 vs 0.37
 for the mix), so a stem is used when one is given; without it the song itself is sliced. With a stem, a shot whose
-slice is mostly silent is left without a vocal (it would be a shot of a singer not singing). Shots outside the 3 to
-8 s lip-sync range, at another speed, or past the song's end are left alone and named. Nothing here writes the
-project: ``set_shot_vocals`` (``song_ops``) does, in one op and one Undo.
+slice is mostly silent is left without a vocal (it would be a shot of a singer not singing). Shots shorter than 2 s,
+whose clip with its lead-in would pass 8 s, at another speed, locked, or past the song's end are left alone and named
+with a reason code (``coverage.py``; a 2 to 3 s shot gets silent room up to the 3 s a clip needs). Nothing here writes
+the project: ``set_shot_vocals`` (``song_ops``) does, in one op and one Undo, with the coverage record.
 
 With a stem, two more steps give each shot the window the research measured (phrase, then a little silence):
 
@@ -30,13 +31,12 @@ from __future__ import annotations
 
 from typing import Any
 
+from backend_service.storyboard.coverage import LEAD_IN, MIN_SHOT_SECONDS  # noqa: F401 - the rules live in coverage
 from backend_service.storyboard.models import Project
 
-LEAD_IN = 0.4
 TAIL = 0.5  # FU-609: room after the phrase (the research windows had 0.6-0.7 s)
 SUNG_MIN_SECONDS, SUNG_MAX_SECONDS = 3.0, 5.0  # the cut plan's bounds for sung shots (FU-380: 3-5 s sing best)
 VOICED_SHARE_MIN = 0.2  # a stem slice with less of its time voiced than this has no singing to follow
-MIN_SHOT_SECONDS = 2.0  # the cut plan's own shortest shot: a shorter one is left alone, a longer one can lip-sync
 PHRASE_GAP = 0.3  # FU-607: silence before a voiced run that makes it a phrase start
 SNAP_RANGE = 1.5  # FU-607: how far a cut may move to reach a phrase start
 _FRAME_SECONDS = 0.05
@@ -146,6 +146,8 @@ def plan_vocals(project: Project, voiced: Any = None, lead_in: float = LEAD_IN, 
     from backend_service.lipsync_runtime import MAX_SECONDS, MIN_SECONDS
     from backend_service.storyboard.timeline import compute_timeline
 
+    from backend_service.storyboard.coverage import skip_code, skip_message
+
     song = project.song
     if song is None:
         raise ValueError("This project has no song. Attach one first (Song > Attach).")
@@ -160,21 +162,14 @@ def plan_vocals(project: Project, voiced: Any = None, lead_in: float = LEAD_IN, 
         begins = span.start + offset
         length = round(span.duration, 3)
         lead = round(max(0.0, min(lead_in, begins)), 3)
-        clip = length + lead
-        reason = None
-        if shot.speed != 1.0:
-            reason = "plays at another speed; lip sync needs real time"
-        elif shot.locked:
-            reason = "is locked"
-        elif begins < -1e-6 or begins + length > song.seconds + 0.05:
-            reason = "is outside the song"
-        elif length < MIN_SHOT_SECONDS - 1e-6 or clip > MAX_SECONDS + 1e-6:
-            reason = (f"lasts {length:.1f} s; a lip-sync shot lasts {MIN_SHOT_SECONDS:g} to "
-                      f"{MAX_SECONDS - lead:g} s (its lead-in and room come on top)")
-        elif voiced is not None and voiced_share(voiced, begins, begins + length) < VOICED_SHARE_MIN:
-            reason = "has no singing in the vocal stem"
-        if reason:
-            skipped.append({"shotId": shot.id, "number": number, "reason": f"Shot {number} {reason}."})
+        code = skip_code(shot, begins, length, song.seconds, lead)
+        if code is None and voiced is not None and voiced_share(voiced, begins, begins + length) < VOICED_SHARE_MIN:
+            code = "no-singing"
+        reason = code is not None
+        if code:  # the code for the app (audit change 3), the sentence for people and agents
+            skipped.append({"shotId": shot.id, "number": number, "code": code,
+                            "reason": skip_message(code, number, length, lead), "songStart": round(begins, 3),
+                            "length": length})
         # A cut moves only between two sung shots that follow each other with a plain cut (FU-607).
         adjacent = bool(windows) and windows[-1]["number"] == number - 1 and span.transition_type == "cut"
         windows.append({"shotId": shot.id, "number": number, "begins": begins, "length": length, "sung": not reason,

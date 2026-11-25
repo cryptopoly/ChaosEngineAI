@@ -13,6 +13,7 @@ import { formatImageTimestamp, number } from "../../utils";
 import type { SendItem } from "../storyboard/sendToStoryboardLogic";
 import { useSendToStoryboard } from "../storyboard/useSendToStoryboard";
 import { modelsPageRequest, type TabRequest } from "../../constants/tabRedirects";
+import { requestUpscale, type UpscaleSource } from "../videoupscale/upscaleSource";
 
 export interface VideoGalleryTabProps {
   videoOutputs: VideoOutputArtifact[];
@@ -135,6 +136,15 @@ export function VideoGalleryTab({
                 onRevealPath={onRevealPath}
                 onDelete={onDeleteVideoArtifact}
                 extraActions={
+                  <>
+                  {artifact.videoPath ? (
+                    <button className="secondary-button" type="button" onClick={() => {
+                      requestUpscale(upscaleSourceOf(artifact));
+                      onActiveTabChange("video-upscale");
+                    }}>
+                      {tStudio("videoGallery.card.upscale", { defaultValue: "Upscale this" })}
+                    </button>
+                  ) : null}
                   <SendToStoryboardMenu
                     item={artifact.videoPath ? clipItem(artifact) : null}
                     projects={storyboard.projects}
@@ -146,6 +156,7 @@ export function VideoGalleryTab({
                     onDismissNotice={storyboard.dismissNotice}
                     onSend={(projectId, target) => storyboard.send(clipItem(artifact), projectId, target)}
                   />
+                  </>
                 }
               />
             ))}
@@ -154,6 +165,11 @@ export function VideoGalleryTab({
       </Panel>
     </div>
   );
+}
+
+/** What "Upscale this" hands the Upscale tab: the file, the clip (for its preview) and its size. */
+export function upscaleSourceOf(artifact: VideoOutputArtifact): UpscaleSource {
+  return { path: artifact.videoPath as string, artifactId: artifact.artifactId, width: artifact.width, height: artifact.height };
 }
 
 /** What the Use in storyboard menu sends for a saved clip. */

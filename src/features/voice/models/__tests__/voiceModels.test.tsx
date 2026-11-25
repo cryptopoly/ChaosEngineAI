@@ -173,6 +173,32 @@ describe("Speech models on the shared Models table (D-73 M3b)", () => {
     expect(speechGpuAddonMissing(runtime())).toBe(false);
   });
 
+  it("the fit badge and tooltip name the missing speech GPU part, and keep Not for this machine for a real hardware limit", () => {
+    const unknown = { status: "unknown", needGb: null, usableGb: 22.5, headroomPct: null, reason: "This model does not run on this machine.", basis: "estimated" };
+    const pc = runtime({ lane: "portable", extras: [{ id: "speech-gpu", label: "", installed: false }] });
+    const rows = (over: Partial<VoiceModelRow>, rt = pc) => {
+      const out = wrap(
+        <SpeechModelsPanel
+          catalog={{ ...catalog, modelsAvailable: false, models: [model("only-row", "Only row", { supported: false, fit: unknown, ...over })] }}
+          runtime={rt}
+          availability="all"
+          onAvailabilityChange={() => {}}
+          onOpenStudio={() => {}}
+        />,
+      );
+      return out.slice(out.indexOf(">All models<"));
+    };
+    const part = rows({ lanes: ["cuda"] });
+    expect(part).toContain("Needs GPU part");
+    expect(part).not.toContain("Not for this machine");
+    expect(part).not.toContain("does not run on this machine");
+    const small = rows({ lanes: ["cuda"], unsupportedFacts: { kind: "memory", need: 5.4, have: 4 } });
+    expect(small).toContain("Not for this machine");
+    expect(small).not.toContain("Needs GPU part");
+    expect(small).toContain("Needs about 5.4 GB of GPU memory; this GPU has 4 GB.");
+    expect(rows({ lanes: ["mlx"] })).toContain("Not for this machine");
+  });
+
   it("opens with the one model recommended for this machine: what it makes, its size, about how much GPU memory, then All models", () => {
     const pickHtml = html.slice(html.indexOf("data-speech-pick"), html.indexOf(">All models<"));
     expect(html).toContain("Recommended for this machine");
@@ -221,7 +247,8 @@ describe("Speech models on the shared Models table (D-73 M3b)", () => {
     );
     const kokoroPick = kokoro.slice(kokoro.indexOf("data-speech-pick"), kokoro.indexOf(">All models<"));
     expect(kokoroPick).toContain("<strong>Kokoro</strong>: 2 quick voices in 2 languages, fast on any machine");
-    expect(kokoroPick).toContain("about 0.9 GB GPU memory.");
+    expect(kokoroPick).toContain("about 0.9 GB memory.");
+    expect(kokoroPick).not.toContain("GPU memory");
     expect(kokoroPick).toContain("The natural voices need the speech GPU part.");
     expect(kokoroPick).toContain("Browse voices");
   });

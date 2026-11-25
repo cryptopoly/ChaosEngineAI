@@ -599,7 +599,7 @@
       "labelCount": "Weitermachen: App-Nachricht {n} von {cap}"
     },
     "stop": {
-      "complete": "der Film sieht fertig aus (jede Einstellung hat einen Clip, der Ton ist drin, der fertige Film ist gerendert).",
+      "complete": "der Film sieht fertig aus (jeder Shot hat einen Clip, der Ton ist drin, der fertige Film ist gerendert).",
       "complete_no_project": "das Modell sagt, es sei fertig, und es läuft kein Auftrag.",
       "cap_reached": "die Grenze von {cap} Anstößen ist erreicht.",
       "no_progress": "nach 3 Anstößen in Folge hat sich nichts geändert.",

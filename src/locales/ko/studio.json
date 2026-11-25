@@ -814,7 +814,8 @@
         "all": "모든 모델",
         "kokoro": "{languages}개 언어의 빠른 음성 {count}종, 어떤 컴퓨터에서도 빠름",
         "download": "{gb} GB 내려받기",
-        "gpuMemory": "GPU 메모리 약 {gb} GB"
+        "gpuMemory": "GPU 메모리 약 {gb} GB",
+        "memory": "메모리 약 {gb} GB"
       },
       "firstUseLine": "선택했지만 아직 내려받지 않은 모델은 처음 받아쓰거나 음성 입력하는 파일 전에 내려받습니다. 받아쓰기에서 언어를 고르고 기본값으로 기억을 체크하면 유지됩니다.",
       "gpuDefaultLineSetup": "다른 모델을 고르지 않으면 {name}이(가) 내려받은 후 기본 음성 텍스트 변환 모델이 됩니다."
@@ -1050,7 +1051,7 @@
     },
     "stop": "중지",
     "studio": {
-      "title": "Voice Studio",
+      "title": "음성 스튜디오",
       "openModels": "음성 모델 열기",
       "cloneTask": "음성 복제"
     },
@@ -2391,7 +2392,10 @@
         "cutAgain": "노래를 다시 나누기"
       },
       "cutSongIntoShots": "노래를 컷으로 나누기",
-      "lipSyncRange": "{min}초 이상인 컷은 립싱크할 수 있습니다. 클립 길이는 {clipMin}~{clipMax}초이며, {clipMin}초보다 짧은 컷은 무음 여백으로 채워집니다."
+      "lipSyncRange": "{min}초 이상인 컷은 립싱크할 수 있습니다. 클립 길이는 {clipMin}~{clipMax}초이며, {clipMin}초보다 짧은 컷은 무음 여백으로 채워집니다.",
+      "noteRough": "템포, 비트, 구간은 소리의 시작점과 음량으로 추정한 값입니다. 귀로 확인하고 필요하면 구간을 수정하세요.",
+      "noteHint": "템포는 음악 라이브러리 트랙이 만들어진 템포이며, 비트는 그에 맞춰 배치됩니다.",
+      "noteNoBeat": "일정한 비트를 찾지 못해 비트가 없습니다. 컷은 구간만 따릅니다."
     },
     "unsaved": {
       "title": "입력한 텍스트가 저장되지 않았습니다",
@@ -2522,7 +2526,7 @@
     "close": "닫기",
     "dismiss": "닫기",
     "offline": "백엔드를 기다리는 중…",
-    "pathPlaceholder": "/path/to/file",
+    "pathPlaceholder": "파일의 전체 경로",
     "pickUnavailable": "여기서는 파일 선택기를 사용할 수 없습니다. 대신 경로를 입력하세요.",
     "films": {
       "title": "영상",

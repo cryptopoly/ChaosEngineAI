@@ -709,7 +709,7 @@
         "confirmSpeech": "{name} ({gb} GB) von diesem Computer löschen? Zum Verwenden musst du es erneut herunterladen. Geklonte Stimmen und Bibliothekseinträge bleiben.",
         "keptShared": "Behalten: {repo}, wird noch von {names} verwendet.",
         "watermarkGoes": "Die Wasserzeichen-Komponente geht ebenfalls: Kein anderes heruntergeladenes Modell klont. Sie kommt mit dem nächsten Klon-Modell zurück.",
-        "confirmSttDefault": "{name} ({gb} GB) von diesem Computer löschen? Ist es das Standardmodell für Sprache-in-Text, wird es bei der nächsten Verwendung erneut heruntergeladen."
+        "confirmSttDefault": "{name} ({gb} GB) von diesem Computer löschen? Ist es das Standardmodell für Sprache-zu-Text, wird es bei der nächsten Verwendung erneut heruntergeladen."
       },
       "deleteModel": "Modell löschen ({gb} GB)",
       "deleting": "Wird gelöscht …",
@@ -785,9 +785,9 @@
       "sttGuide": {
         "qwen3-asr-1_7b": "Die Wahl für eine NVIDIA-GPU: 30 Sprachen und 22 chinesische Dialekte, kann die Sprache selbst erkennen.",
         "qwen3-asr-0_6b": "Ein kleineres Qwen3-ASR: weniger GPU-Speicher und schneller, für dieselben Sprachen.",
-        "parakeet-tdt-v3": "Sehr schnell für 25 europäische Sprachen; kann die Sprache selbst erkennen und jedes Wort von allein zeiten.",
+        "parakeet-tdt-v3": "Sehr schnell für 25 europäische Sprachen; kann die Sprache selbst erkennen und setzt Zeitmarken für jedes Wort von allein.",
         "nemotron-3_5-asr": "Klein und schnell, für Live-Sprache in 40 Sprachen gemacht; nutzt die Spracheinstellung oder erkennt sie selbst.",
-        "whisper-large-v3-turbo": "Läuft auf jedem Rechner in 99 Sprachen und zeitet jedes Wort; übersetzt nicht.",
+        "whisper-large-v3-turbo": "Läuft auf jedem Rechner in 99 Sprachen und setzt Zeitmarken für jedes Wort; übersetzt nicht.",
         "whisper-small": "Klein und schnell in 99 Sprachen; eines von zwei Modellen, die Sprache ins Englische übersetzen können.",
         "whisper-base": "Das kleinste: schnell auf jedem Rechner und kann ins Englische übersetzen, aber am wenigsten genau.",
         "granite-speech-5_0-2b": "Sechs Sprachen, Englisch zuerst; kann die Sprache selbst erkennen.",
@@ -803,21 +803,22 @@
       "recommendedGpu": "Empfohlen für diese GPU",
       "recommendedGpuTitle": "Wird nach dem Download zum Standard.",
       "wordTimings": "Wortzeiten",
-      "wordTimingsLine": "Zeitet jedes Wort (Untertitel, Transkript-Editor) für Qwen3-ASR, Granite Speech und Nemotron Transcribe, die keine eigenen Wortzeiten haben; Nemotron ASR nutzt es ebenfalls. Belegt etwa {vram} GB GPU-Speicher, solange es verwendet wird.",
+      "wordTimingsLine": "Setzt Zeitmarken für jedes Wort (Untertitel, Transkript-Editor) für Qwen3-ASR, Granite Speech und Nemotron Transcribe, die keine eigenen Wortzeiten haben; Nemotron ASR nutzt es ebenfalls. Belegt etwa {vram} GB GPU-Speicher, solange es verwendet wird.",
       "languageLine": "Sprache: {mode}",
       "defaultTitleSetup": "Diktieren und Transkribieren verwenden dieses Modell, solange du kein anderes wählst.",
       "useDefault": "Als Standard verwenden",
-      "sttTitleSetup": "Sprache-in-Text",
+      "sttTitleSetup": "Sprache-zu-Text",
       "sttSubtitleSetup": "Sprache in Text umwandeln: Diktieren im Chat, Sprachanrufe und Transkribieren.",
       "pick": {
         "title": "Empfohlen für diesen Rechner",
         "all": "Alle Modelle",
         "kokoro": "{count} Schnellstimmen in {languages} Sprachen, schnell auf jedem Rechner",
         "download": "{gb} GB Download",
-        "gpuMemory": "etwa {gb} GB GPU-Speicher"
+        "gpuMemory": "etwa {gb} GB GPU-Speicher",
+        "memory": "etwa {gb} GB Speicher"
       },
       "firstUseLine": "Ein Modell, das du wählst, aber noch nicht heruntergeladen hast, wird vor der ersten Datei heruntergeladen, die du transkribierst oder diktierst. Wähle die Sprache unter Transkribieren und hake Als Standard merken an, um sie zu behalten.",
-      "gpuDefaultLineSetup": "{name} wird zum Standardmodell für Sprache-in-Text, sobald es heruntergeladen ist, solange du kein anderes wählst."
+      "gpuDefaultLineSetup": "{name} wird zum Standardmodell für Sprache-zu-Text, sobald es heruntergeladen ist, solange du kein anderes wählst."
     },
     "voices": {
       "addChinese": "Mandarin-Chinesisch-Stimmen hinzufügen",
@@ -1050,7 +1051,7 @@
     },
     "stop": "Stoppen",
     "studio": {
-      "title": "Voice Studio",
+      "title": "Sprachstudio",
       "openModels": "Sprachmodelle öffnen",
       "cloneTask": "Eine Stimme klonen"
     },
@@ -1246,7 +1247,7 @@
       "troubleshootBody": "Neu installieren führt die ganze Installation erneut aus. Entfernen gibt den Speicherplatz frei; Diktieren, Vorlesen, Anrufe und Voice Studio stehen still, bis sie erneut installiert ist.",
       "updateFeatures": "Aktualisiere die Stimm-Laufzeit für Sprachanrufe im Chat und Sprecherkennzeichnungen in Transkripten (ergänzt etwa 40 MB Modelle; ein bis zwei Minuten).",
       "workerOnly": "der Voice-Worker, noch kein Modell",
-      "removeConfirmSetup": "Die Stimm-Laufzeit{size} entfernen? Diktieren, Vorlesen, Sprachanrufe und Voice Studio stehen still, bis sie erneut installiert wird. Heruntergeladene Modelle für Sprache-in-Text und Sprache, geklonte Stimmen und die Bibliothek bleiben erhalten."
+      "removeConfirmSetup": "Die Stimm-Laufzeit{size} entfernen? Diktieren, Vorlesen, Sprachanrufe und Voice Studio stehen still, bis sie erneut installiert wird. Heruntergeladene Modelle für Sprache-zu-Text und Sprache, geklonte Stimmen und die Bibliothek bleiben erhalten."
     },
     "chatVoices": {
       "chooseRead": "Stimme wählen, die Chat-Antworten vorliest",
@@ -1292,7 +1293,7 @@
         "kokoro": "Schnellstimmen (Kokoro, etwa {size})",
         "chinese": "Schnellstimmen für Mandarin-Chinesisch (8 Stimmen, etwa {size})",
         "speech-gpu": "Natürliche Stimmen, Klonen und Gestalten auf dieser GPU (etwa {size})",
-        "stt-gpu": "Genauere Sprache-in-Text-Umwandlung auf dieser GPU (etwa {size})"
+        "stt-gpu": "Genauere Sprache-zu-Text-Umwandlung auf dieser GPU (etwa {size})"
       },
       "partsHint": "Ein Teil wird installiert, wenn er angehakt ist; entferne den Haken, um ihn zu entfernen.",
       "partsHintInstall": "Angehakte Teile werden mit der Stimm-Einrichtung installiert; du kannst sie später ändern.",
@@ -1301,7 +1302,7 @@
         "quick": "Schnelle Sprache",
         "natural": "Natürliche Stimmen und Stil",
         "clone": "Eine Stimme klonen oder gestalten",
-        "stt": "Sprache-in-Text auf der GPU",
+        "stt": "Sprache-zu-Text auf der GPU",
         "calls": "Sprachanrufe"
       },
       "missing": {
@@ -1311,7 +1312,7 @@
         "update": "ein Update der Stimm-Laufzeit",
         "kokoro": "Kokoro-Schnellstimmen {gb} GB",
         "speechGpu": "GPU-Sprachkomponente {gb} GB",
-        "sttGpu": "GPU-Komponente für Sprache-in-Text {gb} GB",
+        "sttGpu": "GPU-Komponente für Sprache-zu-Text {gb} GB",
         "naturalModel": "{name} {gb} GB",
         "naturalModelUnknown": "ein Modell für natürliche Stimmen",
         "cloneModel": "ein Klon-Modell, etwa {name} {gb} GB",
@@ -1333,7 +1334,7 @@
       },
       "presetBasic": "Basis: Schnellstimmen, etwa {gb} GB",
       "presetFullPartial": "Voll für diese GPU: die GPU-Teile, etwa {gb} GB; das Modell für natürliche Stimmen wird angeboten, sobald die Modellliste geladen ist",
-      "presetFull": "Voll für diese GPU: natürliche Stimmen, Klonen und Sprache-in-Text auf der GPU, etwa {gb} GB",
+      "presetFull": "Voll für diese GPU: natürliche Stimmen, Klonen und Sprache-zu-Text auf der GPU, etwa {gb} GB",
       "openChat": "Chat öffnen",
       "chooseCloneModel": "Ein Klon-Modell wählen",
       "presets": "Was installiert werden soll",
@@ -1344,10 +1345,10 @@
       "repair": "Stimm-Einrichtung reparieren",
       "parts": "{total} GB auf dem Datenträger: Sprachpakete {packages} GB, Kokoro-Schnellstimmen {kokoro} GB, Erkennung von Sprecherwechseln und Sprecherkennzeichnungen {small} GB. Nichts wird online gesendet.",
       "partsNoKokoro": "{total} GB auf dem Datenträger: Sprachpakete {packages} GB, Erkennung von Sprecherwechseln und Sprecherkennzeichnungen {small} GB; die Kokoro-Schnellstimmen sind nicht installiert. Nichts wird online gesendet.",
-      "beforeInstall": "Alles läuft auf diesem Computer, und nichts wird online gesendet. Modelle für Sprache-in-Text und Sprache sind separate Downloads auf dieser Seite.",
+      "beforeInstall": "Alles läuft auf diesem Computer, und nichts wird online gesendet. Modelle für Sprache-zu-Text und Sprache sind separate Downloads auf dieser Seite.",
       "title": "Stimm-Einrichtung",
       "subtitle": "{lane}. Was Voice auf diesem Computer kann und was noch fehlt.",
-      "alsoModels": "Auch die Kokoro-Schnellstimmen, die Erkennung von Sprecherwechseln und die Sprecherkennzeichnungen löschen. Heruntergeladene Modelle für Sprache-in-Text und Sprache bleiben immer erhalten.",
+      "alsoModels": "Auch die Kokoro-Schnellstimmen, die Erkennung von Sprecherwechseln und die Sprecherkennzeichnungen löschen. Heruntergeladene Modelle für Sprache-zu-Text und Sprache bleiben immer erhalten.",
       "studioSubtitle": "{lane}. Alles läuft auf diesem Computer; nichts wird online gesendet.",
       "allReady": "Stimm-Einrichtung: Alles, was dieser Computer kann, ist bereit"
     },
@@ -1716,7 +1717,7 @@
     "pickFailed": "Die Dateiauswahl ist hier nicht verfügbar. Wähle stattdessen aus der Bibliothek."
   },
   "board": {
-    "addShot": "Einstellung hinzufügen",
+    "addShot": "Shot hinzufügen",
     "batch": {
       "cancel": "Stapel abbrechen",
       "count": "{done} von {total} fertig",
@@ -1724,10 +1725,10 @@
         "clips": "Clips",
         "stills": "Standbilder"
       },
-      "shotOf": "Einstellung {n} von {total}",
+      "shotOf": "Shot {n} von {total}",
       "starting": "Wird gestartet…",
       "stillsThenClips": "{kind}, danach Clips",
-      "title": "Einstellungen werden erstellt",
+      "title": "Shots werden erstellt",
       "titleDraft": "Entwürfe werden erstellt",
       "titleFinal": "Finaler Durchlauf",
       "failedSoFar": "{n, plural, one {# Shot wurde nicht erstellt. Auf seiner Karte steht, warum und was zu tun ist.} other {# Shots wurden nicht erstellt. Auf ihren Karten steht, warum und was zu tun ist.}}"
@@ -1748,7 +1749,7 @@
     "defaultsSummary": "{aspect} · {resolution} · {fps} fps · {imageModel} · {videoModel} · Stimme {voice}",
     "editor": {
       "discard": "Änderungen verwerfen",
-      "discardBody": "Diese Einstellung hat ungespeicherte Änderungen. Wenn du jetzt schließt, gehen sie verloren.",
+      "discardBody": "Dieser Shot hat ungespeicherte Änderungen. Wenn du jetzt schließt, gehen sie verloren.",
       "discardTitle": "Deine Änderungen verwerfen?",
       "fromImageGallery": "Aus der Bildgalerie",
       "fromVideoGallery": "Aus der Videogalerie",
@@ -1759,7 +1760,7 @@
       "importKind": "Wähle ein Bild (png, jpg, webp) oder ein Video (mp4, mov, webm).",
       "length": "Länge (s)",
       "motionPrompt": "Bewegungs-Prompt",
-      "nativeSound": "Einstellungs-Tonpegel (dB)",
+      "nativeSound": "Shot-Tonpegel (dB)",
       "references": "Referenzen",
       "relinkHint": "Verweise den fehlenden Take auf eine neue Datei.",
       "revert": "Zurücksetzen",
@@ -1770,11 +1771,11 @@
       "speed": "Geschwindigkeit",
       "startFrom": "Start mit",
       "startFromGenerate": "Neues Standbild",
-      "startFromPrevious": "Letztes Bild der vorherigen Einstellung",
+      "startFromPrevious": "Letztes Bild des vorherigen Shots",
       "startFromText": "Nur Text (kein Bild)",
       "startFromUpload": "Mein Bild",
       "stillPrompt": "Standbild-Prompt",
-      "title": "Einstellung {n}",
+      "title": "Shot {n}",
       "trimIn": "Anfang kürzen (s)",
       "trimOut": "Ende kürzen (s)",
       "trimOutEnd": "Ende des Takes",
@@ -1810,13 +1811,13 @@
       "vocalOptional": "Ein Shot muss nicht singen: Entferne seinen Gesang, dann läuft er als gewöhnlicher Clip."
     },
     "estimate": {
-      "need": "{n, plural, one {# Einstellung braucht einen neuen Take} other {# Einstellungen brauchen einen neuen Take}}",
-      "none": "Jede nicht gesperrte Einstellung hat einen Take."
+      "need": "{n, plural, one {# Shot braucht einen neuen Take} other {# Shots brauchen einen neuen Take}}",
+      "none": "Jeder nicht gesperrte Shot hat einen Take."
     },
     "loading": "Projekt wird geladen…",
     "makeAll": "Alle nicht gesperrten erstellen",
-    "makeAllTitle": "Fügt jeder nicht gesperrten Einstellung einen neuen Take hinzu. Nichts wird überschrieben.",
-    "makeOne": "Diese Einstellung erstellen",
+    "makeAllTitle": "Fügt jedem nicht gesperrten Shot einen neuen Take hinzu. Nichts wird überschrieben.",
+    "makeOne": "Diesen Shot erstellen",
     "redo": "Wiederholen",
     "references": {
       "addCharacter": "Figur hinzufügen",
@@ -1828,11 +1829,11 @@
     },
     "reload": "Neu laden",
     "removeBody": "{name} wird aus dem Film entfernt. Die Takes bleiben im Projektordner, und mit „Rückgängig“ ist es wieder da.",
-    "removeTitle": "Diese Einstellung löschen?",
+    "removeTitle": "Diesen Shot löschen?",
     "shot": {
       "drag": "Zum Umsortieren ziehen",
-      "lock": "Diese Einstellung sperren",
-      "lockedNote": "Gesperrte Einstellungen werden beim Erstellen übersprungen.",
+      "lock": "Diesen Shot sperren",
+      "lockedNote": "Gesperrte Shots werden beim Erstellen übersprungen.",
       "menu": {
         "delete": "Löschen",
         "down": "Nach unten",
@@ -1844,14 +1845,14 @@
         "unmarkNewTake": "Neuen Take abbrechen"
       },
       "missingNote": "Take-Datei fehlt. Neu verknüpfen oder neuen Take erstellen.",
-      "moreActions": "Weitere Aktionen für Einstellung {n}",
-      "moved": "Einstellung {n} auf Position {position} verschoben",
+      "moreActions": "Weitere Aktionen für Shot {n}",
+      "moved": "Shot {n} auf Position {position} verschoben",
       "play": "Clip abspielen",
       "relink": "Neu verknüpfen",
       "rerun": "Erneut ausführen",
       "seed": "Seed {seed}",
-      "staleTitle": "Einstellung {n} hat einen neuen Take; diese Einstellung beginnt mit deren letztem Bild.",
-      "staleTitleGeneric": "Etwas, wovon diese Einstellung abhängt, hat sich geändert.",
+      "staleTitle": "Shot {n} hat einen neuen Take; dieser Shot beginnt mit dessen letztem Bild.",
+      "staleTitleGeneric": "Etwas, wovon dieser Shot abhängt, hat sich geändert.",
       "status": {
         "done": "Fertig · {seconds} s",
         "doneNoLength": "Fertig",
@@ -1861,25 +1862,25 @@
         "missing": "Take-Datei fehlt",
         "queued": "In Warteschlange · {position}",
         "running": "Wird erstellt…",
-        "stale": "Veraltet · nach Einstellung {n}",
+        "stale": "Veraltet · nach Shot {n}",
         "staleNoShot": "Veraltet",
         "stillOnly": "Nur Standbild"
       },
-      "titleLabel": "Titel von Einstellung {n}",
+      "titleLabel": "Titel von Shot {n}",
       "transitionLabel": "Übergang",
       "transitionSeconds": "Länge der Überblendung in Sekunden",
       "transitionType": {
         "crossfade": "Überblendung",
         "cut": "Schnitt"
       },
-      "unlock": "Diese Einstellung entsperren",
-      "untitled": "Einstellung {n}",
-      "castLabel": "Besetzung in dieser Einstellung",
+      "unlock": "Diesen Shot entsperren",
+      "untitled": "Shot {n}",
+      "castLabel": "Besetzung in diesem Shot",
       "newTakeMarked": "Neue Aufnahme beim nächsten Lauf",
       "newTakeTitle": "Das nächste Erzeugen fügt einen neuen Take dieses Shots hinzu. Nichts wird überschrieben.",
       "noPrompt": "Noch kein Prompt. Drücke Enter oder Prompts bearbeiten.",
       "makeClip": "Clip erstellen",
-      "makeClipTitle": "Den Clip dieser Einstellung aus ihrem Standbild erstellen.",
+      "makeClipTitle": "Den Clip dieses Shots aus seinem Standbild erstellen.",
       "referenceAdded": "{name} wurde mit diesem Standbild zur Besetzung hinzugefügt.",
       "tagsLabel": "Lippensynchronisation und Besetzung",
       "hideStaleTitle": "Blendet diese Warnung aus. Der Shot bleibt, wie er ist, und nichts wird neu erstellt.",
@@ -1887,7 +1888,7 @@
       "chooseForFinalTitle": "Der finale Durchlauf erstellt die gewählten Shots noch einmal mit dem Qualitätsmodell, in voller Filmgröße.",
       "chooseForFinal": "Für Final auswählen"
     },
-    "shots": "Einstellungen",
+    "shots": "Shots",
     "takes": {
       "active": "Aktiver Take",
       "label": "Takes",
@@ -1897,8 +1898,8 @@
     "undo": "Rückgängig",
     "emptyNoCast": "Noch keine Shots. Füge einen Shot hinzu und beschreibe ihn oder importiere Material. Ein Shot braucht keine Figur: Eine Straße oder eine Menschenmenge funktioniert allein.",
     "subtitleShots": "{shots, plural, one {# Shot} other {# Shots}} · {seconds} s · {stale} veraltet",
-    "lengthStrip": "Längen der Einstellungen",
-    "lengthStripPart": "Einstellung {n} · {seconds} s",
+    "lengthStrip": "Längen der Shots",
+    "lengthStripPart": "Shot {n} · {seconds} s",
     "passes": {
       "draft": "Entwürfe erzeugen",
       "draftTimed": "Entwürfe erzeugen · etwa {time}",
@@ -2322,7 +2323,7 @@
       "timing": "Zeitsetzung",
       "timingAuto": "Automatisch",
       "timingSections": "Anhand der Abschnitte",
-      "timingSpeech": "Nach Gehör (Sprache-in-Text)",
+      "timingSpeech": "Nach Gehör (Sprache-zu-Text)",
       "timingWorking": "Liedtext wird zeitlich gesetzt …",
       "title": "Song",
       "untitled": "Ohne Titel",
@@ -2391,7 +2392,10 @@
         "cutAgain": "Den Song erneut schneiden"
       },
       "cutSongIntoShots": "Den Song in Shots schneiden",
-      "lipSyncRange": "Ein Shot von {min} s oder mehr kann lippensynchron sein. Sein Clip dauert {clipMin} bis {clipMax} s: Ein Shot, der kürzer als {clipMin} s ist, bekommt stille Zeit, um ihn aufzufüllen."
+      "lipSyncRange": "Ein Shot von {min} s oder mehr kann lippensynchron sein. Sein Clip dauert {clipMin} bis {clipMax} s: Ein Shot, der kürzer als {clipMin} s ist, bekommt stille Zeit, um ihn aufzufüllen.",
+      "noteRough": "Tempo, Beats und Abschnitte werden aus Einsätzen und Lautstärke geschätzt; prüfe sie nach Gehör und bearbeite die Abschnitte bei Bedarf.",
+      "noteHint": "Das Tempo ist das, mit dem der Titel aus der Musikbibliothek erstellt wurde; die Beats liegen darauf.",
+      "noteNoBeat": "Es wurde kein gleichmäßiger Beat gefunden, daher gibt es keine Beats; die Schnitte folgen nur den Abschnitten."
     },
     "unsaved": {
       "title": "Dein Text wurde nicht gespeichert",
@@ -2459,7 +2463,7 @@
   "storyProjects": {
     "card": {
       "edited": "bearbeitet {when}",
-      "noShots": "noch keine Einstellungen",
+      "noShots": "noch keine Shots",
       "noTakes": "noch keine Bilder",
       "noPreview": "keine Vorschau",
       "stale": "{n} veraltet",
@@ -2481,7 +2485,7 @@
       "voice": "Stimme",
       "models": "Modelle"
     },
-    "empty": "Noch keine Projekte. Ein Projekt enthält deine Einstellungen, Takes und Sounds in einem Ordner, den du verschieben oder sichern kannst.",
+    "empty": "Noch keine Projekte. Ein Projekt enthält deine Shots, Takes und Sounds in einem Ordner, den du verschieben oder sichern kannst.",
     "exportBundle": "Bundle exportieren",
     "exportFailed": "Das Bundle konnte nicht exportiert werden.",
     "exported": "{name} exportiert · {size}",
@@ -2522,7 +2526,7 @@
     "close": "Schließen",
     "dismiss": "Schließen",
     "offline": "Warten auf das Backend…",
-    "pathPlaceholder": "/path/to/file",
+    "pathPlaceholder": "Vollständiger Pfad zur Datei",
     "pickUnavailable": "Die Dateiauswahl ist hier nicht verfügbar. Gib stattdessen den Pfad ein.",
     "films": {
       "title": "Film",
@@ -2585,7 +2589,7 @@
         "encode": "Kodieren",
         "join": "Zusammenfügen",
         "mix": "Ton mischen",
-        "normalise": "Einstellungen normalisieren"
+        "normalise": "Shots normalisieren"
       },
       "pixels": "{width} × {height} px.",
       "preset": {
@@ -2593,9 +2597,9 @@
         "portrait": "9:16",
         "square": "1:1"
       },
-      "reframeNote": "Beim Export neu zugeschnitten; Einstellungen werden nicht neu erzeugt.",
+      "reframeNote": "Beim Export neu zugeschnitten; Shots werden nicht neu erzeugt.",
       "resume": "Export fortsetzen",
-      "resumeNote": "{ready} von {total} Einstellungen sind schon fertig und werden wiederverwendet.",
+      "resumeNote": "{ready} von {total} Shots sind schon fertig und werden wiederverwendet.",
       "retry": "Erneut versuchen",
       "reveal": "Datei anzeigen",
       "stems": "Audiospuren als separate Dateien",
@@ -2622,8 +2626,8 @@
     "inspector": {
       "absolute": "Filmzeit (nicht verankert)",
       "anchor": "Anker",
-      "anchorShot": "Einstellung {n}: {name}",
-      "anchorSummary": "Bewegt sich mit Einstellung {n}. Versatz {offset} s.",
+      "anchorShot": "Shot {n}: {name}",
+      "anchorSummary": "Bewegt sich mit Shot {n}. Versatz {offset} s.",
       "anchorTo": "Verankert an",
       "duck": "Unter Stimme absenken",
       "duckTitle": "Senkt diesen Clip ab, solange jemand spricht (Sidechain-Kompression).",
@@ -2633,11 +2637,11 @@
       "gain": "Pegel",
       "loop": "Zum Füllen wiederholen",
       "name": "Name",
-      "nativeLevel": "Einstellungs-Tonpegel für Einstellung {n}",
+      "nativeLevel": "Shot-Tonpegel für Shot {n}",
       "offset": "Versatz",
       "remove": "Aus der Spur entfernen",
       "shotSpan": "Ab {start} s, {length} s lang",
-      "shotTitle": "Ausgewählte Einstellung",
+      "shotTitle": "Ausgewählter Shot",
       "start": "Beginnt bei",
       "title": "Ausgewählter Clip",
       "trim": "Kürzen",
@@ -2646,12 +2650,12 @@
     },
     "lane": {
       "music": "Musik",
-      "native": "Einstellungston",
+      "native": "Shot-Ton",
       "picture": "Bild",
       "sfx": "Effekte",
       "voice": "Stimme"
     },
-    "leftOut": "{n, plural, one {# Einstellung hat noch keinen Clip und wird in Vorschau und Export ausgelassen.} other {# Einstellungen haben noch keinen Clip und werden in Vorschau und Export ausgelassen.}}",
+    "leftOut": "{n, plural, one {# Shot hat noch keinen Clip und wird in Vorschau und Export ausgelassen.} other {# Shots haben noch keinen Clip und werden in Vorschau und Export ausgelassen.}}",
     "noLibraryYet": "Die Musikbibliothek ist noch nicht verfügbar. Wähle eine Datei oder gib ihren Pfad ein.",
     "preview": {
       "cancel": "Abbrechen",
@@ -2679,7 +2683,7 @@
       "zoomOut": "Verkleinern",
       "loadingCut": "Takes werden geladen, um den Film abzuspielen …"
     },
-    "emptyShots": "Noch nichts zu mischen. Erstelle zuerst Einstellungen im Tab Storyboard.",
+    "emptyShots": "Noch nichts zu mischen. Erstelle zuerst Shots im Tab Storyboard.",
     "openInStoryboard": "Im Storyboard öffnen",
     "openStoryboard": "Storyboard öffnen",
     "source": {
@@ -2706,8 +2710,8 @@
     "dismiss": "Schließen",
     "failed": "Konnte dem Storyboard nicht hinzugefügt werden: {detail}",
     "newProject": "Neues Projekt…",
-    "newShot": "Neue Einstellung",
-    "newTake": "Einstellung {n} (neuer Take)",
+    "newShot": "Neuer Shot",
+    "newTake": "Shot {n} (neuer Take)",
     "noFile": "Dieser Eintrag hat keine Datei zum Senden.",
     "send": "An Storyboard senden",
     "sending": "Wird gesendet…",
@@ -2946,7 +2950,7 @@
     "cast": "{n, plural, =0 {keine Besetzung} one {# in der Besetzung} other {# in der Besetzung}}",
     "noSound": "noch kein Ton",
     "settingsTitle": "Projekteinstellungen",
-    "sheet": "Einstellungen",
+    "sheet": "Shots",
     "sound": "{n, plural, one {# Tonclip} other {# Tonclips}}",
     "staleBadge": "Veraltet",
     "progressClips": "{shots, plural, one {# Shot} other {# Shots}} · {clips} mit Clip · {stills} nur Standbild · {stale} veraltet · {seconds} s",
@@ -2965,7 +2969,7 @@
     "adding": "Bild wird hinzugefügt…",
     "dropHint": "Lege hier ein Bild ab oder füge eines ein (PNG, JPEG oder WebP).",
     "galleryEmpty": "Keine gespeicherten Bilder passen.",
-    "noStills": "Noch keine Einstellung hat ein Standbild.",
+    "noStills": "Noch kein Shot hat ein Standbild.",
     "notPicture": "Wähle ein PNG-, JPEG- oder WebP-Bild.",
     "pastePath": "Stattdessen einen Pfad einfügen",
     "pathLabel": "Bildpfad",
@@ -2974,7 +2978,7 @@
     "source": {
       "file": "Datei auswählen",
       "gallery": "Bildergalerie",
-      "shot": "Aus einer Einstellung",
+      "shot": "Aus einem Shot",
       "computer": "Dieser Computer"
     },
     "sources": "Woher das Bild kommt",
@@ -3023,7 +3027,7 @@
     "ad30": "30-s-Spot",
     "blank": "Leer",
     "broll": "Szene / B-Roll",
-    "empty": "Keine Einstellungen",
+    "empty": "Keine Shots",
     "meta": "{aspect} · {shots, plural, one {# Shot} other {# Shots}}",
     "shots": {
       "adBenefit": {
@@ -3128,7 +3132,7 @@
     "useTyped": "Diese Stimme verwenden"
   },
   "runBar": {
-    "label": "Einstellungen erstellen",
+    "label": "Shots erstellen",
     "make": "{n} fehlende erstellen",
     "makeNone": "Fehlende erstellen",
     "makeTimed": "{n} fehlende erstellen · etwa {time}",

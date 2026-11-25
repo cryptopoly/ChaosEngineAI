@@ -18,9 +18,10 @@ export function fitLabel(fit: Fit, t: TFunction<"library">): string {
       return t("models.fit.wontFit", { defaultValue: "Won't fit" });
     default:
       // A gated row nobody has access to yet has no verdict either, but the machine is not the reason.
-      return fit.accessBlocked
-        ? t("models.fit.needsAccess", { defaultValue: "Needs access" })
-        : t("models.fit.unknown", { defaultValue: "Not for this machine" });
+      if (fit.accessBlocked) return t("models.fit.needsAccess", { defaultValue: "Needs access" });
+      // The machine could run it once the speech GPU part is ticked: not a hardware limit.
+      if (fit.needsGpuPart) return t("models.fit.needsGpuPart", { defaultValue: "Needs GPU part" });
+      return t("models.fit.unknown", { defaultValue: "Not for this machine" });
   }
 }
 

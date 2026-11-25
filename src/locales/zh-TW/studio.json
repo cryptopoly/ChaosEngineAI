@@ -814,7 +814,8 @@
         "all": "所有模型",
         "kokoro": "{count} 種快速語音，支援 {languages} 種語言，在任何電腦上都很快",
         "download": "需下載 {gb} GB",
-        "gpuMemory": "約需 {gb} GB GPU 記憶體"
+        "gpuMemory": "約需 {gb} GB GPU 記憶體",
+        "memory": "約 {gb} GB 記憶體"
       },
       "firstUseLine": "您選擇但尚未下載的模型，會在轉錄或語音輸入第一個檔案之前下載。請在「轉錄」中選擇語言，並勾選「設為預設」以保留。",
       "gpuDefaultLineSetup": "{name} 下載完成後會成為預設的語音轉文字模型，除非您另選其他模型。"
@@ -1050,7 +1051,7 @@
     },
     "stop": "停止",
     "studio": {
-      "title": "Voice Studio",
+      "title": "語音工作室",
       "openModels": "開啟語音模型",
       "cloneTask": "複製語音"
     },
@@ -2391,7 +2392,10 @@
         "cutAgain": "重新剪輯歌曲"
       },
       "cutSongIntoShots": "把歌曲剪成鏡頭",
-      "lipSyncRange": "{min} 秒或更長的鏡頭可以做嘴型同步。它的片段長度為 {clipMin} 到 {clipMax} 秒：短於 {clipMin} 秒的鏡頭會補上無聲的空白來湊足長度。"
+      "lipSyncRange": "{min} 秒或更長的鏡頭可以做嘴型同步。它的片段長度為 {clipMin} 到 {clipMax} 秒：短於 {clipMin} 秒的鏡頭會補上無聲的空白來湊足長度。",
+      "noteRough": "節奏、節拍和段落是依據起音和響度估算的；請用耳朵確認，必要時編輯段落。",
+      "noteHint": "節奏取自音樂庫曲目生成時的節奏；節拍依它放置。",
+      "noteNoBeat": "沒有找到穩定的節拍，因此沒有節拍；剪輯只跟隨段落。"
     },
     "unsaved": {
       "title": "您的文字未儲存",
@@ -2522,7 +2526,7 @@
     "close": "關閉",
     "dismiss": "關閉",
     "offline": "正在等待後端…",
-    "pathPlaceholder": "/path/to/file",
+    "pathPlaceholder": "檔案的完整路徑",
     "pickUnavailable": "此處無法使用檔案選擇器。請改為輸入路徑。",
     "films": {
       "title": "影片",

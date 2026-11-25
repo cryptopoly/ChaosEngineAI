@@ -691,7 +691,7 @@
       "bestFitTitle": "Die Empfehlung aus dieser Familie für diesen Rechner: die neueste Version, die komfortabel passt.",
       "estimated": "geschätzt",
       "estimatedNote": "Aus der Modellgröße geschätzt, nicht auf diesem Rechner gemessen.",
-      "estimatedShort": "gesch.",
+      "estimatedShort": "geschätzt",
       "fits": "Passt",
       "measured": "gemessen",
       "measuredNote": "Auf diesem Rechner gemessen.",
@@ -700,7 +700,8 @@
       "unknown": "Nicht für diesen Rechner",
       "needsAccess": "Zugang nötig",
       "wontFit": "Passt nicht",
-      "fitsOffload": "Passt mit Auslagerung"
+      "fitsOffload": "Passt mit Auslagerung",
+      "needsGpuPart": "GPU-Teil nötig"
     },
     "image": {
       "emptyAttention": "Kein Bildmodell muss geprüft werden.",

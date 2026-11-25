@@ -700,7 +700,8 @@
       "unknown": "De'wI'vamvaD Qapbe'",
       "needsAccess": null,
       "wontFit": "yapbe'",
-      "fitsOffload": null
+      "fitsOffload": null,
+      "needsGpuPart": null
     },
     "image": {
       "emptyAttention": "buS nISbogh mIllogh yab tu'lu'be'.",

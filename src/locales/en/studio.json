@@ -814,7 +814,8 @@
         "all": "All models",
         "kokoro": "{count} quick voices in {languages} languages, fast on any machine",
         "download": "{gb} GB download",
-        "gpuMemory": "about {gb} GB GPU memory"
+        "gpuMemory": "about {gb} GB GPU memory",
+        "memory": "about {gb} GB memory"
       },
       "firstUseLine": "A model you pick but have not downloaded downloads before the first file you transcribe or dictate. Choose the language in Transcribe and tick Remember as default to keep it.",
       "gpuDefaultLineSetup": "{name} becomes the default speech to text model once it is downloaded, unless you pick another."
@@ -2391,7 +2392,10 @@
         "cutAgain": "Cut the song again"
       },
       "cutSongIntoShots": "Cut the song into shots",
-      "lipSyncRange": "A shot of {min} s or more can lip-sync. Its clip lasts {clipMin} to {clipMax} s: a shot shorter than {clipMin} s gets silent room to fill it."
+      "lipSyncRange": "A shot of {min} s or more can lip-sync. Its clip lasts {clipMin} to {clipMax} s: a shot shorter than {clipMin} s gets silent room to fill it.",
+      "noteRough": "Tempo, beats and sections are estimated from onsets and loudness; check them by ear and edit the sections if needed.",
+      "noteHint": "The tempo is the one the Music library track was made at; beats are placed on it.",
+      "noteNoBeat": "No steady beat was found, so there are no beats; cuts follow the sections only."
     },
     "unsaved": {
       "title": "Your text was not saved",

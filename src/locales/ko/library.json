@@ -700,7 +700,8 @@
       "unknown": "이 컴퓨터용이 아님",
       "needsAccess": "접근 권한 필요",
       "wontFit": "부적합",
-      "fitsOffload": "오프로드하면 적합"
+      "fitsOffload": "오프로드하면 적합",
+      "needsGpuPart": "GPU 구성 요소 필요"
     },
     "image": {
       "emptyAttention": "확인이 필요한 이미지 모델이 없습니다.",

@@ -700,7 +700,8 @@
       "unknown": "このマシン向けではありません",
       "needsAccess": "アクセス権が必要",
       "wontFit": "収まらない",
-      "fitsOffload": "オフロードで収まる"
+      "fitsOffload": "オフロードで収まる",
+      "needsGpuPart": "GPU パーツが必要"
     },
     "image": {
       "emptyAttention": "要確認の画像モデルはありません。",

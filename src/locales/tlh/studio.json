@@ -771,6 +771,7 @@
       "kokoroLineAddon": null,
       "kokoroNotInstalled": null,
       "kokoroAddHint": null,
+      "naturalNeedsGpu": null,
       "macOnlySummary": null,
       "macOnlyNote": null,
       "macOnlyNoteVoices": null,
@@ -813,7 +814,8 @@
         "all": null,
         "kokoro": null,
         "download": null,
-        "gpuMemory": null
+        "gpuMemory": null,
+        "memory": null
       },
       "firstUseLine": null,
       "gpuDefaultLineSetup": null
@@ -2390,7 +2392,10 @@
         "cutAgain": null
       },
       "cutSongIntoShots": null,
-      "lipSyncRange": null
+      "lipSyncRange": null,
+      "noteRough": null,
+      "noteHint": null,
+      "noteNoBeat": null
     },
     "unsaved": {
       "title": null,
@@ -2521,7 +2526,7 @@
     "close": "yISoQmoH",
     "dismiss": "yISo'",
     "offline": "qoD pat loSlI'…",
-    "pathPlaceholder": "/path/to/file",
+    "pathPlaceholder": null,
     "pickUnavailable": "naDev nav wIvwI' tu'lu'be'. He yIghItlh.",
     "films": {
       "title": "lut",

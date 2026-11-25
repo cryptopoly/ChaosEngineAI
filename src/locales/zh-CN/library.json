@@ -700,7 +700,8 @@
       "unknown": "不适合本机",
       "needsAccess": "需要访问权限",
       "wontFit": "放不下",
-      "fitsOffload": "卸载后可放入"
+      "fitsOffload": "卸载后可放入",
+      "needsGpuPart": "需要 GPU 组件"
     },
     "image": {
       "emptyAttention": "没有需要关注的图像模型。",

@@ -814,7 +814,8 @@
         "all": "Tous les modèles",
         "kokoro": "{count} voix rapides en {languages} langues, rapides sur n'importe quelle machine",
         "download": "Téléchargement de {gb} Go",
-        "gpuMemory": "environ {gb} Go de mémoire GPU"
+        "gpuMemory": "environ {gb} Go de mémoire GPU",
+        "memory": "environ {gb} Go de mémoire"
       },
       "firstUseLine": "Un modèle que vous choisissez sans l'avoir téléchargé est téléchargé avant le premier fichier que vous transcrivez ou dictez. Choisissez la langue dans Transcrire et cochez Mémoriser par défaut pour la conserver.",
       "gpuDefaultLineSetup": "{name} devient le modèle de reconnaissance vocale par défaut une fois téléchargé, sauf si vous en choisissez un autre."
@@ -1050,7 +1051,7 @@
     },
     "stop": "Arrêter",
     "studio": {
-      "title": "Voice Studio",
+      "title": "Studio vocal",
       "openModels": "Ouvrir Modèles vocaux",
       "cloneTask": "Cloner une voix"
     },
@@ -2391,7 +2392,10 @@
         "cutAgain": "Redécouper la chanson"
       },
       "cutSongIntoShots": "Découper la chanson en plans",
-      "lipSyncRange": "Un plan de {min} s ou plus peut être en synchro labiale. Son clip dure de {clipMin} à {clipMax} s : un plan de moins de {clipMin} s reçoit du silence pour le remplir."
+      "lipSyncRange": "Un plan de {min} s ou plus peut être en synchro labiale. Son clip dure de {clipMin} à {clipMax} s : un plan de moins de {clipMin} s reçoit du silence pour le remplir.",
+      "noteRough": "Le tempo, les temps et les sections sont estimés à partir des attaques et du volume ; vérifiez-les à l'oreille et modifiez les sections si besoin.",
+      "noteHint": "Le tempo est celui auquel le morceau de la bibliothèque musicale a été créé ; les temps y sont placés.",
+      "noteNoBeat": "Aucun rythme régulier n'a été trouvé, donc il n'y a pas de temps ; les coupes suivent seulement les sections."
     },
     "unsaved": {
       "title": "Votre texte n'a pas été enregistré",
@@ -2522,7 +2526,7 @@
     "close": "Fermer",
     "dismiss": "Fermer",
     "offline": "En attente du backend…",
-    "pathPlaceholder": "/path/to/file",
+    "pathPlaceholder": "Chemin complet du fichier",
     "pickUnavailable": "Le sélecteur de fichiers n'est pas disponible ici. Saisissez plutôt le chemin.",
     "films": {
       "title": "Film",

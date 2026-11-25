@@ -700,7 +700,8 @@
       "unknown": "Not for this machine",
       "needsAccess": "Needs access",
       "wontFit": "Won't fit",
-      "fitsOffload": "Fits with offload"
+      "fitsOffload": "Fits with offload",
+      "needsGpuPart": "Needs GPU part"
     },
     "image": {
       "emptyAttention": "No image model needs attention.",

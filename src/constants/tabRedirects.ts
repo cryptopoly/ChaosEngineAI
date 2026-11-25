@@ -159,14 +159,18 @@ export function normalizeStoredTabId(value: unknown): string | null {
 /** Groups that no longer exist; what they remembered is dropped. */
 const RETIRED_GROUPS: ReadonlySet<string> = new Set(["storyboard"]);
 
-/** ``lastChildByGroup`` with every legacy id mapped and retired groups dropped. */
+/** Groups that open on their default child in every new session, whatever was open last time: Voice lands on its
+ * Studio, whose setup card installs what is missing (voice studio UX audit, change 10). */
+const ALWAYS_DEFAULT_GROUPS: ReadonlySet<string> = new Set(["voice"]);
+
+/** ``lastChildByGroup`` with every legacy id mapped, retired groups dropped and the always-default groups forgotten. */
 export function migrateLastChildByGroup<K extends string>(
   stored: Partial<Record<K, unknown>> | null | undefined,
 ): Partial<Record<K, string>> {
   const result: Partial<Record<K, string>> = {};
   if (!stored || typeof stored !== "object") return result;
   for (const [group, value] of Object.entries(stored) as Array<[K, unknown]>) {
-    if (RETIRED_GROUPS.has(group)) continue;
+    if (RETIRED_GROUPS.has(group) || ALWAYS_DEFAULT_GROUPS.has(group)) continue;
     const normalized = normalizeStoredTabId(value);
     if (normalized) result[group] = normalized;
   }

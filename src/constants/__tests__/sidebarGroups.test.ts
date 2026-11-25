@@ -59,10 +59,10 @@ describe("sidebarGroups", () => {
     expect(projects?.group).toBeUndefined();
   });
 
-  it("lists Voice like the other areas: Models first, opening on Models until the pack is installed", () => {
+  it("lists Voice like the other areas, Models first, but always opens on the Studio", () => {
     const voice = sidebarGroups.find((g) => g.id === "voice");
-    expect(voice?.defaultChild).toBe("voice-models");
-    expect(voice?.readyChild).toBe("voice-studio");
+    expect(voice?.defaultChild).toBe("voice-studio");
+    expect(voice?.readyChild).toBeUndefined();
     expect(tabs.filter((t) => t.group === "voice").map((t) => t.id)).toEqual(["voice-models", "voice-studio", "voice-gallery"]);
   });
 

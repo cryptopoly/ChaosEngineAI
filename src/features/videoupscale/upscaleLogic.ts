@@ -3,7 +3,9 @@
  * for the choice, which buttons a job's state shows, and the progress and time-left numbers. The backend
  * (``routes/video_upscale.py``) decides in the end; these rules only spare the user a request it would refuse.
  */
-import type { VideoUpscaleAddonStatus, VideoUpscaleJob, VideoUpscaleModel, VideoUpscaleRequest, VideoUpscaleState } from "../../api/videoUpscale";
+import type {
+  VideoUpscaleAddonStatus, VideoUpscaleJob, VideoUpscaleModel, VideoUpscaleProbe, VideoUpscaleRequest, VideoUpscaleState,
+} from "../../api/videoUpscale";
 
 /** The largest output side the backend makes (``video_upscale/engine.py`` ``MAX_SIDE``). */
 export const MAX_SIDE = 4096;
@@ -173,6 +175,47 @@ export function showInstallCard(status: VideoUpscaleAddonStatus | null): boolean
 export function missingModelIds(status: Pick<VideoUpscaleAddonStatus, "models">): string[] {
   return status.models.filter((model) => !model.installed).map((model) => model.id);
 }
+
+/** The size the probe read, or null before it answered. */
+export function probeSize(probe: Pick<VideoUpscaleProbe, "width" | "height"> | null): VideoSize | null {
+  return probe && probe.width > 0 && probe.height > 0 ? { width: probe.width, height: probe.height } : null;
+}
+
+/** The deinterlace box starts ticked only when the probe says the video is interlaced (not for false or unknown). */
+export function deinterlaceDefault(probe: Pick<VideoUpscaleProbe, "interlaced"> | null): boolean {
+  return probe?.interlaced === true;
+}
+
+/** "1:05", "12:30" or "1:02:03" for a length in seconds. */
+export function durationText(seconds: number): string {
+  const total = Math.max(0, Math.round(seconds));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const ss = String(s).padStart(2, "0");
+  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
+}
+
+/** A frame rate without trailing zeros: 25, 29.97. */
+export function fpsText(fps: number): string {
+  return String(Math.round(fps * 100) / 100);
+}
+
+/** What the media area of a finished job card shows; every URL is null until fetched or when the backend answered 404. */
+export interface UpscaleMediaView {
+  inputFrameUrl: string | null;
+  outputFrameUrl: string | null;
+  /** The frames are being fetched. */
+  loading: boolean;
+  /** The finished film as a playable URL, after Play the result. */
+  playUrl: string | null;
+  playState: "idle" | "loading" | "missing" | "error";
+  playError: string | null;
+}
+
+export const NO_MEDIA: UpscaleMediaView = {
+  inputFrameUrl: null, outputFrameUrl: null, loading: false, playUrl: null, playState: "idle", playError: null,
+};
 
 /** The file name of a local path, Windows or POSIX. */
 export function fileNameOf(path: string): string {

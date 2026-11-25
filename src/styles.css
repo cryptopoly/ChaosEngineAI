@@ -17657,6 +17657,33 @@ select.music-library__select {
   border-radius: 10px;
 }
 
+.video-upscale-recent__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.video-upscale-recent__list li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.video-upscale-recent__list li > button:first-child {
+  flex: 1;
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  text-align: left;
+}
+
+.video-upscale-recent__list li[aria-current="true"] > button:first-child {
+  border-color: var(--accent, currentColor);
+}
+
 .video-upscale-compare {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -17672,11 +17699,16 @@ select.music-library__select {
 }
 
 .video-upscale-compare video,
+.video-upscale-compare img,
 .video-upscale-compare__empty {
   width: 100%;
   aspect-ratio: 16 / 9;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.03);
+}
+
+.video-upscale-compare img {
+  object-fit: contain;
 }
 
 .video-upscale-compare__empty {

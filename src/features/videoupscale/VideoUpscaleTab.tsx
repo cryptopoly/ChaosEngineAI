@@ -1,7 +1,8 @@
 /**
  * The Upscale tab in the Video group (FU-617, fast tier): install the add-on on the first visit, then choose a
- * video, a quality row and a size, start, and follow the job (cancel, resume, open the result). One job at a
- * time; its id is remembered so a restart shows it again with Resume.
+ * video (its size, frame rate, length, sound and field order are read with the probe), a quality row and a size,
+ * start, and follow the job (cancel, resume, play or open the result). One job at a time; the newest jobs are
+ * listed to look at again, and the last job's id is remembered so a restart shows it with Resume.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -13,23 +14,32 @@ import {
   getVideoUpscaleAddonStatus,
   getVideoUpscaleJob,
   getVideoUpscaleModels,
+  listVideoUpscaleJobs,
+  probeVideoUpscaleInput,
   resumeVideoUpscaleJob,
   startVideoUpscale,
   startVideoUpscaleInstall,
   type VideoUpscaleAddonStatus,
   type VideoUpscaleJob,
   type VideoUpscaleModel,
+  type VideoUpscaleProbe,
 } from "../../api";
 import { UpscaleInstallCard } from "./UpscaleInstallCard";
 import { UpscaleJobCard } from "./UpscaleJobCard";
+import { UpscaleRecentJobs } from "./UpscaleRecentJobs";
+import { useUpscaleMedia } from "./useUpscaleMedia";
 import {
   MAX_SIDE,
   SIZE_CHOICES,
   defaultModelId,
   defaultSizeChoice,
+  deinterlaceDefault,
+  durationText,
   fileNameOf,
+  fpsText,
   isLive,
   missingModelIds,
+  probeSize,
   qualityOption,
   showInstallCard,
   sizeOption,
@@ -90,15 +100,21 @@ export function VideoUpscaleTab({ onRevealPath, onOpenPath }: VideoUpscaleTabPro
   const [modelId, setModelId] = useState<string | null>(null);
   const [sizeChoice, setSizeChoice] = useState<SizeChoice>("2x");
   const [deinterlace, setDeinterlace] = useState(false);
+  const [probe, setProbe] = useState<VideoUpscaleProbe | null>(null);
+  const [probing, setProbing] = useState(false);
+  const [probeError, setProbeError] = useState<string | null>(null);
+  const [deinterlaceAvailable, setDeinterlaceAvailable] = useState(true);
   const [job, setJob] = useState<VideoUpscaleJob | null>(null);
-  const [jobSource, setJobSource] = useState<UpscaleSource | null>(null);
+  const [recent, setRecent] = useState<VideoUpscaleJob[]>([]);
   const [startError, setStartError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [pickError, setPickError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const installPoll = useRef<number | null>(null);
 
-  const sourceSize: VideoSize | null = source?.width && source?.height ? { width: source.width, height: source.height } : previewSize;
+  // The probe's size is the file's own; a Gallery clip's size and the preview's size hold until it answers.
+  const sourceSize: VideoSize | null = probeSize(probe)
+    ?? (source?.width && source?.height ? { width: source.width, height: source.height } : previewSize);
 
   // The Gallery's request is taken once the tab shows it.
   useEffect(() => {
@@ -109,9 +125,14 @@ export function VideoUpscaleTab({ onRevealPath, onOpenPath }: VideoUpscaleTabPro
     getVideoUpscaleModels()
       .then((next) => {
         setModels(next.models);
+        setDeinterlaceAvailable(next.deinterlaceAvailable !== false);
         setModelId((current) => defaultModelId(next.models, current));
       })
       .catch(() => undefined);
+  }, []);
+
+  const loadRecent = useCallback(() => {
+    listVideoUpscaleJobs().then(setRecent).catch(() => undefined);
   }, []);
 
   const stopInstallPoll = () => {
@@ -150,9 +171,7 @@ export function VideoUpscaleTab({ onRevealPath, onOpenPath }: VideoUpscaleTabPro
     if (remembered) {
       getVideoUpscaleJob(remembered.id)
         .then((found) => {
-          if (cancelled) return;
-          setJob(found);
-          setJobSource(remembered.source);
+          if (!cancelled) setJob(found);
         })
         .catch(() => writeLastJob(null)); // gone (finished and cleaned up, or never started)
     }
@@ -183,8 +202,43 @@ export function VideoUpscaleTab({ onRevealPath, onOpenPath }: VideoUpscaleTabPro
     return () => window.clearInterval(timer);
   }, [jobId, jobLive]);
 
+  // The list follows the job: a new one, and every change of state (done, failed, cancelled).
+  const jobState = job?.state ?? null;
+  useEffect(() => {
+    loadRecent();
+  }, [loadRecent, jobId, jobState]);
+
   const previewUrl = useClipUrl(source?.artifactId ?? null);
-  const beforeUrl = useClipUrl(job?.state === "done" ? jobSource?.artifactId ?? null : null);
+  const media = useUpscaleMedia(job);
+
+  // Read the file's own size, frame rate, length, sound and field order whenever the path changes.
+  const sourcePath = source?.path ?? null;
+  useEffect(() => {
+    setProbe(null);
+    setProbeError(null);
+    setDeinterlace(false);
+    if (!sourcePath) {
+      setProbing(false);
+      return undefined;
+    }
+    let cancelled = false;
+    setProbing(true);
+    probeVideoUpscaleInput(sourcePath)
+      .then((found) => {
+        if (cancelled) return;
+        setProbe(found);
+        setDeinterlace(deinterlaceDefault(found));
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setProbeError(message(err));
+      })
+      .finally(() => {
+        if (!cancelled) setProbing(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sourcePath]);
 
   // Keep the size choice on something the new source allows.
   useEffect(() => {
@@ -226,10 +280,9 @@ export function VideoUpscaleTab({ onRevealPath, onOpenPath }: VideoUpscaleTabPro
     setBusy(true);
     setStartError(null);
     setActionError(null);
-    startVideoUpscale({ inputPath: source.path, modelId, ...sizePart, deinterlace })
+    startVideoUpscale({ inputPath: source.path, modelId, ...sizePart, deinterlace: deinterlace && deinterlaceAvailable })
       .then((started) => {
         setJob(started);
-        setJobSource(source);
         writeLastJob({ id: started.id, source });
       })
       .catch((err: unknown) => setStartError(message(err)))
@@ -246,19 +299,23 @@ export function VideoUpscaleTab({ onRevealPath, onOpenPath }: VideoUpscaleTabPro
       .finally(() => setBusy(false));
   };
 
-  const resume = () => {
-    if (!job) return;
+  const resumeJob = (target: VideoUpscaleJob) => {
+    setJob(target); // an error then shows on its card
     setBusy(true);
     setActionError(null);
-    resumeVideoUpscaleJob(job.id)
+    resumeVideoUpscaleJob(target.id)
       .then(setJob)
       .catch((err: unknown) => setActionError(message(err)))
       .finally(() => setBusy(false));
   };
 
+  const inspect = (target: VideoUpscaleJob) => {
+    setJob(target);
+    setActionError(null);
+  };
+
   const dismiss = () => {
     setJob(null);
-    setJobSource(null);
     setActionError(null);
     writeLastJob(null);
   };
@@ -278,7 +335,7 @@ export function VideoUpscaleTab({ onRevealPath, onOpenPath }: VideoUpscaleTabPro
     }
     if (option.block === "needsSize") {
       return t("videoUpscale.size.needsSize", {
-        defaultValue: "The target sizes need the video's own size, which the app only knows for Video Gallery clips. Choose 2x or 4x for other files.",
+        defaultValue: "The target sizes need the size of the video, which is read when you choose the file. Choose 2x or 4x until it has been read.",
       });
     }
     if (option.block === "notBigger") {
@@ -323,12 +380,13 @@ export function VideoUpscaleTab({ onRevealPath, onOpenPath }: VideoUpscaleTabPro
           <UpscaleJobCard
             job={job}
             modelLabel={models.find((model) => model.id === job.modelId)?.label ?? null}
-            beforeUrl={beforeUrl}
+            media={media}
             busy={busy}
             actionError={actionError}
             onCancel={cancel}
-            onResume={resume}
+            onResume={() => resumeJob(job)}
             onReveal={() => onRevealPath(job.output)}
+            onPlay={media.play}
             onOpen={() => onOpenPath(job.output)}
             onDismiss={dismiss}
           />
@@ -376,14 +434,25 @@ export function VideoUpscaleTab({ onRevealPath, onOpenPath }: VideoUpscaleTabPro
               ) : null}
               {source ? (
                 <p className="muted-text" title={source.path}>
-                  {sourceSize
-                    ? t("videoUpscale.source.chosenSized", {
-                        defaultValue: "{name}, {width} × {height}",
-                        name: fileNameOf(source.path), width: sourceSize.width, height: sourceSize.height,
+                  {probe
+                    ? t("videoUpscale.probe.line", {
+                        defaultValue: "{name}: {width} × {height}, {fps} frames a second, {duration}, {audio}",
+                        name: fileNameOf(source.path), width: probe.width, height: probe.height, fps: fpsText(probe.fps),
+                        duration: durationText(probe.durationSeconds),
+                        audio: probe.hasAudio
+                          ? t("videoUpscale.probe.withSound", { defaultValue: "with sound" })
+                          : t("videoUpscale.probe.noSound", { defaultValue: "no sound" }),
                       })
-                    : fileNameOf(source.path)}
+                    : sourceSize
+                      ? t("videoUpscale.source.chosenSized", {
+                          defaultValue: "{name}, {width} × {height}",
+                          name: fileNameOf(source.path), width: sourceSize.width, height: sourceSize.height,
+                        })
+                      : fileNameOf(source.path)}
+                  {probing ? ` ${t("videoUpscale.probe.reading", { defaultValue: "Reading the video…" })}` : ""}
                 </p>
               ) : null}
+              {probeError ? <p className="error-text">{probeError}</p> : null}
             </div>
 
             <div className="control-stack">
@@ -455,14 +524,32 @@ export function VideoUpscaleTab({ onRevealPath, onOpenPath }: VideoUpscaleTabPro
               {blockNotes.map((note) => <p key={note} className="muted-text">{note}</p>)}
             </div>
 
-            <label className="check-row">
-              <input type="checkbox" checked={deinterlace} onChange={(event) => setDeinterlace(event.target.checked)} />
-              <span>
-                {t("videoUpscale.deinterlace", {
-                  defaultValue: "Deinterlace first (for TV or tape recordings that show comb-like lines on movement)",
-                })}
-              </span>
-            </label>
+            <div className="control-stack">
+              <label className="check-row">
+                <input
+                  type="checkbox"
+                  checked={deinterlace && deinterlaceAvailable}
+                  disabled={!deinterlaceAvailable}
+                  onChange={(event) => setDeinterlace(event.target.checked)}
+                />
+                <span>
+                  {t("videoUpscale.deinterlace", {
+                    defaultValue: "Deinterlace first (for TV or tape recordings that show comb-like lines on movement)",
+                  })}
+                </span>
+              </label>
+              {!deinterlaceAvailable ? (
+                <p className="muted-text">
+                  {t("videoUpscale.deinterlaceUnavailable", {
+                    defaultValue: "Deinterlacing is not available: the video tools on this computer cannot do it.",
+                  })}
+                </p>
+              ) : probe?.interlaced === true ? (
+                <p className="muted-text">
+                  {t("videoUpscale.probe.interlaced", { defaultValue: "This video looks interlaced, so the box is ticked." })}
+                </p>
+              ) : null}
+            </div>
 
             <div className="button-row">
               <button type="button" className="primary-button" disabled={!canStart} onClick={start}>
@@ -475,6 +562,8 @@ export function VideoUpscaleTab({ onRevealPath, onOpenPath }: VideoUpscaleTabPro
             {startError ? <p className="error-text">{startError}</p> : null}
           </div>
         ) : null}
+
+        <UpscaleRecentJobs jobs={recent} selectedId={jobId} resumeDisabled={busy || jobLive} onSelect={inspect} onResume={resumeJob} />
       </Panel>
     </div>
   );

@@ -1,25 +1,26 @@
 /**
  * One upscale job: its state in words, frames done of total with the time left from the measured speed, and the
- * buttons its state allows (``jobButtons``). Done, it shows where the film went and the input's first frame
- * beside the result.
+ * buttons its state allows (``jobButtons``). Done, it shows where the film went and the first frame of the input
+ * beside the first frame of the result, with a button to play the result.
  */
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import type { VideoUpscaleJob } from "../../api/videoUpscale";
-import { etaParts, etaSeconds, fileNameOf, jobButtons, percentDone } from "./upscaleLogic";
+import { etaParts, etaSeconds, fileNameOf, jobButtons, percentDone, type UpscaleMediaView } from "./upscaleLogic";
 
 export interface UpscaleJobCardProps {
   job: VideoUpscaleJob;
   /** The quality row's label ("Fast"), when known. */
   modelLabel: string | null;
-  /** A playable URL of the input (a Video Gallery clip), for the before/after. */
-  beforeUrl: string | null;
+  /** The first frames of the input and the output, and the film once played, for the before/after. */
+  media: UpscaleMediaView;
   /** A request (cancel, resume) is in flight. */
   busy: boolean;
   actionError: string | null;
   onCancel: () => void;
   onResume: () => void;
   onReveal: () => void;
+  onPlay: () => void;
   onOpen: () => void;
   onDismiss: () => void;
 }
@@ -66,7 +67,7 @@ export function progressText(job: VideoUpscaleJob, t: TFunction<"studio">): stri
 }
 
 export function UpscaleJobCard({
-  job, modelLabel, beforeUrl, busy, actionError, onCancel, onResume, onReveal, onOpen, onDismiss,
+  job, modelLabel, media, busy, actionError, onCancel, onResume, onReveal, onPlay, onOpen, onDismiss,
 }: UpscaleJobCardProps) {
   const { t } = useTranslation("studio");
   const buttons = jobButtons(job);
@@ -106,11 +107,13 @@ export function UpscaleJobCard({
           <div className="video-upscale-compare">
             <figure>
               <figcaption>{t("videoUpscale.compare.before", { defaultValue: "Before" })}</figcaption>
-              {beforeUrl ? (
-                <video src={beforeUrl} preload="metadata" muted playsInline controls />
+              {media.inputFrameUrl ? (
+                <img src={media.inputFrameUrl} alt={t("videoUpscale.compare.beforeAlt", { defaultValue: "First frame of the original video" })} />
               ) : (
                 <div className="video-upscale-compare__empty muted-text">
-                  {t("videoUpscale.compare.beforeMissing", { defaultValue: "No preview of this file in the app." })}
+                  {media.loading
+                    ? t("videoUpscale.compare.loading", { defaultValue: "Loading the first frame…" })
+                    : t("videoUpscale.compare.beforeMissing", { defaultValue: "No preview of this file in the app." })}
                 </div>
               )}
             </figure>
@@ -118,11 +121,28 @@ export function UpscaleJobCard({
               <figcaption>
                 {t("videoUpscale.compare.after", { defaultValue: "After ({width} × {height})", width: job.width, height: job.height })}
               </figcaption>
-              <div className="video-upscale-compare__empty muted-text">
-                {t("videoUpscale.compare.afterOpen", { defaultValue: "Open the result to compare it at full size." })}
-              </div>
+              {media.outputFrameUrl ? (
+                <img src={media.outputFrameUrl} alt={t("videoUpscale.compare.afterAlt", { defaultValue: "First frame of the upscaled video" })} />
+              ) : (
+                <div className="video-upscale-compare__empty muted-text">
+                  {media.loading
+                    ? t("videoUpscale.compare.loading", { defaultValue: "Loading the first frame…" })
+                    : t("videoUpscale.compare.afterOpen", { defaultValue: "Open the result to compare it at full size." })}
+                </div>
+              )}
             </figure>
           </div>
+          {media.playUrl ? <video className="video-upscale-preview" src={media.playUrl} controls autoPlay playsInline /> : null}
+          {media.playState === "missing" ? (
+            <p className="muted-text">
+              {t("videoUpscale.compare.playMissing", {
+                defaultValue: "The app can no longer play this film itself (it was restarted since). Use Open the result or Show in folder.",
+              })}
+            </p>
+          ) : null}
+          {media.playState === "error" ? (
+            <p className="error-text">{t("videoUpscale.compare.playFailed", { defaultValue: "Could not load the film: {error}", error: media.playError || "?" })}</p>
+          ) : null}
         </>
       ) : null}
       {job.notes.length > 0 ? (
@@ -139,6 +159,13 @@ export function UpscaleJobCard({
         {buttons.resume ? (
           <button type="button" className="primary-button" disabled={busy} onClick={onResume}>
             {t("videoUpscale.job.resume", { defaultValue: "Resume" })}
+          </button>
+        ) : null}
+        {buttons.open ? (
+          <button type="button" className="secondary-button" disabled={media.playState === "loading"} onClick={onPlay}>
+            {media.playState === "loading"
+              ? t("videoUpscale.job.playLoading", { defaultValue: "Loading the film…" })
+              : t("videoUpscale.job.play", { defaultValue: "Play the result" })}
           </button>
         ) : null}
         {buttons.open ? (

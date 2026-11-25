@@ -3097,7 +3097,7 @@
       "target": "{height}p",
       "result": "The result will be {width} × {height}.",
       "limit": "The result would be {width}x{height}; the limit is {max} pixels on a side. Choose a smaller scale or a smaller target size.",
-      "needsSize": "The target sizes need the size of the video, which the app only knows for Video Gallery clips. Choose 2x or 4x for other files.",
+      "needsSize": "The target sizes need the size of the video, which is read when you choose the file. Choose 2x or 4x until it has been read.",
       "notBigger": "The video is already this tall or taller."
     },
     "deinterlace": "Deinterlace first (for TV or tape recordings that show comb-like lines on movement)",
@@ -3123,13 +3123,37 @@
       "resume": "Resume",
       "open": "Open the result",
       "reveal": "Show in folder",
-      "dismiss": "Close"
+      "dismiss": "Close",
+      "play": "Play the result",
+      "playLoading": "Loading the film…"
     },
     "compare": {
       "before": "Before",
       "beforeMissing": "No preview of this file in the app.",
       "after": "After ({width} × {height})",
-      "afterOpen": "Open the result to compare it at full size."
+      "afterOpen": "Open the result to compare it at full size.",
+      "beforeAlt": "First frame of the original video",
+      "afterAlt": "First frame of the upscaled video",
+      "loading": "Loading the first frame…",
+      "playMissing": "The app can no longer play this film itself (it was restarted since). Use Open the result or Show in folder.",
+      "playFailed": "Could not load the film: {error}"
+    },
+    "deinterlaceUnavailable": "Deinterlacing is not available: the video tools on this computer cannot do it.",
+    "probe": {
+      "line": "{name}: {width} × {height}, {fps} frames a second, {duration}, {audio}",
+      "withSound": "with sound",
+      "noSound": "no sound",
+      "reading": "Reading the video…",
+      "interlaced": "This video looks interlaced, so the box is ticked."
+    },
+    "recent": {
+      "label": "Recent upscales",
+      "queued": "Waiting",
+      "running": "Upscaling",
+      "done": "Done",
+      "failed": "Failed",
+      "cancelled": "Cancelled",
+      "interrupted": "Stopped"
     }
   }
 }

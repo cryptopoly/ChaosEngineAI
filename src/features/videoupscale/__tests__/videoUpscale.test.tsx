@@ -1,29 +1,36 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import i18n from "i18next";
-import type { VideoUpscaleAddonStatus, VideoUpscaleJob, VideoUpscaleModel } from "../../../api/videoUpscale";
+import type { VideoUpscaleAddonStatus, VideoUpscaleJob, VideoUpscaleModel, VideoUpscaleProbe } from "../../../api/videoUpscale";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(), isTauri: vi.fn(() => false) }));
 
 import { UpscaleInstallCard } from "../UpscaleInstallCard";
 import { UpscaleJobCard, etaText, progressText, stateText } from "../UpscaleJobCard";
+import { UpscaleRecentJobs, stateLabel } from "../UpscaleRecentJobs";
 import {
   MAX_SIDE,
+  NO_MEDIA,
   defaultModelId,
   defaultSizeChoice,
+  deinterlaceDefault,
+  durationText,
   etaParts,
   etaSeconds,
   even,
+  fpsText,
   installSizeMb,
   installStep,
   jobButtons,
   missingModelIds,
   outputSize,
   percentDone,
+  probeSize,
   qualityOption,
   showInstallCard,
   sizeOption,
   sizeRequest,
+  type UpscaleMediaView,
 } from "../upscaleLogic";
 import { clearUpscaleRequest, peekUpscaleRequest, requestUpscale } from "../upscaleSource";
 import { upscaleSourceOf } from "../../video/VideoGalleryTab";
@@ -207,10 +214,11 @@ describe("install card", () => {
 });
 
 describe("job card", () => {
-  const card = (value: VideoUpscaleJob, beforeUrl: string | null = null) => renderToStaticMarkup(
-    <UpscaleJobCard job={value} modelLabel="Fast" beforeUrl={beforeUrl} busy={false} actionError={null}
-      onCancel={noop} onResume={noop} onReveal={noop} onOpen={noop} onDismiss={noop} />,
+  const card = (value: VideoUpscaleJob, media: UpscaleMediaView = NO_MEDIA) => renderToStaticMarkup(
+    <UpscaleJobCard job={value} modelLabel="Fast" media={media} busy={false} actionError={null}
+      onCancel={noop} onResume={noop} onReveal={noop} onPlay={noop} onOpen={noop} onDismiss={noop} />,
   );
+  const done = (extra: Partial<VideoUpscaleJob> = {}) => job({ state: "done", framesDone: 2400, fraction: 1, ...extra });
 
   it("shows progress and Cancel while running", () => {
     const html = card(job());
@@ -226,13 +234,106 @@ describe("job card", () => {
     expect(html).not.toContain(">Cancel<");
   });
 
-  it("shows the output path, Open, Show in folder and the before/after when done", () => {
-    const html = card(job({ state: "done", framesDone: 2400, fraction: 1 }), "blob:before");
+  it("shows the output path, Play, Open and Show in folder when done", () => {
+    const html = card(done());
     expect(html).toContain("Saved as C:/out/videos/upscaled/tape-x-1440x1152.mp4");
+    expect(html).toContain("Play the result");
     expect(html).toContain("Open the result");
     expect(html).toContain("Show in folder");
-    expect(html).toContain('src="blob:before"');
     expect(html).toContain("After (1440 × 1152)");
+  });
+
+  it("shows the first frames side by side, and the film once played", () => {
+    const html = card(done(), { ...NO_MEDIA, inputFrameUrl: "blob:in", outputFrameUrl: "blob:out", playUrl: "blob:film" });
+    expect(html).toContain('<img src="blob:in"');
+    expect(html).toContain('<img src="blob:out"');
+    expect(html.indexOf("blob:in")).toBeLessThan(html.indexOf("blob:out"));
+    expect(html).toContain('src="blob:film"');
+    expect(card(done())).not.toContain("<video");
+  });
+
+  it("falls back to the placeholders, with Open and Show in folder, when the backend answers 404", () => {
+    const html = card(done(), { ...NO_MEDIA, playState: "missing" });
+    expect(html).not.toContain("<img");
+    expect(html).toContain("No preview of this file in the app.");
+    expect(html).toContain("Open the result to compare it at full size.");
+    expect(html).toContain("it was restarted since");
+    expect(html).toContain("Open the result</button>");
+    expect(html).toContain("Show in folder</button>");
+  });
+
+  it("says the frames are loading, and shows a play error word for word", () => {
+    expect(card(done(), { ...NO_MEDIA, loading: true })).toContain("Loading the first frame…");
+    expect(card(done(), { ...NO_MEDIA, playState: "error", playError: "disk full" })).toContain("Could not load the film: disk full");
+    expect(card(done(), { ...NO_MEDIA, playState: "loading" })).toContain("Loading the film…");
+  });
+});
+
+describe("what the probe tells", () => {
+  const probe = (extra: Partial<VideoUpscaleProbe> = {}): VideoUpscaleProbe => ({
+    inputPath: "C:/clips/tape.mp4", width: 720, height: 576, fps: 25, durationSeconds: 3725, frames: 93125,
+    hasAudio: true, interlaced: true, ...extra,
+  });
+
+  it("gives the size choices any file's size, with the limit and taller-than-source rules kept", () => {
+    const size = probeSize(probe());
+    expect(size).toEqual({ width: 720, height: 576 });
+    expect(probeSize(null)).toBeNull();
+    expect(sizeOption("1080p", size).block).toBeNull();
+    expect(sizeRequest("2160p", size)).toEqual({ width: 2700, height: 2160 });
+    expect(sizeOption("4x", probeSize(probe({ width: 1920, height: 1080 }))).block).toBe("limit");
+    expect(sizeOption("1080p", probeSize(probe({ width: 1920, height: 1080 }))).block).toBe("notBigger");
+  });
+
+  it("ticks deinterlace only for a video that is interlaced", () => {
+    expect(deinterlaceDefault(probe())).toBe(true);
+    expect(deinterlaceDefault(probe({ interlaced: false }))).toBe(false);
+    expect(deinterlaceDefault(probe({ interlaced: null }))).toBe(false);
+    expect(deinterlaceDefault(null)).toBe(false);
+  });
+
+  it("words the length, the frame rate and the line", () => {
+    expect(durationText(65)).toBe("1:05");
+    expect(durationText(3725)).toBe("1:02:05");
+    expect(durationText(0.4)).toBe("0:00");
+    expect(fpsText(25)).toBe("25");
+    expect(fpsText(29.97)).toBe("29.97");
+    expect(fpsText(23.976023)).toBe("23.98");
+    expect(t("videoUpscale.probe.line", { name: "tape.mp4", width: 720, height: 576, fps: "25", duration: "1:02:05", audio: "with sound" }))
+      .toBe("tape.mp4: 720 × 576, 25 frames a second, 1:02:05, with sound");
+  });
+});
+
+describe("recent jobs", () => {
+  const list = (jobs: VideoUpscaleJob[], extra: { selectedId?: string | null; resumeDisabled?: boolean } = {}) => renderToStaticMarkup(
+    <UpscaleRecentJobs jobs={jobs} selectedId={extra.selectedId ?? null} resumeDisabled={extra.resumeDisabled ?? false}
+      onSelect={noop} onResume={noop} />,
+  );
+
+  it("shows nothing for an empty list", () => {
+    expect(list([])).toBe("");
+  });
+
+  it("lists the jobs in the order given, with their state, and Resume only where the job can resume", () => {
+    const html = list([
+      job({ id: "a", state: "done", input: "C:/clips/new.mp4", framesDone: 2400 }),
+      job({ id: "b", state: "interrupted", input: "C:/clips/old.mp4", resumable: true }),
+      job({ id: "c", state: "failed", input: "C:/clips/bad.mp4", resumable: false }),
+    ], { selectedId: "a" });
+    expect(html.indexOf("new.mp4")).toBeLessThan(html.indexOf("old.mp4"));
+    expect(html).toContain("Recent upscales");
+    expect(html).toContain("Done");
+    expect(html).toContain("Stopped");
+    expect(html).toContain("Failed");
+    expect(html.match(/>Resume</g)).toHaveLength(1);
+    expect(html).toContain('aria-current="true"');
+    expect(list([job({ state: "interrupted", resumable: true })], { resumeDisabled: true })).toContain("disabled");
+  });
+
+  it("names a running job's progress and every state", () => {
+    expect(list([job()])).toContain("Upscaling");
+    expect(stateLabel("queued", t)).toBe("Waiting");
+    expect(stateLabel("cancelled", t)).toBe("Cancelled");
   });
 });
 

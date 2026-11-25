@@ -4,7 +4,7 @@
  * same request again returns the same job.
  */
 
-import { fetchJson, postJson } from "./index";
+import { apiFetch, fetchJson, postJson, readErrorDetail } from "./index";
 import type { ModelFit } from "../types/models";
 
 export type VideoUpscaleInstallPhase = "idle" | "packages" | "weights" | "check" | "done" | "error";
@@ -61,6 +61,22 @@ export interface VideoUpscaleModel {
 export interface VideoUpscaleModels {
   models: VideoUpscaleModel[];
   addonInstalled: boolean;
+  /** False when the video tools cannot deinterlace on this machine (the tab disables the option). */
+  deinterlaceAvailable: boolean;
+}
+
+/** ``POST /api/video/upscale/probe``: what the backend reads from a file before a start. */
+export interface VideoUpscaleProbe {
+  /** The resolved path. */
+  inputPath: string;
+  width: number;
+  height: number;
+  fps: number;
+  durationSeconds: number;
+  frames: number;
+  hasAudio: boolean;
+  /** True or false when the field order is known, null when it could not be told. */
+  interlaced: boolean | null;
 }
 
 export type VideoUpscaleState = "queued" | "running" | "done" | "failed" | "cancelled" | "interrupted";
@@ -125,4 +141,38 @@ export async function cancelVideoUpscaleJob(jobId: string): Promise<{ cancelled:
 
 export async function resumeVideoUpscaleJob(jobId: string): Promise<VideoUpscaleJob> {
   return await postJson<VideoUpscaleJob>(`/api/video/upscale/jobs/${encodeURIComponent(jobId)}/resume`, {}, 60000);
+}
+
+export async function probeVideoUpscaleInput(inputPath: string): Promise<VideoUpscaleProbe> {
+  return await postJson<VideoUpscaleProbe>("/api/video/upscale/probe", { inputPath }, 60000);
+}
+
+/** The 20 newest jobs, newest first. */
+export async function listVideoUpscaleJobs(): Promise<VideoUpscaleJob[]> {
+  const body = await fetchJson<{ jobs: VideoUpscaleJob[] }>("/api/video/upscale/jobs", 10000);
+  return body.jobs;
+}
+
+/**
+ * A media route of a finished job as a blob URL (the API token travels in a header, so a media element cannot
+ * point at the route itself). ``null`` when the backend answers 404: it was restarted and removed the job's
+ * work folder, or the film is gone. The caller revokes the URL.
+ */
+async function fetchJobMediaUrl(path: string): Promise<string | null> {
+  const response = await apiFetch(path, { method: "GET" });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(await readErrorDetail(response, `Request failed with status ${response.status}`));
+  return URL.createObjectURL(await response.blob());
+}
+
+export type VideoUpscaleFrameSide = "input" | "output";
+
+/** The first frame of a job's input or finished output as a PNG blob URL, or ``null`` on 404. */
+export async function fetchVideoUpscaleFrameUrl(jobId: string, which: VideoUpscaleFrameSide): Promise<string | null> {
+  return await fetchJobMediaUrl(`/api/video/upscale/jobs/${encodeURIComponent(jobId)}/frame?which=${which}`);
+}
+
+/** The finished film as a blob URL a ``<video>`` can play, or ``null`` on 404. */
+export async function fetchVideoUpscaleFileUrl(jobId: string): Promise<string | null> {
+  return await fetchJobMediaUrl(`/api/video/upscale/jobs/${encodeURIComponent(jobId)}/file`);
 }

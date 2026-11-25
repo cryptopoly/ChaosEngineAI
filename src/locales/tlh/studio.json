@@ -3123,13 +3123,37 @@
       "resume": null,
       "open": null,
       "reveal": null,
-      "dismiss": null
+      "dismiss": null,
+      "play": null,
+      "playLoading": null
     },
     "compare": {
       "before": null,
       "beforeMissing": null,
       "after": null,
-      "afterOpen": null
+      "afterOpen": null,
+      "beforeAlt": null,
+      "afterAlt": null,
+      "loading": null,
+      "playMissing": null,
+      "playFailed": null
+    },
+    "deinterlaceUnavailable": null,
+    "probe": {
+      "line": null,
+      "withSound": null,
+      "noSound": null,
+      "reading": null,
+      "interlaced": null
+    },
+    "recent": {
+      "label": null,
+      "queued": null,
+      "running": null,
+      "done": null,
+      "failed": null,
+      "cancelled": null,
+      "interrupted": null
     }
   }
 }

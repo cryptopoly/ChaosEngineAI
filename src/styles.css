@@ -16039,67 +16039,6 @@ select.music-library__select {
   font-size: 0.75rem;
   color: var(--muted-strong);
 }
-.overview-tab__next {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: var(--panel-padding);
-  border: 1px solid var(--accent-storyboard);
-  border-radius: var(--radius-md);
-  background: var(--panel-alt);
-}
-.overview-tab__next h3,
-.overview-tab__next p {
-  margin: 0;
-}
-.overview-checklist {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin: 6px 0 0;
-  padding: 0;
-  list-style: none;
-}
-.overview-checklist__row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.overview-checklist__mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  color: var(--success);
-  flex: 0 0 auto;
-}
-.overview-checklist__row.is-done .overview-checklist__mark {
-  border-color: var(--success);
-}
-.overview-checklist__row.is-done .overview-checklist__link {
-  color: var(--muted);
-  text-decoration: line-through;
-}
-.overview-checklist__link {
-  padding: 4px 0;
-  border: 0;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-size: 0.9rem;
-  text-align: left;
-  cursor: pointer;
-}
-.overview-checklist__link:hover {
-  text-decoration: underline;
-}
-.overview-checklist__link:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
 .contact-sheet .contact-sheet__thumb {
   aspect-ratio: var(--sheet-ratio, 16 / 9);
 }

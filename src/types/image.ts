@@ -58,6 +58,8 @@ export type ImageCacheStrategyId =
   | "pab";
 
 export interface ImageModelVariant {
+  /** The licence of the weights (D0135): name, link, commercial use, gated. Hugging Face's own field is `license`. */
+  licence?: import("../components/LicenceChip").ModelLicence;
   id: string;
   familyId: string;
   name: string;

@@ -1508,6 +1508,11 @@
       "noCommercial": "{name} · sin uso comercial",
       "gated": "Restringido"
     },
+    "note": {
+      "commercial": "Uso comercial permitido",
+      "limited": "Uso comercial limitado",
+      "noCommercial": "No apto para uso comercial"
+    },
     "screen": {
       "asks": "Lo que te exige esta licencia",
       "gatedNote": "Este modelo es de acceso restringido: acepta los términos en Hugging Face y luego descárgalo aquí con tu token (Preferencias > Hugging Face).",

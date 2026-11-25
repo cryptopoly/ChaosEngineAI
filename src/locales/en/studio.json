@@ -1508,6 +1508,11 @@
       "noCommercial": "{name} · no commercial use",
       "gated": "Gated"
     },
+    "note": {
+      "commercial": "Commercial use allowed",
+      "limited": "Limited commercial use",
+      "noCommercial": "Not for commercial use"
+    },
     "screen": {
       "asks": "What this licence asks of you",
       "gatedNote": "This model is gated: accept the terms on Hugging Face, then download here with your token (Settings > Hugging Face).",

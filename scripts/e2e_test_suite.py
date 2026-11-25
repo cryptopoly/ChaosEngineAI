@@ -665,6 +665,7 @@ def phase_0(cap: Capability) -> PhaseResult:
         ("inventory", _inventory),
         ("catalog vision tags", _catalog_vision),
         ("tensorfold catalog vs registry (FU-093)", _catalog_tensorfold),
+        ("text catalogue rows carry a structured licence (D0135)", lambda: _model_licences.catalog_licences(sys.modules[__name__], "text")),
         ("rag status (#1)", _rag_status),
         ("native-api-compat (#3)", _native_api_compat),
         ("model import scan (#4)", _model_import_scan),
@@ -2120,6 +2121,7 @@ def phase_4(cap: Capability) -> PhaseResult:
         ("mflux image rows in the catalog (FU-096)", _mflux_catalog_rows),
         ("fit ratings and size limits in the catalogs (FU-133)", _fit_and_limits),
         ("image rows carry estimateRef (FU-165)", lambda: _time_estimate.catalog_refs(sys.modules[__name__], "image")),
+        ("image rows carry a structured licence (D0135)", lambda: _model_licences.catalog_licences(sys.modules[__name__], "image")),
         ("territory-gated rows absent and refused without a confirmation (D-76)", lambda: _territory_gate.check(sys.modules[__name__], "image")),
         ("CUDA estimates judge the card's own memory (FU-164)", _cuda_estimates),
         ("FLUX.1 sd.cpp variants pin real GGUF files (FU-096)", _flux_sdcpp_catalog),
@@ -2473,6 +2475,7 @@ def phase_5(cap: Capability) -> PhaseResult:
     for name, fn in [("catalog", _catalog), ("library", _library),
                       ("mlx-runtime", _mlx_runtime), ("generate", _generate),
                       ("video rows carry estimateRef (FU-165)", lambda: _time_estimate.catalog_refs(sys.modules[__name__], "video")),
+                      ("video rows carry a structured licence (D0135)", lambda: _model_licences.catalog_licences(sys.modules[__name__], "video")),
                       ("territory-gated rows absent and refused without a confirmation (D-76)", lambda: _territory_gate.check(sys.modules[__name__], "video")),
         ("MiniMax H3 terms: live licence link, AUP in the tick, hosted-service notice (D-99)", lambda: _rtx4090.h3_notice_terms(sys.modules[__name__])),
                       ("LTX-2.5 on ltx-2-mlx (routing + live)", _ltx2_engine),
@@ -4040,6 +4043,7 @@ PHASES = {
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from e2e_phases.phase_14 import phase_14  # noqa: E402
 from e2e_phases import time_estimate as _time_estimate  # noqa: E402
+from e2e_phases import model_licences as _model_licences  # noqa: E402
 from e2e_phases import territory_gate as _territory_gate  # noqa: E402
 from e2e_phases import new_media_rows as _new_media_rows  # noqa: E402
 from e2e_phases import rtx4090_pass as _rtx4090  # noqa: E402

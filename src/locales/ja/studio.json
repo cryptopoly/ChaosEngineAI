@@ -1508,6 +1508,11 @@
       "noCommercial": "{name} · 商用不可",
       "gated": "ゲート付き"
     },
+    "note": {
+      "commercial": "商用利用可",
+      "limited": "商用利用は制限あり",
+      "noCommercial": "商用利用不可"
+    },
     "screen": {
       "asks": "このライセンスがあなたに求めること",
       "gatedNote": "このモデルはゲート付きです。先に Hugging Face で規約に同意し、その後トークンを使ってここからダウンロードしてください（設定 > Hugging Face）。",

@@ -21,7 +21,7 @@ import type { TabRequest } from "../../constants/tabRedirects";
 import { IconActionButton, StatusIcon } from "../../components/ModelActionIcons";
 import { InstallLogPanel } from "../../components/InstallLogPanel";
 import { SlowRowChip, SlowRowNote } from "../../components/SlowRowNote";
-import { LicenceChip } from "../../components/LicenceChip";
+import { LicenceNote } from "../../components/LicenceChip";
 import { TerritoryGateNotice } from "../../components/TerritoryGateNotice";
 import { slowAlternativeName as slowAlternativeNameFor, slowRowInfo } from "../../utils/slowRows";
 import {
@@ -374,7 +374,8 @@ export function VideoModelsPage({
           repo: entry.shared.key,
         })
       : undefined;
-    const license = formatImageLicenseLabel(entry.license);
+    // The curated licence (name, link, commercial use) replaces the bare Hugging Face field, which says "Other" for many.
+    const license = variant.licence ? null : formatImageLicenseLabel(entry.license);
     const friendlyError = formatImageAccessError(download?.error, variant);
     const needsGatedAccess = isGatedImageAccessError(download?.error);
     const longLiveInstalling = entry.longLive && status.state === "downloading";
@@ -400,7 +401,7 @@ export function VideoModelsPage({
           </span>
         ) : null}
         {slow ? <SlowRowChip info={slow} alternativeName={slowAlternativeName} /> : null}
-        {variant.licence?.territoryRestricted ? <LicenceChip licence={variant.licence} /> : null}
+        {variant.licence ? <LicenceNote licence={variant.licence} onOpenLink={onOpenExternalUrl} /> : null}
         <AcceleratorPills ids={entry.accelerators} capabilities={nativeBackends ?? null} />
       </>
     );

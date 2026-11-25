@@ -1508,6 +1508,11 @@
       "noCommercial": "{name} · 禁止商用",
       "gated": "受限"
     },
+    "note": {
+      "commercial": "允许商业使用",
+      "limited": "商业使用受限",
+      "noCommercial": "不可商业使用"
+    },
     "screen": {
       "asks": "此许可证对你的要求",
       "gatedNote": "此模型为受限模型：请先在 Hugging Face 上接受条款，然后使用你的令牌在此下载（设置 > Hugging Face）。",

@@ -16,6 +16,7 @@ import type { DiscoverSort, ImageDiscoverAccessFilter, ImageDiscoverTaskFilter }
 import type { NativeBackendStatus } from "../../types/server";
 import type { TabRequest } from "../../constants/tabRedirects";
 import { IconActionButton } from "../../components/ModelActionIcons";
+import { LicenceNote } from "../../components/LicenceChip";
 import { TerritoryGateNotice } from "../../components/TerritoryGateNotice";
 import {
   AcceleratorPills,
@@ -313,7 +314,8 @@ export function ImageModelsPage({
           repo: entry.shared.key,
         })
       : undefined;
-    const license = formatImageLicenseLabel(entry.license);
+    // The curated licence (name, link, commercial use) replaces the bare Hugging Face field, which says "Other" for many.
+    const license = variant.licence ? null : formatImageLicenseLabel(entry.license);
     const friendlyError = formatImageAccessError(download?.error, variant);
     const needsGatedAccess = isGatedImageAccessError(download?.error);
 
@@ -334,6 +336,7 @@ export function ImageModelsPage({
             {t("imageDiscover.trackedOnly.badge", { defaultValue: "Watching upstream" })}
           </span>
         ) : null}
+        {variant.licence ? <LicenceNote licence={variant.licence} onOpenLink={onOpenExternalUrl} /> : null}
         <AcceleratorPills ids={entry.accelerators} capabilities={nativeBackends ?? null} />
       </>
     );

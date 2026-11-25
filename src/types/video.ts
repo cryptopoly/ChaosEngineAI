@@ -18,7 +18,7 @@ export type VideoCacheStrategyId =
 export type VideoModelTask = "txt2video" | "img2video" | "video2video";
 
 export interface VideoModelVariant {
-  /** Territory-limited rows (D-76): the licence, shown as a chip once the user confirmed the statement. */
+  /** The licence of the weights (D0135); a territory-limited row (D-76) also shows once the user confirmed the statement. */
   licence?: import("../components/LicenceChip").ModelLicence;
   /** Key of the territory statement the row needs (``minimax-h3``); hidden from the catalog until confirmed. */
   territoryGate?: string;

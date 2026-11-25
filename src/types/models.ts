@@ -27,6 +27,8 @@ export interface ModelFit {
 }
 
 export interface ModelVariant {
+  /** The licence of the weights (D0135): name, link, commercial use, gated. */
+  licence?: import("../components/LicenceChip").ModelLicence;
   id: string;
   familyId: string;
   name: string;

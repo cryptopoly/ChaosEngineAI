@@ -1508,6 +1508,11 @@
       "noCommercial": "{name} · mech chaw' Hutlh",
       "gated": "ngaQ"
     },
+    "note": {
+      "commercial": null,
+      "limited": null,
+      "noCommercial": null
+    },
     "screen": {
       "asks": "chaw'vam poQbogh Doch",
       "gatedNote": "ngaQ yabvam: Hugging FaceDaq mab yIlaj, ghIq naDev tokenlIj yIlo' 'ej yIlI' (SeHlaw > Hugging Face).",

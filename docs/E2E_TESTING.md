@@ -18,12 +18,12 @@ or no FLUX weights are on disk.
 
 | Phase | Surface | What it proves |
 |-------|---------|----------------|
-| 0 | Environment probe | Backend reachable, OpenAPI advertises ≥100 routes, GPU detected, MTPLX/DFlash/TensorFold registries populated, and every TensorFold catalog row agrees with the registry (exclusive families are tagged for the TensorFold backend; checkpoints that can read images carry the vision tag). |
+| 0 | Environment probe | Backend reachable, OpenAPI advertises ≥100 routes, GPU detected, MTPLX/DFlash/TensorFold registries populated, and every TensorFold catalog row agrees with the registry (exclusive families are tagged for the TensorFold backend; checkpoints that can read images carry the vision tag). Every text catalogue row carries a structured licence (name, https link, commercial use `yes`, `limited` or `no`, gated flag, one-sentence summary; D0135, `scripts/e2e_phases/model_licences.py`, `tests/test_model_licences.py`). |
 | 1 | Chat — text generation | MLX + GGUF backends both produce tokens. Cache strategies (Native f16, TurboQuant). Speculative decoding paths (DFlash, MTPLX, TensorFold) route correctly per `runtimeNote` / engine. `cache-preview` returns sane numbers at 32k+ context. `--fused-attention` honoured. |
 | 2 | Chat Compare | `/api/chat/compare` accepts two-slot payload and returns 200. `chaosengine-cli chat` loads a local MLX model, answers two turns in one chat, starts a second with `/new`, and leaves on `/exit` (skips without a local MLX model). |
 | 3 | HTML Challenge | List + create + delete round-trip. Skipped when no MLX text model on disk. |
-| 4 | Image Studio | Catalog, library, runtime probes pass. If a model is installed, runs a 4-step 256×256 generation and confirms the artifact lands. |
-| 5 | Video Studio | Same shape as Phase 4 — catalog, library, mlx-runtime probes. Generation runs against any installed video model. |
+| 4 | Image Studio | Catalog, library, runtime probes pass. If a model is installed, runs a 4-step 256×256 generation and confirms the artifact lands. Every image row carries the same licence object (D0135). |
+| 5 | Video Studio | Same shape as Phase 4 — catalog, library, mlx-runtime probes. Generation runs against any installed video model. Every video row carries the same licence object (D0135). |
 | 6 | Setup probes (read-only) | `mtplx-status`, `tensorfold-status`, `longlive-status`, `wan-status/inventory`, `gpu-bundle-info/status`, `turbo-update-check`. Destructive install actions are intentionally NOT run (too slow + side-effecty for a routine suite). |
 | 7 | Diagnostics + cleanup | `diagnostics-snapshot` + `log-tail` return data. No orphan MLX / llama-server / MTPLX / TensorFold subprocesses left dangling. Runtime returns to `idle` or `loaded` (not `error`). |
 | 8 | Voice I/O | Voice runtime, STT/TTS lanes, synthesize, transcribe, library. |

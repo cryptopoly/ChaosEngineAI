@@ -108,7 +108,7 @@ class LicenceShapeTests(unittest.TestCase):
         _check_shape(self, h3["id"], h3["licence"])
 
 
-class RoutePayloadTests(unittest.TestCase):
+class _ClientCase(unittest.TestCase):
     def setUp(self):
         for patcher in (
             mock.patch("backend_service.helpers.video._image_repo_live_metadata", lambda repo: {}),
@@ -121,6 +121,8 @@ class RoutePayloadTests(unittest.TestCase):
     def _variants(self, families: list[dict[str, Any]]) -> list[dict[str, Any]]:
         return [v for f in families for v in f.get("variants") or []]
 
+
+class RoutePayloadTests(_ClientCase):
     def test_the_image_catalogue_route_carries_it(self):
         payload = self.client.get("/api/images/catalog", headers=H).json()
         variants = self._variants(payload["families"])
@@ -152,6 +154,56 @@ class RoutePayloadTests(unittest.TestCase):
         self.assertGreater(len(variants), 100)
         for variant in variants:
             _check_shape(self, variant["id"], variant.get("licence"))
+
+
+class E2eCheckTests(_ClientCase):
+    """The suite's check (scripts/e2e_phases/model_licences.py) against the in-process routes."""
+
+    def setUp(self):
+        super().setUp()
+        import importlib.util
+        import sys
+        from pathlib import Path
+        from types import SimpleNamespace
+
+        path = Path(__file__).resolve().parents[1] / "scripts" / "e2e_phases" / "model_licences.py"
+        spec = importlib.util.spec_from_file_location("e2e_model_licences_for_test", path)
+        self.phase = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = self.phase
+        spec.loader.exec_module(self.phase)
+        routes = {"image-catalog": "/api/images/catalog", "video-catalog": "/api/video/catalog"}
+
+        def cli_json(*args, timeout=0.0):
+            route = routes.get(args[0]) or args[2]
+            with mock.patch("backend_service.state.ChaosEngineState._library", return_value=[]):
+                response = self.client.get(route, headers=H)
+            return 0, response.json(), ""
+
+        self.suite = SimpleNamespace(_cli_json=cli_json)
+
+    def test_the_check_passes_for_each_catalogue(self):
+        for kind in ("text", "image", "video"):
+            status, reason, detail = self.phase.catalog_licences(self.suite, kind)
+            self.assertEqual((status, reason), ("pass", ""), kind)
+            self.assertGreater(detail["rows"], 20, kind)
+            self.assertEqual(detail["yes"] + detail["limited"] + detail["no"], detail["rows"], kind)
+
+    def test_the_check_fails_on_a_row_without_one_and_on_a_bad_value(self):
+        original = self.suite._cli_json
+
+        def broken(*args, timeout=0.0):
+            rc, payload, err = original(*args, timeout=timeout)
+            variants = payload["families"][0]["variants"]
+            variants[0].pop("licence")
+            variants[1]["licence"] = {**variants[1]["licence"], "commercial": "maybe"}
+            return rc, payload, err
+
+        self.suite._cli_json = broken
+        status, reason, detail = self.phase.catalog_licences(self.suite, "image")
+        self.assertEqual(status, "fail")
+        self.assertIn("no licence", reason)
+        self.assertIn("'maybe'", reason)
+        self.assertEqual(detail["count"], 2)
 
 
 if __name__ == "__main__":

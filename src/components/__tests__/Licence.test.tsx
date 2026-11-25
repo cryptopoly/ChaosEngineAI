@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { LicenceChip, type ModelLicence } from "../LicenceChip";
+import { LicenceChip, LicenceNote, type ModelLicence } from "../LicenceChip";
 import { LicenceScreen } from "../LicenceScreen";
 import { MakesChips } from "../MakesChips";
 
@@ -37,8 +37,51 @@ describe("LicenceChip", () => {
   });
 });
 
+describe("LicenceNote (text, image and video model cards, D0135)", () => {
+  const flux = makeLicence({
+    id: "flux-1-dev-non-commercial",
+    name: "FLUX.1 [dev] Non-Commercial License",
+    commercial: "no",
+    gated: true,
+    summary: "Non-commercial use only.",
+    url: "https://huggingface.co/black-forest-labs/FLUX.1-dev",
+  });
+
+  it("links the licence's own name and says what it means in plain words", () => {
+    const html = renderToStaticMarkup(<LicenceNote licence={flux} />);
+    expect(html).toContain('href="https://huggingface.co/black-forest-labs/FLUX.1-dev"');
+    expect(html).toContain('target="_blank"');
+    expect(html).toContain('rel="noreferrer"');
+    expect(html).toContain(">FLUX.1 [dev] Non-Commercial License</a>");
+    expect(html).toContain("Not for commercial use");
+    expect(html).toContain("licence-chip--no");
+    expect(html).toContain('title="Non-commercial use only."');
+  });
+
+  it("uses one commercial note per value and Gated only when the row is gated", () => {
+    const yes = renderToStaticMarkup(<LicenceNote licence={makeLicence({ name: "Apache 2.0", commercial: "yes", gated: false })} />);
+    expect(yes).toContain("Commercial use allowed");
+    expect(yes).not.toContain(">Gated<");
+    expect(yes).not.toContain("licence-chip--gated");
+    const limited = renderToStaticMarkup(<LicenceNote licence={makeLicence({ commercial: "limited", gated: false })} />);
+    expect(limited).toContain("Limited commercial use");
+    const gated = renderToStaticMarkup(<LicenceNote licence={flux} />);
+    expect(gated).toContain(">Gated<");
+    expect(gated).toContain("licence-chip--gated");
+  });
+
+  it("is plain text without a link and keeps the territory label for a territory-limited row", () => {
+    const html = renderToStaticMarkup(
+      <LicenceNote licence={makeLicence({ url: undefined, gated: false, territoryRestricted: true })} />,
+    );
+    expect(html).not.toContain("<a ");
+    expect(html).toContain(">Territory-limited<");
+    expect(html).toContain("Stability Community License");
+  });
+});
+
 describe("LicenceScreen", () => {
-  const props = { entry: { name: "Stable Audio Open Small" }, onAccept: noop, onDismiss: noop, onOpenHub: noop, onOpenFull: noop };
+  const props ={ entry: { name: "Stable Audio Open Small" }, onAccept: noop, onDismiss: noop, onOpenHub: noop, onOpenFull: noop };
 
   it("is a labelled modal dialog with the bullet lines taken from the licence prop", () => {
     const html = renderToStaticMarkup(<LicenceScreen {...props} licence={makeLicence()} accepted={false} />);

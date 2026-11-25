@@ -1508,6 +1508,11 @@
       "noCommercial": "{name} · 상업적 이용 불가",
       "gated": "제한"
     },
+    "note": {
+      "commercial": "상업적 사용 가능",
+      "limited": "상업적 사용 제한",
+      "noCommercial": "상업적 사용 불가"
+    },
     "screen": {
       "asks": "이 라이선스가 요구하는 사항",
       "gatedNote": "이 모델은 접근이 제한되어 있습니다. Hugging Face에서 약관에 동의한 뒤 토큰으로 여기서 다운로드하세요(환경설정 > Hugging Face).",

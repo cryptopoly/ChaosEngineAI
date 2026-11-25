@@ -322,7 +322,7 @@ export function VideoUpscaleTab({ onRevealPath, onOpenPath }: VideoUpscaleTabPro
 
   const licence = useMemo(() => {
     const row = models.find((model) => model.default) ?? models[0];
-    return row ? { licence: row.licence, note: row.licenceNote } : null;
+    return row ? { licence: row.licence.name, note: row.licenceNote } : null;
   }, [models]);
 
   const blockText = (choice: SizeChoice): string | null => {

@@ -12354,6 +12354,14 @@ button.licence-chip:focus-visible {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.licence-chip__link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.licence-chip__link:hover {
+  color: var(--accent);
+}
 
 .licence-screen {
   width: min(560px, 92vw);

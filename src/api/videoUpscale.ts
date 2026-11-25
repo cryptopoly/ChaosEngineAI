@@ -48,7 +48,7 @@ export interface VideoUpscaleModel {
   author: string;
   scale: number;
   default: boolean;
-  licence: string;
+  licence: import("../components/LicenceChip").ModelLicence;
   licenceNote: string;
   sizeBytes: number;
   speedNote?: string;

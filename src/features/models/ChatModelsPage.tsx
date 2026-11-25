@@ -17,6 +17,7 @@ import { linkToSharedFolder, type DownloadStatus } from "../../api";
 import type { ChatPick, HubFileListResponse, HubModel, LibraryItem, ModelFamily, ModelVariant } from "../../types";
 import { CAPABILITY_META } from "../../constants";
 import { IconActionButton } from "../../components/ModelActionIcons";
+import { LicenceNote } from "../../components/LicenceChip";
 import { RunFromHuggingFace } from "../../components/RunFromHuggingFace";
 import { ImportModelsPanel } from "../../components/ImportModelsPanel";
 import { isMemorySaverStrategy } from "../../components/runtimeSupport";
@@ -596,6 +597,7 @@ export function ChatModelsPage({
           </span>
         ) : null}
         <CapabilityBadges capabilities={entry.capabilities ?? []} max={5} t={t} />
+        {source.kind === "catalog" && variant?.licence ? <LicenceNote licence={variant.licence} onOpenLink={onOpenExternalUrl} /> : null}
         {(status.state === "downloading" || status.state === "paused") && download ? (
           <span className="library-download-tag">
             <small className="library-download-reason">{downloadDetail(download)}</small>

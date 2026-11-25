@@ -56,7 +56,7 @@ function addon(extra: Partial<VideoUpscaleAddonStatus> = {}): VideoUpscaleAddonS
 function model(extra: Partial<VideoUpscaleModel> = {}): VideoUpscaleModel {
   return {
     id: "realesr-general-x4v3", name: "Real-ESRGAN general x4v3", label: "Fast", author: "xinntao", scale: 4,
-    default: true, licence: "BSD-3-Clause", licenceNote: "BSD-3-Clause (xinntao/Real-ESRGAN).", sizeBytes: 4885111,
+    default: true, licence: { id: "bsd-3-clause", name: "BSD-3-Clause", commercial: "yes", gated: false, summary: "Free to use." }, licenceNote: "BSD-3-Clause (xinntao/Real-ESRGAN).", sizeBytes: 4885111,
     installed: true,
     fit: { status: "fits", needGb: 2, usableGb: 22, headroomPct: 90, reason: "2 GB", basis: "estimated" },
     ...extra,

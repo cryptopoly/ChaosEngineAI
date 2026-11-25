@@ -31,14 +31,8 @@ def picture_slots(variant: dict[str, Any] | None) -> int:
     the sd.cpp rows that take reference pictures)."""
     if not variant:
         return 0
-    try:
-        from backend_service.helpers.media_input import reference_image_limit
-    except ImportError:  # until the sd.cpp reference-picture branch is merged: the old mflux-only rule
-        if (variant.get("engine") or "").lower() != "mflux":
-            return 0
-        from backend_service.image_runtime.mflux_engine import reference_image_limit as mflux_limit
+    from backend_service.helpers.media_input import reference_image_limit
 
-        return int(mflux_limit(str(variant.get("repo") or "")))
     return int(reference_image_limit(variant))
 
 

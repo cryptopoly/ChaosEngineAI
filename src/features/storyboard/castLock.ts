@@ -48,5 +48,8 @@ export function plannedShotFromProposal(shot: StoryboardPlannedShot, project: St
   };
   const unique = [...new Set(refs)].slice(0, MAX_REFS);
   if (unique.length > 0) planned.referenceImages = unique;
+  const characterIds = new Set(project.references.characters.map((r) => r.id));
+  const out = [...new Set((shot[CAST_OUT] ?? []).filter((id) => characterIds.has(id)))];
+  if (out.length > 0) planned[CAST_OUT] = out;
   return planned;
 }

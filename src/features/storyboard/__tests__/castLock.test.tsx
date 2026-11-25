@@ -139,4 +139,12 @@ describe("character lock: applying a plan proposal (PlanTab.use)", () => {
     expect(plannedShotFromProposal(proposed, p).referenceImages).toEqual(["p1", "c1"]);
     expect(plannedShotFromProposal({ title: "", stillPrompt: "", motionPrompt: "", seconds: 3 }, p)).not.toHaveProperty("referenceImages");
   });
+
+  it("forwards the characters a proposed shot leaves out, only ones the project has", () => {
+    const proposed: StoryboardPlannedShot = {
+      title: "", stillPrompt: "", motionPrompt: "", seconds: 3, [CAST_OUT]: ["c2", "ghost", "c2"],
+    };
+    expect(plannedShotFromProposal(proposed, p)[CAST_OUT]).toEqual(["c2"]);
+    expect(plannedShotFromProposal({ title: "", stillPrompt: "", motionPrompt: "", seconds: 3 }, p)).not.toHaveProperty(CAST_OUT);
+  });
 });

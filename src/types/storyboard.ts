@@ -494,6 +494,8 @@ export interface StoryboardPlannedShot {
   trimOut?: number | null;
   /** The planner's characters for this shot (reference ids); applied as the shot's references. */
   [PLANNED_CHARACTERS]?: string[];
+  /** In-every-shot characters this shot leaves out (the planner or cut plan sets it). */
+  [CAST_OUT]?: string[];
 }
 
 /** `POST .../cut-plan`: shots cut to the song; apply with `apply_plan` (mode replace). */

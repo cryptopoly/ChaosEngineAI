@@ -14,7 +14,7 @@
   "downloadCancelled": "Download abgebrochen.",
   "huggingFaceGated": "Dieses Modell ist eingeschränkt. Bitte die Lizenz auf Hugging Face akzeptieren und erneut versuchen.",
   "huggingFaceAuthRequired": "Authentifizierung erforderlich. Hugging-Face-Token in den Einstellungen festlegen.",
-  "incompatibleHardware": "Ihre Hardware erfüllt die Anforderungen dieses Modells nicht.",
+  "incompatibleHardware": "Deine Hardware erfüllt die Anforderungen dieses Modells nicht.",
   "platformOnly": "Diese Funktion erfordert {platform}.",
   "unsupportedFormat": "Nicht unterstütztes Dateiformat: {format}",
   "validationFailed": "Validierung fehlgeschlagen: {reason}",

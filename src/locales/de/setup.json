@@ -1,6 +1,6 @@
 {
   "title": "Einrichtung",
-  "subtitle": "Laufzeitkomponenten für Ihre Hardware installieren",
+  "subtitle": "Laufzeitkomponenten für deine Hardware installieren",
   "sections": {
     "core": "Kern-Laufzeiten",
     "speculative": "Spekulative Decodierung",

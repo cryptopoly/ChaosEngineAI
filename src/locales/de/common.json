@@ -806,15 +806,15 @@
   },
   "languagePanel": {
     "title": "Sprache und Uhrzeit",
-    "subtitle": "Wählen Sie die Sprache der App und das Format der Uhrzeiten. Neue Auswahlen wirken sofort und werden mit den anderen Einstellungen gespeichert.",
+    "subtitle": "Wähle die Sprache der App und das Format der Uhrzeiten. Neue Auswahlen wirken sofort und werden mit den anderen Einstellungen gespeichert.",
     "label": "Sprache",
     "systemDefault": "Systemstandard",
-    "helpText": "Jede Sprache wird in ihrer eigenen Schrift gezeigt — wählen Sie die Zeile, die sich für Sie natürlich liest. Fehlende Übersetzungen fallen automatisch auf Englisch zurück; wenn Sie etwas Falsches sehen, führt der Link unten direkt zur JSON-Datei auf GitHub, damit Sie eine Korrektur vorschlagen können.",
+    "helpText": "Jede Sprache wird in ihrer eigenen Schrift gezeigt — wähle die Zeile, die sich für dich natürlich liest. Fehlende Übersetzungen fallen automatisch auf Englisch zurück; wenn du etwas Falsches siehst, führt der Link unten direkt zur JSON-Datei auf GitHub, damit du eine Korrektur vorschlagen kannst.",
     "clockFormatAria": "Uhrzeitformat",
     "clockSystem": "System",
     "clock12h": "12 Stunden",
     "clock24h": "24 Stunden",
-    "clockHint": "System folgt dem Standard Ihrer Sprache (12 Stunden für US-Englisch, 24 Stunden sonst). Wählen Sie eine Seite, wenn Sie dies überschreiben möchten.",
+    "clockHint": "System folgt dem Standard deiner Sprache (12 Stunden für US-Englisch, 24 Stunden sonst). Wähle eine Seite, wenn du dies überschreiben möchtest.",
     "helpImprove": "Übersetzungen verbessern",
     "openOnGithub": "{locale} auf GitHub öffnen →",
     "communityNote": "Fan-Übersetzung, maschinell unterstützt. Korrekturen sind willkommen."

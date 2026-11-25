@@ -54,21 +54,37 @@ def image_size(path: Path) -> tuple[int, int] | None:
         return None
 
 
-def checked_reference_images(raw_paths: list[str] | None, variant: dict) -> list[str]:
-    """Resolve reference images for an image model, or raise ``InputImageError`` naming what works.
+def reference_image_limit(variant: dict | None) -> int:
+    """How many reference images a catalogue variant takes on its own engine: 0 when none.
 
-    Only mflux models take them; the same variant on another engine would drop the image silently.
+    mflux models list it per family; on stable-diffusion.cpp only the rows in its reference table take them
+    (FLUX 3 Klein, B1309). Every other engine would drop the picture silently, so it is 0 there.
     """
+    if not variant:
+        return 0
+    engine = (variant.get("engine") or "").lower()
+    repo = str(variant.get("repo") or "")
+    if engine == "mflux":
+        from backend_service.image_runtime.mflux_engine import reference_image_limit as mflux_limit
+
+        return int(mflux_limit(repo))
+    if engine == "sdcpp":
+        from backend_service.sdcpp_image_runtime import reference_image_limit as sdcpp_limit
+
+        return int(sdcpp_limit(repo))
+    return 0
+
+
+def checked_reference_images(raw_paths: list[str] | None, variant: dict) -> list[str]:
+    """Resolve reference images for an image model, or raise ``InputImageError`` naming what works."""
     if not raw_paths:
         return []
-    from backend_service.image_runtime.mflux_engine import reference_image_limit
-
     name = variant.get("name") or variant.get("id")
-    limit = reference_image_limit(str(variant.get("repo") or "")) if (variant.get("engine") or "").lower() == "mflux" else 0
+    limit = reference_image_limit(variant)
     if limit == 0:
         raise InputImageError(
-            f"{name} cannot take a reference image. Use FLUX.1, FLUX.2 Klein, Qwen Image 2.1 or FLUX 3 Klein "
-            "on the mflux (MLX) engine."
+            f"{name} cannot take a reference image. Use FLUX 3 Klein · sd.cpp Q8_0 (NVIDIA), or FLUX.1, "
+            "FLUX.2 Klein, Qwen Image 2.1 or FLUX 3 Klein on the mflux (MLX) engine."
         )
     if len(raw_paths) > limit:
         raise InputImageError(f"{name} takes {limit} reference image{'s' if limit != 1 else ''}; got {len(raw_paths)}.")

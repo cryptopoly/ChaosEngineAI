@@ -1045,7 +1045,8 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
             {
                 # FU-273: leejet's GGUF of the distilled checkpoint through stable-diffusion.cpp (flux3 support at the
                 # pinned 532d2c1). The text encoder is Qwen3-VL-4B (GGUF) and the VAE the FLUX.2 one that BFL ships
-                # as ae.safetensors in the gated repo, so the licence step still applies.
+                # as ae.safetensors in the gated repo, so the licence step still applies. Takes up to 4 reference
+                # pictures through ``-r`` (``sdcpp_image_runtime._REFERENCE_IMAGE_LIMITS``, B1309).
                 "id": "leejet/flux-3-image-klein-GGUF-q8",
                 "familyId": "flux-3",
                 "name": "FLUX 3 Image Klein · sd.cpp Q8_0",
@@ -1073,8 +1074,9 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 "footprintMeasuredOn": "cuda",
                 "recommendedResolution": "1024x1024",
                 "note": (
-                    "The distilled FLUX 3 Klein as an 8-bit GGUF through stable-diffusion.cpp: text to image "
-                    "(no reference pictures on this engine). The first run also fetches the Qwen3-VL-4B text "
+                    "The distilled FLUX 3 Klein as an 8-bit GGUF through stable-diffusion.cpp: text to image, "
+                    "or from up to 4 reference pictures (keeps a character the same across shots; each "
+                    "picture adds time and memory). The first run also fetches the Qwen3-VL-4B text "
                     "encoder (2.5 GB) and the VAE (0.3 GB) from the gated BFL repo. Gated: accept the FLUX "
                     "Kommunity licence on Hugging Face first (free for non-commercial use; commercial use of "
                     "outputs only below US$5M annual revenue)."

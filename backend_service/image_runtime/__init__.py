@@ -1232,7 +1232,8 @@ class ImageRuntimeManager:
                 except GenerationCancelled:
                     raise
                 except Exception as exc:
-                    if config.repo in _NO_DIFFUSERS_PIPELINE:
+                    # Another engine would drop the reference pictures silently.
+                    if config.repo in _NO_DIFFUSERS_PIPELINE or config.referenceImagePaths:
                         raise
                     _sdcpp_fallback_note = (
                         f"sd.cpp failed ({type(exc).__name__}: {exc}) — "
@@ -1241,7 +1242,7 @@ class ImageRuntimeManager:
                 else:
                     _sdcpp_fallback_note = None
             else:
-                if config.repo in _NO_DIFFUSERS_PIPELINE:
+                if config.repo in _NO_DIFFUSERS_PIPELINE or config.referenceImagePaths:
                     raise RuntimeError(probe.get("reason") or "sd.cpp unavailable")
                 _sdcpp_fallback_note = probe.get("reason") or "sd.cpp unavailable"
             # Combine mflux + sdcpp fallback notes if both fired (rare but

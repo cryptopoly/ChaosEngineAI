@@ -183,6 +183,31 @@ class ReferenceImageTests(unittest.TestCase):
                 check(refs, variant)
             self.assertIn(needle, str(ctx.exception))
 
+    def test_sdcpp_flux3_klein_takes_up_to_four_and_other_sdcpp_rows_refuse(self):
+        # B1309: the NVIDIA still lane keeps a character the same across shots.
+        from backend_service.helpers.media_input import checked_reference_images as check
+        from backend_service.helpers.media_input import reference_image_limit
+
+        klein = self.variant("leejet/flux-3-image-klein-GGUF", engine="sdcpp")
+        self.assertEqual(reference_image_limit(klein), 4)
+        self.assertEqual(check([str(self.png)] * 4, klein), [str(self.png.resolve())] * 4)
+        for variant, refs, needle in (
+            (klein, [str(self.png)] * 5, "takes 4 reference images"),
+            (self.variant("leejet/Qwen-Image-2.1-GGUF", engine="sdcpp"), [str(self.png)], "cannot take a reference image"),
+            (self.variant("leejet/flux-3-image-klein-GGUF", engine="diffusers"), [str(self.png)], "cannot take a reference image"),
+            (self.variant("leejet/flux-3-image-klein-GGUF", engine=None), [str(self.png)], "cannot take a reference image"),
+        ):
+            with self.assertRaises(InputImageError, msg=variant) as ctx:
+                check(refs, variant)
+            self.assertIn(needle, str(ctx.exception))
+        self.assertEqual(reference_image_limit(None), 0)
+
+    def test_limit_follows_the_engine_of_the_row(self):
+        from backend_service.helpers.media_input import reference_image_limit
+
+        self.assertEqual(reference_image_limit({"engine": "mflux", "repo": "black-forest-labs/flux-3-image-klein"}), 4)
+        self.assertEqual(reference_image_limit({"engine": "sdcpp", "repo": "leejet/flux-3-image-klein-GGUF"}), 4)
+
     def test_route_returns_400(self):
         import backend_service.app  # noqa: F401  (loads the routes in their usual order)
         from backend_service.models import ImageGenerationRequest

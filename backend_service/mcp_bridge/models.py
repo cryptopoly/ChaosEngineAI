@@ -90,12 +90,12 @@ def _row(family: dict[str, Any], variant: dict[str, Any], kind: str) -> dict[str
     }
     if kind == "image":
         from backend_service.helpers.time_estimate import variant_seconds
-        from backend_service.image_runtime.mflux_engine import reference_image_limit
+        from backend_service.helpers.media_input import reference_image_limit
 
         # The catalogue time for one still at the storyboard default size, the figure the default pick ranks by (S2).
         row["secondsPerStill"] = variant_seconds(variant, "image", *STILL_RANK_SIZE)
 
-        limit = reference_image_limit(str(variant.get("repo") or "")) if variant.get("engine") == "mflux" else 0
+        limit = reference_image_limit(variant)
         row["acceptsImageInput"] = limit > 0
         row["maxReferenceImages"] = limit
     if kind == "video":

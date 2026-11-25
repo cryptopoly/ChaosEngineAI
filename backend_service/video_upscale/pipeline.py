@@ -34,6 +34,10 @@ import numpy as np
 from backend_service.video_upscale.engine import UpscaleError, check_target
 
 SEGMENT_SECONDS = 10.0
+# A last segment shorter than the encoder's frame reordering has no reorder delay of its own, so the joined file gets
+# a timestamp gap at the seam and a player repeats frames to fill it (a 21-frame film came back as 23). Such a tail is
+# folded into the segment before it.
+MIN_TAIL_FRAMES = 16
 MANIFEST_VERSION = 1
 PROTOCOLS = "file,pipe"  # same as storyboard.ffmpeg_bin.PROTOCOLS: local files and pipes only
 DEINTERLACE_FILTER = "bwdif"
@@ -43,6 +47,7 @@ _NTSC = ((23.976, "24000/1001"), (29.97, "30000/1001"), (47.952, "48000/1001"), 
 _SAR = re.compile(r"\[SAR (\d+):(\d+) DAR")
 _FIELD_ORDER = re.compile(r"[(,]\s*(progressive|(?:top|bottom)(?: coded)? first|tt|bb|tb|bt)(?=[,)\s])", re.IGNORECASE)
 _TBR = re.compile(r"Video: .*?, (\d+(?:\.\d+)?) tbr")
+_FRAME_COUNT = re.compile(r"frame=\s*(\d+)")
 
 
 class Cancelled(Exception):
@@ -74,9 +79,10 @@ class SourceInfo:
     height: int
     fps: str  # a fraction or a whole number, as ffmpeg takes it
     duration: float
-    frames: int  # estimate: duration x fps (the last segment reads to the end, so an error here costs nothing)
+    frames: int  # the video stream's own frame count; duration x fps only when that count could not be read
     has_audio: bool
     sar: str = "1/1"
+    frames_exact: bool = False  # ``frames`` was counted (the container's duration also covers a longer sound track)
 
 
 def probe_source(exe: str, path: Path) -> SourceInfo:
@@ -123,6 +129,20 @@ def interlaced_from_probe(stderr: str) -> bool | None:
     return None
 
 
+def count_video_frames(exe: str, path: Path) -> int | None:
+    """The frames in the first video stream, counted from its packets (``-c copy`` to the null muxer: no decoding, so
+    it takes seconds, not the length of the film). ``None`` when ffmpeg gives no count. The app has no ffprobe."""
+    try:
+        run = subprocess.run([exe, "-hide_banner", "-nostdin", "-protocol_whitelist", PROTOCOLS, "-i", str(path),
+                              "-map", "0:v:0", "-c", "copy", "-f", "null", "-"],
+                             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    found = _FRAME_COUNT.findall(run.stderr)  # the progress line repeats; the last one is the whole file
+    count = int(found[-1]) if run.returncode == 0 and found else 0
+    return count or None
+
+
 def _probe(exe: str, path: Path) -> tuple[SourceInfo, str]:
     from backend_service.storyboard.ffmpeg_bin import parse_probe  # noqa: PLC0415
 
@@ -143,6 +163,9 @@ def _probe(exe: str, path: Path) -> tuple[SourceInfo, str]:
     source = SourceInfo(width=int(info["width"]), height=int(info["height"]), fps=rate, duration=float(info["duration"]),
                         frames=max(1, round(float(info["duration"]) * fps_value(rate))), has_audio=bool(info["has_audio"]),
                         sar=f"{sar.group(1)}/{sar.group(2)}" if sar and sar.group(1) != "0" else "1/1")
+    counted = count_video_frames(exe, path)
+    if counted:
+        source.frames, source.frames_exact = counted, True
     return source, run.stderr
 
 
@@ -195,10 +218,15 @@ def make_spec(exe: str, src: Path, dst: Path, *, model_id: str, weights: Path, s
                    avtb=bool(avtb))
 
 
-def plan_segments(total_frames: int, segment_frames: int) -> list[dict[str, Any]]:
-    """``{index, start, frames, last}`` per segment; the last one reads to the end of the file."""
+def plan_segments(total_frames: int, segment_frames: int, exact: bool = False) -> list[dict[str, Any]]:
+    """``{index, start, frames, last}`` per segment. With an ``exact`` (counted) total the last segment is the
+    remainder; otherwise it reads to the end of the file, since the total is only an estimate."""
     count = max(1, -(-total_frames // segment_frames))
-    return [{"index": i, "start": i * segment_frames, "frames": segment_frames, "last": i == count - 1}
+    if exact and count > 1 and total_frames - (count - 1) * segment_frames < min(MIN_TAIL_FRAMES, segment_frames):
+        count -= 1  # a tail this short joins the segment before it (see MIN_TAIL_FRAMES)
+    return [{"index": i, "start": i * segment_frames,
+             "frames": max(1, total_frames - i * segment_frames) if exact and i == count - 1 else segment_frames,
+             "last": i == count - 1}
             for i in range(count)]
 
 
@@ -224,7 +252,8 @@ class Manifest:
             pass
         data = {"version": MANIFEST_VERSION, "key": spec.key(), "spec": spec.as_dict(), "state": "running",
                 "segments": [{**seg, "done": False, "made": 0}
-                             for seg in plan_segments(spec.source["frames"], spec.segment_frames)]}
+                             for seg in plan_segments(spec.source["frames"], spec.segment_frames,
+                                                      bool(spec.source.get("frames_exact")))]}
         manifest = cls(path, data)
         manifest.save()
         return manifest
@@ -399,7 +428,10 @@ def local_runner(upscaler: Callable[[np.ndarray], np.ndarray]) -> Callable[..., 
 def segment_request(spec: JobSpec, exe: str, seg: dict[str, Any], output: Path) -> dict[str, Any]:
     src = spec.source
     # Field names must not collide with ``WarmWorker.request``'s own keywords (``start``, ``timeout``, ``job``).
-    return {"ffmpeg": exe, "input": spec.input, "first_frame": seg["start"], "frames": seg["frames"], "last": seg["last"],
+    # ``last`` means "read to the end of the file": only when the frame count is an estimate. A counted last segment is
+    # capped at its remainder, because the fps filter pads a short tail out to the container's (longer) end.
+    return {"ffmpeg": exe, "input": spec.input, "first_frame": seg["start"], "frames": seg["frames"],
+            "last": seg["last"] and not src.get("frames_exact"),
             "fps": src["fps"], "sar": src.get("sar") or "1/1", "src_width": src["width"], "src_height": src["height"],
             "width": spec.width, "height": spec.height, "deinterlace": spec.deinterlace, "batch": spec.batch,
             "codec_args": spec.codec_args, "output": str(output), "weights": spec.weights, "tile": spec.tile,
@@ -439,6 +471,8 @@ def run_job(spec: JobSpec, runner: Callable[..., dict[str, Any]], *, exe: str, w
     resumed = sum(1 for seg in segments if manifest.finished(seg))
     manifest.set_state("running")
     frames_before = 0
+    if progress is not None:  # the resumed frames are the baseline a frames-a-second rate counts from
+        progress(sum(int(seg.get("made", 0)) for seg in segments if manifest.finished(seg)), total, 0, len(segments))
     try:
         for seg in segments:
             if manifest.finished(seg):

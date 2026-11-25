@@ -238,6 +238,36 @@ class PipelineTests(unittest.TestCase):
                              is_cancelled=cancel)
         self.assertEqual([p.name for p in (self.root / "w").glob("seg-*")], [])
 
+    def _clip_with_long_sound(self, frames: int, sound_seconds: float) -> Path:
+        """``frames`` of picture at 10 fps with a sound track that runs past the picture (B1316: the container's
+        duration, not the frame count, then says the file is longer than it is)."""
+        video = make_clip(FFMPEG, self.root / "v.mp4", seconds=frames / 10, fps=10, audio=False)
+        sound = self.root / "a.m4a"
+        subprocess.run([FFMPEG, "-hide_banner", "-nostdin", "-loglevel", "error", "-y", "-f", "lavfi", "-i",
+                        f"sine=frequency=440:sample_rate=48000:duration={sound_seconds}", "-c:a", "aac", str(sound)],
+                       check=True)
+        out = self.root / "long-sound.mp4"
+        subprocess.run([FFMPEG, "-hide_banner", "-nostdin", "-loglevel", "error", "-y", "-i", str(video), "-i", str(sound),
+                        "-c", "copy", str(out)], check=True)
+        return out
+
+    def test_probe_counts_the_real_frames_not_duration_times_rate(self):
+        src = self._clip_with_long_sound(21, 3.0)
+        self.assertEqual(count_frames(FFMPEG, src)[0], 21)
+        self.assertEqual(pipeline.probe_source(FFMPEG, src).frames, 21)  # duration x rate says 30
+
+    def test_output_has_exactly_the_source_frames_when_the_last_segment_is_short(self):
+        # 21 frames in 2 s segments: the last segment holds one frame and used to come out padded to the container's end.
+        src = self._clip_with_long_sound(21, 3.0)
+        out = self.root / "up.mp4"
+        spec = pipeline.make_spec(FFMPEG, src, out, model_id="fake", weights="none", size=(192, 128), segment_seconds=2.0)
+        seen = []
+        result = pipeline.run_job(spec, pipeline.local_runner(DoublePixels()), exe=FFMPEG, work=self.root / "w",
+                                  progress=lambda done, total, i, n: seen.append((done, total)))
+        self.assertEqual(result["frames"], 21)
+        self.assertEqual(count_frames(FFMPEG, out), (21, 192, 128))
+        self.assertTrue(all(total == 21 for _done, total in seen), seen)
+
     def test_a_clip_without_sound(self):
         src = make_clip(FFMPEG, self.root / "silent.mp4", seconds=1.0, fps=10, audio=False)
         out = self.root / "up.mkv"

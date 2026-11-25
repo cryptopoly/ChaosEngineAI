@@ -4077,6 +4077,11 @@ from e2e_phases import voice_errors as _voice_errors  # noqa: E402
 # Voice error codes (UX audit change 6): code, plain message and action beside the raw detail; no model runs.
 PHASES[_voice_errors.PHASE_KEY] = lambda cap: _voice_errors.run(cap, sys.modules[__name__])
 
+from e2e_phases import video_upscale as _video_upscale  # noqa: E402
+
+# Video upscale (B1316): the real frame count, framesPerSecond as a number, PNG first frames; in process and live.
+PHASES[_video_upscale.PHASE_KEY] = lambda cap: _video_upscale.run(cap, sys.modules[__name__])
+
 
 def _write_reports(report_dir: Path, started: datetime, ended: datetime,
                     phases: list[PhaseResult], cap: Capability) -> tuple[Path, Path]:

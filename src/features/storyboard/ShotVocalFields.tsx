@@ -8,6 +8,7 @@ import type { StoryboardProject, StoryboardShot } from "../../types";
 import { LIP_SYNC_TAKES_BEST, lipSyncTakeCount } from "../video/lipSyncLogic";
 import { PathField } from "./PathField";
 import { ProjectAudio } from "./ProjectMedia";
+import { LIP_SYNC_RANGE } from "./song/coverageLogic";
 import type { RunOp } from "./useStoryboard";
 
 export interface ShotVocalFieldsProps {
@@ -34,9 +35,13 @@ export function ShotVocalFields({ project, shot, disabled, op }: ShotVocalFields
     <fieldset className="shot-editor__refs shot-editor__vocal">
       <legend className="eyebrow">{t("board.editor.vocal", { defaultValue: "Vocal for lip sync" })}</legend>
       <p className="muted-text">
-        {t("board.editor.vocalHint", {
+        {t("board.editor.vocalHintShot", {
           defaultValue:
-            "A WAV or FLAC the mouth follows: the clip starts from this shot's still, lasts 3 to 8 s and keeps this sound. Needs LTX-2.3 as the video model (the 4-bit NVIDIA model wants a 24 GB card).",
+            "A WAV or FLAC the mouth follows: the clip starts from this shot's still and keeps this sound. Needs LTX-2.3 as the video model (the 4-bit NVIDIA model wants a 24 GB card).",
+        })}{" "}
+        {t(LIP_SYNC_RANGE.key, { defaultValue: LIP_SYNC_RANGE.defaultValue, ...LIP_SYNC_RANGE.values })}{" "}
+        {t("board.editor.vocalOptional", {
+          defaultValue: "A shot does not have to sing: remove its vocal and it plays as an ordinary clip.",
         })}
       </p>
       {shot.vocalClip ? (

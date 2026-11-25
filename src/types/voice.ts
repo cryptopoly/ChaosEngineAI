@@ -338,6 +338,8 @@ export interface VoiceModelRow {
   download: {
     state: "idle" | "downloading" | "done" | "failed" | "cancelled";
     error: string | null;
+    /** The failure as a code, plain sentence and action (``download_blocked``: sign in to Hugging Face; ``download_failed``: retry). */
+    errorInfo?: VoiceErrorInfo | null;
     phase?: "weights" | "watermark" | null;
     /** While downloading: 0..1 and GB on disk against the whole download (model, companions). */
     progress?: number | null;
@@ -376,4 +378,68 @@ export interface SpeakResult {
   clonedVoice: boolean;
   libraryId: string | null;
   notes: string[];
+}
+
+/**
+ * Voice errors (voice studio UX audit, change 6). A failed voice request keeps its HTTP status and ``detail`` (the
+ * raw text) and gains ``code``, ``message`` (one plain sentence) and ``action`` (the one button to offer).
+ * The text on screen comes from ``features/voice/voiceErrorText.ts``; ``message`` is the backend's English fallback.
+ */
+export const VOICE_ERROR_CODES = [
+  "runtime_missing",
+  "runtime_outdated",
+  "addon_missing",
+  "model_missing",
+  "watermark_missing",
+  "gpu_memory",
+  "gpu_unsupported",
+  "unsupported_here",
+  "ffmpeg_missing",
+  "reference_too_short",
+  "reference_too_long",
+  "reference_unreadable",
+  "audio_unreadable",
+  "language_unsupported",
+  "permission_required",
+  "cloning_not_allowed",
+  "voice_not_found",
+  "download_blocked",
+  "download_failed",
+  "worker_busy",
+  "worker_timeout",
+  "worker_stopped",
+  "unknown",
+] as const;
+export type VoiceErrorCode = (typeof VOICE_ERROR_CODES)[number];
+
+export const VOICE_ERROR_ACTIONS = [
+  "install-voice-runtime",
+  "install-addon",
+  "download-model",
+  "smaller-model",
+  "pick-another-model",
+  "install-ffmpeg",
+  "pick-another-language",
+  "change-sample",
+  "confirm-permission",
+  "add-hf-token",
+  "retry",
+  "none",
+] as const;
+export type VoiceErrorAction = (typeof VOICE_ERROR_ACTIONS)[number];
+
+/** The voice install add-on to tick when the code is ``addon_missing`` (``VoiceRuntime`` extras); null otherwise. */
+export type VoiceErrorExtra = "kokoro" | "chinese" | "speech-gpu" | "stt-gpu";
+
+export interface VoiceErrorInfo {
+  code: VoiceErrorCode;
+  /** One plain English sentence; the screen prefers its own translated text for ``code``. */
+  message: string;
+  action: VoiceErrorAction;
+  extra: VoiceErrorExtra | null;
+}
+
+/** A voice error response body: ``detail`` is the raw text (shown under Details), the rest is ``VoiceErrorInfo``. */
+export interface VoiceErrorBody extends VoiceErrorInfo {
+  detail: string;
 }

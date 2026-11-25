@@ -671,7 +671,7 @@
       "delete": "Supprimer",
       "soundOn": "Activer le son",
       "soundOff": "Couper le son",
-      "upscale": null
+      "upscale": "Agrandir ce clip"
     }
   },
   "voice": {
@@ -1487,7 +1487,7 @@
       "stepsNumber": "Nombre d'étapes",
       "stepsNote": "Moins d'étapes est plus rapide mais peut donner un moins bon résultat. {n} est le réglage de l'auteur du modèle.",
       "summarySteps": "{n} étapes",
-      "random": null
+      "random": "Aléatoire"
     },
     "artistWarning": "Citer un artiste peut produire une copie de son style. Décrivez plutôt le son.",
     "cancel": "Annuler",
@@ -1645,7 +1645,7 @@
       "title": "Création des plans",
       "titleDraft": "Création des brouillons",
       "titleFinal": "Passe finale",
-      "failedSoFar": null
+      "failedSoFar": "{n, plural, one {# plan n'a pas été généré. Sa carte indique pourquoi et que faire.} other {# plans n'ont pas été générés. Leurs cartes indiquent pourquoi et que faire.}}"
     },
     "conflictNotice": "Modifié ailleurs ; affichage de la dernière version",
     "defaults": {
@@ -1709,23 +1709,23 @@
       "vocalTakesDefault": "Par défaut ({count})",
       "vocalTakesBest": "4 (meilleure qualité)",
       "vocalTakesHint": "Voix chantée : utilisez le stem vocal, une image fixe de face en gros plan, bouche fermée, et démarrez environ 0,4 s avant une phrase. Chaque prise utilise sa propre graine ; le score de synchro garde la meilleure et les autres restent dans la Galerie vidéo.",
-      "castInShot": null,
-      "castNone": null,
-      "castEveryShot": null,
-      "leaveOut": null,
-      "lipSyncSeparate": null,
-      "clipSound": null,
-      "clipSoundOn": null,
-      "clipSoundOff": null,
-      "endFrame": null,
-      "endFrameHint": null,
-      "endFrameAlt": null,
-      "endFrameChange": null,
-      "endFramePick": null,
-      "endFrameRemove": null,
-      "endFramePickerTitle": null,
-      "vocalHintShot": null,
-      "vocalOptional": null
+      "castInShot": "Dans ce plan : {names}",
+      "castNone": "Aucun personnage dans ce plan.",
+      "castEveryShot": "Dans tous les plans",
+      "leaveOut": "Exclure de ce plan",
+      "lipSyncSeparate": "Un personnage du plan n'a pas à chanter. La synchro labiale se règle plan par plan, sous « Voix pour la synchro labiale ».",
+      "clipSound": "Laisser jouer le son du clip",
+      "clipSoundOn": "Le son propre du clip est lu par-dessus la chanson.",
+      "clipSoundOff": "Coupé sous la chanson.",
+      "endFrame": "Image de fin",
+      "endFrameHint": "L'image sur laquelle le clip doit se terminer. Seuls les modèles vidéo LTX-2 l'utilisent ; les autres vous demanderont de la retirer.",
+      "endFrameAlt": "Image de fin du plan {number}",
+      "endFrameChange": "Changer l'image de fin",
+      "endFramePick": "Choisir l'image de fin",
+      "endFrameRemove": "Retirer l'image de fin",
+      "endFramePickerTitle": "Image de fin du plan {number}",
+      "vocalHintShot": "Un fichier WAV ou FLAC que la bouche suit : le clip part de l'image fixe de ce plan et garde ce son. Nécessite LTX-2.3 comme modèle vidéo (le modèle NVIDIA 4 bits demande une carte de 24 Go).",
+      "vocalOptional": "Un plan n'a pas à chanter : retirez sa voix et il est lu comme un clip ordinaire."
     },
     "empty": "Pas encore de plans. Ajoutez un plan, puis donnez-lui un prompt ou importez des images.",
     "estimate": {
@@ -1816,11 +1816,11 @@
       "makeClip": "Créer le clip",
       "makeClipTitle": "Créer le clip de ce plan à partir de son image fixe.",
       "referenceAdded": "{name} a été ajouté à la distribution avec cette image.",
-      "tagsLabel": null,
-      "hideStaleTitle": null,
-      "hideStale": null,
-      "chooseForFinalTitle": null,
-      "chooseForFinal": null
+      "tagsLabel": "Synchro labiale et distribution",
+      "hideStaleTitle": "Masque cet avertissement. Le plan reste tel quel et rien n'est recréé.",
+      "hideStale": "Masquer cet avertissement",
+      "chooseForFinalTitle": "La passe finale recrée les plans choisis avec le modèle de qualité, à la taille réelle du film.",
+      "chooseForFinal": "Choisir pour le final"
     },
     "shots": "Plans",
     "subtitle": "{shots, plural, one {# plan} other {# plans}} · {seconds} s · {stale} périmé(s)",
@@ -1841,11 +1841,11 @@
       "draftTimed": "Créer des brouillons · environ {time}",
       "withClips": "Brouillons avec clips",
       "draftPer": "Environ {time} par brouillon.",
-      "draftTitleChoose": null,
-      "finalChosenTimed": null,
-      "finalChosen": null,
-      "finalChosenTitle": null,
-      "chooseHint": null
+      "draftTitleChoose": "Images fixes rapides avec {model} en {width} x {height}. Choisissez pour le final les plans qui vous plaisent, puis lancez la passe finale.",
+      "finalChosenTimed": "Passe finale sur {n, plural, one {# plan choisi} other {# plans choisis}} · environ {time}",
+      "finalChosen": "Passe finale sur {n, plural, one {# plan choisi} other {# plans choisis}}",
+      "finalChosenTitle": "Recrée chaque plan choisi avec {model} en {width} x {height}, puis son clip à partir de la nouvelle image fixe.",
+      "chooseHint": "Utilisez « Choisir pour le final » sur un plan pour l'inclure dans la passe finale."
     },
     "exportDrafts": "{n, plural, one {# plan utilise une prise brouillon.} other {# plans utilisent une prise brouillon.}} Gardez-les et lancez la passe finale pour la pleine qualité, ou exportez les brouillons tels quels.",
     "preview": {
@@ -1877,7 +1877,7 @@
       "titleCard": "Carton de titre",
       "endCard": "Carton de fin",
       "legendCard": "Carton de titre ou de fin (kit de marque)",
-      "draftNoteSized": null
+      "draftNoteSized": "{n, plural, one {# plan joue une prise brouillon.} other {# plans jouent une prise brouillon.}} Les brouillons sont plus petits que le film. Choisissez-les pour le final et lancez la passe finale pour obtenir la taille réelle."
     },
     "captions": {
       "toggle": "Afficher les sous-titres (C)",
@@ -1933,7 +1933,7 @@
       "open": "Comparer les prises",
       "openTitle": "Deux prises côte à côte, avec ce qui a produit chacune.",
       "short": "Comparer",
-      "noClipYet": null
+      "noClipYet": "Pas encore de clip dans cette prise."
     },
     "remake": {
       "clip": "Refaire seulement le clip",
@@ -2234,7 +2234,7 @@
         "replaceNote": "Ceux-ci remplacent {n, plural, one {# plan} other {# plans}} du tableau ; avec les consignes conservées, le plan 1 garde les consignes du plan 1 actuel, et ainsi de suite. Annuler rétablit les anciens plans.",
         "title": "Plan de coupe : {n, plural, one {# plan} other {# plans}} sur {time}",
         "use": "{n, plural, one {Utiliser ce plan} other {Utiliser ces # plans}}",
-        "useSinging": null
+        "useSinging": "{n, plural, one {Utiliser ce plan et lui donner sa voix} other {Utiliser ces # plans et donner à chacun sa voix}}"
       },
       "cutting": "Découpage sur la musique…",
       "fromFile": "Ou un fichier audio (WAV, FLAC, MP3, OGG, M4A)",
@@ -2274,38 +2274,38 @@
         "working": "Découpage de la voix…",
         "attach": "Donner à chaque plan sa voix",
         "done": "{attached, plural, =0 {Aucun plan n'a reçu de voix} one {# plan a reçu sa voix} other {# plans ont reçu leur voix}} à partir {source, select, stem {du stem} other {de la chanson}}.",
-        "hintEach": null,
-        "again": null,
-        "unassigned": null
+        "hintEach": "Chaque plan reçoit sa partie de la voix : elle commence 0,4 s avant le plan, est marquée comme chantée et produit 3 prises.",
+        "again": "Se relance pour chaque plan, y compris ceux dont vous avez retiré la voix.",
+        "unassigned": "{n, plural, one {# plan n'a pas encore de voix.} other {# plans n'ont pas encore de voix.}}"
       },
       "coverage": {
-        "title": null,
-        "source": null,
-        "counts": null,
-        "empty": null,
+        "title": "Synchro labiale : {sings} sur {total, plural, one {# plan chante} other {# plans chantent}}",
+        "source": "{source, select, stem {Voix issue du stem} other {Voix issue de la chanson}}",
+        "counts": "{synced} synchronisés · {waiting} en attente d'un clip · {skipped} sans synchro labiale · {unassigned} sans voix",
+        "empty": "Pas encore de plans.",
         "col": {
-          "shot": null,
-          "time": null,
-          "length": null,
-          "state": null
+          "shot": "Plan",
+          "time": "Moment de la chanson",
+          "length": "Durée",
+          "state": "Synchro labiale"
         },
-        "makeAll": null,
-        "batchRunning": null
+        "makeAll": "{n, plural, one {Créer # clip avec synchro labiale} other {Créer # clips avec synchro labiale}}",
+        "batchRunning": "Attend les plans en cours de création."
       },
       "sing": {
-        "question": null,
-        "yes": null,
-        "yesHint": null,
-        "stemHint": null,
-        "perShot": null,
-        "no": null,
-        "noHint": null,
-        "cut": null,
-        "keepShots": null,
-        "choose": null,
-        "review": null
+        "question": "Quelqu'un chante-t-il à l'écran ?",
+        "yes": "Oui, synchroniser le chant avec les lèvres",
+        "yesHint": "Découpe la chanson en plans de {min} à {max} s, puis donne à chaque plan sa partie de la voix.",
+        "stemHint": "Un stem vocal (la voix seule) donne le meilleur résultat ; sans stem, la chanson elle-même est utilisée.",
+        "perShot": "Tous les plans n'ont pas à chanter : un plan sans chant est lu comme un clip ordinaire, et chaque plan peut retirer sa voix dans son éditeur.",
+        "no": "Non, images seulement",
+        "noHint": "Découpe au rythme, sans synchro labiale.",
+        "cut": "Découper la chanson en plans",
+        "keepShots": "Garder mes plans et donner à chacun sa voix",
+        "choose": "Choisissez d'abord une réponse.",
+        "review": "Vous vérifiez d'abord le découpage ; rien n'est encore créé."
       },
-      "cutSongIntoShots": null
+      "cutSongIntoShots": "Découper la chanson en plans"
     },
     "unsaved": {
       "title": "Votre texte n'a pas été enregistré",
@@ -2318,56 +2318,56 @@
       "discard": "Abandonner mon texte"
     },
     "chip": {
-      "noCharacterTitle": null,
-      "noCharacter": null,
-      "reasonSpeed": null,
-      "reasonLocked": null,
-      "reasonOutside": null,
-      "reasonShort": null,
-      "reasonLong": null,
-      "reasonNoSinging": null,
-      "reasonNoVocal": null,
-      "titleSpeed": null,
-      "titleLocked": null,
-      "titleOutside": null,
-      "titleShort": null,
-      "titleLong": null,
-      "titleNoSinging": null,
-      "titleNoVocal": null,
-      "sings": null,
-      "singsTitle": null,
-      "willSing": null,
-      "willSingTitle": null,
-      "noLipSync": null,
-      "plainClip": null
+      "noCharacterTitle": "Aucun personnage n'est dans ce plan, son image est donc créée sans personnage. Ouvrez le plan pour en ajouter un.",
+      "noCharacter": "Aucun personnage",
+      "reasonSpeed": "autre vitesse",
+      "reasonLocked": "verrouillé",
+      "reasonOutside": "hors de la chanson",
+      "reasonShort": "trop court",
+      "reasonLong": "trop long",
+      "reasonNoSinging": "pas de chant ici",
+      "reasonNoVocal": "pas encore de voix",
+      "titleSpeed": "Ce plan est lu à une autre vitesse. La synchro labiale exige le temps réel.",
+      "titleLocked": "Ce plan est verrouillé : la synchro labiale ne le touche pas.",
+      "titleOutside": "Ce plan est hors de la chanson, il n'y a donc rien à chanter.",
+      "titleShort": "Ce plan est trop court pour la synchro labiale. Il faut au moins {min} s.",
+      "titleLong": "Ce plan est trop long pour la synchro labiale. Il peut durer {max} s au maximum.",
+      "titleNoSinging": "Il n'y a pas de chant dans la voix pour cette partie de la chanson.",
+      "titleNoVocal": "Ce plan n'a pas encore de voix. Donnez à chaque plan sa voix pour le synchroniser.",
+      "sings": "Chante",
+      "singsTitle": "Le clip de ce plan est synchronisé sur la chanson.",
+      "willSing": "Chantera",
+      "willSingTitle": "Ce plan a sa voix. Créez son clip avec synchro labiale pour le voir chanter.",
+      "noLipSync": "Pas de synchro labiale : {reason}",
+      "plainClip": "Il est lu comme un clip ordinaire."
     },
     "failure": {
-      "details": null,
-      "outOfMemory": null,
-      "modelMissing": null,
-      "lipsyncModel": null,
-      "downloadBlocked": null,
-      "videoToolsMissing": null,
-      "sizeOverCap": null,
-      "referencesUnsupported": null,
-      "noPrompt": null,
-      "diskFull": null,
-      "cancelled": null,
-      "unknown": null,
-      "actionEdit": null,
-      "actionSmallerSized": null,
-      "actionSmaller": null,
-      "actionSmallerTitle": null,
-      "actionVideoModels": null,
-      "actionImageModels": null,
-      "actionVideoTools": null
+      "details": "Détails",
+      "outOfMemory": "La mémoire libre était insuffisante pour créer ce plan à cette taille.",
+      "modelMissing": "Le modèle nécessaire à ce plan n'est pas installé.",
+      "lipsyncModel": "Le modèle vidéo de ce projet ne peut pas synchroniser la voix de ce plan sur les lèvres.",
+      "downloadBlocked": "Le modèle n'a pas pu être téléchargé. Sa licence doit peut-être être acceptée, ou la connexion est coupée.",
+      "videoToolsMissing": "Les outils vidéo ne sont pas installés.",
+      "sizeOverCap": "Ce plan est plus grand que ce que le modèle peut produire.",
+      "referencesUnsupported": "Le modèle ne peut pas utiliser les images de ce plan (image de début, de fin ou de référence).",
+      "noPrompt": "Ce plan n'a rien à partir de quoi être créé. Écrivez d'abord son prompt.",
+      "diskFull": "Le disque est plein, le plan n'a donc pas pu être enregistré. Libérez de l'espace, puis réessayez.",
+      "cancelled": "Le plan a été arrêté avant la fin.",
+      "unknown": "Le plan n'a pas été généré.",
+      "actionEdit": "Modifier les prompts",
+      "actionSmallerSized": "Créer en taille brouillon ({size})",
+      "actionSmaller": "Créer en taille brouillon",
+      "actionSmallerTitle": "Recrée ce plan à une taille plus petite qui demande moins de mémoire. Il devient un brouillon ; choisissez-le pour le final plus tard.",
+      "actionVideoModels": "Ouvrir Modèles vidéo",
+      "actionImageModels": "Ouvrir Modèles image",
+      "actionVideoTools": "Installer les outils vidéo"
     },
     "quality": {
-      "tag": null,
-      "tagNoSize": null,
-      "titleSized": null,
-      "titleDraftOnly": null,
-      "titleNoSize": null
+      "tag": "Brouillon {size}",
+      "tagNoSize": "Brouillon",
+      "titleSized": "Un brouillon créé en {size}, environ la moitié de la taille du film, pour choisir vite les plans. Le film fait {film} : choisissez ce plan pour le final pour le créer à cette taille.",
+      "titleDraftOnly": "Un brouillon créé en {size}, plus petit que le film, pour choisir vite les plans. Choisissez ce plan pour le final pour le créer en taille réelle.",
+      "titleNoSize": "Un brouillon créé plus petit que le film, pour choisir vite les plans. Choisissez ce plan pour le final pour le créer en taille réelle."
     }
   },
   "storyProjects": {
@@ -2531,12 +2531,12 @@
       "more": "Plus",
       "whyBusy": "Un rendu est en cours. L'export démarre à sa fin ou si vous l'annulez.",
       "whyEmpty": "Rien à exporter pour l'instant : aucun plan n'a de clip. Créez des clips dans l'onglet Storyboard.",
-      "methodSharp": null,
-      "methodStandard": null,
-      "method": null,
-      "methodNeedsAddon": null,
-      "methodOpenUpscale": null,
-      "anyway": null
+      "methodSharp": "Plus net (IA, nécessite le module complémentaire Agrandir)",
+      "methodStandard": "Étirement standard",
+      "method": "Méthode d'agrandissement",
+      "methodNeedsAddon": "Le module complémentaire Agrandir n'est pas installé, l'export ne démarrera donc pas avec ce choix. Installez-le, ou choisissez Étirement standard.",
+      "methodOpenUpscale": "Ouvrir l'onglet Agrandir",
+      "anyway": "Exporter quand même"
     },
     "importAudio": "Importer de l'audio",
     "importAudioPath": "Chemin du fichier audio",
@@ -2613,10 +2613,10 @@
       "render": "Aperçu rendu"
     },
     "clipSound": {
-      "muted": null,
-      "playing": null,
-      "mixed": null,
-      "switch": null
+      "muted": "Coupé sous la chanson",
+      "playing": "Lu par-dessus la chanson",
+      "mixed": "Lu dans certains plans",
+      "switch": "Laisser jouer le son du clip"
     }
   },
   "aiLabel": {
@@ -2845,8 +2845,8 @@
     "unnamed": "Sans nom",
     "usedBy": "{n, plural, =0 {Pas encore utilisé par un plan} one {Utilisé par # plan} other {Utilisé par # plans}}",
     "noneShort": "Aucun pour l'instant.",
-    "inEveryShot": null,
-    "inEveryShotHint": null
+    "inEveryShot": "Dans tous les plans",
+    "inEveryShotHint": "Place ce personnage dans tous les plans, maintenant et plus tard. Un plan peut quand même l'exclure dans son éditeur."
   },
   "exportTab": {
     "bundleBody": "Un fichier .chaosfilm avec les plans, les prises, les images de distribution et le son, pour sauvegarder le projet ou l'ouvrir sur un autre ordinateur.",
@@ -2949,8 +2949,8 @@
       "storyboard": "Storyboard"
     },
     "tabsLabel": "Projet",
-    "more": null,
-    "boardHint": null
+    "more": "Plus",
+    "boardHint": "Disposez librement les plans et la distribution"
   },
   "templates": {
     "ad30": "Pub de 30 s",
@@ -3034,8 +3034,8 @@
     "metaFormat": "{aspect} · {resolution} · {fps} fps · {shots, plural, one {# plan} other {# plans}}",
     "sets": "{name} a réglé le format sur {aspect}, {resolution}, {fps} i/s. Modifiez-les ci-dessous.",
     "sample": "Film d'exemple",
-    "musicVideoMeta": null,
-    "musicVideoNote": null
+    "musicVideoMeta": "Commence par la chanson",
+    "musicVideoNote": "S'ouvre sur l'étape Chanson : ajoutez la chanson, puis découpez-la en plans. Format {aspect}, {resolution}, {fps} i/s ; modifiable ci-dessous."
   },
   "voicePicker": {
     "automatic": "Pas de voix (automatique)",
@@ -3068,15 +3068,15 @@
     "needStills": "{n, plural, one {# plan à finir} other {# plans à finir}} : {stills, plural, one {# a une image fixe et attend son clip} other {# ont une image fixe et attendent leur clip}}",
     "stale": "{n} périmés",
     "choice": {
-      "finalPass": null,
-      "label": null,
-      "draft": null,
-      "about": null,
-      "draftWhy": null,
-      "final": null,
-      "peak": null
+      "finalPass": "La passe finale recrée les plans choisis en {size}, puis leurs clips.",
+      "label": "Brouillons ou final",
+      "draft": "D'abord des brouillons : {size}",
+      "about": "environ {time}",
+      "draftWhy": "demi-taille, pour choisir les plans qui vous plaisent. Vous créez ensuite ceux-ci en taille réelle.",
+      "final": "Directement en final : {size}",
+      "peak": "pic de {peak} sur {total}"
     },
-    "more": null
+    "more": "Autres façons de créer"
   },
   "slowRow": {
     "label": "Lent sur cet ordinateur",
@@ -3120,161 +3120,161 @@
     "hint": "Lancé depuis un autre écran, comme un lot de Storyboard. Attendez sa fin avant d'en lancer un autre."
   },
   "videoUpscale": {
-    "statusFailed": null,
+    "statusFailed": "Impossible de lire l'état de l'outil d'agrandissement : {error}",
     "install": {
-      "title": null,
-      "body": null,
-      "licence": null,
-      "phasePackages": null,
-      "phaseWeights": null,
-      "phaseCheck": null,
-      "step": null,
-      "button": null,
-      "retry": null,
-      "failed": null,
-      "unknownError": null
+      "title": "Installer l'outil d'agrandissement vidéo",
+      "body": "Cela ajoute deux modèles d'agrandissement (Real-ESRGAN, par xinntao) et la petite bibliothèque qui les exécute, dans leur propre dossier. Environ {size} Mo, téléchargés une seule fois. Rien d'autre ne change sur votre ordinateur.",
+      "licence": "Licence du modèle : {licence}.",
+      "phasePackages": "Installation de la bibliothèque qui exécute les modèles…",
+      "phaseWeights": "Téléchargement des modèles d'agrandissement…",
+      "phaseCheck": "Vérification de l'installation…",
+      "step": "Étape {step} sur 3 : {phase}",
+      "button": "Installer (environ {size} Mo)",
+      "retry": "Réessayer l'installation",
+      "failed": "L'installation a échoué : {error}",
+      "unknownError": "Aucune raison n'a été donnée."
     },
     "source": {
-      "label": null,
-      "placeholder": null,
-      "browse": null,
-      "browseTitle": null,
-      "filterName": null,
-      "browseFailed": null,
-      "hint": null,
-      "chosenSized": null
+      "label": "Vidéo",
+      "placeholder": "Chemin complet d'un fichier vidéo sur cet ordinateur",
+      "browse": "Parcourir…",
+      "browseTitle": "Choisir une vidéo à agrandir",
+      "filterName": "Vidéos",
+      "browseFailed": "Le sélecteur de fichiers n'est pas disponible ici. Collez plutôt le chemin complet de la vidéo.",
+      "hint": "Ou utilisez « Agrandir ce clip » sur un clip de la Galerie vidéo. Le nouveau film est enregistré dans votre dossier vidéo, sous « upscaled ».",
+      "chosenSized": "{name}, {width} × {height}"
     },
     "quality": {
-      "label": null,
-      "notInstalled": null,
-      "wontFit": null,
-      "downloadMissing": null
+      "label": "Qualité",
+      "notInstalled": "Pas encore téléchargé",
+      "wontFit": "Demande plus de mémoire graphique que cet ordinateur n'en a",
+      "downloadMissing": "Télécharger les modèles manquants"
     },
     "size": {
-      "label": null,
-      "x2": null,
-      "x4": null,
-      "target": null,
-      "result": null,
-      "limit": null,
-      "needsSize": null,
-      "notBigger": null
+      "label": "Taille",
+      "x2": "2x",
+      "x4": "4x",
+      "target": "{height}p",
+      "result": "Le résultat fera {width} × {height}.",
+      "limit": "Le résultat ferait {width}x{height} ; la limite est de {max} pixels par côté. Choisissez un facteur plus petit ou une taille cible plus petite.",
+      "needsSize": "Les tailles cibles ont besoin des dimensions de la vidéo, lues quand vous choisissez le fichier. Choisissez 2x ou 4x en attendant.",
+      "notBigger": "La vidéo a déjà cette hauteur ou plus."
     },
-    "deinterlace": null,
-    "start": null,
-    "oneAtATime": null,
+    "deinterlace": "Désentrelacer d'abord (pour les enregistrements TV ou sur cassette qui montrent des lignes en peigne lors des mouvements)",
+    "start": "Lancer l'agrandissement",
+    "oneAtATime": "Un agrandissement à la fois : attendez celui-ci ou annulez-le.",
     "job": {
-      "target": null,
-      "queued": null,
-      "running": null,
-      "done": null,
-      "failed": null,
-      "cancelled": null,
-      "interrupted": null,
-      "frames": null,
-      "speed": null,
-      "etaSeconds": null,
-      "etaMinutes": null,
-      "etaHours": null,
-      "progressLabel": null,
-      "parts": null,
-      "savedAs": null,
-      "cancel": null,
-      "resume": null,
-      "open": null,
-      "reveal": null,
-      "dismiss": null,
-      "play": null,
-      "playLoading": null
+      "target": "en {width} × {height}",
+      "queued": "En attente de la fin d'une autre tâche sur le GPU.",
+      "running": "Agrandissement…",
+      "done": "Terminé.",
+      "failed": "Arrêté par une erreur : {error}",
+      "cancelled": "Annulé. Les parties terminées sont conservées, Reprendre repart de là.",
+      "interrupted": "Arrêté à la fermeture de l'application. Reprendre repart de là où il s'était arrêté.",
+      "frames": "{done, number} images sur {total, number}",
+      "speed": "{fps} images par seconde",
+      "etaSeconds": "environ {count} s restantes",
+      "etaMinutes": "environ {count} min restantes",
+      "etaHours": "environ {hours} h {minutes} min restantes",
+      "progressLabel": "Progression de l'agrandissement",
+      "parts": "Le film est créé en {segments} parties ; chaque partie terminée est conservée si la tâche s'arrête.",
+      "savedAs": "Enregistré sous {path}",
+      "cancel": "Annuler",
+      "resume": "Reprendre",
+      "open": "Ouvrir le résultat",
+      "reveal": "Afficher dans le dossier",
+      "dismiss": "Fermer",
+      "play": "Lire le résultat",
+      "playLoading": "Chargement du film…"
     },
     "compare": {
-      "before": null,
-      "beforeMissing": null,
-      "after": null,
-      "afterOpen": null,
-      "beforeAlt": null,
-      "afterAlt": null,
-      "loading": null,
-      "playMissing": null,
-      "playFailed": null
+      "before": "Avant",
+      "beforeMissing": "Pas d'aperçu de ce fichier dans l'application.",
+      "after": "Après ({width} × {height})",
+      "afterOpen": "Ouvrez le résultat pour le comparer en taille réelle.",
+      "beforeAlt": "Première image de la vidéo d'origine",
+      "afterAlt": "Première image de la vidéo agrandie",
+      "loading": "Chargement de la première image…",
+      "playMissing": "L'application ne peut plus lire ce film elle-même (elle a été redémarrée depuis). Utilisez Ouvrir le résultat ou Afficher dans le dossier.",
+      "playFailed": "Impossible de charger le film : {error}"
     },
-    "deinterlaceUnavailable": null,
+    "deinterlaceUnavailable": "Le désentrelacement n'est pas disponible : les outils vidéo de cet ordinateur ne le gèrent pas.",
     "probe": {
-      "line": null,
-      "withSound": null,
-      "noSound": null,
-      "reading": null,
-      "interlaced": null
+      "line": "{name} : {width} × {height}, {fps} images par seconde, {duration}, {audio}",
+      "withSound": "avec son",
+      "noSound": "sans son",
+      "reading": "Lecture de la vidéo…",
+      "interlaced": "Cette vidéo semble entrelacée, la case est donc cochée."
     },
     "recent": {
-      "label": null,
-      "queued": null,
-      "running": null,
-      "done": null,
-      "failed": null,
-      "cancelled": null,
-      "interrupted": null
+      "label": "Agrandissements récents",
+      "queued": "En attente",
+      "running": "Agrandissement",
+      "done": "Terminé",
+      "failed": "Échec",
+      "cancelled": "Annulé",
+      "interrupted": "Arrêté"
     }
   },
   "guide": {
     "stage": {
-      "song": null,
-      "look": null,
-      "shots": null,
-      "drafts": null,
-      "final": null,
-      "lipsync": null,
-      "sound": null,
-      "check": null,
-      "export": null
+      "song": "Chanson",
+      "look": "Style",
+      "shots": "Plans",
+      "drafts": "Brouillons",
+      "final": "Final",
+      "lipsync": "Synchro labiale",
+      "sound": "Son",
+      "check": "Vérifier",
+      "export": "Export"
     },
     "look": {
-      "done": null,
-      "current": null,
-      "attention": null,
-      "progress": null,
-      "skipped": null,
-      "todo": null
+      "done": "Terminé",
+      "current": "Maintenant",
+      "attention": "À regarder",
+      "progress": "En cours",
+      "skipped": "Ignoré",
+      "todo": "À faire"
     },
     "action": {
-      "attachSong": null,
-      "openCast": null,
-      "cutPlan": null,
-      "planShots": null,
-      "openStoryboard": null,
-      "watchBatch": null,
-      "resumeBatch": null,
-      "retryFailed": null,
-      "makeDrafts": null,
-      "makeMissing": null,
-      "makeFinal": null,
-      "chooseFinal": null,
-      "makeClips": null,
-      "remakeStale": null,
-      "assignVocals": null,
-      "makeLipsync": null,
-      "openCoverage": null,
-      "openMixer": null,
-      "openCheck": null,
-      "export": null
+      "attachSong": "Ajouter la chanson",
+      "openCast": "Ouvrir Distribution",
+      "cutPlan": "Découper la chanson en plans",
+      "planShots": "Planifier les plans",
+      "openStoryboard": "Ouvrir le Storyboard",
+      "watchBatch": "Suivre la progression",
+      "resumeBatch": "Reprendre",
+      "retryFailed": "Les réessayer",
+      "makeDrafts": "Créer des brouillons",
+      "makeMissing": "Créer les plans manquants",
+      "makeFinal": "Les créer en taille réelle",
+      "chooseFinal": "Choisir les plans",
+      "makeClips": "Créer les clips",
+      "remakeStale": "Les recréer",
+      "assignVocals": "Donner à chaque plan sa voix",
+      "makeLipsync": "Créer les clips avec synchro labiale",
+      "openCoverage": "Voir quels plans chantent",
+      "openMixer": "Ouvrir le Mixeur",
+      "openCheck": "Vérifier avant l'export",
+      "export": "Ouvrir Export"
     },
-    "label": null
+    "label": "Étapes du film"
   },
   "exportCheck": {
     "line": {
-      "upscaleSharp": null
+      "upscaleSharp": "Il est agrandi en {size} à la fin avec l'agrandisseur IA."
     },
-    "stops": null,
-    "worthFixing": null,
-    "forInfo": null,
-    "stopsNone": null,
-    "worthFixingNone": null,
+    "stops": "Bloque l'export",
+    "worthFixing": "À corriger",
+    "forInfo": "Pour information",
+    "stopsNone": "Rien ne bloque l'export.",
+    "worthFixingNone": "Rien à corriger.",
     "fix": {
-      "plan": null,
-      "song": null,
-      "cast": null,
-      "shot": null
+      "plan": "Ouvrir Plan",
+      "song": "Ouvrir l'étape de la chanson",
+      "cast": "Ouvrir Distribution",
+      "shot": "Ouvrir le plan {n}"
     },
-    "title": null
+    "title": "Prêt pour l'export ?"
   }
 }

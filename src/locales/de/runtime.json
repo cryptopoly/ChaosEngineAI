@@ -177,9 +177,9 @@
     "addGrammar": "Strukturierte Ausgabe hinzufügen",
     "exclusiveLabel": "Hinweis:",
     "exclusiveBody": "Keine andere Engine der App kann dieses Modell laden, daher läuft es immer auf TensorFold; das Kontrollkästchen schaltet nur das Drafting ein und aus.",
-    "contextCapped": null,
-    "cacheNote": null,
-    "contextCappedVram": null
+    "contextCapped": "TensorFold verwaltet seine eigenen Caches. Das GPU-Limit dieses Macs liegt bei {limitGb} GB; das Modell mit {weightsGb} GB und ein Puffer von {marginGb} GB lassen {budgetGb} GB übrig, das volle Fenster bräuchte {needGb} GB. Das Fenster ist auf {maxContext} begrenzt, damit TensorFold startet.",
+    "cacheNote": "TensorFold belegt hier etwa {cacheGb} GB Cache (seine eigenen Caches und die des Entwurfsmodells), mehr als die angezeigte Standardschätzung.",
+    "contextCappedVram": "TensorFold braucht bei vollem Fenster etwa {needGb} GB GPU-Speicher, die Karte hat aber nur {freeGb} GB frei. Das Fenster ist auf {maxContext} begrenzt, damit TensorFold startet."
   },
   "strategyRole": {
     "memorySaverTitle": "Verkleinert den KV-Cache, damit lange Kontexte in weniger Speicher passen. Die Generierung ist langsamer als bei Nativ.",

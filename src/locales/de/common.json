@@ -42,7 +42,7 @@
     "storyBoard": "Board",
     "storyMixer": "Mixer",
     "projects": "Projekte",
-    "videoUpscale": null
+    "videoUpscale": "Hochskalieren"
   },
   "tabCaptions": {
     "dashboard": "Systemübersicht",
@@ -79,7 +79,7 @@
     "storyBoard": "Einstellungen, Takes und Prompts",
     "storyMixer": "Bild, Ton und Export",
     "projects": "Storyboard-Filme: Einstellungen, Ton, Export",
-    "videoUpscale": null
+    "videoUpscale": "Ein Video schärfer und größer machen"
   },
   "tabShortLabels": {
     "chat": "Chat",
@@ -107,7 +107,7 @@
     "storyProjects": "Projekte",
     "storyBoard": "Board",
     "storyMixer": "Mixer",
-    "videoUpscale": null
+    "videoUpscale": "Hochskalieren"
   },
   "tabGroups": {
     "chat": "Chat",
@@ -1585,15 +1585,15 @@
     "note": "Der Schlüssel ist auf dem Bildschirm verborgen. Kopieren kopiert immer den echten Schlüssel."
   },
   "memoryBar": {
-    "aria": null,
-    "usedNow": null,
-    "weights": null,
-    "cache": null,
-    "summary": null,
-    "limitMetal": null,
-    "limitVram": null,
-    "limitRam": null,
-    "overLimit": null,
-    "overFree": null
+    "aria": "Speicher: {used} GB aktuell belegt, {weights} GB Modellgewichte, {cache} GB Cache, von insgesamt {total} GB",
+    "usedNow": "Jetzt belegt {value} GB",
+    "weights": "Modell {value} GB",
+    "cache": "Cache {value} GB",
+    "summary": "Braucht {need} GB. Jetzt frei: {free} GB. {label}: {limit} GB.",
+    "limitMetal": "GPU-Limit",
+    "limitVram": "Grafikspeicher",
+    "limitRam": "Nutzbarer RAM",
+    "overLimit": "Dieser Start braucht mehr Speicher, als erlaubt ist ({label}), und startet deshalb nicht wie eingestellt.",
+    "overFree": "Mehr, als gerade frei ist. Der Start ist möglich, aber andere Apps werden aus dem RAM verdrängt und es kann ausgelagert werden. Vorher Apps zu schließen hilft."
   }
 }

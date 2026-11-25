@@ -42,7 +42,7 @@
     "storyBoard": "Tableau",
     "storyMixer": "Mixeur",
     "projects": "Projets",
-    "videoUpscale": null
+    "videoUpscale": "Agrandir"
   },
   "tabCaptions": {
     "dashboard": "Vue d'ensemble du système",
@@ -79,7 +79,7 @@
     "storyBoard": "Plans, prises et prompts",
     "storyMixer": "Image, son et export",
     "projects": "Films storyboard : plans, son, export",
-    "videoUpscale": null
+    "videoUpscale": "Rendre une vidéo plus nette et plus grande"
   },
   "tabShortLabels": {
     "chat": "Discussion",
@@ -107,7 +107,7 @@
     "storyProjects": "Projets",
     "storyBoard": "Tableau",
     "storyMixer": "Mixeur",
-    "videoUpscale": null
+    "videoUpscale": "Agrandir"
   },
   "tabGroups": {
     "chat": "Discussion",
@@ -1585,15 +1585,15 @@
     "note": "La clé est masquée à l'écran. Copier copie toujours la vraie clé."
   },
   "memoryBar": {
-    "aria": null,
-    "usedNow": null,
-    "weights": null,
-    "cache": null,
-    "summary": null,
-    "limitMetal": null,
-    "limitVram": null,
-    "limitRam": null,
-    "overLimit": null,
-    "overFree": null
+    "aria": "Mémoire : {used} Go utilisés actuellement, {weights} Go de poids du modèle, {cache} Go de cache, sur {total} Go au total",
+    "usedNow": "Utilisé maintenant {value} Go",
+    "weights": "Modèle {value} Go",
+    "cache": "Cache {value} Go",
+    "summary": "Nécessite {need} Go. {free} Go libres actuellement. {label} : {limit} Go.",
+    "limitMetal": "Limite GPU",
+    "limitVram": "Mémoire de la carte",
+    "limitRam": "RAM utilisable",
+    "overLimit": "Ce lancement demande plus de mémoire que la limite autorisée ({label}), il ne démarrera donc pas avec ces réglages.",
+    "overFree": "Plus que la mémoire libre actuellement. Le lancement est possible, mais d'autres applications seront sorties de la RAM et le système pourra utiliser le swap. Fermer d'abord des applications aide."
   }
 }

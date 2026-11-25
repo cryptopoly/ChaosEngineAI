@@ -177,9 +177,9 @@
     "addGrammar": "Añadir salida estructurada",
     "exclusiveLabel": "Nota:",
     "exclusiveBody": "Ningún otro motor de la app puede cargar este modelo, así que siempre se ejecuta en TensorFold; la casilla solo activa o desactiva los borradores.",
-    "contextCapped": null,
-    "cacheNote": null,
-    "contextCappedVram": null
+    "contextCapped": "TensorFold gestiona sus propias cachés. El límite de GPU de este Mac es de {limitGb} GB; el modelo de {weightsGb} GB y un margen de {marginGb} GB dejan {budgetGb} GB, y la ventana completa necesitaría {needGb} GB. La ventana se limita a {maxContext} para que TensorFold arranque.",
+    "cacheNote": "TensorFold ocupa aquí unos {cacheGb} GB de caché (sus propias cachés y las del modelo de borrador), más que la estimación estándar mostrada.",
+    "contextCappedVram": "TensorFold necesita unos {needGb} GB de memoria de GPU con la ventana completa y la tarjeta tiene {freeGb} GB libres. La ventana se limita a {maxContext} para que TensorFold arranque."
   },
   "strategyRole": {
     "memorySaverTitle": "Reduce la caché KV para que los contextos largos quepan en menos memoria. La generación es más lenta que con Nativo.",

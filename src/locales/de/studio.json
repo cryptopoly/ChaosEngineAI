@@ -671,7 +671,7 @@
       "delete": "Löschen",
       "soundOn": "Ton einschalten",
       "soundOff": "Stummschalten",
-      "upscale": null
+      "upscale": "Dieses hochskalieren"
     }
   },
   "voice": {
@@ -1487,7 +1487,7 @@
       "stepsNumber": "Anzahl der Schritte",
       "stepsNote": "Weniger Schritte sind schneller, können aber schlechter klingen. {n} ist die Einstellung des Modell-Autors.",
       "summarySteps": "{n} Schritte",
-      "random": null
+      "random": "Zufällig"
     },
     "artistWarning": "Wenn du einen Künstler nennst, kann eine Kopie seines Stils entstehen. Beschreibe stattdessen den Klang.",
     "cancel": "Abbrechen",
@@ -1645,7 +1645,7 @@
       "title": "Einstellungen werden erstellt",
       "titleDraft": "Entwürfe werden erstellt",
       "titleFinal": "Finaler Durchlauf",
-      "failedSoFar": null
+      "failedSoFar": "{n, plural, one {# Shot wurde nicht erstellt. Auf seiner Karte steht, warum und was zu tun ist.} other {# Shots wurden nicht erstellt. Auf ihren Karten steht, warum und was zu tun ist.}}"
     },
     "conflictNotice": "Anderswo geändert; die neueste Version wird angezeigt",
     "defaults": {
@@ -1709,23 +1709,23 @@
       "vocalTakesDefault": "Standard ({count})",
       "vocalTakesBest": "4 (beste Qualität)",
       "vocalTakesHint": "Singstimmen: Nimm den Gesangs-Stem, ein frontales Close-up-Standbild mit geschlossenem Mund und starte etwa 0,4 s vor einer Phrase. Jeder Take nutzt einen eigenen Seed; die Sync-Bewertung behält den besten, die übrigen bleiben in der Videogalerie.",
-      "castInShot": null,
-      "castNone": null,
-      "castEveryShot": null,
-      "leaveOut": null,
-      "lipSyncSeparate": null,
-      "clipSound": null,
-      "clipSoundOn": null,
-      "clipSoundOff": null,
-      "endFrame": null,
-      "endFrameHint": null,
-      "endFrameAlt": null,
-      "endFrameChange": null,
-      "endFramePick": null,
-      "endFrameRemove": null,
-      "endFramePickerTitle": null,
-      "vocalHintShot": null,
-      "vocalOptional": null
+      "castInShot": "In diesem Shot: {names}",
+      "castNone": "Keine Figur in diesem Shot.",
+      "castEveryShot": "In jedem Shot",
+      "leaveOut": "Aus diesem Shot weglassen",
+      "lipSyncSeparate": "Eine Figur im Shot muss nicht singen. Die Lippensynchronisation wird für jeden Shot einzeln eingestellt, unter „Gesang für Lippensynchronisation“.",
+      "clipSound": "Ton des Clips abspielen",
+      "clipSoundOn": "Der eigene Ton des Clips läuft über dem Song.",
+      "clipSoundOff": "Unter dem Song stummgeschaltet.",
+      "endFrame": "Endbild",
+      "endFrameHint": "Das Bild, mit dem der Clip enden soll. Nur LTX-2-Videomodelle nutzen es; die anderen bitten dich, es zu entfernen.",
+      "endFrameAlt": "Endbild von Shot {number}",
+      "endFrameChange": "Endbild ändern",
+      "endFramePick": "Endbild wählen",
+      "endFrameRemove": "Endbild entfernen",
+      "endFramePickerTitle": "Endbild für Shot {number}",
+      "vocalHintShot": "Eine WAV- oder FLAC-Datei, der der Mund folgt: Der Clip startet vom Standbild dieses Shots und behält diesen Ton. Braucht LTX-2.3 als Videomodell (das 4-Bit-NVIDIA-Modell verlangt eine Karte mit 24 GB).",
+      "vocalOptional": "Ein Shot muss nicht singen: Entferne seinen Gesang, dann läuft er als gewöhnlicher Clip."
     },
     "empty": "Noch keine Einstellungen. Füge eine Einstellung hinzu und gib ihr einen Prompt oder importiere Material.",
     "estimate": {
@@ -1816,11 +1816,11 @@
       "makeClip": "Clip erstellen",
       "makeClipTitle": "Den Clip dieser Einstellung aus ihrem Standbild erstellen.",
       "referenceAdded": "{name} wurde mit diesem Standbild zur Besetzung hinzugefügt.",
-      "tagsLabel": null,
-      "hideStaleTitle": null,
-      "hideStale": null,
-      "chooseForFinalTitle": null,
-      "chooseForFinal": null
+      "tagsLabel": "Lippensynchronisation und Besetzung",
+      "hideStaleTitle": "Blendet diese Warnung aus. Der Shot bleibt, wie er ist, und nichts wird neu erstellt.",
+      "hideStale": "Diese Warnung ausblenden",
+      "chooseForFinalTitle": "Der finale Durchlauf erstellt die gewählten Shots noch einmal mit dem Qualitätsmodell, in voller Filmgröße.",
+      "chooseForFinal": "Für Final auswählen"
     },
     "shots": "Einstellungen",
     "subtitle": "{shots, plural, one {# Einstellung} other {# Einstellungen}} · {seconds} s · {stale} veraltet",
@@ -1841,11 +1841,11 @@
       "draftTimed": "Entwürfe erzeugen · etwa {time}",
       "withClips": "Entwürfe mit Clips",
       "draftPer": "Etwa {time} pro Entwurf.",
-      "draftTitleChoose": null,
-      "finalChosenTimed": null,
-      "finalChosen": null,
-      "finalChosenTitle": null,
-      "chooseHint": null
+      "draftTitleChoose": "Schnelle Standbilder mit {model} in {width} x {height}. Wähle die Shots, die dir gefallen, für Final aus und starte dann den finalen Durchlauf.",
+      "finalChosenTimed": "Finaler Durchlauf für {n, plural, one {# gewählten Shot} other {# gewählte Shots}} · etwa {time}",
+      "finalChosen": "Finaler Durchlauf für {n, plural, one {# gewählten Shot} other {# gewählte Shots}}",
+      "finalChosenTitle": "Erstellt jeden gewählten Shot noch einmal mit {model} in {width} x {height}, danach seinen Clip aus dem neuen Standbild.",
+      "chooseHint": "Nutze „Für Final auswählen“ bei einem Shot, um ihn in den finalen Durchlauf zu nehmen."
     },
     "exportDrafts": "{n, plural, one {# Shot verwendet einen Entwurfs-Take.} other {# Shots verwenden einen Entwurfs-Take.}} Behalte sie und starte den finalen Durchlauf für volle Qualität, oder exportiere die Entwürfe so, wie sie sind.",
     "preview": {
@@ -1877,7 +1877,7 @@
       "titleCard": "Titelkarte",
       "endCard": "Endkarte",
       "legendCard": "Titel- oder Endkarte (Markenkit)",
-      "draftNoteSized": null
+      "draftNoteSized": "{n, plural, one {# Shot spielt einen Entwurfs-Take ab.} other {# Shots spielen einen Entwurfs-Take ab.}} Entwürfe sind kleiner als der Film. Wähle sie für Final aus und starte den finalen Durchlauf für die volle Größe."
     },
     "captions": {
       "toggle": "Untertitel anzeigen (C)",
@@ -1933,7 +1933,7 @@
       "open": "Takes vergleichen",
       "openTitle": "Zwei Takes nebeneinander, mit dem, was jeden erzeugt hat.",
       "short": "Vergleichen",
-      "noClipYet": null
+      "noClipYet": "In diesem Take ist noch kein Clip."
     },
     "remake": {
       "clip": "Nur Clip neu machen",
@@ -2234,7 +2234,7 @@
         "replaceNote": "Diese ersetzen die {n, plural, one {# Shot} other {# Shots}} auf dem Board; mit Bild-Prompts behält Shot 1 die Prompts des heutigen Shots 1 und so weiter. Rückgängig bringt die alten Shots zurück.",
         "title": "Schnittplan: {n, plural, one {# Shot} other {# Shots}} über {time}",
         "use": "{n, plural, one {Diesen Shot verwenden} other {Diese # Shots verwenden}}",
-        "useSinging": null
+        "useSinging": "{n, plural, one {Diesen Shot verwenden und ihm seinen Gesang geben} other {Diese # Shots verwenden und jedem seinen Gesang geben}}"
       },
       "cutting": "Schnitt zur Musik …",
       "fromFile": "Oder eine Audiodatei (WAV, FLAC, MP3, OGG, M4A)",
@@ -2274,38 +2274,38 @@
         "working": "Gesang wird geschnitten …",
         "attach": "Jedem Shot seinen Gesang zuweisen",
         "done": "{attached, plural, =0 {Kein Shot hat Gesang bekommen} one {# Shot hat seinen Gesang bekommen} other {# Shots haben ihren Gesang bekommen}} – aus {source, select, stem {dem Stem} other {dem Song}}.",
-        "hintEach": null,
-        "again": null,
-        "unassigned": null
+        "hintEach": "Jeder Shot bekommt seinen Teil des Gesangs: Er beginnt 0,4 s vor dem Shot, wird als gesungen markiert und erzeugt 3 Takes.",
+        "again": "Läuft für jeden Shot erneut, auch für Shots, bei denen du den Gesang entfernt hast.",
+        "unassigned": "{n, plural, one {# Shot hat noch keinen Gesang.} other {# Shots haben noch keinen Gesang.}}"
       },
       "coverage": {
-        "title": null,
-        "source": null,
-        "counts": null,
-        "empty": null,
+        "title": "Lippensynchronisation: {sings} von {total, plural, one {# Shot singt} other {# Shots singen}}",
+        "source": "{source, select, stem {Gesang aus dem Stem} other {Gesang aus dem Song}}",
+        "counts": "{synced} synchronisiert · {waiting} warten auf einen Clip · {skipped} ohne Lippensynchronisation · {unassigned} ohne Gesang",
+        "empty": "Noch keine Shots.",
         "col": {
-          "shot": null,
-          "time": null,
-          "length": null,
-          "state": null
+          "shot": "Shot",
+          "time": "Zeit im Song",
+          "length": "Länge",
+          "state": "Lippensynchronisation"
         },
-        "makeAll": null,
-        "batchRunning": null
+        "makeAll": "{n, plural, one {# Clip mit Lippensynchronisation erstellen} other {# Clips mit Lippensynchronisation erstellen}}",
+        "batchRunning": "Wartet auf die Shots, die gerade erstellt werden."
       },
       "sing": {
-        "question": null,
-        "yes": null,
-        "yesHint": null,
-        "stemHint": null,
-        "perShot": null,
-        "no": null,
-        "noHint": null,
-        "cut": null,
-        "keepShots": null,
-        "choose": null,
-        "review": null
+        "question": "Singt jemand im Bild?",
+        "yes": "Ja, Lippensynchronisation für den Gesang",
+        "yesHint": "Schneidet den Song in Shots von {min} bis {max} s und gibt dann jedem Shot seinen Teil des Gesangs.",
+        "stemHint": "Ein Gesangs-Stem (nur die Stimme) funktioniert am besten; ohne Stem wird der Song selbst verwendet.",
+        "perShot": "Nicht jeder Shot muss singen: Ein Shot ohne Gesang läuft als gewöhnlicher Clip, und jeder Shot kann seinen Gesang in seinem Editor entfernen.",
+        "no": "Nein, nur Bilder",
+        "noHint": "Schneidet im Takt, ohne Lippensynchronisation.",
+        "cut": "Den Song in Shots schneiden",
+        "keepShots": "Meine Shots behalten und jedem seinen Gesang geben",
+        "choose": "Wähle zuerst eine Antwort.",
+        "review": "Du prüfst zuerst den Schnitt; noch wird nichts erstellt."
       },
-      "cutSongIntoShots": null
+      "cutSongIntoShots": "Den Song in Shots schneiden"
     },
     "unsaved": {
       "title": "Dein Text wurde nicht gespeichert",
@@ -2318,56 +2318,56 @@
       "discard": "Meinen Text verwerfen"
     },
     "chip": {
-      "noCharacterTitle": null,
-      "noCharacter": null,
-      "reasonSpeed": null,
-      "reasonLocked": null,
-      "reasonOutside": null,
-      "reasonShort": null,
-      "reasonLong": null,
-      "reasonNoSinging": null,
-      "reasonNoVocal": null,
-      "titleSpeed": null,
-      "titleLocked": null,
-      "titleOutside": null,
-      "titleShort": null,
-      "titleLong": null,
-      "titleNoSinging": null,
-      "titleNoVocal": null,
-      "sings": null,
-      "singsTitle": null,
-      "willSing": null,
-      "willSingTitle": null,
-      "noLipSync": null,
-      "plainClip": null
+      "noCharacterTitle": "In diesem Shot ist keine Figur, daher wird sein Bild ohne Figur erstellt. Öffne den Shot, um eine hinzuzufügen.",
+      "noCharacter": "Keine Figur",
+      "reasonSpeed": "andere Geschwindigkeit",
+      "reasonLocked": "gesperrt",
+      "reasonOutside": "außerhalb des Songs",
+      "reasonShort": "zu kurz",
+      "reasonLong": "zu lang",
+      "reasonNoSinging": "hier kein Gesang",
+      "reasonNoVocal": "noch kein Gesang",
+      "titleSpeed": "Dieser Shot läuft mit anderer Geschwindigkeit. Lippensynchronisation braucht Echtzeit.",
+      "titleLocked": "Dieser Shot ist gesperrt, daher lässt die Lippensynchronisation ihn aus.",
+      "titleOutside": "Dieser Shot liegt außerhalb des Songs, es gibt also nichts zu singen.",
+      "titleShort": "Dieser Shot ist zu kurz für die Lippensynchronisation. Er braucht mindestens {min} s.",
+      "titleLong": "Dieser Shot ist zu lang für die Lippensynchronisation. Er darf höchstens {max} s dauern.",
+      "titleNoSinging": "In diesem Teil des Songs ist im Gesang nichts zu hören.",
+      "titleNoVocal": "Dieser Shot hat noch keinen Gesang. Gib jedem Shot seinen Gesang, um ihn lippensynchron zu machen.",
+      "sings": "Singt",
+      "singsTitle": "Der Clip dieses Shots ist lippensynchron zum Song.",
+      "willSing": "Wird singen",
+      "willSingTitle": "Dieser Shot hat seinen Gesang. Erstelle seinen Clip mit Lippensynchronisation, um ihn singen zu sehen.",
+      "noLipSync": "Keine Lippensynchronisation: {reason}",
+      "plainClip": "Er läuft als gewöhnlicher Clip."
     },
     "failure": {
-      "details": null,
-      "outOfMemory": null,
-      "modelMissing": null,
-      "lipsyncModel": null,
-      "downloadBlocked": null,
-      "videoToolsMissing": null,
-      "sizeOverCap": null,
-      "referencesUnsupported": null,
-      "noPrompt": null,
-      "diskFull": null,
-      "cancelled": null,
-      "unknown": null,
-      "actionEdit": null,
-      "actionSmallerSized": null,
-      "actionSmaller": null,
-      "actionSmallerTitle": null,
-      "actionVideoModels": null,
-      "actionImageModels": null,
-      "actionVideoTools": null
+      "details": "Details",
+      "outOfMemory": "Es war nicht genug freier Speicher vorhanden, um diesen Shot in dieser Größe zu erstellen.",
+      "modelMissing": "Das Modell, das dieser Shot braucht, ist nicht installiert.",
+      "lipsyncModel": "Das Videomodell dieses Projekts kann den Gesang dieses Shots nicht lippensynchron umsetzen.",
+      "downloadBlocked": "Das Modell konnte nicht heruntergeladen werden. Vielleicht muss zuerst die Lizenz akzeptiert werden, oder die Verbindung ist unterbrochen.",
+      "videoToolsMissing": "Die Videotools sind nicht installiert.",
+      "sizeOverCap": "Dieser Shot ist größer, als das Modell erstellen kann.",
+      "referencesUnsupported": "Das Modell kann die Bilder dieses Shots nicht verarbeiten (ein Start-, End- oder Referenzbild).",
+      "noPrompt": "Dieser Shot hat nichts, woraus er erstellt werden kann. Schreibe zuerst seinen Prompt.",
+      "diskFull": "Der Datenträger ist voll, daher konnte der Shot nicht gespeichert werden. Gib etwas Speicherplatz frei und versuche es erneut.",
+      "cancelled": "Der Shot wurde angehalten, bevor er fertig war.",
+      "unknown": "Der Shot wurde nicht erstellt.",
+      "actionEdit": "Prompts bearbeiten",
+      "actionSmallerSized": "In Entwurfsgröße erstellen ({size})",
+      "actionSmaller": "In Entwurfsgröße erstellen",
+      "actionSmallerTitle": "Erstellt diesen Shot noch einmal in kleinerer Größe, die weniger Speicher braucht. Er wird zum Entwurf; wähle ihn später für Final aus.",
+      "actionVideoModels": "Videomodelle öffnen",
+      "actionImageModels": "Bildmodelle öffnen",
+      "actionVideoTools": "Videotools installieren"
     },
     "quality": {
-      "tag": null,
-      "tagNoSize": null,
-      "titleSized": null,
-      "titleDraftOnly": null,
-      "titleNoSize": null
+      "tag": "Entwurf {size}",
+      "tagNoSize": "Entwurf",
+      "titleSized": "Ein Entwurf in {size}, etwa die halbe Größe des Films, damit du Shots schnell auswählen kannst. Der Film hat {film}: Wähle diesen Shot für Final aus, um ihn in dieser Größe zu erstellen.",
+      "titleDraftOnly": "Ein Entwurf in {size}, kleiner als der Film, damit du Shots schnell auswählen kannst. Wähle diesen Shot für Final aus, um ihn in voller Größe zu erstellen.",
+      "titleNoSize": "Ein Entwurf, kleiner als der Film, damit du Shots schnell auswählen kannst. Wähle diesen Shot für Final aus, um ihn in voller Größe zu erstellen."
     }
   },
   "storyProjects": {
@@ -2531,12 +2531,12 @@
       "more": "Mehr",
       "whyBusy": "Ein Rendering läuft. Der Export startet, sobald es endet oder du abbrichst.",
       "whyEmpty": "Noch nichts zu exportieren: Kein Shot hat einen Clip. Erzeuge Clips auf dem Reiter Storyboard.",
-      "methodSharp": null,
-      "methodStandard": null,
-      "method": null,
-      "methodNeedsAddon": null,
-      "methodOpenUpscale": null,
-      "anyway": null
+      "methodSharp": "Schärfer (KI, braucht das Hochskalieren-Add-on)",
+      "methodStandard": "Standarddehnung",
+      "method": "Wie hochskaliert wird",
+      "methodNeedsAddon": "Das Hochskalieren-Add-on ist nicht installiert, daher startet der Export mit dieser Auswahl nicht. Installiere es oder wähle Standarddehnung.",
+      "methodOpenUpscale": "Reiter „Hochskalieren“ öffnen",
+      "anyway": "Trotzdem exportieren"
     },
     "importAudio": "Audio importieren",
     "importAudioPath": "Pfad der Audiodatei",
@@ -2613,10 +2613,10 @@
       "render": "Gerenderte Vorschau"
     },
     "clipSound": {
-      "muted": null,
-      "playing": null,
-      "mixed": null,
-      "switch": null
+      "muted": "Unter dem Song stummgeschaltet",
+      "playing": "Läuft über dem Song",
+      "mixed": "Läuft in einigen Shots",
+      "switch": "Ton des Clips abspielen"
     }
   },
   "aiLabel": {
@@ -2845,8 +2845,8 @@
     "unnamed": "Ohne Namen",
     "usedBy": "{n, plural, =0 {Von keinem Shot verwendet} one {Von # Shot verwendet} other {Von # Shots verwendet}}",
     "noneShort": "Noch keine.",
-    "inEveryShot": null,
-    "inEveryShotHint": null
+    "inEveryShot": "In jedem Shot",
+    "inEveryShotHint": "Setzt diese Figur in jeden Shot, jetzt und später. Ein Shot kann sie in seinem Editor trotzdem weglassen."
   },
   "exportTab": {
     "bundleBody": "Eine .chaosfilm-Datei mit den Shots, Takes, Besetzungsbildern und dem Ton, um das Projekt zu sichern oder auf einem anderen Computer zu öffnen.",
@@ -2949,8 +2949,8 @@
       "storyboard": "Storyboard"
     },
     "tabsLabel": "Projekt",
-    "more": null,
-    "boardHint": null
+    "more": "Mehr",
+    "boardHint": "Shots und Besetzung frei anordnen"
   },
   "templates": {
     "ad30": "30-s-Spot",
@@ -3034,8 +3034,8 @@
     "metaFormat": "{aspect} · {resolution} · {fps} fps · {shots, plural, one {# Shot} other {# Shots}}",
     "sets": "{name} hat das Format auf {aspect}, {resolution}, {fps} fps gesetzt. Du kannst alles unten ändern.",
     "sample": "Beispielfilm",
-    "musicVideoMeta": null,
-    "musicVideoNote": null
+    "musicVideoMeta": "Beginnt mit dem Song",
+    "musicVideoNote": "Öffnet im Schritt „Song“: Füge den Song hinzu und schneide ihn dann in Shots. Format {aspect}, {resolution}, {fps} fps; unten änderbar."
   },
   "voicePicker": {
     "automatic": "Keine Stimme (automatisch)",
@@ -3068,15 +3068,15 @@
     "needStills": "{n, plural, one {# Shot braucht Arbeit} other {# Shots brauchen Arbeit}}: {stills, plural, one {# hat ein Standbild und braucht seinen Clip} other {# haben ein Standbild und brauchen ihre Clips}}",
     "stale": "{n} veraltet",
     "choice": {
-      "finalPass": null,
-      "label": null,
-      "draft": null,
-      "about": null,
-      "draftWhy": null,
-      "final": null,
-      "peak": null
+      "finalPass": "Der finale Durchlauf erstellt die gewählten Shots noch einmal in {size}, danach ihre Clips.",
+      "label": "Entwürfe oder Final",
+      "draft": "Zuerst Entwürfe: {size}",
+      "about": "etwa {time}",
+      "draftWhy": "halbe Größe, um die Shots auszuwählen, die dir gefallen. Diese erstellst du danach in voller Größe.",
+      "final": "Direkt auf Final: {size}",
+      "peak": "Spitze {peak} von {total}"
     },
-    "more": null
+    "more": "Weitere Wege zum Erstellen"
   },
   "slowRow": {
     "label": "Auf diesem Rechner langsam",
@@ -3120,161 +3120,161 @@
     "hint": "Von einem anderen Bildschirm gestartet, etwa einem Storyboard-Stapel. Warte, bis er fertig ist, bevor du einen weiteren startest."
   },
   "videoUpscale": {
-    "statusFailed": null,
+    "statusFailed": "Der Status des Hochskalierers konnte nicht gelesen werden: {error}",
     "install": {
-      "title": null,
-      "body": null,
-      "licence": null,
-      "phasePackages": null,
-      "phaseWeights": null,
-      "phaseCheck": null,
-      "step": null,
-      "button": null,
-      "retry": null,
-      "failed": null,
-      "unknownError": null
+      "title": "Video-Hochskalierer installieren",
+      "body": "Das fügt zwei Hochskalierungsmodelle (Real-ESRGAN von xinntao) und die kleine Bibliothek hinzu, die sie ausführt, in einem eigenen Ordner. Etwa {size} MB, einmal heruntergeladen. Sonst ändert sich nichts auf deinem Computer.",
+      "licence": "Modelllizenz: {licence}.",
+      "phasePackages": "Die Bibliothek, die die Modelle ausführt, wird installiert …",
+      "phaseWeights": "Hochskalierungsmodelle werden heruntergeladen …",
+      "phaseCheck": "Installation wird geprüft …",
+      "step": "Schritt {step} von 3: {phase}",
+      "button": "Installieren (etwa {size} MB)",
+      "retry": "Installation erneut versuchen",
+      "failed": "Die Installation ist fehlgeschlagen: {error}",
+      "unknownError": "Es wurde kein Grund genannt."
     },
     "source": {
-      "label": null,
-      "placeholder": null,
-      "browse": null,
-      "browseTitle": null,
-      "filterName": null,
-      "browseFailed": null,
-      "hint": null,
-      "chosenSized": null
+      "label": "Video",
+      "placeholder": "Vollständiger Pfad einer Videodatei auf diesem Computer",
+      "browse": "Durchsuchen …",
+      "browseTitle": "Video zum Hochskalieren wählen",
+      "filterName": "Videos",
+      "browseFailed": "Die Dateiauswahl ist hier nicht verfügbar. Füge stattdessen den vollständigen Pfad des Videos ein.",
+      "hint": "Oder nutze „Dieses hochskalieren“ bei einem Clip in der Videogalerie. Der neue Film wird in deinem Videoordner unter „upscaled“ gespeichert.",
+      "chosenSized": "{name}, {width} × {height}"
     },
     "quality": {
-      "label": null,
-      "notInstalled": null,
-      "wontFit": null,
-      "downloadMissing": null
+      "label": "Qualität",
+      "notInstalled": "Noch nicht heruntergeladen",
+      "wontFit": "Braucht mehr Grafikspeicher, als dieser Computer hat",
+      "downloadMissing": "Fehlende Modelle herunterladen"
     },
     "size": {
-      "label": null,
-      "x2": null,
-      "x4": null,
-      "target": null,
-      "result": null,
-      "limit": null,
-      "needsSize": null,
-      "notBigger": null
+      "label": "Größe",
+      "x2": "2x",
+      "x4": "4x",
+      "target": "{height}p",
+      "result": "Das Ergebnis hat {width} × {height}.",
+      "limit": "Das Ergebnis wäre {width}x{height}; das Limit liegt bei {max} Pixeln pro Seite. Wähle einen kleineren Faktor oder eine kleinere Zielgröße.",
+      "needsSize": "Die Zielgrößen brauchen die Größe des Videos, die beim Auswählen der Datei gelesen wird. Wähle 2x oder 4x, bis sie gelesen wurde.",
+      "notBigger": "Das Video ist schon so hoch oder höher."
     },
-    "deinterlace": null,
-    "start": null,
-    "oneAtATime": null,
+    "deinterlace": "Zuerst Zeilensprung entfernen (für TV- oder Bandaufnahmen mit kammartigen Linien bei Bewegung)",
+    "start": "Hochskalieren starten",
+    "oneAtATime": "Nur ein Hochskalieren gleichzeitig: Warte, bis dieses fertig ist, oder brich es ab.",
     "job": {
-      "target": null,
-      "queued": null,
-      "running": null,
-      "done": null,
-      "failed": null,
-      "cancelled": null,
-      "interrupted": null,
-      "frames": null,
-      "speed": null,
-      "etaSeconds": null,
-      "etaMinutes": null,
-      "etaHours": null,
-      "progressLabel": null,
-      "parts": null,
-      "savedAs": null,
-      "cancel": null,
-      "resume": null,
-      "open": null,
-      "reveal": null,
-      "dismiss": null,
-      "play": null,
-      "playLoading": null
+      "target": "auf {width} × {height}",
+      "queued": "Wartet, bis ein anderer Auftrag auf der GPU fertig ist.",
+      "running": "Wird hochskaliert …",
+      "done": "Fertig.",
+      "failed": "Mit einem Fehler angehalten: {error}",
+      "cancelled": "Abgebrochen. Die fertigen Teile bleiben erhalten, „Fortsetzen“ macht dort weiter.",
+      "interrupted": "Angehalten, als die App geschlossen wurde. „Fortsetzen“ macht dort weiter, wo es aufgehört hat.",
+      "frames": "{done, number} von {total, number} Bildern",
+      "speed": "{fps} Bilder pro Sekunde",
+      "etaSeconds": "noch etwa {count} s",
+      "etaMinutes": "noch etwa {count} min",
+      "etaHours": "noch etwa {hours} h {minutes} min",
+      "progressLabel": "Fortschritt des Hochskalierens",
+      "parts": "Der Film wird in {segments} Teilen erstellt; jeder fertige Teil bleibt erhalten, wenn der Auftrag stoppt.",
+      "savedAs": "Gespeichert als {path}",
+      "cancel": "Abbrechen",
+      "resume": "Fortsetzen",
+      "open": "Ergebnis öffnen",
+      "reveal": "Im Ordner anzeigen",
+      "dismiss": "Schließen",
+      "play": "Ergebnis abspielen",
+      "playLoading": "Film wird geladen …"
     },
     "compare": {
-      "before": null,
-      "beforeMissing": null,
-      "after": null,
-      "afterOpen": null,
-      "beforeAlt": null,
-      "afterAlt": null,
-      "loading": null,
-      "playMissing": null,
-      "playFailed": null
+      "before": "Vorher",
+      "beforeMissing": "Keine Vorschau dieser Datei in der App.",
+      "after": "Nachher ({width} × {height})",
+      "afterOpen": "Öffne das Ergebnis, um es in voller Größe zu vergleichen.",
+      "beforeAlt": "Erstes Bild des Originalvideos",
+      "afterAlt": "Erstes Bild des hochskalierten Videos",
+      "loading": "Erstes Bild wird geladen …",
+      "playMissing": "Die App kann diesen Film nicht mehr selbst abspielen (sie wurde seitdem neu gestartet). Nutze „Ergebnis öffnen“ oder „Im Ordner anzeigen“.",
+      "playFailed": "Der Film konnte nicht geladen werden: {error}"
     },
-    "deinterlaceUnavailable": null,
+    "deinterlaceUnavailable": "Das Entfernen des Zeilensprungs ist nicht verfügbar: Die Videotools auf diesem Computer können es nicht.",
     "probe": {
-      "line": null,
-      "withSound": null,
-      "noSound": null,
-      "reading": null,
-      "interlaced": null
+      "line": "{name}: {width} × {height}, {fps} Bilder pro Sekunde, {duration}, {audio}",
+      "withSound": "mit Ton",
+      "noSound": "ohne Ton",
+      "reading": "Video wird gelesen …",
+      "interlaced": "Dieses Video sieht nach Zeilensprung aus, daher ist das Kästchen angehakt."
     },
     "recent": {
-      "label": null,
-      "queued": null,
-      "running": null,
-      "done": null,
-      "failed": null,
-      "cancelled": null,
-      "interrupted": null
+      "label": "Letzte Hochskalierungen",
+      "queued": "Wartet",
+      "running": "Wird hochskaliert",
+      "done": "Fertig",
+      "failed": "Fehlgeschlagen",
+      "cancelled": "Abgebrochen",
+      "interrupted": "Angehalten"
     }
   },
   "guide": {
     "stage": {
-      "song": null,
-      "look": null,
-      "shots": null,
-      "drafts": null,
-      "final": null,
-      "lipsync": null,
-      "sound": null,
-      "check": null,
-      "export": null
+      "song": "Song",
+      "look": "Look",
+      "shots": "Shots",
+      "drafts": "Entwürfe",
+      "final": "Final",
+      "lipsync": "Lippensynchronisation",
+      "sound": "Ton",
+      "check": "Prüfen",
+      "export": "Export"
     },
     "look": {
-      "done": null,
-      "current": null,
-      "attention": null,
-      "progress": null,
-      "skipped": null,
-      "todo": null
+      "done": "Fertig",
+      "current": "Jetzt",
+      "attention": "Braucht einen Blick",
+      "progress": "In Arbeit",
+      "skipped": "Übersprungen",
+      "todo": "Offen"
     },
     "action": {
-      "attachSong": null,
-      "openCast": null,
-      "cutPlan": null,
-      "planShots": null,
-      "openStoryboard": null,
-      "watchBatch": null,
-      "resumeBatch": null,
-      "retryFailed": null,
-      "makeDrafts": null,
-      "makeMissing": null,
-      "makeFinal": null,
-      "chooseFinal": null,
-      "makeClips": null,
-      "remakeStale": null,
-      "assignVocals": null,
-      "makeLipsync": null,
-      "openCoverage": null,
-      "openMixer": null,
-      "openCheck": null,
-      "export": null
+      "attachSong": "Song hinzufügen",
+      "openCast": "Besetzung öffnen",
+      "cutPlan": "Den Song in Shots schneiden",
+      "planShots": "Shots planen",
+      "openStoryboard": "Storyboard öffnen",
+      "watchBatch": "Fortschritt ansehen",
+      "resumeBatch": "Fortsetzen",
+      "retryFailed": "Erneut versuchen",
+      "makeDrafts": "Entwürfe erzeugen",
+      "makeMissing": "Fehlende Shots erstellen",
+      "makeFinal": "In voller Größe erstellen",
+      "chooseFinal": "Shots auswählen",
+      "makeClips": "Clips erstellen",
+      "remakeStale": "Erneut erstellen",
+      "assignVocals": "Jedem Shot seinen Gesang zuweisen",
+      "makeLipsync": "Clips mit Lippensynchronisation erstellen",
+      "openCoverage": "Ansehen, welche Shots singen",
+      "openMixer": "Mixer öffnen",
+      "openCheck": "Vor dem Export prüfen",
+      "export": "Export öffnen"
     },
-    "label": null
+    "label": "Phasen des Films"
   },
   "exportCheck": {
     "line": {
-      "upscaleSharp": null
+      "upscaleSharp": "Am Ende wird mit dem KI-Hochskalierer auf {size} hochskaliert."
     },
-    "stops": null,
-    "worthFixing": null,
-    "forInfo": null,
-    "stopsNone": null,
-    "worthFixingNone": null,
+    "stops": "Hält den Export auf",
+    "worthFixing": "Sollte behoben werden",
+    "forInfo": "Zur Info",
+    "stopsNone": "Nichts hält den Export auf.",
+    "worthFixingNone": "Nichts zu beheben.",
     "fix": {
-      "plan": null,
-      "song": null,
-      "cast": null,
-      "shot": null
+      "plan": "Plan öffnen",
+      "song": "Song-Schritt öffnen",
+      "cast": "Besetzung öffnen",
+      "shot": "Shot {n} öffnen"
     },
-    "title": null
+    "title": "Bereit zum Export?"
   }
 }

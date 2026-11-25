@@ -177,9 +177,9 @@
     "addGrammar": "Ajouter la sortie structurée",
     "exclusiveLabel": "Remarque :",
     "exclusiveBody": "Aucun autre moteur de l'application ne peut charger ce modèle ; il tourne donc toujours sur TensorFold, et la case active ou désactive uniquement les brouillons.",
-    "contextCapped": null,
-    "cacheNote": null,
-    "contextCappedVram": null
+    "contextCapped": "TensorFold gère ses propres caches. La limite GPU de ce Mac est de {limitGb} Go ; le modèle de {weightsGb} Go et une marge de {marginGb} Go laissent {budgetGb} Go, et la fenêtre complète demanderait {needGb} Go. La fenêtre est plafonnée à {maxContext} pour que TensorFold démarre.",
+    "cacheNote": "TensorFold occupe ici environ {cacheGb} Go de cache (ses propres caches et ceux du modèle de brouillon), soit plus que l'estimation standard affichée.",
+    "contextCappedVram": "TensorFold a besoin d'environ {needGb} Go de mémoire GPU avec la fenêtre complète et la carte a {freeGb} Go de libres. La fenêtre est plafonnée à {maxContext} pour que TensorFold démarre."
   },
   "strategyRole": {
     "memorySaverTitle": "Réduit le cache KV pour que les longs contextes tiennent dans moins de mémoire. La génération est plus lente qu'avec Natif.",

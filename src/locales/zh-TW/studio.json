@@ -2526,7 +2526,7 @@
     "close": "關閉",
     "dismiss": "關閉",
     "offline": "正在等待後端…",
-    "pathPlaceholder": "/path/to/file",
+    "pathPlaceholder": "檔案的完整路徑",
     "pickUnavailable": "此處無法使用檔案選擇器。請改為輸入路徑。",
     "films": {
       "title": "影片",

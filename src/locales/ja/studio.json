@@ -2526,7 +2526,7 @@
     "close": "閉じる",
     "dismiss": "閉じる",
     "offline": "バックエンドを待っています…",
-    "pathPlaceholder": "/path/to/file",
+    "pathPlaceholder": "ファイルのフルパス",
     "pickUnavailable": "ここではファイルピッカーを使えません。代わりにパスを入力してください。",
     "films": {
       "title": "映像作品",

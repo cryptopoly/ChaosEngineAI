@@ -2526,7 +2526,7 @@
     "close": "닫기",
     "dismiss": "닫기",
     "offline": "백엔드를 기다리는 중…",
-    "pathPlaceholder": "/path/to/file",
+    "pathPlaceholder": "파일의 전체 경로",
     "pickUnavailable": "여기서는 파일 선택기를 사용할 수 없습니다. 대신 경로를 입력하세요.",
     "films": {
       "title": "영상",

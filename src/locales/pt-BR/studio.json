@@ -2526,7 +2526,7 @@
     "close": "Fechar",
     "dismiss": "Fechar",
     "offline": "Aguardando o backend…",
-    "pathPlaceholder": "/path/to/file",
+    "pathPlaceholder": "Caminho completo do arquivo",
     "pickUnavailable": "O seletor de arquivos não está disponível aqui. Digite o caminho.",
     "films": {
       "title": "Filme",

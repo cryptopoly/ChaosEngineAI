@@ -2526,7 +2526,7 @@
     "close": "Закрыть",
     "dismiss": "Закрыть",
     "offline": "Ожидание бэкенда…",
-    "pathPlaceholder": "/path/to/file",
+    "pathPlaceholder": "Полный путь к файлу",
     "pickUnavailable": "Выбор файла здесь недоступен. Введите путь вручную.",
     "films": {
       "title": "Фильм",

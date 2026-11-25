@@ -288,7 +288,7 @@ class GuideRouteTests(unittest.TestCase):
         response = self.client.post("/api/storyboard/projects", json={"name": "Night"}, headers=H)
         self.assertEqual(response.status_code, 200, response.text)
         body = response.json()
-        self.assertEqual(set(body["guide"]), {"quality", "coverage", "failures", "readiness", "stages"})
+        self.assertEqual(set(body["guide"]), {"quality", "coverage", "failures", "readiness", "stages", "cast"})
         pid = body["project"]["id"]
         response = self.client.get(f"/api/storyboard/projects/{pid}/guide", headers=H)
         self.assertEqual(response.status_code, 200, response.text)

@@ -474,6 +474,8 @@ export interface StoryboardGuide {
   failures: StoryboardFailure[];
   readiness: StoryboardReadiness;
   stages: StoryboardStages;
+  /** Each shot's effective cast (reference ids: its ticked ones, then the in-every-shot characters it keeps). */
+  cast: Record<string, string[]>;
 }
 
 /** Where one card sits on the freestyle board, in board pixels at zoom 1 (S-M2). */

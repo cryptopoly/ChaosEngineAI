@@ -3,7 +3,8 @@
 One place that builds, from the project and its timeline: ``quality`` (draft or final, sizes, stale for the format;
 ``quality.py``), ``coverage`` (lip sync per shot, None without a song; ``coverage.py``), ``failures`` (each failed
 shot's latest failure as a code, sentence and action; ``failure.py``), ``readiness`` (the three export groups;
-``readiness.py``) and ``stages`` (the stage rail; ``stages.py``). All read-only and model-free.
+``readiness.py``), ``stages`` (the stage rail; ``stages.py``) and ``cast`` (each shot's effective reference ids,
+``cast.effective_references``). All read-only and model-free.
 """
 
 from __future__ import annotations
@@ -46,9 +47,13 @@ def build(project: Project, timeline: Any = None, folder: Path | None = None) ->
     from backend_service.storyboard.stages import stages
     from backend_service.storyboard.timeline import compute_timeline
 
+    from backend_service.storyboard.cast import effective_references
+
     timeline = timeline or compute_timeline(project)
     cov = coverage(project, timeline)
     qual = quality(project)
     ready = readiness(project, timeline, cov, qual)
     return {"quality": qual, "coverage": cov, "failures": failures(project), "readiness": ready,
-            "stages": stages(project, timeline, cov, qual, ready, exported(folder))}
+            "stages": stages(project, timeline, cov, qual, ready, exported(folder)),
+            # B1309: each shot's effective cast (ticked references, then the in-every-shot characters it keeps)
+            "cast": {shot.id: effective_references(project, shot) for shot in project.shots}}

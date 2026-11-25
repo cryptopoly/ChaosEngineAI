@@ -679,7 +679,6 @@
       "installed": "jomlu'ta'",
       "notInstalled": "jomlu'be'",
       "cancel": "yIqIl",
-      "done": "ghogh ghom jan jomlu'ta'.",
       "log": "jom QonoS",
       "checkedOk": "jomlu'ta', 'ollu'ta' QaQ",
       "checkedOkAt": "jomlu'ta', 'ollu'ta' QaQ ({time})",
@@ -688,11 +687,8 @@
     },
     "models": {
       "downloaded": "lI'lu'ta'",
-      "use": "ghItlhmeH yIlo'",
       "download": "yIlI'",
       "title": "ghogh",
-      "sttTitle": null,
-      "sttSubtitle": null,
       "ttsTitle": "QIch yab",
       "ttsNone": "QIch yab tetlh chIm.",
       "cost": {
@@ -711,9 +707,9 @@
       },
       "delete": {
         "confirmSpeech": null,
-        "confirmStt": null,
         "keptShared": null,
-        "watermarkGoes": null
+        "watermarkGoes": null,
+        "confirmSttDefault": null
       },
       "deleteModel": null,
       "deleting": null,
@@ -775,7 +771,6 @@
       "kokoroLineAddon": null,
       "kokoroNotInstalled": null,
       "kokoroAddHint": null,
-      "gpuDefaultLine": null,
       "macOnlySummary": null,
       "macOnlyNote": null,
       "macOnlyNoteVoices": null,
@@ -804,12 +799,24 @@
       "sttDownloading": null,
       "sttDownloadingName": null,
       "defaultBadge": null,
-      "defaultTitle": null,
       "recommendedGpu": null,
       "recommendedGpuTitle": null,
       "wordTimings": null,
       "wordTimingsLine": null,
-      "firstUseLanguageLine": null
+      "languageLine": null,
+      "defaultTitleSetup": null,
+      "useDefault": null,
+      "sttTitleSetup": null,
+      "sttSubtitleSetup": null,
+      "pick": {
+        "title": null,
+        "all": null,
+        "kokoro": null,
+        "download": null,
+        "gpuMemory": null
+      },
+      "firstUseLine": null,
+      "gpuDefaultLineSetup": null
     },
     "voices": {
       "addChinese": "Mandarin Chinese ghogh tIchel",
@@ -822,7 +829,6 @@
       "kindClone": "velqa'",
       "kindPreset": "na'",
       "kindBuiltin": "nom",
-      "tab": "ghogh",
       "filters": {
         "all": "Hoch",
         "quick": null,
@@ -835,59 +841,34 @@
       "noneCloned": null,
       "stopSample": null,
       "useInSpeak": null,
-      "designNotInChat": null,
-      "cloneNotInCalls": null,
       "badge": {
         "call": null,
         "read": null,
         "speak": null,
-        "fallback": null
+        "backup": null
       },
-      "change": null,
-      "changeFor": null,
       "chooseCallHint": null,
-      "chooseFor": null,
       "chooseReadHint": null,
       "clonedNote": null,
       "female": null,
-      "firstWords": null,
       "groupNatural": null,
-      "inUse": null,
-      "mainTitle": null,
       "male": null,
       "naturalNote": null,
-      "notForChat": null,
-      "notReady": null,
-      "sameAsChat": null,
-      "slotCall": null,
-      "slotRead": null,
-      "slotSpeak": null,
-      "slowFor": null,
-      "subtitleUses": null,
-      "use": {
-        "call": null,
-        "read": null,
-        "speak": null,
-        "fallback": null
-      },
-      "useFor": null,
-      "useForLabel": null,
-      "slotFallback": null,
-      "slotFallbackClone": null,
-      "fallbackNone": null,
-      "noFallback": null,
-      "chooseFallbackHint": null,
-      "fallbackNoteVoice": null,
-      "fallbackNoteNone": null,
       "quickNoteAddon": null,
       "kokoroMissing": null,
       "openModels": null,
-      "macOnlyHidden": null
+      "macOnlyHidden": null,
+      "designMacOnly": null,
+      "backupNoteVoice": null,
+      "backupNoteNone": null,
+      "useNameInSpeak": null,
+      "inSpeak": null,
+      "subtitleCatalogue": null,
+      "closeClone": null
     },
     "settings": {
       "autoSend": "ghItlhghach rInDI' QIn yIngeH SIbI'",
       "autoRead": "Hoch ja'chuq jang rInDI' yIlaD",
-      "language": null,
       "speed": "laD Do",
       "idle": "ghogh qawHaq chImmoHpa' poH (tup leStaHvIS, 0 = not)",
       "unload": null,
@@ -896,17 +877,10 @@
     },
     "offline": "qoD pat loStaH…",
     "copy": "yIqon",
-    "save": "ghomDaq yIpol",
     "transcribe": {
       "title": "yIghItlh",
-      "subtitle": "yIqon, pagh wab mIllogh vIH nav yIlan",
       "model": "yab",
       "language": "Hol",
-      "hint": "bIqon DaneHchugh leQ yI'uy, pagh naDev nav yIlan.",
-      "choose": "nav yIwIv",
-      "took": "{s} lupDaq ghItlhlu'ta'",
-      "placeholder": "naDev nargh ghItlh. DachoHlaH.",
-      "segments": "poH mI' ({n})",
       "tooBig": "500 MB tIn law' {name} tIn puS.",
       "recordingName": "qonghach",
       "speakers": "jatlhwI' tIngu'",
@@ -919,28 +893,26 @@
       "fileTypes": null,
       "subtitleLibrary": null,
       "translateWhich": null,
-      "needsWordTimings": null
+      "needsWordTimings": null,
+      "modelOption": null,
+      "languageFixed": null,
+      "rememberTitle": null,
+      "remember": null,
+      "downloadsFirst": null,
+      "languageFindsItself": null,
+      "languageUsesChoice": null
     },
     "stopRecording": "qon yImev",
     "record": "yIqon",
     "transcribing": "ghItlhlI'",
     "cancel": "yIqIl",
-    "sendToChat": "ja'chuqDaq yIngeH",
-    "copied": "qonlu'ta'",
-    "saved": "pollu'ta'",
     "speak": {
       "title": "yIjatlh",
-      "subtitle": "ghItlh QIch moj",
       "placeholder": "ghItlh yIghItlh pagh yIlan. jatlhpa' Markdown ngoq je Say'moHlu'.",
       "voice": "ghogh",
       "speed": "Do",
-      "generating": "chenmoHlI'…",
       "generate": "wab yIchenmoH",
-      "readNow": "DaH yIlaD",
-      "download": "WAV yIlI'",
       "subtitleLong": "ghItlh QIch moj. mu'tlhegh chIm = 'ay' chu'; [pause] = yev.",
-      "preview": "ghoghvam yI'Ij",
-      "listen": "yI'Ij",
       "progress": "{total}vo' 'ay' {done}",
       "generateParts": "wab yIchenmoH ({n} 'ay')",
       "encoding": "ngoqmoHlI'…",
@@ -956,11 +928,8 @@
       "pitch": "ghogh jen",
       "advanced": "wIv le'",
       "seed": "seed (chIm = Hoch logh nID pIm)",
-      "modelKokoro": "Kokoro lo', ghogh ghom jan 'ay'.",
-      "modelReady": "{name} lo'.",
       "modelDownloading": "{name} lI'lI'…",
       "modelNeeds": "{name} ({gb} GB) nIS, wej lI'lu'.",
-      "downloadForStyle": "mIwvaD {name} yIlI'",
       "cloneTooLong": "wa' ghogh velqa' wabvaD nI'qu' ghItlhvam. {max} ngutlh yIrunmoH.",
       "describeFirst": "bIchenmoHpa' ghogh DaneHbogh yIDel.",
       "appleOnly": "DaH Apple Silicon Mac neH.",
@@ -971,11 +940,7 @@
       "sampleLoading": "{name} waH chenmoHlI'. bImev DaneHchugh yI'uy.",
       "cloneModel": "velqa' yab",
       "cloneKind": "ghogh velqa'lIj",
-      "yourVoices": "ghoghlIj",
-      "presets": "ghogh na'",
       "designCard": "Delghachvo' ghogh yIchenmoH",
-      "designDetail": "mIw 'echletDaq nen, wab, Do je yIDel.",
-      "quickVoices": "ghogh nom",
       "chips": {
         "neutral": "motlh",
         "angry": "QeH",
@@ -990,8 +955,6 @@
       "manageInModels": null,
       "stylePlaceholderFree": null,
       "describeHint": null,
-      "ffmpegPitch": null,
-      "ffmpegSpeedPitch": null,
       "autosaveFailed": null,
       "tagChips": null,
       "styleTagChips": null,
@@ -1062,14 +1025,33 @@
         "music": null,
         "other": null
       },
-      "needsSpeechGpu": null
+      "needsSpeechGpu": null,
+      "styleNeedsNatural": null,
+      "getNatural": null,
+      "downloadForStyleSized": null,
+      "chooseNatural": null,
+      "errorDetails": null,
+      "noFile": null,
+      "showFile": null,
+      "speedNeedsFfmpeg": null,
+      "pitchNeedsFfmpeg": null,
+      "recent": null,
+      "can": {
+        "speed": null,
+        "style": null,
+        "tags": null,
+        "anyLanguage": null,
+        "nLanguages": null,
+        "line": null,
+        "none": null,
+        "languages": null
+      }
     },
     "stop": "yImev",
     "studio": {
       "title": "ghogh vumpa'",
       "openModels": "ghogh yab yIpoSmoH",
-      "library": null,
-      "needsPackGb": null
+      "cloneTask": null
     },
     "savedToLibrary": "ghomDaq pollu'ta'",
     "saveToLibrary": "ghomDaq yIpol",
@@ -1158,18 +1140,14 @@
     },
     "clone": {
       "statement": "ghoghlIj neH, pagh chaw' nobpu'bogh ghot ghogh neH yIvelqa'moH. ghot Sovlu'bogh, puq, Heghpu'bogh ghot je yIvelqa'moHQo'. ghogh velqa' lo'bogh Hoch wab AI chenmoHghach ngu'lu' nav qoDDaq 'ej watermark Qoylu'be'bogh ghaj; cha'vam chu'Ha'laHbe'lu'.",
-      "title": "ghogh velqa' yIchenmoH",
-      "loading": "qemlI'…",
       "macOnly": "DaH Apple Silicon MacDaq neH Qap ghogh velqa' chenmoHghach.",
       "deleteConfirm": "ghogh \"{name}\" DaQaw''a'? waHDaj chaw' ghItlhDaj je Qaw'lu'. choHHa'laHbe'lu'.",
-      "model": "velqa' yab",
       "downloading": "lI'lI'…",
       "notHere": "De'wI'vam ChaosEngineAI Qorwaghvo' neH lo'laH ghogh velqa'.",
       "consentOwn": "ghoghwIj, 'ollu'ta' {date}",
       "consentPermission": "chaw' nob {name}, 'ollu'ta' {date}",
       "delete": "yIQaw'",
       "new": "ghogh velqa' chu'",
-      "placeholder": "ghogh velqa' jatlhnISbogh ghItlh.",
       "tagged": "AI chenmoHghach ngu'lu'ta'",
       "whose": "'Iv ghogh 'oH?",
       "basisOwn": "ghoghwIj",
@@ -1178,17 +1156,13 @@
       "voiceName": "ghoghvam pong (wIvlaH)",
       "confirm": "ghoghwIj 'oH, pagh velqa' chenmoHmeH chaw' munobpu' jatlhwI'.",
       "recordAgain": "yIqonqa'",
-      "sampleTitle": "ghogh waH",
       "sampleHelp": "3 - 30 lup, ghot rap jatlh Huv. WAV, MP3, M4A, FLAC pagh OGG nav yIlab, pagh QoywI' lo'taHvIS yIqon. 10 - 20 lup QaQ law'.",
       "sampleText": "waHDaq mu'mey jatlhlu'bogh (wIvlaH; SIbI' teblu')",
       "tooShort": "3 lup run law' qonghach run puS. loQ law' yIqon.",
       "tooLong": "30 lup nI' law' qonghach nI' puS. waH run yIqon.",
       "save": "ghogh yIpol",
       "installingWatermark": "watermark 'ay' jomlI'…",
-      "tab": "velqa'",
-      "voices": "ghogh velqa'",
       "deleteVoice": "ghogh {name} yIQaw'",
-      "textLabel": "ghogh velqa' jatlhnISbogh ghItlh",
       "sampleFile": "ghogh waH nav",
       "recordingPlayback": "qonghachlIj",
       "saving": "ghogh pollI'…",
@@ -1198,7 +1172,19 @@
       "modelNone": null,
       "modelDownload": null,
       "modelDefault": null,
-      "modelSize": null
+      "modelSize": null,
+      "modelNoneHere": null,
+      "saved": null,
+      "speakWithIt": null,
+      "another": null,
+      "screenTitle": null,
+      "screenSubtitle": null,
+      "openSetup": null,
+      "stepTitle": null,
+      "stepPermission": null,
+      "stepSample": null,
+      "stepName": null,
+      "stepModel": null
     },
     "cost": {
       "kokoroChip": null,
@@ -1227,9 +1213,6 @@
       "fewer": null,
       "allVoices": null,
       "cloned": null,
-      "newClone": null,
-      "newCloneDetail": null,
-      "newCloneOpen": null,
       "designed": null,
       "designedNote": null,
       "more": null,
@@ -1239,7 +1222,10 @@
       "openModels": null,
       "drawerHint": null,
       "drawerTitle": null,
-      "quickNoteAddon": null
+      "quickNoteAddon": null,
+      "cloneVoice": null,
+      "cloneVoiceDetail": null,
+      "cloneVoiceOpen": null
     },
     "chatCalls": {
       "cost": null,
@@ -1249,35 +1235,133 @@
       "browse": null
     },
     "runtime": {
-      "addon": {
-        "chinese": null,
-        "speech-gpu": null,
-        "stt-gpu": null,
-        "kokoro": null
-      },
-      "addons": null,
-      "addonsHint": null,
-      "addonsHintInstall": null,
-      "alsoModels": null,
       "idleAfter": null,
       "idleBefore": null,
       "inMemory": null,
-      "install": null,
       "modelWithGb": null,
       "nothingLoaded": null,
-      "parts": null,
       "remove": null,
-      "removeConfirm": null,
       "removing": null,
-      "repair": null,
-      "subtitle": null,
-      "title": null,
       "troubleshootBody": null,
-      "update": null,
       "updateFeatures": null,
       "workerOnly": null,
+      "removeConfirmSetup": null
+    },
+    "chatVoices": {
+      "chooseRead": null,
+      "chooseCall": null,
+      "chooseBackup": null,
+      "chooseBackupHint": null,
+      "noBackup": null
+    },
+    "errors": {
+      "details": null,
+      "detailsToggle": null,
+      "runtime_missing": null,
+      "runtime_outdated": null,
+      "addon_missing": null,
+      "model_missing": null,
+      "watermark_missing": null,
+      "gpu_memory": null,
+      "gpu_unsupported": null,
+      "unsupported_here": null,
+      "ffmpeg_missing": null,
+      "reference_too_short": null,
+      "reference_too_long": null,
+      "reference_unreadable": null,
+      "audio_unreadable": null,
+      "language_unsupported": null,
+      "permission_required": null,
+      "cloning_not_allowed": null,
+      "voice_not_found": null,
+      "no_backup_voice": null,
+      "download_blocked": null,
+      "download_failed": null,
+      "worker_busy": null,
+      "worker_timeout": null,
+      "worker_stopped": null,
+      "unknown": null
+    },
+    "setup": {
+      "chooseParts": null,
+      "optionalParts": null,
+      "part": {
+        "model": null,
+        "modelNoSize": null,
+        "kokoro": null,
+        "chinese": null,
+        "speech-gpu": null,
+        "stt-gpu": null
+      },
+      "partsHint": null,
+      "partsHintInstall": null,
+      "details": null,
+      "task": {
+        "quick": null,
+        "natural": null,
+        "clone": null,
+        "stt": null,
+        "calls": null
+      },
+      "missing": {
+        "downloadingPct": null,
+        "downloading": null,
+        "runtime": null,
+        "update": null,
+        "kokoro": null,
+        "speechGpu": null,
+        "sttGpu": null,
+        "naturalModel": null,
+        "naturalModelUnknown": null,
+        "cloneModel": null,
+        "cloneModelUnknown": null
+      },
+      "unavailable": {
+        "needsGpu": null,
+        "needsGpuMac": null,
+        "memory": null,
+        "compute": null,
+        "noModel": null
+      },
+      "status": {
+        "readyInChat": null,
+        "ready": null,
+        "unavailable": null,
+        "missingInChat": null,
+        "missing": null
+      },
+      "presetBasic": null,
+      "presetFullPartial": null,
+      "presetFull": null,
+      "openChat": null,
+      "chooseCloneModel": null,
+      "presets": null,
+      "installChosen": null,
+      "installMissingOver": null,
+      "installMissingGb": null,
+      "installMissing": null,
+      "repair": null,
+      "parts": null,
       "partsNoKokoro": null,
-      "aboutTickedGb": null
+      "beforeInstall": null,
+      "title": null,
+      "subtitle": null,
+      "alsoModels": null,
+      "studioSubtitle": null,
+      "allReady": null
+    },
+    "errorActions": {
+      "install-voice-runtime": null,
+      "install-addon": null,
+      "download-model": null,
+      "smaller-model": null,
+      "pick-another-model": null,
+      "install-ffmpeg": null,
+      "pick-another-language": null,
+      "change-sample": null,
+      "confirm-permission": null,
+      "add-hf-token": null,
+      "retry": null
     }
   },
   "residentChatModelNote": "qawHaqvamvo' ~{gb} GB ghaj chu'lu'ta'bogh ja'chuq yab; chu'Ha'lu'chugh qawHaqvetlh chImchoH.",
@@ -1650,7 +1734,6 @@
     "conflictNotice": "latlh DaqDaq choHlu'ta'; Qav cha'lu'",
     "defaults": {
       "automatic": "De'wI' wIv (jomlu'ta'bogh yab)",
-      "automaticShort": "De'wI' wIv",
       "automaticName": "De'wI' wIv",
       "noVoice": "pagh",
       "modelTimed": null,
@@ -1662,7 +1745,6 @@
       "useFastHint": null
     },
     "defaultsSummary": "{aspect} · {resolution} · {fps} fps · {imageModel} · {videoModel} · ghogh {voice}",
-    "defaultsTitle": "Qu' motlh wIv",
     "editor": {
       "discard": "choH tIwoD",
       "discardBody": "'ay'vam choH pollu'be'. DaH DaSoQmoHchugh, choH woDlu'.",
@@ -1677,7 +1759,6 @@
       "length": "poH (lup)",
       "motionPrompt": "vIH QIn",
       "nativeSound": "'ay' wab patlh (dB)",
-      "noReferences": "wej Qu'vamDaq Hal tu'lu'. Hal 'echletDaq tIchel.",
       "references": "Hal",
       "relinkHint": "Hutlhbogh nIDvaD nav chu' yI'ang.",
       "revert": "yIcheghmoH",
@@ -1727,7 +1808,6 @@
       "vocalHintShot": null,
       "vocalOptional": null
     },
-    "empty": "wej 'ay' tu'lu'. 'ay' yIchel, ghIq QIn yInob pagh mIllogh vIH yIqem.",
     "estimate": {
       "need": "{n, plural, other {nID chu' poQ # 'ay''}}",
       "none": "Hoch 'ay' ngaQHa' nID ghaj."
@@ -1735,28 +1815,15 @@
     "loading": "Qu' qemlI'…",
     "makeAll": "Hoch ngaQHa' tIchenmoH",
     "makeAllTitle": "Hoch 'ay' ngaQHa'vaD nID chu' chel. pagh Qaw'lu'.",
-    "makeMissing": "Hutlhbogh tIchenmoH",
     "makeOne": "'ay'vam yIchenmoH",
-    "mixer": "DuDwI'",
-    "noProject": "Qu' poSlu'be'. Qu' ghomvo' wa' yIpoSmoH, pagh Qu' chu' yItagh.",
-    "noProjectTitle": "'echlet",
-    "notFound": "Qu'vam tu'lu'be'choH. latlh yIwIv.",
-    "openProjects": "Qu' ghom yIpoSmoH",
-    "projects": "Qu'",
     "redo": "yIchenmoHqa'",
     "references": {
       "addCharacter": "ghot yIchel",
       "addPlace": "Daq yIchel",
       "characters": "ghot",
       "description": "chen Del",
-      "image": "Hal mIllogh",
       "name": "pong",
-      "none": "wej pagh.",
-      "places": "Daq",
-      "remove": "Hal yIteq",
-      "setImage": "mIllogh yIwIv",
-      "summary": "{characters, plural, other {# ghot}} · {places, plural, other {# Daq}}",
-      "title": "Hal"
+      "places": "Daq"
     },
     "reload": "yIqemqa'",
     "removeBody": "lutvo' mej {name}. Qu' nav ghomDaq ratlh nIDmey, 'ej choHHa' leQ cheghmoH.",
@@ -1779,9 +1846,6 @@
       "moreActions": "'ay' {n} latlh Qu'",
       "moved": "Daq {position}Daq vIHta' 'ay' {n}",
       "play": "mIllogh vIH yIchu'",
-      "redoLabel": "chenmoHqa'",
-      "redoMarked": "chenmoHqa'meH perlu'ta'",
-      "redoTitle": "chenmoHqa'meH yIper: 'ay' yIchenmoH veb nID chu' chel. pagh ghItlhqa'lu'.",
       "relink": "yIrarqa'",
       "rerun": "yIchu'qa'",
       "seed": "seed {seed}",
@@ -1823,14 +1887,12 @@
       "chooseForFinal": null
     },
     "shots": "'ay'",
-    "subtitle": "{shots, plural, other {# 'ay''}} · {seconds} lup · {stale} ngo'",
     "takes": {
       "active": "nID lo'lu'bogh",
       "label": "nID",
       "pick": "nIDvam yIlo'",
       "take": "nID {n}"
     },
-    "title": "{project} · 'echlet",
     "undo": "yIchoHHa'",
     "emptyNoCast": "wej 'ay' tu'lu'. 'ay' yIchel 'ej yIDel, pagh mIllogh vIH yIqem. ghot poQbe' 'ay': He pagh ghom nIteb QaplaH.",
     "subtitleShots": "{shots, plural, other {# 'ay''}} · {seconds} lup · {stale} ngo'",
@@ -1847,7 +1909,6 @@
       "finalChosenTitle": null,
       "chooseHint": null
     },
-    "exportDrafts": null,
     "preview": {
       "emptyHint": null,
       "buttonHint": null,
@@ -2027,7 +2088,6 @@
         "vision": null
       },
       "motion": null,
-      "overviewButton": null,
       "pictures": {
         "add": null,
         "edit": null,
@@ -2290,7 +2350,30 @@
           "state": null
         },
         "makeAll": null,
-        "batchRunning": null
+        "batchRunning": null,
+        "fix": {
+          "lengthen": null,
+          "shorten": null,
+          "unlock": null,
+          "realSpeed": null,
+          "assign": null,
+          "make": null
+        },
+        "state": {
+          "synced": null,
+          "waiting": null,
+          "skipped": null,
+          "unassigned": null
+        },
+        "reason": {
+          "otherSpeed": null,
+          "locked": null,
+          "outsideSong": null,
+          "tooShort": null,
+          "tooLong": null,
+          "noSinging": null,
+          "notAssigned": null
+        }
       },
       "sing": {
         "question": null,
@@ -2303,9 +2386,11 @@
         "cut": null,
         "keepShots": null,
         "choose": null,
-        "review": null
+        "review": null,
+        "cutAgain": null
       },
-      "cutSongIntoShots": null
+      "cutSongIntoShots": null,
+      "lipSyncRange": null
     },
     "unsaved": {
       "title": null,
@@ -2373,12 +2458,10 @@
   "storyProjects": {
     "card": {
       "edited": "{when} choHlu'ta'",
-      "meta": "{shots, plural, other {# 'ay''}} · {seconds} lup · {aspect}",
       "noShots": "wej 'ay'",
       "noTakes": "wej mIllogh",
       "noPreview": "legh nung tu'lu'be'",
       "stale": "{n} ngo'",
-      "zeroShots": "0 'ay'",
       "metaFormat": "{shots, plural, other {# 'ay''}} · {seconds} lup · {format}",
       "zeroShotsFormat": "0 'ay' · {format}"
     },
@@ -2411,11 +2494,8 @@
       "rename": "pong yIchoH"
     },
     "missing": "Qu'vam nav ghom vIHmoHlu'ta' pagh Qaw'lu'ta'.",
-    "moreActions": "latlh Qu'",
     "new": "Qu' chu'",
-    "open": "yIpoSmoH",
     "subtitle": "{count, plural, other {# Qu''}}",
-    "title": "lut 'echlet Qu'",
     "format": {
       "fit": {
         "safe": "yap",
@@ -2458,7 +2538,6 @@
     "block": {
       "ariaLabel": "{lane}, {name}, {start} lupvo' {end} lupDaq"
     },
-    "board": "'echlet",
     "captions": {
       "add": "chu'wI' DaqDaq yIchel",
       "burnIn": "mIlloghDaq yIghItlh",
@@ -2481,7 +2560,6 @@
       "relink": "yIrarqa'"
     },
     "crossfade": "DuD choH {seconds} lup",
-    "empty": "wej DuDmeH Doch tu'lu'. 'echletDaq 'ay' tIchenmoH nung.",
     "export": {
       "aspect": "chen",
       "button": "MP4 yIngeH",
@@ -2574,9 +2652,6 @@
     },
     "leftOut": "{n, plural, other {wej mIllogh vIH ghaj # 'ay', vaj legh nungvo' ngeHvo' je teqlu'.}}",
     "noLibraryYet": "wej QoQ wab ghom tu'lu'. nav yIwIv pagh HeDaj yIghItlh.",
-    "noProjectTitle": "DuDwI'",
-    "openBoard": "'echlet yIpoSmoH",
-    "openOnBoard": "'echletDaq yIpoSmoH",
     "preview": {
       "cancel": "yIqIl",
       "failed": "chenbe' legh nung.",
@@ -2589,7 +2664,6 @@
     "ruler": "poH He juvwI'. chu'wI' vIHmoHmeH yI'uy.",
     "subtitle": "{seconds} lup · {aspect} · legh nung {width} × {height}",
     "timeline": "poH He",
-    "title": "{project} · DuDwI'",
     "transitionsNote": "lut poH runmoH choHmey; poH naQ cha' juvwI'.",
     "transport": {
       "keys": "Space pagh K: chu' / yev. J 'ej L: 5 lup chegh / ghoS. Left 'ej Right: 1 lup (Shift 10 lup, Alt wa' mIllogh). Home / End. + 'ej -: tInmoH / machmoH.",
@@ -2833,7 +2907,6 @@
     "addPicture": "mIllogh yIchel",
     "addPictureFor": "{name} mIllogh yIchel",
     "dropHint": "'echletvamDaq mIllogh tIlan; Hoch nav pongmo' ghot chu' chenmoHlu'.",
-    "none": "wej pagh. pong, mu' puS, mIllogh je 'oH ghot pagh Daq'e'. chen rap pol lo'bogh 'ay'.",
     "pickerTitle": "{name} mIllogh yIchel",
     "pictureAlt": "{name}, mIllogh {n}",
     "remove": "{name} yIteq",
@@ -2852,13 +2925,7 @@
     "bundleBody": "wa' .chaosfilm nav: 'ay', nID, ghot ghom mIllogh, wab je ngaS. Qu' qonmeH pagh latlh De'wI'Daq poSmoHmeH lo'.",
     "bundleTitle": "Qu' jo ghom",
     "openStoryboard": "lut 'echletDaq yIpoSmoH",
-    "stale": "{n, plural, other {ngo' # 'ay'.}} nID DaghajtaHbogh lo' ngeH.",
-    "before": "bIngeHpa'",
     "line": {
-      "captions": "{n, plural, other {# ghItlh}}, bIngDaq ghItlh 'ay'Daq wIvlu'.",
-      "clipsAll": "{n, plural, other {mIllogh vIH ghaj Hoch # 'ay'.}}",
-      "clipsNone": "wej mIllogh vIH ghaj pagh 'ay', vaj ngeHmeH Doch tu'lu'be'.",
-      "clipsSome": "{total}vo' {n} 'ay' mIllogh vIH ghaj; latlh teqlu'.",
       "cloned": "ghogh velqa' lo'lu', vaj reH AI per ghItlhlu'.",
       "noCaptions": "ghItlh Hutlh.",
       "preview": "ngo' legh nung (ngeH botbe').",
@@ -2868,7 +2935,6 @@
       "captionsBurn": "{n, plural, other {# ghItlh}}, mIlloghDaq ghItlhlu'.",
       "captionsSrt": "{n, plural, other {# ghItlh}}, SRT nav ghItlhlu'.",
       "captionsUnused": "{n, plural, other {# ghItlh}} ngeHbe'lu': bIngDaq SRT nav pagh mIlloghDaq yIghItlh yIwIv.",
-      "format": "{format} 'oH lut'e'.",
       "loudness": "{lufs} LUFSDaq wab rapmoHlu'.",
       "loudnessOff": "DuDlu'ta'bogh wab choHbe'lu' (wab HoS ngoQ Hutlh).",
       "upscale": "Qav {size}Daq tInmoHlu': px law', De' law'be'."

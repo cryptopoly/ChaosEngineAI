@@ -544,17 +544,19 @@
   },
   "voicePopover": {
     "button": "음성",
-    "call": "음성 통화",
     "change": "변경",
-    "dictation": "받아쓰기",
     "fix": "누락된 항목 설치",
     "noRuntime": "채팅의 음성 기능에는 음성 런타임이 필요합니다. 음성 > 모델에서 한 번 설치하세요.",
-    "openVoices": "음성 열기",
-    "read": "채팅 소리 내어 읽기",
     "sameAsChat": "(채팅과 동일)",
     "title": "채팅의 음성: 읽기, 통화, 받아쓰기에 쓸 음성",
-    "fallback": "대체",
-    "noFallback": "설정 안 됨"
+    "noFallback": "설정 안 됨",
+    "changeFor": null,
+    "openStudio": null,
+    "voicesInChat": null,
+    "readAloud": null,
+    "calls": null,
+    "backup": null,
+    "dictate": null
   },
   "keepGoing": {
     "label": "계속 진행",

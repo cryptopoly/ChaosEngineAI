@@ -544,17 +544,19 @@
   },
   "voicePopover": {
     "button": "Voice",
-    "call": "Voice calls",
     "change": "Change",
-    "dictation": "Dictation",
     "fix": "Install what is missing",
     "noRuntime": "Voice in Chat needs the voice runtime. Install it once from Voice > Models.",
-    "openVoices": "Open Voices",
-    "read": "Chat read-aloud",
     "sameAsChat": "(same as Chat)",
     "title": "Voice in Chat: which voice reads, calls and dictation",
-    "fallback": "Fallback",
-    "noFallback": "None set"
+    "noFallback": "None set",
+    "changeFor": "Change {use}",
+    "openStudio": "Open Voice Studio",
+    "voicesInChat": "Voices in Chat",
+    "readAloud": "Read-aloud",
+    "calls": "Calls",
+    "backup": "Backup",
+    "dictate": "Dictate"
   },
   "keepGoing": {
     "label": "Keep going",

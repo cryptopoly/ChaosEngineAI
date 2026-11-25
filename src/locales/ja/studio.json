@@ -679,7 +679,6 @@
       "installed": "インストール済み",
       "notInstalled": "未インストール",
       "cancel": "キャンセル",
-      "done": "音声パックをインストールしました。",
       "log": "インストールログ",
       "checkedOk": "インストール済み、確認済み",
       "checkedOkAt": "インストール済み、確認済み（{time}）",
@@ -688,11 +687,8 @@
     },
     "models": {
       "downloaded": "ダウンロード済み",
-      "use": "音声入力に使用",
       "download": "ダウンロード",
       "title": "音声",
-      "sttTitle": "音声入力モデル",
-      "sttSubtitle": "音声をテキストに変換します: チャットのマイク、音声通話、文字起こし用。",
       "ttsTitle": "音声モデル",
       "ttsNone": "音声モデルは表示されていません。",
       "cost": {
@@ -711,9 +707,9 @@
       },
       "delete": {
         "confirmSpeech": "{name}（{gb} GB）をこのコンピューターから削除しますか？使うには再度ダウンロードが必要です。クローンボイスとライブラリの項目は残ります。",
-        "confirmStt": "{name}（{gb} GB）をこのコンピューターから削除しますか？音声入力モデルの場合、次回の音声入力時に再度ダウンロードされます。",
         "keptShared": "保持: {repo}。{names} が引き続き使用しています。",
-        "watermarkGoes": "電子透かしのコンポーネントも削除されます。ダウンロード済みの他のモデルはクローンに使わないためです。次のクローン用モデルとともに戻ってきます。"
+        "watermarkGoes": "電子透かしのコンポーネントも削除されます。ダウンロード済みの他のモデルはクローンに使わないためです。次のクローン用モデルとともに戻ってきます。",
+        "confirmSttDefault": null
       },
       "deleteModel": "モデルを削除（{gb} GB）",
       "deleting": "削除中…",
@@ -775,7 +771,6 @@
       "kokoroLineAddon": "{languages} 言語で {count} 種類のクイックボイス。どのマシンでも高速です。音声ランタイムのアドオンです。",
       "kokoroNotInstalled": "未インストール",
       "kokoroAddHint": "音声ランタイム > アドオン でチェックを入れてください。",
-      "gpuDefaultLine": "ダウンロードが完了すると、別のモデルを選ばない限り {name} が音声入力モデルになります。",
       "macOnlySummary": "Apple Silicon Mac 向けのモデル {count} 個",
       "macOnlyNote": "この PC では動作しないため、読み上げと音声の一覧から除外されています。",
       "macOnlyNoteVoices": "この PC では動作しないため、これらのモデルと {voices} 個の音声は読み上げと音声の一覧から除外されています。",
@@ -804,12 +799,24 @@
       "sttDownloading": "{percent}% · {total} GB 中 {done} GB",
       "sttDownloadingName": "{name} をダウンロード中",
       "defaultBadge": "デフォルト",
-      "defaultTitle": "別のモデルを選ばない限り、音声入力はこのモデルを使用します。",
       "recommendedGpu": "この GPU におすすめ",
       "recommendedGpuTitle": "ダウンロードが完了するとデフォルトになります。",
       "wordTimings": "単語タイミング",
       "wordTimingsLine": "単語ごとのタイミング (キャプション、文字起こしエディター) を付与します。単語タイミングを持たない Qwen3-ASR、Granite Speech、Nemotron Transcribe が対象で、Nemotron ASR も使用します。使用中は GPU メモリを約 {vram} GB 追加で消費します。",
-      "firstUseLanguageLine": "選択したがダウンロードしていないモデルは、初めて音声入力するときに取得されます。Whisper、Qwen3-ASR、Nemotron 3.5 ASR は上の言語設定を使用します (自動判別に設定している場合は言語を判別します)。Parakeet、Granite、Nemotron Transcribe は常に自力で言語を判別します。"
+      "languageLine": null,
+      "defaultTitleSetup": null,
+      "useDefault": null,
+      "sttTitleSetup": null,
+      "sttSubtitleSetup": null,
+      "pick": {
+        "title": null,
+        "all": null,
+        "kokoro": null,
+        "download": null,
+        "gpuMemory": null
+      },
+      "firstUseLine": null,
+      "gpuDefaultLineSetup": null
     },
     "voices": {
       "addChinese": "中国語（北京語）のボイスを追加",
@@ -822,7 +829,6 @@
       "kindClone": "クローン",
       "kindPreset": "ナチュラル",
       "kindBuiltin": "クイック",
-      "tab": "ボイス",
       "filters": {
         "all": "すべて",
         "quick": "クイック",
@@ -835,59 +841,34 @@
       "noneCloned": "クローンボイスはまだありません。上の「新しいクローンボイス」を使ってください。",
       "stopSample": "{name} のサンプルを停止",
       "useInSpeak": "読み上げで使う",
-      "designNotInChat": "説明からボイスを作るには毎回説明文が必要なため、チャットのボイスには設定できません。",
-      "cloneNotInCalls": "クローンボイスは音声通話では使用されません。",
       "badge": {
         "call": "通話",
         "read": "チャット",
         "speak": "読み上げ",
-        "fallback": "フォールバック"
+        "backup": null
       },
-      "change": "変更",
-      "changeFor": "{use} のボイスを変更",
       "chooseCallHint": "通話に応答できるボイス。クローンボイスは通話では使用されません。",
-      "chooseFor": "{use} のボイスを選択",
       "chooseReadHint": "チャットの返信を読み上げられるボイス。",
       "clonedNote": "ご自身の声、または許可をいただいた方の声。AI 生成と表示され、電子透かしが入ります。",
       "female": "女性",
-      "firstWords": "{s} 秒後の最初の言葉。",
       "groupNatural": "ナチュラル",
-      "inUse": "使用中",
-      "mainTitle": "メインボイス",
       "male": "男性",
       "naturalNote": "ダウンロードした音声モデルから。スタイル、タグ、表現はモデルによって異なります。",
-      "notForChat": "このボイスはここのチャットでは話せません。",
-      "notReady": "そのモデルはまだダウンロードされていません。",
-      "sameAsChat": "（チャットと同じ）",
-      "slotCall": "クローンボイスは通話では使用されません。",
-      "slotRead": "返信とスピーカーボタン。",
-      "slotSpeak": "読み上げ画面で選択された状態で開始します。",
-      "slowFor": "低速: {s} 秒",
-      "subtitleUses": "このコンピューター上のすべてのボイスと、アプリの各部分が使うボイス。",
-      "use": {
-        "call": "音声通話",
-        "read": "チャットの読み上げ",
-        "speak": "読み上げ",
-        "fallback": "フォールバック"
-      },
-      "useFor": "使用先…",
-      "useForLabel": "{name} の使用先",
-      "slotFallback": "チャットまたは通話のボイスが使えないときに読み上げます。",
-      "slotFallbackClone": "チャットのボイスが使えないときに読み上げます。通話では使用されません。",
-      "fallbackNone": "未設定",
-      "noFallback": "フォールバックのボイスなし",
-      "chooseFallbackHint": "選択したチャットまたは通話のボイスが使えないときに読み上げる、インストール済みのボイス。クローンボイスは読み上げにのみ使われます。",
-      "fallbackNoteVoice": "選択したボイスが話せない場合（モデルが未ダウンロード、または読み込みに失敗）、フォールバックのボイス {name} が代わりに読み上げ、チャットにその旨が表示されます。",
-      "fallbackNoteNone": "フォールバックのボイスが設定されていません。選択したボイスが話せない場合、読み上げと通話はボイスを切り替える代わりにエラーを表示します。",
       "quickNoteAddon": "Kokoro は音声ランタイムのアドオンです。高速で 1 GB 未満、速度のみに対応。最高評価のものを先頭に表示します。",
       "kokoroMissing": "Kokoro のクイックボイスはインストールされていません。音声 > モデル > 音声ランタイム > アドオン でチェックを入れてください（約 330 MB）。",
       "openModels": "音声モデルを開く",
-      "macOnlyHidden": "Apple Silicon Mac 向け音声モデルの音声 {count} 個は、この PC では動作しないため表示されません。"
+      "macOnlyHidden": "Apple Silicon Mac 向け音声モデルの音声 {count} 個は、この PC では動作しないため表示されません。",
+      "designMacOnly": null,
+      "backupNoteVoice": null,
+      "backupNoteNone": null,
+      "useNameInSpeak": null,
+      "inSpeak": null,
+      "subtitleCatalogue": null,
+      "closeClone": null
     },
     "settings": {
       "autoSend": "音声入力が終わったらすぐにメッセージを送信",
       "autoRead": "チャットの返信が完了したら毎回読み上げる",
-      "language": "言語",
       "speed": "読み上げ速度",
       "idle": "アイドル後に音声メモリを解放（分。0 = 解放しない）",
       "unload": "アンロード",
@@ -896,17 +877,10 @@
     },
     "offline": "バックエンドを待っています…",
     "copy": "コピー",
-    "save": "ギャラリーに保存",
     "transcribe": {
       "title": "文字起こし",
-      "subtitle": "録音するか、音声または動画ファイルをドロップ",
       "model": "モデル",
       "language": "言語",
-      "hint": "ボタンをクリックして録音するか、ここにファイルをドロップしてください。",
-      "choose": "ファイルを選択",
-      "took": "{s} 秒で文字起こし",
-      "placeholder": "文字起こしの結果がここに表示されます。編集もできます。",
-      "segments": "タイムスタンプ（{n}）",
       "tooBig": "{name} は 500 MB を超えています。",
       "recordingName": "録音",
       "speakers": "話者を区別",
@@ -919,28 +893,26 @@
       "fileTypes": "WAV、MP3、M4A、FLAC、OGG、MP4、MOV など",
       "subtitleLibrary": "録音するか、音声・動画ファイルをドロップしてください。文字起こしはライブラリに保存されます。",
       "translateWhich": "英語に翻訳（Whisper Small または Base）",
-      "needsWordTimings": "単語タイミング ({gb} GB) のダウンロードが完了するまで、{name} ではセグメントの時間のみ取得できます。"
+      "needsWordTimings": "単語タイミング ({gb} GB) のダウンロードが完了するまで、{name} ではセグメントの時間のみ取得できます。",
+      "modelOption": null,
+      "languageFixed": null,
+      "rememberTitle": null,
+      "remember": null,
+      "downloadsFirst": null,
+      "languageFindsItself": null,
+      "languageUsesChoice": null
     },
     "stopRecording": "録音を停止",
     "record": "録音",
     "transcribing": "文字起こし中",
     "cancel": "キャンセル",
-    "sendToChat": "チャットに送る",
-    "copied": "コピーしました",
-    "saved": "保存しました",
     "speak": {
       "title": "読み上げ",
-      "subtitle": "テキストを音声に変換",
       "placeholder": "テキストを入力または貼り付けてください。Markdown やコードは読み上げ前に整えられます。",
       "voice": "ボイス",
       "speed": "速度",
-      "generating": "生成中…",
       "generate": "音声を生成",
-      "readNow": "今すぐ読み上げ",
-      "download": "WAV をダウンロード",
       "subtitleLong": "テキストを音声にします。空行で段落が変わり、[pause] で間を入れます。",
-      "preview": "この声を試聴",
-      "listen": "試聴",
       "progress": "{total} 中 {done} 番目",
       "generateParts": "音声を生成（{n} パート）",
       "encoding": "エンコード中…",
@@ -956,11 +928,8 @@
       "pitch": "ピッチ",
       "advanced": "詳細設定",
       "seed": "シード（空欄にすると毎回違うテイクになります）",
-      "modelKokoro": "Kokoro で実行されます。ボイスパックの一部です。",
-      "modelReady": "{name} で実行されます。",
       "modelDownloading": "{name} をダウンロード中…",
       "modelNeeds": "{name}（{gb} GB）が必要です。まだダウンロードされていません。",
-      "downloadForStyle": "スタイル用に {name} をダウンロード",
       "cloneTooLong": "クローンボイスの 1 クリップには長すぎます。{max} 文字以内に短くしてください。",
       "describeFirst": "生成する前に、希望するボイスを説明してください。",
       "appleOnly": "現時点では Apple シリコンの Mac のみ。",
@@ -971,11 +940,7 @@
       "sampleLoading": "{name} のサンプルを作成中。クリックで停止。",
       "cloneModel": "クローン用モデル",
       "cloneKind": "あなたのクローンボイス",
-      "yourVoices": "あなたのボイス",
-      "presets": "ナチュラルボイス",
       "designCard": "説明からボイスをデザイン",
-      "designDetail": "年齢、トーン、ペースをスタイル欄に記述してください。",
-      "quickVoices": "クイックボイス",
       "chips": {
         "neutral": "ニュートラル",
         "angry": "怒り",
@@ -990,8 +955,6 @@
       "manageInModels": "モデルで管理",
       "stylePlaceholderFree": "トーン、ペース、アクセントを自由な言葉で。例: 疲れていて優しい寝かしつけの声、ゆっくり、少しアイルランド訛り。",
       "describeHint": "年齢、性別、音の高さ、トーン、アクセント、ペースを記述してください。ボイスは実行のたびに変わります。固定するには詳細設定でシードを設定してください。",
-      "ffmpegPitch": "音の高さを変えるには ffmpeg が必要です。設定からインストールするか、音の高さを 0 に戻してください。",
-      "ffmpegSpeedPitch": "このボイスの速度と音の高さには ffmpeg が必要です。設定からインストールするか、速度を 1.0、音の高さを 0 にしてください。",
       "autosaveFailed": "クリップをライブラリに保存できませんでした（{error}）。再試行するには「ライブラリに保存」を使ってください。",
       "tagChips": "効果音タグ",
       "styleTagChips": "スタイルタグ（未文書化）",
@@ -1062,14 +1025,33 @@
         "music": "音楽ジョブの完了を待っています。完了後すぐに音声が始まります。",
         "other": "別のジョブの完了を待っています。完了後すぐに音声が始まります。"
       },
-      "needsSpeechGpu": "音声 GPU アドオンが必要です。音声 > モデル > 音声ランタイム > アドオンでチェックを入れてください。"
+      "needsSpeechGpu": "音声 GPU アドオンが必要です。音声 > モデル > 音声ランタイム > アドオンでチェックを入れてください。",
+      "styleNeedsNatural": null,
+      "getNatural": null,
+      "downloadForStyleSized": null,
+      "chooseNatural": null,
+      "errorDetails": null,
+      "noFile": null,
+      "showFile": null,
+      "speedNeedsFfmpeg": null,
+      "pitchNeedsFfmpeg": null,
+      "recent": null,
+      "can": {
+        "speed": null,
+        "style": null,
+        "tags": null,
+        "anyLanguage": null,
+        "nLanguages": null,
+        "line": null,
+        "none": null,
+        "languages": null
+      }
     },
     "stop": "停止",
     "studio": {
       "title": "Voice Studio",
       "openModels": "音声モデルを開く",
-      "library": "ライブラリ",
-      "needsPackGb": "音声はこのコンピューター上で動作し、音声ランタイム (Kokoro のクイック音声を含めて約 {gb} GB) が必要です。音声 > モデルから一度インストールしてください。"
+      "cloneTask": null
     },
     "savedToLibrary": "ライブラリに保存しました",
     "saveToLibrary": "ライブラリに保存",
@@ -1158,18 +1140,14 @@
     },
     "clone": {
       "statement": "ご自身の声、または使用を許可してくれた方の声のみをクローンしてください。公人、子ども、故人は対象外です。クローンボイスで作成したすべてのクリップには、ファイル内に AI 生成と表示され、聞き取れない電子透かしが入ります。どちらもオフにできません。",
-      "title": "声をクローンする",
-      "loading": "読み込み中…",
       "macOnly": "ボイスクローンは、今のところ Apple シリコンの Mac でのみ動作します。",
       "deleteConfirm": "ボイス「{name}」を削除しますか？そのサンプルと許可の記録も削除されます。この操作は元に戻せません。",
-      "model": "クローン用モデル",
       "downloading": "ダウンロード中…",
       "notHere": "クローンボイスは、このコンピュータ上の ChaosEngineAI のウィンドウからのみ使えます。",
       "consentOwn": "ご自身の声、{date} に確認",
       "consentPermission": "{name} が許可、{date} に確認",
       "delete": "削除",
       "new": "新しいクローンボイス",
-      "placeholder": "クローンボイスで話すテキスト。",
       "tagged": "AI 作成のラベル付き",
       "whose": "誰の声ですか？",
       "basisOwn": "自分の声",
@@ -1178,17 +1156,13 @@
       "voiceName": "このボイスの名前（任意）",
       "confirm": "これはご自身の声か、話者からクローンの許可を得ています。",
       "recordAgain": "録音し直す",
-      "sampleTitle": "ボイスサンプル",
       "sampleHelp": "同じ人物がはっきり話している 3〜30 秒の音声。WAV、MP3、M4A、FLAC、OGG のファイルをアップロードするか、マイクで録音してください。10〜20 秒が最適です。",
       "sampleText": "サンプルで話している言葉（任意。自動で入力されます）",
       "tooShort": "録音が 3 秒より短いです。もう少し録音してください。",
       "tooLong": "録音が 30 秒より長いです。短いサンプルを録音してください。",
       "save": "ボイスを保存",
       "installingWatermark": "透かしコンポーネントをインストール中…",
-      "tab": "クローン",
-      "voices": "クローンボイス",
       "deleteVoice": "ボイス {name} を削除",
-      "textLabel": "クローンボイスで話すテキスト",
       "sampleFile": "ボイスサンプルファイル",
       "recordingPlayback": "録音した音声",
       "saving": "ボイスを保存中…",
@@ -1198,7 +1172,19 @@
       "modelNone": "クローン用モデルはまだダウンロードされていません。",
       "modelDownload": "{name} をダウンロード（{gb} GB）",
       "modelDefault": "デフォルト",
-      "modelSize": "{gb} GB のダウンロード"
+      "modelSize": "{gb} GB のダウンロード",
+      "modelNoneHere": null,
+      "saved": null,
+      "speakWithIt": null,
+      "another": null,
+      "screenTitle": null,
+      "screenSubtitle": null,
+      "openSetup": null,
+      "stepTitle": null,
+      "stepPermission": null,
+      "stepSample": null,
+      "stepName": null,
+      "stepModel": null
     },
     "cost": {
       "kokoroChip": "高速、1 GB 未満",
@@ -1227,9 +1213,6 @@
       "fewer": "候補を表示",
       "allVoices": "すべての {language} ボイス（{count} 種）",
       "cloned": "クローン",
-      "newClone": "新しいクローンボイス",
-      "newCloneDetail": "10〜20 秒の録音から。同意フォームを開きます。",
-      "newCloneOpen": "フォームを開く",
       "designed": "デザイン",
       "designedNote": "説明文から作成したボイス。",
       "more": "その他",
@@ -1239,7 +1222,10 @@
       "openModels": "モデルを開く",
       "drawerHint": "ボイスをクリックすると読み上げで使えます。サンプルボタンで短い文が再生されます。",
       "drawerTitle": "ボイスを選択",
-      "quickNoteAddon": "Kokoro は音声ランタイムのアドオンです。高速で 1 GB 未満、速度のみに対応。{languages} 言語で {count} 種類のボイス。"
+      "quickNoteAddon": "Kokoro は音声ランタイムのアドオンです。高速で 1 GB 未満、速度のみに対応。{languages} 言語で {count} 種類のボイス。",
+      "cloneVoice": null,
+      "cloneVoiceDetail": null,
+      "cloneVoiceOpen": null
     },
     "chatCalls": {
       "cost": "最初の音声 {warm} 秒（コールド時 {cold} 秒）、{memory} GB",
@@ -1249,35 +1235,133 @@
       "browse": "ボイスを探す"
     },
     "runtime": {
-      "addon": {
-        "chinese": "中国語（北京語）のクイックボイス（8 種、約 60 MB）",
-        "speech-gpu": "音声 GPU アドオン: Qwen3-TTS、Chatterbox、VoxCPM2、Orpheus の自然な音声、NVIDIA GPU でのボイスデザインとクローン (約 {size})",
-        "stt-gpu": "音声認識 GPU アドオン: NVIDIA GPU 上の Qwen3-ASR、Parakeet、Nemotron、Granite (約 {size})",
-        "kokoro": "Kokoro のクイックボイス（約 330 MB）"
-      },
-      "addons": "アドオン",
-      "addonsHint": "チェックするとインストールされます。外すと削除されます。",
-      "addonsHintInstall": "チェックしたアドオンは音声ランタイムと一緒にインストールされます。後から変更できます。",
-      "alsoModels": "Kokoro のクイックボイス、発話区切り検出、話者ラベルも削除します。ダウンロード済みの音声入力モデルと音声モデルは常に残ります。",
       "idleAfter": "分間アイドル（0 = しない）",
       "idleBefore": "次の時間後にメモリを解放",
       "inMemory": "現在メモリ上:",
-      "install": "音声ランタイムをインストール",
       "modelWithGb": "{name}、{gb} GB",
       "nothingLoaded": "なし",
-      "parts": "ディスク上 {total} GB: 音声パッケージ {packages} GB、Kokoro クイックボイス {kokoro} GB、発話区切り検出と話者ラベル {small} GB。データは一切送信されません。",
       "remove": "音声ランタイムを削除",
-      "removeConfirm": "音声ランタイム{size}を削除しますか？再インストールするまで、音声入力、読み上げ、音声通話、音声スタジオは動作しなくなります。ダウンロード済みの音声入力モデルと音声モデル、クローンボイス、ライブラリは残ります。",
       "removing": "削除中…",
-      "repair": "音声ランタイムを修復",
-      "subtitle": "{lane}。モデル以外で音声機能に必要なすべてのもの。",
-      "title": "音声ランタイム",
       "troubleshootBody": "再インストールは全体をもう一度インストールします。削除するとディスク容量が解放され、再インストールするまで音声入力、読み上げ、通話、音声スタジオは停止します。",
-      "update": "音声ランタイムを更新",
       "updateFeatures": "チャットの音声通話と文字起こしの話者ラベルのために音声ランタイムを更新します（モデル約 40 MB を追加。1〜2 分）。",
       "workerOnly": "音声ワーカーのみ。モデルはまだありません",
-      "partsNoKokoro": "ディスク上 {total} GB: 音声パッケージ {packages} GB、発話区切り検出と話者ラベル {small} GB。Kokoro クイックボイスはインストールされていません。データは一切送信されません。",
-      "aboutTickedGb": "下でチェックしたアドオンを含めて約 {gb} GB: 音声パッケージ、ターン検出、話者ラベル、およびチェックした各アドオン。音声入力モデルと音声モデルは、このページで別途ダウンロードします。オンラインには何も送信されません。"
+      "removeConfirmSetup": null
+    },
+    "chatVoices": {
+      "chooseRead": null,
+      "chooseCall": null,
+      "chooseBackup": null,
+      "chooseBackupHint": null,
+      "noBackup": null
+    },
+    "errors": {
+      "details": null,
+      "detailsToggle": null,
+      "runtime_missing": null,
+      "runtime_outdated": null,
+      "addon_missing": null,
+      "model_missing": null,
+      "watermark_missing": null,
+      "gpu_memory": null,
+      "gpu_unsupported": null,
+      "unsupported_here": null,
+      "ffmpeg_missing": null,
+      "reference_too_short": null,
+      "reference_too_long": null,
+      "reference_unreadable": null,
+      "audio_unreadable": null,
+      "language_unsupported": null,
+      "permission_required": null,
+      "cloning_not_allowed": null,
+      "voice_not_found": null,
+      "no_backup_voice": null,
+      "download_blocked": null,
+      "download_failed": null,
+      "worker_busy": null,
+      "worker_timeout": null,
+      "worker_stopped": null,
+      "unknown": null
+    },
+    "setup": {
+      "chooseParts": null,
+      "optionalParts": null,
+      "part": {
+        "model": null,
+        "modelNoSize": null,
+        "kokoro": null,
+        "chinese": null,
+        "speech-gpu": null,
+        "stt-gpu": null
+      },
+      "partsHint": null,
+      "partsHintInstall": null,
+      "details": null,
+      "task": {
+        "quick": null,
+        "natural": null,
+        "clone": null,
+        "stt": null,
+        "calls": null
+      },
+      "missing": {
+        "downloadingPct": null,
+        "downloading": null,
+        "runtime": null,
+        "update": null,
+        "kokoro": null,
+        "speechGpu": null,
+        "sttGpu": null,
+        "naturalModel": null,
+        "naturalModelUnknown": null,
+        "cloneModel": null,
+        "cloneModelUnknown": null
+      },
+      "unavailable": {
+        "needsGpu": null,
+        "needsGpuMac": null,
+        "memory": null,
+        "compute": null,
+        "noModel": null
+      },
+      "status": {
+        "readyInChat": null,
+        "ready": null,
+        "unavailable": null,
+        "missingInChat": null,
+        "missing": null
+      },
+      "presetBasic": null,
+      "presetFullPartial": null,
+      "presetFull": null,
+      "openChat": null,
+      "chooseCloneModel": null,
+      "presets": null,
+      "installChosen": null,
+      "installMissingOver": null,
+      "installMissingGb": null,
+      "installMissing": null,
+      "repair": null,
+      "parts": null,
+      "partsNoKokoro": null,
+      "beforeInstall": null,
+      "title": null,
+      "subtitle": null,
+      "alsoModels": null,
+      "studioSubtitle": null,
+      "allReady": null
+    },
+    "errorActions": {
+      "install-voice-runtime": null,
+      "install-addon": null,
+      "download-model": null,
+      "smaller-model": null,
+      "pick-another-model": null,
+      "install-ffmpeg": null,
+      "pick-another-language": null,
+      "change-sample": null,
+      "confirm-permission": null,
+      "add-hf-token": null,
+      "retry": null
     }
   },
   "residentChatModelNote": "読み込み済みのチャットモデルがこのメモリのうち約 {gb} GB を使用しています。アンロードするとその分が解放されます。",
@@ -1650,7 +1734,6 @@
     "conflictNotice": "他の場所で変更されました。最新の内容を表示しています",
     "defaults": {
       "automatic": "自動（インストール済みのモデル）",
-      "automaticShort": "自動",
       "automaticName": "自動",
       "noVoice": "なし",
       "modelTimed": "{name} · 静止画 1 枚あたり約 {time}",
@@ -1662,7 +1745,6 @@
       "useFastHint": "{name}、静止画 1 枚あたり約 {time}"
     },
     "defaultsSummary": "{aspect} · {resolution} · {fps} fps · {imageModel} · {videoModel} · ボイス {voice}",
-    "defaultsTitle": "プロジェクトのデフォルト",
     "editor": {
       "discard": "変更を破棄",
       "discardBody": "このショットには保存されていない変更があります。今閉じると破棄されます。",
@@ -1677,7 +1759,6 @@
       "length": "長さ（秒）",
       "motionPrompt": "モーションプロンプト",
       "nativeSound": "ショットの音量（dB）",
-      "noReferences": "このプロジェクトにはまだ参照がありません。「参照」パネルで追加してください。",
       "references": "参照",
       "relinkHint": "見つからないテイクを新しいファイルに関連付けます。",
       "revert": "元に戻す",
@@ -1727,7 +1808,6 @@
       "vocalHintShot": "口の動きが合わせる WAV または FLAC です。クリップはこのショットの静止画から始まり、この音を保ちます。動画モデルとして LTX-2.3 が必要です（NVIDIA 向けの 4 ビットモデルは 24 GB のカードが必要）。",
       "vocalOptional": "ショットが歌う必要はありません。ボーカルを削除すると、通常のクリップとして再生されます。"
     },
-    "empty": "まだショットがありません。ショットを追加して、プロンプトを入力するか素材をインポートしてください。",
     "estimate": {
       "need": "{n, plural, other {# 件のショットに新しいテイクが必要です}}",
       "none": "ロックされていないショットはすべてテイクがあります。"
@@ -1735,28 +1815,15 @@
     "loading": "プロジェクトを読み込み中…",
     "makeAll": "ロックされていないショットをすべて作成",
     "makeAllTitle": "ロックされていないすべてのショットに新しいテイクを追加します。何も上書きされません。",
-    "makeMissing": "未作成のショットを作成",
     "makeOne": "このショットを作成",
-    "mixer": "ミキサー",
-    "noProject": "開いているプロジェクトがありません。「プロジェクト」から開くか、新しく作成してください。",
-    "noProjectTitle": "ボード",
-    "notFound": "このプロジェクトはもう存在しません。別のプロジェクトを選んでください。",
-    "openProjects": "プロジェクトを開く",
-    "projects": "プロジェクト",
     "redo": "やり直す",
     "references": {
       "addCharacter": "キャラクターを追加",
       "addPlace": "場所を追加",
       "characters": "キャラクター",
       "description": "見た目の説明",
-      "image": "参照画像",
       "name": "名前",
-      "none": "まだありません。",
-      "places": "場所",
-      "remove": "参照を削除",
-      "setImage": "画像を設定",
-      "summary": "{characters, plural, other {# 人のキャラクター}} · {places, plural, other {# か所の場所}}",
-      "title": "参照"
+      "places": "場所"
     },
     "reload": "再読み込み",
     "removeBody": "{name} は作品から取り除かれます。テイクはプロジェクトフォルダに残り、元に戻すと復元できます。",
@@ -1779,9 +1846,6 @@
       "moreActions": "ショット {n} のその他の操作",
       "moved": "ショット {n} を {position} 番目に移動しました",
       "play": "クリップを再生",
-      "redoLabel": "やり直す",
-      "redoMarked": "やり直しにマーク済み",
-      "redoTitle": "やり直しにマーク：次の「ショットを作成」で新しいテイクが追加されます。何も上書きされません。",
       "relink": "再リンク",
       "rerun": "再実行",
       "seed": "シード {seed}",
@@ -1823,14 +1887,12 @@
       "chooseForFinal": "最終用に選ぶ"
     },
     "shots": "ショット",
-    "subtitle": "{shots, plural, other {# 件のショット}} · {seconds} 秒 · 期限切れ {stale} 件",
     "takes": {
       "active": "現在のテイク",
       "label": "テイク",
       "pick": "このテイクを使う",
       "take": "テイク {n}"
     },
-    "title": "{project} · ボード",
     "undo": "元に戻す",
     "emptyNoCast": "まだショットがありません。ショットを追加して説明を入力するか、映像を取り込んでください。ショットにキャラクターは不要です。通りや群衆だけでも成立します。",
     "subtitleShots": "{shots, plural, other {# ショット}} · {seconds} 秒 · 古い {stale} 件",
@@ -1847,7 +1909,6 @@
       "finalChosenTitle": "選んだ各ショットを {model} で {width} x {height} に作り直し、新しい静止画からクリップを作ります。",
       "chooseHint": "ショットで「最終用に選ぶ」を使うと、そのショットが最終パスに入ります。"
     },
-    "exportDrafts": "{n, plural, other {# 件のショット}} がドラフトのテイクを使用しています。残して最終パスを実行すると最高品質になります。または、ドラフトのまま書き出すこともできます。",
     "preview": {
       "emptyHint": "映画を再生するにはショットを追加してください。",
       "buttonHint": "ミキサーの音声で、有効なテイクを順に再生します。何も生成しません。",
@@ -2027,7 +2088,6 @@
         "vision": "· 画像を読み取ります"
       },
       "motion": "動き",
-      "overviewButton": "アイデアから計画",
       "pictures": {
         "add": "画像を追加",
         "edit": "キャストでスタイルを編集",
@@ -2290,7 +2350,30 @@
           "state": "リップシンク"
         },
         "makeAll": "{n, plural, other {リップシンクのクリップを # 件作る}}",
-        "batchRunning": "今作成中のショットが終わるまで待ちます。"
+        "batchRunning": "今作成中のショットが終わるまで待ちます。",
+        "fix": {
+          "lengthen": null,
+          "shorten": null,
+          "unlock": null,
+          "realSpeed": null,
+          "assign": null,
+          "make": null
+        },
+        "state": {
+          "synced": null,
+          "waiting": null,
+          "skipped": null,
+          "unassigned": null
+        },
+        "reason": {
+          "otherSpeed": null,
+          "locked": null,
+          "outsideSong": null,
+          "tooShort": null,
+          "tooLong": null,
+          "noSinging": null,
+          "notAssigned": null
+        }
       },
       "sing": {
         "question": "画面の中で誰かが歌いますか？",
@@ -2303,9 +2386,11 @@
         "cut": "曲をショットに切り分ける",
         "keepShots": "今のショットを残して、各ショットにボーカルを割り当てる",
         "choose": "先にどちらかを選んでください。",
-        "review": "先にカットを確認できます。まだ何も作られません。"
+        "review": "先にカットを確認できます。まだ何も作られません。",
+        "cutAgain": null
       },
-      "cutSongIntoShots": "曲をショットに切り分ける"
+      "cutSongIntoShots": "曲をショットに切り分ける",
+      "lipSyncRange": null
     },
     "unsaved": {
       "title": "テキストは保存されませんでした",
@@ -2373,12 +2458,10 @@
   "storyProjects": {
     "card": {
       "edited": "{when} に編集",
-      "meta": "{shots, plural, other {# 件のショット}} · {seconds} 秒 · {aspect}",
       "noShots": "ショットなし",
       "noTakes": "まだ画像なし",
       "noPreview": "プレビューなし",
       "stale": "期限切れ {n} 件",
-      "zeroShots": "0 件のショット",
       "metaFormat": "{shots, plural, other {# ショット}} · {seconds} 秒 · {format}",
       "zeroShotsFormat": "0 ショット · {format}"
     },
@@ -2411,11 +2494,8 @@
       "rename": "名前を変更"
     },
     "missing": "このプロジェクトのフォルダは移動または削除されました。",
-    "moreActions": "その他の操作",
     "new": "新規プロジェクト",
-    "open": "開く",
     "subtitle": "{count, plural, other {# 件のプロジェクト}}",
-    "title": "ストーリーボードプロジェクト",
     "format": {
       "fit": {
         "safe": "収まる",
@@ -2458,7 +2538,6 @@
     "block": {
       "ariaLabel": "{lane}、{name}、{start} 秒から {end} 秒"
     },
-    "board": "ボード",
     "captions": {
       "add": "再生ヘッドの位置に追加",
       "burnIn": "映像に焼き込む",
@@ -2481,7 +2560,6 @@
       "relink": "再リンク"
     },
     "crossfade": "クロスフェード {seconds} 秒",
-    "empty": "ミックスするものがまだありません。先にボードでショットを作成してください。",
     "export": {
       "aspect": "アスペクト比",
       "button": "MP4 を書き出す",
@@ -2574,9 +2652,6 @@
     },
     "leftOut": "{n, plural, other {# 件のショットにはまだクリップがなく、プレビューと書き出しから除外されます。}}",
     "noLibraryYet": "ミュージックライブラリはまだ使えません。ファイルを選ぶか、パスを入力してください。",
-    "noProjectTitle": "ミキサー",
-    "openBoard": "ボードを開く",
-    "openOnBoard": "ボードで開く",
     "preview": {
       "cancel": "キャンセル",
       "failed": "プレビューをレンダリングできませんでした。",
@@ -2589,7 +2664,6 @@
     "ruler": "タイムラインのルーラー。クリックすると再生ヘッドが動きます。",
     "subtitle": "{seconds} 秒 · {aspect} · プレビュー {width} × {height}",
     "timeline": "タイムライン",
-    "title": "{project} · ミキサー",
     "transitionsNote": "トランジションの長さの分だけ作品が短くなります。ルーラーには実際の合計時間が表示されます。",
     "transport": {
       "keys": "Space または K：再生 / 一時停止。J と L：5 秒戻る / 進む。左右キー：1 秒（Shift で 10 秒、Alt で 1 フレーム）。Home / End。+ と -：ズーム。",
@@ -2833,7 +2907,6 @@
     "addPicture": "画像を追加",
     "addPictureFor": "{name} の画像を追加",
     "dropHint": "このタブのどこかに画像をドロップすると、ファイルごとにその名前のキャラクターが追加されます。",
-    "none": "まだありません。キャラクターや場所は、名前、数語の説明、画像で構成されます。それを使うショットは同じ見た目を保ちます。",
     "pickerTitle": "{name} の画像を追加",
     "pictureAlt": "{name}、画像 {n}",
     "remove": "{name} を削除",
@@ -2852,13 +2925,7 @@
     "bundleBody": "ショット、テイク、キャストの画像、音声を含む 1 つの .chaosfilm ファイル。プロジェクトのバックアップや、別のコンピューターで開くために使います。",
     "bundleTitle": "プロジェクトバンドル",
     "openStoryboard": "ストーリーボードで開く",
-    "stale": "{n, plural, other {# 件のショットが古い状態です。}} 書き出しは、現在あるテイクを使用します。",
-    "before": "書き出す前に",
     "line": {
-      "captions": "{n, plural, other {# 件の字幕}}。下の字幕で設定します。",
-      "clipsAll": "{n, plural, other {すべての # ショットにクリップがあります。}}",
-      "clipsNone": "クリップのあるショットがまだないため、書き出すものがありません。",
-      "clipsSome": "{n} / {total} ショットにクリップがあります。その他は除外されます。",
       "cloned": "クローン音声を使っているため、AI タグは常に書き込まれます。",
       "noCaptions": "字幕なし。",
       "preview": "プレビューが古くなっています (書き出しは可能です)。",
@@ -2868,7 +2935,6 @@
       "captionsBurn": "{n, plural, other {# 件の字幕}}。映像に焼き込みます。",
       "captionsSrt": "{n, plural, other {# 件の字幕}}。SRT ファイルとして書き出します。",
       "captionsUnused": "{n, plural, other {# 件の字幕}}は書き出されません: 下の SRT ファイルまたは焼き込みにチェックを入れてください。",
-      "format": "映画は {format} です。",
       "loudness": "音声は {lufs} LUFS に揃えます。",
       "loudnessOff": "音声はミックスのままです (ラウドネス目標なし)。",
       "upscale": "最後に {size} へ拡大します。画素は増えますが、細部は増えません。"

@@ -679,7 +679,6 @@
       "installed": "已安装",
       "notInstalled": "未安装",
       "cancel": "取消",
-      "done": "语音包已安装。",
       "log": "安装日志",
       "checkedOk": "已安装，检查通过",
       "checkedOkAt": "已安装，检查通过（{time}）",
@@ -688,11 +687,8 @@
     },
     "models": {
       "downloaded": "已下载",
-      "use": "用于语音输入",
       "download": "下载",
       "title": "语音",
-      "sttTitle": "听写模型",
-      "sttSubtitle": "将语音转为文字：用于对话中的麦克风、语音通话和转写。",
       "ttsTitle": "语音模型",
       "ttsNone": "未列出语音模型。",
       "cost": {
@@ -711,9 +707,9 @@
       },
       "delete": {
         "confirmSpeech": "要从本机删除 {name}（{gb} GB）吗？需要使用时请重新下载。克隆语音和资料库条目会保留。",
-        "confirmStt": "要从本机删除 {name}（{gb} GB）吗？如果它是听写模型，下次听写时会重新下载。",
         "keptShared": "已保留：{repo}，仍被 {names} 使用。",
-        "watermarkGoes": "水印组件也会一并删除：没有其他已下载的模型用于克隆。下一个克隆模型会再次带回它。"
+        "watermarkGoes": "水印组件也会一并删除：没有其他已下载的模型用于克隆。下一个克隆模型会再次带回它。",
+        "confirmSttDefault": null
       },
       "deleteModel": "删除模型（{gb} GB）",
       "deleting": "正在删除…",
@@ -775,7 +771,6 @@
       "kokoroLineAddon": "{count} 种快速语音，覆盖 {languages} 种语言。在任何机器上都快；是语音运行时的附加组件。",
       "kokoroNotInstalled": "未安装",
       "kokoroAddHint": "在“语音运行时 > 附加组件”中勾选即可。",
-      "gpuDefaultLine": "{name} 下载完成后将成为听写模型，除非你另选其他模型。",
       "macOnlySummary": "{count} 个适用于 Apple Silicon Mac 的模型",
       "macOnlyNote": "它们无法在这台电脑上运行，因此未列入“朗读”和“语音”。",
       "macOnlyNoteVoices": "它们无法在这台电脑上运行，因此它们及其 {voices} 个语音未列入“朗读”和“语音”。",
@@ -804,12 +799,24 @@
       "sttDownloading": "{percent}% · {done}/{total} GB",
       "sttDownloadingName": "正在下载 {name}",
       "defaultBadge": "默认",
-      "defaultTitle": "听写使用此模型，除非你另选其他模型。",
       "recommendedGpu": "推荐用于此 GPU",
       "recommendedGpuTitle": "下载完成后成为默认模型。",
       "wordTimings": "词级时间",
       "wordTimingsLine": "为本身没有词级时间的 Qwen3-ASR、Granite Speech 和 Nemotron Transcribe 标注每个词的时间（用于字幕和转录编辑器）；Nemotron ASR 也会用到。使用时额外占用约 {vram} GB GPU 内存。",
-      "firstUseLanguageLine": "你选择但尚未下载的模型会在首次听写时获取。Whisper、Qwen3-ASR 和 Nemotron 3.5 ASR 使用上方的“语言”设置（设为自动检测时则自行识别）；Parakeet、Granite 和 Nemotron Transcribe 始终自行识别语言。"
+      "languageLine": null,
+      "defaultTitleSetup": null,
+      "useDefault": null,
+      "sttTitleSetup": null,
+      "sttSubtitleSetup": null,
+      "pick": {
+        "title": null,
+        "all": null,
+        "kokoro": null,
+        "download": null,
+        "gpuMemory": null
+      },
+      "firstUseLine": null,
+      "gpuDefaultLineSetup": null
     },
     "voices": {
       "addChinese": "添加普通话语音",
@@ -822,7 +829,6 @@
       "kindClone": "已克隆",
       "kindPreset": "自然",
       "kindBuiltin": "快速",
-      "tab": "语音",
       "filters": {
         "all": "全部",
         "quick": "快速",
@@ -835,59 +841,34 @@
       "noneCloned": "还没有克隆语音。请使用上方的“新建克隆语音”。",
       "stopSample": "停止 {name} 的试听",
       "useInSpeak": "在朗读中使用",
-      "designNotInChat": "设计语音每次都需要描述，因此无法作为对话语音。",
-      "cloneNotInCalls": "克隆语音不用于语音通话。",
       "badge": {
         "call": "通话",
         "read": "对话",
         "speak": "朗读",
-        "fallback": "备用"
+        "backup": null
       },
-      "change": "更改",
-      "changeFor": "更改{use}的语音",
       "chooseCallHint": "可接听通话的语音。克隆语音不用于通话。",
-      "chooseFor": "选择{use}的语音",
       "chooseReadHint": "可朗读对话回复的语音。",
       "clonedNote": "你本人的声音，或已获授权之人的声音。会标注为 AI 生成并加入水印。",
       "female": "女声",
-      "firstWords": "{s} s 后的开头部分。",
       "groupNatural": "自然",
-      "inUse": "使用中",
-      "mainTitle": "主要语音",
       "male": "男声",
       "naturalNote": "来自你已下载的语音模型。风格、标签或表现力取决于模型。",
-      "notForChat": "此语音无法在此处的对话中朗读。",
-      "notReady": "其模型尚未下载。",
-      "sameAsChat": "（与对话相同）",
-      "slotCall": "克隆语音不用于通话。",
-      "slotRead": "回复及喇叭按钮。",
-      "slotSpeak": "在朗读页面中默认选中。",
-      "slowFor": "较慢：{s} s",
-      "subtitleUses": "本机上的所有语音，以及应用各部分分别使用哪一个。",
-      "use": {
-        "call": "语音通话",
-        "read": "对话朗读",
-        "speak": "朗读",
-        "fallback": "备用"
-      },
-      "useFor": "用于…",
-      "useForLabel": "将 {name} 用于",
-      "slotFallback": "对话或通话语音无法使用时朗读。",
-      "slotFallbackClone": "对话语音无法使用时朗读。不用于通话。",
-      "fallbackNone": "未设置",
-      "noFallback": "没有备用语音",
-      "chooseFallbackHint": "已安装的语音，在所选对话或通话语音无法使用时朗读。克隆语音仅用于朗读。",
-      "fallbackNoteVoice": "如果所选语音无法朗读（模型未下载，或加载失败），将由备用语音 {name} 朗读，对话中会有提示。",
-      "fallbackNoteNone": "未设置备用语音：如果所选语音无法朗读，朗读和通话会显示错误，而不会切换语音。",
       "quickNoteAddon": "Kokoro 是语音运行时的附加组件。速度快，小于 1 GB，仅保证速度。按评分最高者优先显示。",
       "kokoroMissing": "Kokoro 快速语音尚未安装。请在“语音 > 模型 > 语音运行时 > 附加组件”中勾选（约 330 MB）。",
       "openModels": "打开语音模型",
-      "macOnlyHidden": "适用于 Apple Silicon Mac 的语音模型的 {count} 个语音未列出：它们无法在这台电脑上运行。"
+      "macOnlyHidden": "适用于 Apple Silicon Mac 的语音模型的 {count} 个语音未列出：它们无法在这台电脑上运行。",
+      "designMacOnly": null,
+      "backupNoteVoice": null,
+      "backupNoteNone": null,
+      "useNameInSpeak": null,
+      "inSpeak": null,
+      "subtitleCatalogue": null,
+      "closeClone": null
     },
     "settings": {
       "autoSend": "语音输入结束后立即发送消息",
       "autoRead": "回复完成后自动朗读每条聊天回复",
-      "language": "语言",
       "speed": "朗读速度",
       "idle": "空闲多久后释放语音内存（分钟，0 = 从不）",
       "unload": "卸载",
@@ -896,17 +877,10 @@
     },
     "offline": "正在等待后端…",
     "copy": "复制",
-    "save": "保存到图库",
     "transcribe": {
       "title": "转写",
-      "subtitle": "录音，或拖入音频或视频文件",
       "model": "模型",
       "language": "语言",
-      "hint": "点击按钮录音，或把文件拖到这里。",
-      "choose": "选择文件",
-      "took": "{s} 秒完成转写",
-      "placeholder": "转写稿会显示在这里，你可以编辑。",
-      "segments": "时间戳（{n}）",
       "tooBig": "{name} 超过 500 MB。",
       "recordingName": "录音",
       "speakers": "区分说话人",
@@ -919,28 +893,26 @@
       "fileTypes": "WAV、MP3、M4A、FLAC、OGG、MP4、MOV 等",
       "subtitleLibrary": "录音，或拖入音频和视频文件。转写稿保存在资料库中。",
       "translateWhich": "翻译为英文（Whisper Small 或 Base）",
-      "needsWordTimings": "在“词级时间”下载（{gb} GB）完成之前，{name} 只提供分段时间。"
+      "needsWordTimings": "在“词级时间”下载（{gb} GB）完成之前，{name} 只提供分段时间。",
+      "modelOption": null,
+      "languageFixed": null,
+      "rememberTitle": null,
+      "remember": null,
+      "downloadsFirst": null,
+      "languageFindsItself": null,
+      "languageUsesChoice": null
     },
     "stopRecording": "停止录音",
     "record": "录音",
     "transcribing": "正在转写",
     "cancel": "取消",
-    "sendToChat": "发送到聊天",
-    "copied": "已复制",
-    "saved": "已保存",
     "speak": {
       "title": "朗读",
-      "subtitle": "把文字转成语音",
       "placeholder": "输入或粘贴文字。朗读前会先整理 Markdown 和代码。",
       "voice": "声音",
       "speed": "速度",
-      "generating": "正在生成…",
       "generate": "生成音频",
-      "readNow": "立即朗读",
-      "download": "下载 WAV",
       "subtitleLong": "把文字转成语音。空行开始新段落；[pause] 插入停顿。",
-      "preview": "试听这个声音",
-      "listen": "试听",
       "progress": "第 {done} 部分，共 {total} 部分",
       "generateParts": "生成音频（{n} 部分）",
       "encoding": "正在编码…",
@@ -956,11 +928,8 @@
       "pitch": "音高",
       "advanced": "高级",
       "seed": "种子（留空则每次生成不同的版本）",
-      "modelKokoro": "使用 Kokoro 运行，属于语音包的一部分。",
-      "modelReady": "使用 {name} 运行。",
       "modelDownloading": "正在下载 {name}…",
       "modelNeeds": "需要 {name}（{gb} GB），尚未下载。",
-      "downloadForStyle": "下载 {name} 以使用风格",
       "cloneTooLong": "内容太长，无法作为一个克隆语音片段。请缩短到 {max} 个字符以内。",
       "describeFirst": "生成前请先描述你想要的语音。",
       "appleOnly": "目前仅支持 Apple Silicon Mac。",
@@ -971,11 +940,7 @@
       "sampleLoading": "正在生成 {name} 的试听。点击停止。",
       "cloneModel": "克隆模型",
       "cloneKind": "你的克隆语音",
-      "yourVoices": "你的语音",
-      "presets": "自然语音",
       "designCard": "根据描述设计语音",
-      "designDetail": "在风格框中描述年龄、语气和语速。",
-      "quickVoices": "快速语音",
       "chips": {
         "neutral": "中性",
         "angry": "愤怒",
@@ -990,8 +955,6 @@
       "manageInModels": "在模型中管理",
       "stylePlaceholderFree": "语气、语速、口音，用你自己的话描述。例如：疲倦、温柔的睡前语音，语速慢，带一点爱尔兰口音。",
       "describeHint": "说明年龄、性别、音高、语气、口音和语速。每次运行语音都会改变；在“高级”下设置种子即可保持不变。",
-      "ffmpegPitch": "更改音高需要 ffmpeg。请在设置中安装，或将音高恢复为 0。",
-      "ffmpegSpeedPitch": "此语音的语速和音高需要 ffmpeg。请在设置中安装，或将语速设为 1.0、音高设为 0。",
       "autosaveFailed": "无法将片段保存到资料库（{error}）。请使用“保存到资料库”重试。",
       "tagChips": "声音标签",
       "styleTagChips": "风格标签（未有文档说明）",
@@ -1062,14 +1025,33 @@
         "music": "正在等待音乐任务完成，随后立即开始朗读。",
         "other": "正在等待另一个任务完成，随后立即开始朗读。"
       },
-      "needsSpeechGpu": "需要语音 GPU 附加组件。请在“语音 > 模型 > 语音运行时 > 附加组件”中勾选。"
+      "needsSpeechGpu": "需要语音 GPU 附加组件。请在“语音 > 模型 > 语音运行时 > 附加组件”中勾选。",
+      "styleNeedsNatural": null,
+      "getNatural": null,
+      "downloadForStyleSized": null,
+      "chooseNatural": null,
+      "errorDetails": null,
+      "noFile": null,
+      "showFile": null,
+      "speedNeedsFfmpeg": null,
+      "pitchNeedsFfmpeg": null,
+      "recent": null,
+      "can": {
+        "speed": null,
+        "style": null,
+        "tags": null,
+        "anyLanguage": null,
+        "nLanguages": null,
+        "line": null,
+        "none": null,
+        "languages": null
+      }
     },
     "stop": "停止",
     "studio": {
       "title": "Voice Studio",
       "openModels": "打开语音模型",
-      "library": "资料库",
-      "needsPackGb": "语音在本机运行，需要语音运行时（含 Kokoro 快速语音约 {gb} GB）。请在“语音 > 模型”中安装一次。"
+      "cloneTask": null
     },
     "savedToLibrary": "已保存到资料库",
     "saveToLibrary": "保存到资料库",
@@ -1158,18 +1140,14 @@
     },
     "clone": {
       "statement": "只克隆你本人的声音，或已授权你使用其声音之人的声音。不得克隆公众人物、儿童或已故之人的声音。使用克隆语音生成的每个片段都会在文件内标注为 AI 生成，并附带听不见的水印；两者都无法关闭。",
-      "title": "克隆声音",
-      "loading": "加载中…",
       "macOnly": "声音克隆目前仅支持 Apple 芯片的 Mac。",
       "deleteConfirm": "删除语音“{name}”吗？其样本和授权记录也会一并删除。此操作无法撤销。",
-      "model": "克隆模型",
       "downloading": "下载中…",
       "notHere": "克隆声音只能在这台电脑上的 ChaosEngineAI 窗口中使用。",
       "consentOwn": "本人声音，确认于 {date}",
       "consentPermission": "{name} 已授权，确认于 {date}",
       "delete": "删除",
       "new": "新建克隆声音",
-      "placeholder": "要用克隆声音朗读的文字。",
       "tagged": "已标注为 AI 生成",
       "whose": "这是谁的声音？",
       "basisOwn": "我自己的声音",
@@ -1178,17 +1156,13 @@
       "voiceName": "此声音的名称（可选）",
       "confirm": "这是我本人的声音，或说话人已授权我克隆其声音。",
       "recordAgain": "重新录制",
-      "sampleTitle": "语音样本",
       "sampleHelp": "同一人清晰说话 3 到 30 秒。可上传 WAV、MP3、M4A、FLAC 或 OGG 文件，或用麦克风录制。10 到 20 秒效果最好。",
       "sampleText": "样本中说出的文字（可选；会自动填写）",
       "tooShort": "录音不足 3 秒。请多录一些。",
       "tooLong": "录音超过 30 秒。请录制更短的样本。",
       "save": "保存语音",
       "installingWatermark": "正在安装水印组件…",
-      "tab": "克隆",
-      "voices": "克隆声音",
       "deleteVoice": "删除声音 {name}",
-      "textLabel": "要用克隆声音朗读的文字",
       "sampleFile": "声音样本文件",
       "recordingPlayback": "你的录音",
       "saving": "正在保存语音…",
@@ -1198,7 +1172,19 @@
       "modelNone": "尚未下载任何克隆模型。",
       "modelDownload": "下载 {name}（{gb} GB）",
       "modelDefault": "默认",
-      "modelSize": "下载 {gb} GB"
+      "modelSize": "下载 {gb} GB",
+      "modelNoneHere": null,
+      "saved": null,
+      "speakWithIt": null,
+      "another": null,
+      "screenTitle": null,
+      "screenSubtitle": null,
+      "openSetup": null,
+      "stepTitle": null,
+      "stepPermission": null,
+      "stepSample": null,
+      "stepName": null,
+      "stepModel": null
     },
     "cost": {
       "kokoroChip": "快速，小于 1 GB",
@@ -1227,9 +1213,6 @@
       "fewer": "显示精选列表",
       "allVoices": "全部 {count} 种{language}语音",
       "cloned": "克隆",
-      "newClone": "新建克隆语音",
-      "newCloneDetail": "使用 10 到 20 秒的录音。将打开授权表单。",
-      "newCloneOpen": "打开表单",
       "designed": "设计",
       "designedNote": "根据描述生成的语音。",
       "more": "更多",
@@ -1239,7 +1222,10 @@
       "openModels": "打开模型",
       "drawerHint": "点击语音即可在朗读中使用。试听按钮会播放一句短语。",
       "drawerTitle": "选择语音",
-      "quickNoteAddon": "Kokoro 是语音运行时的附加组件。速度快，小于 1 GB，仅保证速度。{count} 种语音，覆盖 {languages} 种语言。"
+      "quickNoteAddon": "Kokoro 是语音运行时的附加组件。速度快，小于 1 GB，仅保证速度。{count} 种语音，覆盖 {languages} 种语言。",
+      "cloneVoice": null,
+      "cloneVoiceDetail": null,
+      "cloneVoiceOpen": null
     },
     "chatCalls": {
       "cost": "首次音频 {warm} s（冷启动 {cold} s），{memory} GB",
@@ -1249,35 +1235,133 @@
       "browse": "浏览语音"
     },
     "runtime": {
-      "addon": {
-        "chinese": "普通话快速语音（8 种语音，约 60 MB）",
-        "speech-gpu": "语音 GPU 附加组件：在 NVIDIA GPU 上运行 Qwen3-TTS、Chatterbox、VoxCPM2 和 Orpheus 自然语音、语音设计与克隆（约 {size}）",
-        "stt-gpu": "语音转文字 GPU 附加组件：在 NVIDIA GPU 上运行 Qwen3-ASR、Parakeet、Nemotron 和 Granite（约 {size}）",
-        "kokoro": "Kokoro 快速语音（约 330 MB）"
-      },
-      "addons": "附加组件",
-      "addonsHint": "勾选即安装；取消勾选即移除。",
-      "addonsHintInstall": "勾选的附加组件会随运行时一同安装；之后可随时更改。",
-      "alsoModels": "同时删除 Kokoro 快速语音、轮次检测和说话人标签。已下载的听写和语音模型始终保留。",
       "idleAfter": "分钟空闲后（0 表示从不）",
       "idleBefore": "空闲后释放内存：",
       "inMemory": "当前在内存中：",
-      "install": "安装语音运行时",
       "modelWithGb": "{name}，{gb} GB",
       "nothingLoaded": "无",
-      "parts": "磁盘占用 {total} GB：语音包 {packages} GB，Kokoro 快速语音 {kokoro} GB，轮次检测和说话人标签 {small} GB。不会联网发送任何内容。",
       "remove": "移除语音运行时",
-      "removeConfirm": "移除语音运行时{size}吗？在重新安装之前，听写、对话朗读、语音通话和语音工作室都将无法使用。已下载的听写和语音模型、克隆语音和资料库会保留。",
       "removing": "正在移除…",
-      "repair": "修复语音运行时",
-      "subtitle": "{lane}。语音所需的一切（不包括你选择的模型）。",
-      "title": "语音运行时",
       "troubleshootBody": "重新安装会完整地再次运行安装。移除会释放磁盘空间；在重新安装前，听写、朗读、通话和语音工作室都将停止。",
-      "update": "更新语音运行时",
       "updateFeatures": "更新语音运行时，以支持对话中的语音通话和转写稿中的说话人标签（新增约 40 MB 模型；需一到两分钟）。",
       "workerOnly": "语音工作进程，尚无模型",
-      "partsNoKokoro": "磁盘占用 {total} GB：语音包 {packages} GB，轮次检测和说话人标签 {small} GB；Kokoro 快速语音未安装。不会联网发送任何内容。",
-      "aboutTickedGb": "勾选下方附加组件后约 {gb} GB：包括语音软件包、话轮检测和说话人标签，以及每个已勾选的附加组件。听写模型和语音模型需在本页单独下载。不会向网络发送任何内容。"
+      "removeConfirmSetup": null
+    },
+    "chatVoices": {
+      "chooseRead": null,
+      "chooseCall": null,
+      "chooseBackup": null,
+      "chooseBackupHint": null,
+      "noBackup": null
+    },
+    "errors": {
+      "details": null,
+      "detailsToggle": null,
+      "runtime_missing": null,
+      "runtime_outdated": null,
+      "addon_missing": null,
+      "model_missing": null,
+      "watermark_missing": null,
+      "gpu_memory": null,
+      "gpu_unsupported": null,
+      "unsupported_here": null,
+      "ffmpeg_missing": null,
+      "reference_too_short": null,
+      "reference_too_long": null,
+      "reference_unreadable": null,
+      "audio_unreadable": null,
+      "language_unsupported": null,
+      "permission_required": null,
+      "cloning_not_allowed": null,
+      "voice_not_found": null,
+      "no_backup_voice": null,
+      "download_blocked": null,
+      "download_failed": null,
+      "worker_busy": null,
+      "worker_timeout": null,
+      "worker_stopped": null,
+      "unknown": null
+    },
+    "setup": {
+      "chooseParts": null,
+      "optionalParts": null,
+      "part": {
+        "model": null,
+        "modelNoSize": null,
+        "kokoro": null,
+        "chinese": null,
+        "speech-gpu": null,
+        "stt-gpu": null
+      },
+      "partsHint": null,
+      "partsHintInstall": null,
+      "details": null,
+      "task": {
+        "quick": null,
+        "natural": null,
+        "clone": null,
+        "stt": null,
+        "calls": null
+      },
+      "missing": {
+        "downloadingPct": null,
+        "downloading": null,
+        "runtime": null,
+        "update": null,
+        "kokoro": null,
+        "speechGpu": null,
+        "sttGpu": null,
+        "naturalModel": null,
+        "naturalModelUnknown": null,
+        "cloneModel": null,
+        "cloneModelUnknown": null
+      },
+      "unavailable": {
+        "needsGpu": null,
+        "needsGpuMac": null,
+        "memory": null,
+        "compute": null,
+        "noModel": null
+      },
+      "status": {
+        "readyInChat": null,
+        "ready": null,
+        "unavailable": null,
+        "missingInChat": null,
+        "missing": null
+      },
+      "presetBasic": null,
+      "presetFullPartial": null,
+      "presetFull": null,
+      "openChat": null,
+      "chooseCloneModel": null,
+      "presets": null,
+      "installChosen": null,
+      "installMissingOver": null,
+      "installMissingGb": null,
+      "installMissing": null,
+      "repair": null,
+      "parts": null,
+      "partsNoKokoro": null,
+      "beforeInstall": null,
+      "title": null,
+      "subtitle": null,
+      "alsoModels": null,
+      "studioSubtitle": null,
+      "allReady": null
+    },
+    "errorActions": {
+      "install-voice-runtime": null,
+      "install-addon": null,
+      "download-model": null,
+      "smaller-model": null,
+      "pick-another-model": null,
+      "install-ffmpeg": null,
+      "pick-another-language": null,
+      "change-sample": null,
+      "confirm-permission": null,
+      "add-hf-token": null,
+      "retry": null
     }
   },
   "residentChatModelNote": "已加载的聊天模型占用了其中约 {gb} GB 内存；卸载它即可释放这部分内存。",
@@ -1650,7 +1734,6 @@
     "conflictNotice": "已在别处更改；显示的是最新版本",
     "defaults": {
       "automatic": "自动（已安装的模型）",
-      "automaticShort": "自动",
       "automaticName": "自动",
       "noVoice": "无",
       "modelTimed": "{name} · 每张静帧约 {time}",
@@ -1662,7 +1745,6 @@
       "useFastHint": "{name}，每张静帧约 {time}"
     },
     "defaultsSummary": "{aspect} · {resolution} · {fps} fps · {imageModel} · {videoModel} · 语音 {voice}",
-    "defaultsTitle": "项目默认设置",
     "editor": {
       "discard": "放弃更改",
       "discardBody": "此镜头有未保存的修改。现在关闭会丢弃这些修改。",
@@ -1677,7 +1759,6 @@
       "length": "时长（秒）",
       "motionPrompt": "动作提示词",
       "nativeSound": "镜头声音电平（dB）",
-      "noReferences": "此项目还没有参考。请在“参考”面板中添加。",
       "references": "参考",
       "relinkHint": "将缺失的版本指向新文件。",
       "revert": "还原",
@@ -1727,7 +1808,6 @@
       "vocalHintShot": "供口型跟随的 WAV 或 FLAC：片段从此镜头的静帧开始，并保留这段声音。需要将 LTX-2.3 作为视频模型（NVIDIA 的 4 位模型需要 24 GB 显卡）。",
       "vocalOptional": "镜头不一定要唱歌：移除它的人声后，它就作为普通片段播放。"
     },
-    "empty": "还没有镜头。添加一个镜头，然后写提示词或导入素材。",
     "estimate": {
       "need": "{n, plural, other {# 个镜头需要新版本}}",
       "none": "每个未锁定的镜头都有版本。"
@@ -1735,28 +1815,15 @@
     "loading": "正在加载项目…",
     "makeAll": "制作所有未锁定的镜头",
     "makeAllTitle": "为每个未锁定的镜头添加一个新版本。不会覆盖任何内容。",
-    "makeMissing": "制作缺失的镜头",
     "makeOne": "制作此镜头",
-    "mixer": "混音台",
-    "noProject": "没有打开的项目。请从“项目”中打开一个，或新建一个。",
-    "noProjectTitle": "分镜板",
-    "notFound": "此项目已不存在。请选择另一个。",
-    "openProjects": "打开项目",
-    "projects": "项目",
     "redo": "重做",
     "references": {
       "addCharacter": "添加角色",
       "addPlace": "添加场景",
       "characters": "角色",
       "description": "外观描述",
-      "image": "参考图像",
       "name": "名称",
-      "none": "暂无。",
-      "places": "场景",
-      "remove": "移除参考",
-      "setImage": "设置图像",
-      "summary": "{characters, plural, other {# 个角色}} · {places, plural, other {# 个场景}}",
-      "title": "参考"
+      "places": "场景"
     },
     "reload": "重新加载",
     "removeBody": "{name} 将从影片中移除。它的版本会保留在项目文件夹中，撤销即可恢复。",
@@ -1779,9 +1846,6 @@
       "moreActions": "镜头 {n} 的更多操作",
       "moved": "镜头 {n} 已移到第 {position} 位",
       "play": "播放视频片段",
-      "redoLabel": "重做",
-      "redoMarked": "已标记为重做",
-      "redoTitle": "标记为重做：下次“制作镜头”会添加一个新版本。不会覆盖任何内容。",
       "relink": "重新链接",
       "rerun": "重新运行",
       "seed": "种子 {seed}",
@@ -1823,14 +1887,12 @@
       "chooseForFinal": "选入定稿"
     },
     "shots": "镜头",
-    "subtitle": "{shots, plural, other {# 个镜头}} · {seconds} 秒 · {stale} 个已过期",
     "takes": {
       "active": "当前版本",
       "label": "版本",
       "pick": "使用此版本",
       "take": "版本 {n}"
     },
-    "title": "{project} · 分镜板",
     "undo": "撤销",
     "emptyNoCast": "还没有镜头。添加镜头并描述它，或导入素材。镜头不需要角色：街景或人群本身就可以成片。",
     "subtitleShots": "{shots, plural, other {# 个镜头}} · {seconds} s · {stale} 个已过期",
@@ -1847,7 +1909,6 @@
       "finalChosenTitle": "用 {model} 以 {width} x {height} 重新制作每个选定的镜头，再用新静帧生成它的片段。",
       "chooseHint": "在镜头上使用“选入定稿”，即可把它加入定稿渲染。"
     },
-    "exportDrafts": "{n, plural, other {# 个镜头使用草稿版本。}}保留它们并运行定稿渲染以获得全质量，或按原样导出草稿。",
     "preview": {
       "emptyHint": "添加镜头即可播放影片。",
       "buttonHint": "按顺序播放当前版本，并使用混音台的声音，不渲染任何内容。",
@@ -2027,7 +2088,6 @@
         "vision": "· 可读取你的图片"
       },
       "motion": "运动",
-      "overviewButton": "从构思开始规划",
       "pictures": {
         "add": "添加图片",
         "edit": "在角色表中编辑风格",
@@ -2290,7 +2350,30 @@
           "state": "口型同步"
         },
         "makeAll": "{n, plural, other {制作 # 个口型同步片段}}",
-        "batchRunning": "等待正在制作的镜头完成。"
+        "batchRunning": "等待正在制作的镜头完成。",
+        "fix": {
+          "lengthen": null,
+          "shorten": null,
+          "unlock": null,
+          "realSpeed": null,
+          "assign": null,
+          "make": null
+        },
+        "state": {
+          "synced": null,
+          "waiting": null,
+          "skipped": null,
+          "unassigned": null
+        },
+        "reason": {
+          "otherSpeed": null,
+          "locked": null,
+          "outsideSong": null,
+          "tooShort": null,
+          "tooLong": null,
+          "noSinging": null,
+          "notAssigned": null
+        }
       },
       "sing": {
         "question": "画面中有人在唱歌吗？",
@@ -2303,9 +2386,11 @@
         "cut": "把歌曲剪成镜头",
         "keepShots": "保留我的镜头，并为每个镜头分配人声",
         "choose": "请先选择一个答案。",
-        "review": "你会先查看剪辑计划；此时还不会制作任何内容。"
+        "review": "你会先查看剪辑计划；此时还不会制作任何内容。",
+        "cutAgain": null
       },
-      "cutSongIntoShots": "把歌曲剪成镜头"
+      "cutSongIntoShots": "把歌曲剪成镜头",
+      "lipSyncRange": null
     },
     "unsaved": {
       "title": "你的文字未保存",
@@ -2373,12 +2458,10 @@
   "storyProjects": {
     "card": {
       "edited": "编辑于 {when}",
-      "meta": "{shots, plural, other {# 个镜头}} · {seconds} 秒 · {aspect}",
       "noShots": "还没有镜头",
       "noTakes": "还没有画面",
       "noPreview": "暂无预览",
       "stale": "{n} 个已过期",
-      "zeroShots": "0 个镜头",
       "metaFormat": "{shots, plural, other {# 个镜头}} · {seconds} s · {format}",
       "zeroShotsFormat": "0 个镜头 · {format}"
     },
@@ -2411,11 +2494,8 @@
       "rename": "重命名"
     },
     "missing": "此项目的文件夹已被移动或删除。",
-    "moreActions": "更多操作",
     "new": "新建项目",
-    "open": "打开",
     "subtitle": "{count, plural, other {# 个项目}}",
-    "title": "分镜项目",
     "format": {
       "fit": {
         "safe": "可以",
@@ -2458,7 +2538,6 @@
     "block": {
       "ariaLabel": "{lane}，{name}，从 {start} 到 {end} 秒"
     },
-    "board": "分镜板",
     "captions": {
       "add": "在播放头处添加",
       "burnIn": "嵌入画面",
@@ -2481,7 +2560,6 @@
       "relink": "重新链接"
     },
     "crossfade": "交叉淡化 {seconds} 秒",
-    "empty": "还没有可混音的内容。请先在分镜板上制作镜头。",
     "export": {
       "aspect": "画面比例",
       "button": "导出 MP4",
@@ -2574,9 +2652,6 @@
     },
     "leftOut": "{n, plural, other {# 个镜头还没有片段，预览和导出时会被略过。}}",
     "noLibraryYet": "音乐库暂不可用。请选择文件或输入其路径。",
-    "noProjectTitle": "混音台",
-    "openBoard": "打开分镜板",
-    "openOnBoard": "在分镜板中打开",
     "preview": {
       "cancel": "取消",
       "failed": "预览未能渲染。",
@@ -2589,7 +2664,6 @@
     "ruler": "时间线标尺。点击以移动播放头。",
     "subtitle": "{seconds} 秒 · {aspect} · 预览 {width} × {height}",
     "timeline": "时间线",
-    "title": "{project} · 混音台",
     "transitionsNote": "转场会按其时长缩短影片；标尺显示真实总时长。",
     "transport": {
       "keys": "空格或 K：播放 / 暂停。J 和 L：后退 / 前进 5 秒。左右方向键：1 秒（Shift 为 10 秒，Alt 为一帧）。Home / End。+ 和 -：缩放。",
@@ -2833,7 +2907,6 @@
     "addPicture": "添加图片",
     "addPictureFor": "添加 {name} 的图片",
     "dropHint": "将图片拖到此标签的任意位置，即可添加以各文件名命名的角色。",
-    "none": "还没有。角色或场景由一个名称、几句描述和一张图片组成。使用它的镜头会保持相同的外观。",
     "pickerTitle": "添加 {name} 的图片",
     "pictureAlt": "{name}，图片 {n}",
     "remove": "移除 {name}",
@@ -2852,13 +2925,7 @@
     "bundleBody": "一个 .chaosfilm 文件，包含镜头、版本、角色图片和声音，用于备份项目或在另一台电脑上打开。",
     "bundleTitle": "项目包",
     "openStoryboard": "在故事板中打开",
-    "stale": "{n, plural, other {# 个镜头已过期。}}导出将使用你现有的版本。",
-    "before": "导出之前",
     "line": {
-      "captions": "{n, plural, other {# 条字幕}}，在下方的字幕中设置。",
-      "clipsAll": "{n, plural, other {全部 # 个镜头都有片段。}}",
-      "clipsNone": "还没有镜头有片段，所以没有可导出的内容。",
-      "clipsSome": "{n} / {total} 个镜头有片段；其余将被略去。",
       "cloned": "使用了克隆声音，因此始终写入 AI 标记。",
       "noCaptions": "没有字幕。",
       "preview": "预览已过时（不影响导出）。",
@@ -2868,7 +2935,6 @@
       "captionsBurn": "{n, plural, other {# 条字幕}}，烧录到画面中。",
       "captionsSrt": "{n, plural, other {# 条字幕}}，写入 SRT 文件。",
       "captionsUnused": "{n, plural, other {# 条字幕}}未导出：请勾选下方的“SRT 文件”或“烧录”。",
-      "format": "影片为 {format}。",
       "loudness": "声音统一到 {lufs} LUFS。",
       "loudnessOff": "声音保持混音原样（无响度目标）。",
       "upscale": "最后放大到 {size}：像素更多，细节不会增加。"

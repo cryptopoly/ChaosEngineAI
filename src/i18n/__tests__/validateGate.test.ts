@@ -87,3 +87,107 @@ describe("i18n-validate strict gate", () => {
     expect(res.stderr).toContain("tlh:common.b");
   });
 });
+
+describe("i18n-validate source key check", () => {
+  let srcDir: string;
+
+  /** A fixture catalog tree where studio/chat hold the given extra English keys. */
+  function writeCatalogs(extra: { studio?: Record<string, unknown>; chat?: Record<string, unknown> }) {
+    writeTree([]);
+    for (const [ns, body] of Object.entries(extra)) {
+      const file = path.join(root, "en", `${ns}.json`);
+      writeFileSync(file, JSON.stringify({ a: "one", b: "two {n}", c: "three", d: "four", ...body }));
+      for (const locale of LOCALES.filter((l) => l !== "en")) {
+        writeFileSync(path.join(root, locale, `${ns}.json`), JSON.stringify({ a: "one", b: "two {n}", c: "three", d: "four", ...body }));
+      }
+    }
+  }
+
+  function writeSource(body: string) {
+    mkdirSync(path.join(srcDir, "features"), { recursive: true });
+    writeFileSync(path.join(srcDir, "features", "Panel.tsx"), body);
+  }
+
+  function runWithSource(args: string[] = []) {
+    return spawnSync(process.execPath, [SCRIPT, ...args], {
+      env: { ...process.env, I18N_LOCALES_DIR: root, I18N_SRC_DIR: srcDir },
+      encoding: "utf-8",
+    });
+  }
+
+  beforeAll(() => {
+    srcDir = path.join(mkdtempSync(path.join(tmpdir(), "i18n-src-")), "src");
+    mkdirSync(srcDir, { recursive: true });
+  });
+
+  it("fails when a literal key with a defaultValue is not in the English catalog", () => {
+    writeCatalogs({ studio: { voice: { known: "Known" } } });
+    writeSource(`
+      import { useTranslation } from "react-i18next";
+      export function Panel() {
+        const { t } = useTranslation("studio");
+        return <p>{t("voice.known", { defaultValue: "Known" })}{t("voice.fresh", { defaultValue: "Fresh text" })}</p>;
+      }
+    `);
+    const res = runWithSource(["--strict"]);
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain("studio: voice.fresh");
+    expect(res.stderr).toContain("Fresh text");
+    expect(res.stderr).not.toContain("voice.known");
+  });
+
+  it("resolves the namespace per component, so a key in another namespace does not count", () => {
+    writeCatalogs({ chat: { voice: { onlyInChat: "Chat" } } });
+    writeSource(`
+      import { useTranslation } from "react-i18next";
+      export function Panel() {
+        const { t } = useTranslation("studio");
+        return <p>{t("voice.onlyInChat", { defaultValue: "Chat" })}{t("chat:voice.onlyInChat", { defaultValue: "Chat" })}</p>;
+      }
+    `);
+    const res = runWithSource();
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain("studio: voice.onlyInChat");
+    expect(res.stderr).not.toContain("chat: voice.onlyInChat");
+  });
+
+  it("follows aliases, local wrappers and key descriptors", () => {
+    writeCatalogs({ studio: { voice: { task: { quick: "Quick" } }, board: { fix: "Fix" } } });
+    writeSource(`
+      import i18next from "i18next";
+      import { useTranslation } from "react-i18next";
+      const label = (key: string, defaultValue: string) => i18next.t(\`studio:voice.task.\${key}\`, { defaultValue });
+      const FIX = { key: "board.fix", defaultValue: "Fix" };
+      const GONE = { key: "board.gone", defaultValue: "Gone" };
+      export function Panel() {
+        const { t: tStudio } = useTranslation("studio");
+        return <p>{label("quick", "Quick")}{label("slow", "Slow")}{tStudio(FIX.key, { defaultValue: FIX.defaultValue })}{GONE.key}</p>;
+      }
+    `);
+    const res = runWithSource();
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain("studio: voice.task.slow");
+    expect(res.stderr).toContain("studio: board.gone");
+    expect(res.stderr).not.toContain("voice.task.quick");
+    expect(res.stderr).not.toContain("board.fix");
+  });
+
+  it("passes when every literal key is in the catalog", () => {
+    writeCatalogs({ studio: { voice: { known: "Known" } } });
+    writeSource(`
+      import { useTranslation } from "react-i18next";
+      export function Panel() {
+        const { t } = useTranslation("studio");
+        return <p>{t("voice.known", { defaultValue: "Known" })}</p>;
+      }
+    `);
+    const res = runWithSource(["--strict"]);
+    expect(res.stderr).toBe("");
+    expect(res.status).toBe(0);
+  });
+
+  afterAll(() => {
+    rmSync(path.resolve(srcDir, ".."), { recursive: true, force: true });
+  });
+});
+

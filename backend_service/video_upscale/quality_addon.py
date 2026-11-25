@@ -31,6 +31,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import sysconfig
 import threading
 import time
 import zipfile
@@ -67,6 +68,8 @@ _CHECK_CODE = (
     "import flashvsr_attn\n"
     "assert torch.__version__ == {torch!r}, 'torch ' + torch.__version__\n"
     "assert torch.cuda.is_available(), 'torch ' + torch.__version__ + ' sees no CUDA GPU'\n"
+    "from triton.runtime import driver\n"
+    "driver.active.utils  # builds Triton's GPU helper (a C compiler on Linux), so a missing one fails here\n"
     "from inference import InferenceRequest, build_inference_pipeline\n"
     "from inference.loading import ModelPaths\n"
     "from inference.presets import stream_config_for_mode\n"
@@ -155,6 +158,26 @@ UNSUPPORTED_REASON = ("The quality upscaler needs an NVIDIA graphics card on Win
 
 def unavailable_reason() -> str | None:
     return None if lane() == "cuda" else UNSUPPORTED_REASON
+
+
+def compiler_problem(system: str | None = None, environ: dict[str, str] | None = None,
+                     which: Callable[[str], str | None] = shutil.which, include_dir: str | None = None) -> str | None:
+    """Linux only: why Triton cannot build its GPU helper, or None. The first kernel launch compiles a small C file
+    with ``$CC``, else ``gcc``, else ``clang`` (Triton's own lookup) against ``Python.h``; without them the job dies
+    with "Failed to find C compiler" after the 7 GB model has loaded. Windows uses the compiler that ships with
+    triton-windows, so nothing is needed there."""
+    if (system or platform.system()) != "Linux":
+        return None
+    if not (environ if environ is not None else os.environ).get("CC") and not (which("gcc") or which("clang")):
+        return ("The quality upscaler builds a small GPU helper the first time it runs, and this computer has no C "
+                "compiler. Install one (Ubuntu or Debian: sudo apt install build-essential; Fedora: sudo dnf "
+                "install gcc), then try again.")
+    header = Path(include_dir or sysconfig.get_paths()["include"]) / "Python.h"
+    if not header.is_file():
+        return ("The quality upscaler builds a small GPU helper the first time it runs, and this computer lacks the "
+                "Python development files. Install them (Ubuntu or Debian: sudo apt install python3-dev; Fedora: "
+                "sudo dnf install python3-devel), then try again.")
+    return None
 
 
 def _python_supported(version: tuple[int, ...] | None = None) -> bool:
@@ -550,6 +573,9 @@ def _run_install(opener: Callable[..., Any] | None = None) -> None:
         if not _python_supported():
             raise RuntimeError("The quality upscaler needs Python 3.12 for its own environment; the app runs on "
                                f"{sys.version_info[0]}.{sys.version_info[1]}.")
+        problem = compiler_problem()
+        if problem:  # before 13 GB come down
+            raise RuntimeError(problem)
         root = addon_dir()
         root.mkdir(parents=True, exist_ok=True)
         if not installed():

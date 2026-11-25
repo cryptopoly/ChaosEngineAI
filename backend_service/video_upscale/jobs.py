@@ -107,6 +107,9 @@ def check_ready(model_id: str) -> dict[str, Any]:
             raise UpscaleError(reason, 409)
         if not quality_addon.installed():
             raise UpscaleError(quality_addon.NOT_INSTALLED, 409)
+        problem = quality_addon.compiler_problem()  # Linux: the first run builds a GPU helper with a C compiler
+        if problem:
+            raise UpscaleError(problem, 409)
         return quality_row
     row = find_model(model_id)
     if row is None:

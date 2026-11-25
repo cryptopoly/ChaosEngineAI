@@ -169,6 +169,37 @@ class PlanTests(_Home):
             self.assertFalse(started.wait(0.2))
         self.assertFalse(quality_addon.addon_dir().exists())
 
+    def test_a_missing_c_compiler_is_named_on_linux_only(self):
+        """Triton builds its GPU helper with a C compiler on the first run (WSL2 Ubuntu run, 2026-11-25): "Failed to
+        find C compiler" came after the model had loaded. Say it up front instead."""
+        with tempfile.TemporaryDirectory() as include:
+            (Path(include) / "Python.h").write_text("")
+            none = lambda _name: None  # noqa: E731
+            gcc = lambda name: "/usr/bin/gcc" if name == "gcc" else None  # noqa: E731
+            problem = quality_addon.compiler_problem("Linux", {}, none, include)
+            self.assertIn("no C compiler", problem)
+            self.assertIn("build-essential", problem)
+            self.assertIsNone(quality_addon.compiler_problem("Linux", {}, gcc, include))
+            self.assertIsNone(quality_addon.compiler_problem("Linux", {}, lambda n: "/usr/bin/clang" if n == "clang"
+                                                             else None, include))
+            self.assertIsNone(quality_addon.compiler_problem("Linux", {"CC": "/opt/cc"}, none, include))
+            self.assertIsNone(quality_addon.compiler_problem("Windows", {}, none, include))
+            self.assertIsNone(quality_addon.compiler_problem("Darwin", {}, none, include))
+        with tempfile.TemporaryDirectory() as empty:  # a compiler but no Python.h
+            problem = quality_addon.compiler_problem("Linux", {}, gcc, empty)
+            self.assertIn("python3-dev", problem)
+
+    def test_the_install_stops_before_any_download_when_there_is_no_compiler(self):
+        text = "no C compiler here"
+        with mock.patch.object(quality_addon, "lane", return_value="cuda"),                 mock.patch.object(quality_addon, "_python_supported", return_value=True),                 mock.patch.object(quality_addon, "compiler_problem", return_value=text),                 mock.patch.object(quality_addon, "_JOB", quality_addon._Job()):
+            quality_addon._run_install()
+            job = quality_addon.job_status()
+        self.assertEqual((job["phase"], job["error"]), ("error", text))
+        self.assertFalse(quality_addon.addon_dir().exists())
+
+    def test_the_import_check_builds_tritons_gpu_helper(self):
+        self.assertIn("driver.active.utils", quality_addon._CHECK_CODE)
+
     def test_not_installed_without_a_marker(self):
         self.assertFalse(quality_addon.installed())
 
@@ -577,6 +608,12 @@ class RouteTests(_Home):
             response = self.client.post("/api/video/upscale", json={"inputPath": "x.mp4", "modelId": "flashvsr-plus-turbo"})
         self.assertEqual(response.status_code, 409)
         self.assertIn("not installed", response.json()["detail"])
+
+    def test_start_says_when_the_c_compiler_is_gone(self):
+        text = "no C compiler here"
+        with mock.patch.object(quality_addon, "lane", return_value="cuda"),                 mock.patch.object(quality_addon, "installed", return_value=True),                 mock.patch.object(quality_addon, "compiler_problem", return_value=text):
+            response = self.client.post("/api/video/upscale", json={"inputPath": "x.mp4", "modelId": "flashvsr-plus-turbo"})
+        self.assertEqual((response.status_code, response.json()["detail"]), (409, text))
 
     def test_start_refuses_on_a_mac(self):
         with mock.patch.object(quality_addon, "lane", return_value="unsupported"):

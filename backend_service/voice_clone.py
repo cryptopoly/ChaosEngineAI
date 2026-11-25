@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from backend_service import voice_clone_safety as safety
-from backend_service import voice_env
+from backend_service import voice_env, voice_errors
 from backend_service.catalog import voice_models as _catalog
 from backend_service.catalog.voice_models import CLONE_MODELS, clone_model, voice_model
 
@@ -202,6 +202,8 @@ def list_models(*, every_model: bool = False) -> list[dict[str, Any]]:
             "installed": _ready(row),
             "download": {
                 "state": job.get("state", "idle"), "error": job.get("error"), "phase": job.get("phase"),
+                # The failure as a stable code, plain sentence and action (``voice_errors``): gated or refused, or the network.
+                "errorInfo": voice_errors.error_fields(job["error"]) if job.get("error") else None,
                 **(_progress(row) if job.get("state") == "downloading" else {}),
             },
         })

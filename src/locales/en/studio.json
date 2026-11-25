@@ -814,7 +814,8 @@
         "all": "All models",
         "kokoro": "{count} quick voices in {languages} languages, fast on any machine",
         "download": "{gb} GB download",
-        "gpuMemory": "about {gb} GB GPU memory"
+        "gpuMemory": "about {gb} GB GPU memory",
+        "memory": "about {gb} GB memory"
       },
       "firstUseLine": "A model you pick but have not downloaded downloads before the first file you transcribe or dictate. Choose the language in Transcribe and tick Remember as default to keep it.",
       "gpuDefaultLineSetup": "{name} becomes the default speech to text model once it is downloaded, unless you pick another."

@@ -814,7 +814,8 @@
         "all": "所有模型",
         "kokoro": "{count} 種快速語音，支援 {languages} 種語言，在任何電腦上都很快",
         "download": "需下載 {gb} GB",
-        "gpuMemory": "約需 {gb} GB GPU 記憶體"
+        "gpuMemory": "約需 {gb} GB GPU 記憶體",
+        "memory": "約 {gb} GB 記憶體"
       },
       "firstUseLine": "您選擇但尚未下載的模型，會在轉錄或語音輸入第一個檔案之前下載。請在「轉錄」中選擇語言，並勾選「設為預設」以保留。",
       "gpuDefaultLineSetup": "{name} 下載完成後會成為預設的語音轉文字模型，除非您另選其他模型。"

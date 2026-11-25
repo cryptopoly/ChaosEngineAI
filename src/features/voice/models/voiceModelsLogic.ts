@@ -193,6 +193,15 @@ export function speechGpuMemoryText(peakGb: number | null | undefined, t: T = tS
   return t("voice.models.pick.gpuMemory", { defaultValue: "about {gb} GB GPU memory", gb: Math.round(peakGb * 10) / 10 });
 }
 
+/**
+ * "about 0.9 GB memory" for Kokoro, which runs on the processor on any machine: the figure is its measured peak, and
+ * "GPU memory" would promise a graphics card it does not use.
+ */
+export function kokoroMemoryText(peakGb: number | null | undefined, t: T = tStudio): string | null {
+  if (peakGb == null || !(peakGb > 0)) return null;
+  return t("voice.models.pick.memory", { defaultValue: "about {gb} GB memory", gb: Math.round(peakGb * 10) / 10 });
+}
+
 /** A download size for the recommended card: "4.5" above 1 GB, "0.33" below. */
 export function pickSizeText(gb: number): string {
   return String(Number(gb >= 1 ? gb.toFixed(1) : gb.toFixed(2)));

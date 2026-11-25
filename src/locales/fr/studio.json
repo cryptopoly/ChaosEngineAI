@@ -814,7 +814,8 @@
         "all": "Tous les modèles",
         "kokoro": "{count} voix rapides en {languages} langues, rapides sur n'importe quelle machine",
         "download": "Téléchargement de {gb} Go",
-        "gpuMemory": "environ {gb} Go de mémoire GPU"
+        "gpuMemory": "environ {gb} Go de mémoire GPU",
+        "memory": "environ {gb} Go de mémoire"
       },
       "firstUseLine": "Un modèle que vous choisissez sans l'avoir téléchargé est téléchargé avant le premier fichier que vous transcrivez ou dictez. Choisissez la langue dans Transcrire et cochez Mémoriser par défaut pour la conserver.",
       "gpuDefaultLineSetup": "{name} devient le modèle de reconnaissance vocale par défaut une fois téléchargé, sauf si vous en choisissez un autre."

@@ -247,7 +247,8 @@ describe("Speech models on the shared Models table (D-73 M3b)", () => {
     );
     const kokoroPick = kokoro.slice(kokoro.indexOf("data-speech-pick"), kokoro.indexOf(">All models<"));
     expect(kokoroPick).toContain("<strong>Kokoro</strong>: 2 quick voices in 2 languages, fast on any machine");
-    expect(kokoroPick).toContain("about 0.9 GB GPU memory.");
+    expect(kokoroPick).toContain("about 0.9 GB memory.");
+    expect(kokoroPick).not.toContain("GPU memory");
     expect(kokoroPick).toContain("The natural voices need the speech GPU part.");
     expect(kokoroPick).toContain("Browse voices");
   });

@@ -814,7 +814,8 @@
         "all": "모든 모델",
         "kokoro": "{languages}개 언어의 빠른 음성 {count}종, 어떤 컴퓨터에서도 빠름",
         "download": "{gb} GB 내려받기",
-        "gpuMemory": "GPU 메모리 약 {gb} GB"
+        "gpuMemory": "GPU 메모리 약 {gb} GB",
+        "memory": "메모리 약 {gb} GB"
       },
       "firstUseLine": "선택했지만 아직 내려받지 않은 모델은 처음 받아쓰거나 음성 입력하는 파일 전에 내려받습니다. 받아쓰기에서 언어를 고르고 기본값으로 기억을 체크하면 유지됩니다.",
       "gpuDefaultLineSetup": "다른 모델을 고르지 않으면 {name}이(가) 내려받은 후 기본 음성 텍스트 변환 모델이 됩니다."

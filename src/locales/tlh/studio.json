@@ -814,7 +814,8 @@
         "all": null,
         "kokoro": null,
         "download": null,
-        "gpuMemory": null
+        "gpuMemory": null,
+        "memory": null
       },
       "firstUseLine": null,
       "gpuDefaultLineSetup": null

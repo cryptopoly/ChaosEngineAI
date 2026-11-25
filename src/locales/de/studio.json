@@ -814,7 +814,8 @@
         "all": "Alle Modelle",
         "kokoro": "{count} Schnellstimmen in {languages} Sprachen, schnell auf jedem Rechner",
         "download": "{gb} GB Download",
-        "gpuMemory": "etwa {gb} GB GPU-Speicher"
+        "gpuMemory": "etwa {gb} GB GPU-Speicher",
+        "memory": "etwa {gb} GB Speicher"
       },
       "firstUseLine": "Ein Modell, das du wählst, aber noch nicht heruntergeladen hast, wird vor der ersten Datei heruntergeladen, die du transkribierst oder diktierst. Wähle die Sprache unter Transkribieren und hake Als Standard merken an, um sie zu behalten.",
       "gpuDefaultLineSetup": "{name} wird zum Standardmodell für Sprache-zu-Text, sobald es heruntergeladen ist, solange du kein anderes wählst."

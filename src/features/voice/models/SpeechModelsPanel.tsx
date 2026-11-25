@@ -51,6 +51,7 @@ import {
   recommendedSpeechPick,
   speechDeleteConfirmText,
   speechGpuAddonMissing,
+  kokoroMemoryText,
   speechGpuMemoryText,
   studioTargetFor,
   unsupportedModelText,
@@ -496,7 +497,7 @@ export function SpeechModelsPanel({ catalog, runtime, availability, onAvailabili
           languages: quick.languages,
         })}
         sizeGb={null}
-        memory={speechGpuMemoryText(catalog.kokoro?.peakGb, tf)}
+        memory={kokoroMemoryText(catalog.kokoro?.peakGb, tf)}
         notice={speechGpuAddonMissing(runtime) ? tf("voice.models.naturalNeedsGpu", { defaultValue: "The natural voices need the speech GPU part. Tick it under Voice setup > Choose parts." }) : null}
         actions={
           !runtime.ttsModelInstalled ? (

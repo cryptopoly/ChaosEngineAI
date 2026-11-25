@@ -814,7 +814,8 @@
         "all": "Todos os modelos",
         "kokoro": "{count} vozes rápidas em {languages} idiomas, rápidas em qualquer máquina",
         "download": "Download de {gb} GB",
-        "gpuMemory": "cerca de {gb} GB de memória da GPU"
+        "gpuMemory": "cerca de {gb} GB de memória da GPU",
+        "memory": "cerca de {gb} GB de memória"
       },
       "firstUseLine": "Um modelo que você escolheu, mas ainda não baixou, é baixado antes do primeiro arquivo que você transcrever ou ditar. Escolha o idioma em Transcrever e marque Lembrar como padrão para mantê-lo.",
       "gpuDefaultLineSetup": "{name} se torna o modelo padrão de fala para texto depois de baixado, a menos que você escolha outro."

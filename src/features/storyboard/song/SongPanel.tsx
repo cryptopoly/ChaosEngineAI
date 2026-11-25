@@ -1,32 +1,51 @@
 /**
  * The song a music video is cut to (S-M2, on the S-M1 routes), on the Plan tab: attach one from the Music library or a
- * file; then its length, tempo and sections as a ruler with labels to rename, the rough-analysis note, "Make a cut
- * plan" (shots proposed from the sections and beats, reviewed before they replace the board's shots in one Undo),
- * the lyrics with "Time the lyrics", and Remove. Attaching and every edit go through the project's op queue, so Undo
- * and the revision check hold.
+ * file; then its length, tempo and sections as a ruler with labels to rename, the rough-analysis note, the one
+ * question "Does someone sing on screen?" (audit change 8) that leads to one cut: singing shots of 3 to 5 s followed by
+ * each shot's vocal, or the ordinary cut to the beat. The cut is reviewed before it replaces the board's shots in one
+ * Undo. Under it the lip-sync section with the coverage table (audit change 3), then the lyrics and Remove. Attaching
+ * and every edit go through the project's op queue, so Undo and the revision check hold.
  */
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { attachStoryboardSong, proposeStoryboardCutPlan } from "../../../api/storyboard";
-import type { StoryboardCutPlan, StoryboardProject } from "../../../types";
+import { attachStoryboardSong, attachStoryboardSongVocals, proposeStoryboardCutPlan } from "../../../api/storyboard";
+import type { StoryboardCutPlan, StoryboardProject, StoryboardSongVocals } from "../../../types";
 import type { UseStoryboardResult } from "../useStoryboard";
 import { CutPlanReview } from "./CutPlanReview";
+import { SingQuestion } from "./SingQuestion";
 import { SongAttach } from "./SongAttach";
 import { SongLyrics } from "./SongLyrics";
 import { SongRuler } from "./SongRuler";
-import { SUNG_SHOT_MAX_SECONDS, SUNG_SHOT_MIN_SECONDS, SongVocals } from "./SongVocals";
+import { SongVocals } from "./SongVocals";
 import { totalSeconds } from "../planLogic";
+import { isBatchRunning } from "../storyboardLogic";
+import { coverageInUse, cutOptions, initialSingAnswer, type FixAction, type SingAnswer } from "./coverageLogic";
 import { clock, relabel } from "./songLogic";
+import { useSongCoverage } from "./useSongCoverage";
 import "./song.css";
 
-export function SongPanel({ story, project }: { story: UseStoryboardResult; project: StoryboardProject }) {
+export interface SongPanelProps {
+  story: UseStoryboardResult;
+  project: StoryboardProject;
+  /** Open a shot in the shot editor, on its length (a coverage row's Lengthen or Shorten). The Plan tab always
+   * passes it; without it those two buttons are not offered. */
+  onOpenShot?: (shotId: string, field: "length") => void;
+}
+
+export function SongPanel({ story, project, onOpenShot }: SongPanelProps) {
   const { t } = useTranslation("studio");
   const song = project.song ?? null;
-  const [working, setWorking] = useState<"attach" | "cut" | null>(null);
+  const [working, setWorking] = useState<"attach" | "cut" | "vocals" | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
-  const [plan, setPlan] = useState<StoryboardCutPlan | null>(null);
+  const [plan, setPlan] = useState<{ cut: StoryboardCutPlan; singing: boolean } | null>(null);
   const [changing, setChanging] = useState(false);
+  const [answer, setAnswer] = useState<SingAnswer | null>(() => initialSingAnswer(project));
+  const [stem, setStem] = useState<string | null>(null);
+  const [vocals, setVocals] = useState<StoryboardSongVocals | null>(null);
+  const [vocalsProblem, setVocalsProblem] = useState<string | null>(null);
+  const { coverage, show } = useSongCoverage(project.id, project.revision, Boolean(song));
   const review = useRef<HTMLDivElement>(null);
+  const panel = useRef<HTMLElement>(null);
 
   async function attach(source: { libraryId: string } | { path: string }) {
     if (!story.call) return;
@@ -42,11 +61,11 @@ export function SongPanel({ story, project }: { story: UseStoryboardResult; proj
     }
   }
 
-  async function cut(options: { minShotSeconds?: number; maxShotSeconds?: number } = {}) {
+  async function cut() {
     setWorking("cut");
     setProblem(null);
     try {
-      setPlan(await proposeStoryboardCutPlan(project.id, options));
+      setPlan({ cut: await proposeStoryboardCutPlan(project.id, cutOptions(answer)), singing: answer === "yes" });
       requestAnimationFrame(() => review.current?.querySelector<HTMLElement>("#cut-plan-title")?.focus());
     } catch (err) {
       setProblem(err instanceof Error ? err.message : String(err));
@@ -55,14 +74,57 @@ export function SongPanel({ story, project }: { story: UseStoryboardResult; proj
     }
   }
 
+  async function assignVocals() {
+    if (!story.call) return;
+    setWorking("vocals");
+    setVocalsProblem(null);
+    setVocals(null);
+    try {
+      await story.call(async (id, revision) => {
+        const out = await attachStoryboardSongVocals(id, { revision, ...(stem ? { stemPath: stem } : {}) });
+        setVocals(out.vocals);
+        show(out.guide?.coverage ?? out.vocals.coverage, out.project.revision);
+        return out;
+      });
+    } catch (err) {
+      setVocalsProblem(err instanceof Error ? err.message : String(err));
+    } finally {
+      setWorking(null);
+    }
+  }
+
   async function use() {
     if (!plan) return;
-    if (await story.op("apply_plan", { mode: "replace", shots: plan.shots })) setPlan(null);
+    const singing = plan.singing;
+    if (!(await story.op("apply_plan", { mode: "replace", shots: plan.cut.shots }))) return;
+    setPlan(null);
+    if (singing) await assignVocals();
+  }
+
+  function fix(action: FixAction) {
+    switch (action.kind) {
+      case "open-length":
+        onOpenShot?.(action.shotId, "length");
+        break;
+      case "unlock":
+        void story.op("lock", { shotId: action.shotId, locked: false });
+        break;
+      case "real-speed":
+        void story.op("edit_shot", { shotId: action.shotId, speed: 1 });
+        break;
+      case "assign-vocals":
+        void assignVocals();
+        break;
+      case "make-lipsync":
+        void story.startBatch("both", action.shotIds);
+        break;
+    }
   }
 
   const busy = story.busy || working !== null;
+  const lipSyncShown = answer === "yes" || coverageInUse(coverage);
   return (
-    <section className="song-panel" aria-labelledby="song-panel-title">
+    <section className="song-panel" aria-labelledby="song-panel-title" ref={panel}>
       <div className="plan-section-head">
         <div>
           <h3 id="song-panel-title">{t("board.song.title", { defaultValue: "Song" })}</h3>
@@ -122,25 +184,51 @@ export function SongPanel({ story, project }: { story: UseStoryboardResult; proj
               {song.note || t("board.song.rough", { defaultValue: "Sections and tempo are estimates; check them by ear and rename or fix them here." })}
             </p>
           ) : null}
-          <div className="song-panel__actions">
-            <button type="button" className="primary-button" disabled={busy} onClick={() => void cut()}>
-              {working === "cut" ? t("board.song.cutting", { defaultValue: "Cutting to the music…" }) : t("board.song.cutPlan", { defaultValue: "Make a cut plan" })}
-            </button>
-          </div>
-          <div ref={review}>
-            {plan ? <CutPlanReview plan={plan} project={project} busy={story.busy} onUse={() => void use()} onDiscard={() => setPlan(null)} /> : null}
-          </div>
-          <SongVocals
-            story={story}
-            disabled={busy}
-            onCutForSinging={() => void cut({ minShotSeconds: SUNG_SHOT_MIN_SECONDS, maxShotSeconds: SUNG_SHOT_MAX_SECONDS })}
+          <SingQuestion
+            answer={answer}
+            onAnswer={setAnswer}
+            stem={stem}
+            onStem={setStem}
+            disabled={story.busy || working === "attach"}
+            working={working === "cut" || working === "vocals" ? working : null}
+            hasShots={project.shots.length > 0}
+            onCut={() => void cut()}
+            onVocalsOnly={() => void assignVocals()}
           />
+          <div ref={review}>
+            {plan ? (
+              <CutPlanReview
+                plan={plan.cut}
+                project={project}
+                busy={story.busy}
+                singing={plan.singing}
+                onUse={() => void use()}
+                onDiscard={() => setPlan(null)}
+              />
+            ) : null}
+          </div>
+          {lipSyncShown ? (
+            <SongVocals
+              coverage={coverage}
+              shots={project.shots}
+              result={vocals}
+              problem={vocalsProblem}
+              disabled={story.busy || (working !== null && working !== "vocals")}
+              working={working === "vocals"}
+              batchRunning={isBatchRunning(story.batch)}
+              canOpenShot={Boolean(onOpenShot)}
+              onAssign={() => void assignVocals()}
+              onFix={fix}
+            />
+          ) : null}
           <SongLyrics
             story={story}
             song={song}
             projectId={project.id}
             filmSeconds={totalSeconds(project.shots)}
-            onCutPlan={() => void cut()}
+            onCutPlan={() =>
+              answer ? void cut() : panel.current?.querySelector<HTMLElement>('input[name="sing-on-screen"]')?.focus()
+            }
             cutDisabled={working !== null}
           />
         </>

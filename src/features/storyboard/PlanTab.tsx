@@ -41,9 +41,11 @@ export interface PlanTabProps {
   imageGallery: ImageOutputArtifact[];
   chat: PlanChatDeps;
   onTab: (tab: ProjectTabId) => void;
+  /** Open a shot in the shot editor (a lip-sync coverage row's Lengthen or Shorten); without it the Storyboard opens. */
+  onOpenShot?: (shotId: string, field?: "length") => void;
 }
 
-export function PlanTab({ story, project, imageGallery, chat, onTab }: PlanTabProps) {
+export function PlanTab({ story, project, imageGallery, chat, onTab, onOpenShot }: PlanTabProps) {
   const { t } = useTranslation("studio");
   const plan = planOf(project);
   const styleKey = stylesOf(project).map((r) => `${r.id}:${r.images.length}:${(r.palette ?? []).join("")}:${r.description.length}`).join("|");
@@ -147,7 +149,7 @@ export function PlanTab({ story, project, imageGallery, chat, onTab }: PlanTabPr
           </div>
         ) : null}
 
-        <SongPanel story={story} project={project} />
+        <SongPanel story={story} project={project} onOpenShot={onOpenShot ?? (() => onTab("storyboard"))} />
 
         {proposal ? (
           <PlanProposal

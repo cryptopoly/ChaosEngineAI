@@ -1,0 +1,94 @@
+/* Lip-sync coverage table and the "Does someone sing on screen?" question (audit changes 3 and 8). Tokens only. */
+
+.lip-sync-coverage {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.lip-sync-coverage__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.lip-sync-coverage__head h4,
+.lip-sync-coverage__counts {
+  margin: 0;
+}
+.lip-sync-coverage__counts {
+  font-size: 0.85rem;
+}
+.lip-sync-coverage__scroll {
+  overflow-x: auto;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.lip-sync-coverage__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.lip-sync-coverage__table th,
+.lip-sync-coverage__table td {
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+  border-top: 1px solid var(--border);
+}
+.lip-sync-coverage__table thead th {
+  border-top: none;
+  font-weight: 600;
+}
+.lip-sync-coverage__table tbody th {
+  font-weight: 400;
+  white-space: nowrap;
+}
+.lip-sync-coverage__title {
+  margin-left: 6px;
+}
+.lip-sync-coverage__state {
+  display: inline-block;
+  font-weight: 600;
+  margin-right: 6px;
+}
+.lip-sync-coverage__state--synced {
+  color: var(--success, inherit);
+}
+.lip-sync-coverage__state--skipped {
+  color: var(--warning, inherit);
+}
+.lip-sync-coverage__reason {
+  display: block;
+}
+.lip-sync-coverage__fix {
+  margin-top: 4px;
+}
+
+.sing-question {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-width: 0;
+}
+.sing-question legend {
+  font-weight: 600;
+  padding: 0;
+  margin-bottom: 4px;
+}
+.sing-question__choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.sing-question__more {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-left: 24px;
+}

@@ -550,13 +550,13 @@
     "sameAsChat": "(как в чате)",
     "title": "Голос в чате: какой голос читает, звонит и диктует",
     "noFallback": "Не задан",
-    "changeFor": null,
-    "openStudio": null,
-    "voicesInChat": null,
-    "readAloud": null,
-    "calls": null,
-    "backup": null,
-    "dictate": null
+    "changeFor": "Изменить: {use}",
+    "openStudio": "Открыть студию голоса",
+    "voicesInChat": "Голоса в чате",
+    "readAloud": "Чтение вслух",
+    "calls": "Звонки",
+    "backup": "Резервный голос",
+    "dictate": "Диктовка"
   },
   "keepGoing": {
     "label": "Продолжать",

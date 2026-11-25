@@ -14,6 +14,7 @@ export type TabId =
   | "video-models"
   | "video-studio"
   | "video-gallery"
+  | "video-upscale"
   | "voice-studio"
   | "voice-models"
   | "voice-gallery"

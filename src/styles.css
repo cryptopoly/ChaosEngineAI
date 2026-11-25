@@ -17604,3 +17604,85 @@ select.music-library__select {
   font-size: 0.82rem;
   color: var(--text);
 }
+
+/* Upscale tab (FU-617) */
+.video-upscale .callout {
+  margin-bottom: 16px;
+}
+
+.video-upscale-install__progress,
+.video-upscale-job__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.video-upscale-install__progress progress,
+.video-upscale-job__progress progress {
+  width: 100%;
+}
+
+.video-upscale-job__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.video-upscale-job__notes {
+  margin: 6px 0;
+  padding-left: 18px;
+}
+
+.video-upscale-path-row {
+  display: flex;
+  gap: 8px;
+}
+
+.video-upscale-path-row .text-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.video-upscale .pill-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.video-upscale-preview {
+  max-width: 480px;
+  width: 100%;
+  border-radius: 10px;
+}
+
+.video-upscale-compare {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 8px 0;
+}
+
+.video-upscale-compare figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.video-upscale-compare video,
+.video-upscale-compare__empty {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.video-upscale-compare__empty {
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  text-align: center;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+}

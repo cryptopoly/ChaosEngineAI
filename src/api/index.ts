@@ -885,9 +885,13 @@ export type { FfmpegJob, FfmpegPin, FfmpegStatus } from "./ffmpeg";
 
 export {
   cancelVideoUpscaleJob,
+  fetchVideoUpscaleFileUrl,
+  fetchVideoUpscaleFrameUrl,
   getVideoUpscaleAddonStatus,
   getVideoUpscaleJob,
   getVideoUpscaleModels,
+  listVideoUpscaleJobs,
+  probeVideoUpscaleInput,
   resumeVideoUpscaleJob,
   startVideoUpscale,
   startVideoUpscaleInstall,
@@ -897,9 +901,11 @@ export type {
   VideoUpscaleAddonStatus,
   VideoUpscaleInstallJob,
   VideoUpscaleInstallPhase,
+  VideoUpscaleFrameSide,
   VideoUpscaleJob,
   VideoUpscaleModel,
   VideoUpscaleModels,
+  VideoUpscaleProbe,
   VideoUpscaleRequest,
   VideoUpscaleState,
 } from "./videoUpscale";

@@ -670,7 +670,8 @@
       "revealFile": "显示文件",
       "delete": "删除",
       "soundOn": "开启声音",
-      "soundOff": "静音"
+      "soundOff": "静音",
+      "upscale": null
     }
   },
   "voice": {
@@ -3057,5 +3058,78 @@
     "step": "第 {step} 步，共 {total} 步",
     "elapsed": "已用时 {minutes} 分 {seconds} 秒",
     "hint": "由其他页面启动，例如分镜板的批量任务。请等待其完成后再启动另一项任务。"
+  },
+  "videoUpscale": {
+    "statusFailed": null,
+    "install": {
+      "title": null,
+      "body": null,
+      "licence": null,
+      "phasePackages": null,
+      "phaseWeights": null,
+      "phaseCheck": null,
+      "step": null,
+      "button": null,
+      "retry": null,
+      "failed": null,
+      "unknownError": null
+    },
+    "source": {
+      "label": null,
+      "placeholder": null,
+      "browse": null,
+      "browseTitle": null,
+      "filterName": null,
+      "browseFailed": null,
+      "hint": null,
+      "chosenSized": null
+    },
+    "quality": {
+      "label": null,
+      "notInstalled": null,
+      "wontFit": null,
+      "downloadMissing": null
+    },
+    "size": {
+      "label": null,
+      "x2": null,
+      "x4": null,
+      "target": null,
+      "result": null,
+      "limit": null,
+      "needsSize": null,
+      "notBigger": null
+    },
+    "deinterlace": null,
+    "start": null,
+    "oneAtATime": null,
+    "job": {
+      "target": null,
+      "queued": null,
+      "running": null,
+      "done": null,
+      "failed": null,
+      "cancelled": null,
+      "interrupted": null,
+      "frames": null,
+      "speed": null,
+      "etaSeconds": null,
+      "etaMinutes": null,
+      "etaHours": null,
+      "progressLabel": null,
+      "parts": null,
+      "savedAs": null,
+      "cancel": null,
+      "resume": null,
+      "open": null,
+      "reveal": null,
+      "dismiss": null
+    },
+    "compare": {
+      "before": null,
+      "beforeMissing": null,
+      "after": null,
+      "afterOpen": null
+    }
   }
 }

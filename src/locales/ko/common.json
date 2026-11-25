@@ -41,7 +41,8 @@
     "storyProjects": "프로젝트",
     "storyBoard": "보드",
     "storyMixer": "믹서",
-    "projects": "프로젝트"
+    "projects": "프로젝트",
+    "videoUpscale": null
   },
   "tabCaptions": {
     "dashboard": "시스템 개요",
@@ -77,7 +78,8 @@
     "storyProjects": "내 영상, 영상마다 폴더 하나",
     "storyBoard": "샷, 테이크, 프롬프트",
     "storyMixer": "화면, 소리, 내보내기",
-    "projects": "스토리보드 영상: 샷, 소리, 내보내기"
+    "projects": "스토리보드 영상: 샷, 소리, 내보내기",
+    "videoUpscale": null
   },
   "tabShortLabels": {
     "chat": "채팅",
@@ -104,7 +106,8 @@
     "musicLibrary": "라이브러리",
     "storyProjects": "프로젝트",
     "storyBoard": "보드",
-    "storyMixer": "믹서"
+    "storyMixer": "믹서",
+    "videoUpscale": null
   },
   "tabGroups": {
     "chat": "채팅",

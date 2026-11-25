@@ -3,7 +3,7 @@ import type { TabId } from "../types";
 import type { AppTabContext } from "./context";
 import { ChatModelsView, ConversionView } from "./ModelsTabs";
 import { ImageModelsView, ImageStudioView, ImageGalleryView } from "./ImageTabs";
-import { VideoModelsView, VideoStudioView, VideoGalleryView } from "./VideoTabs";
+import { VideoModelsView, VideoStudioView, VideoGalleryView, VideoUpscaleView } from "./VideoTabs";
 import { VoiceStudioView, VoiceModelsView, VoiceLibraryView } from "./VoiceTabs";
 import { MusicModelsView, MusicStudioView, MusicLibraryView } from "./MusicTabs";
 import { StoryboardView } from "./StoryboardView";
@@ -28,6 +28,7 @@ const TAB_VIEWS: Partial<Record<TabId, TabView>> = {
   "video-models": VideoModelsView,
   "video-studio": VideoStudioView,
   "video-gallery": VideoGalleryView,
+  "video-upscale": VideoUpscaleView,
   "voice-studio": VoiceStudioView,
   "voice-models": VoiceModelsView,
   "voice-gallery": VoiceLibraryView,

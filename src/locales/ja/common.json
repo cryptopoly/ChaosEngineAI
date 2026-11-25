@@ -41,7 +41,8 @@
     "storyProjects": "プロジェクト",
     "storyBoard": "ボード",
     "storyMixer": "ミキサー",
-    "projects": "プロジェクト"
+    "projects": "プロジェクト",
+    "videoUpscale": null
   },
   "tabCaptions": {
     "dashboard": "システム概要",
@@ -77,7 +78,8 @@
     "storyProjects": "あなたの映像作品（1作品につき1フォルダ）",
     "storyBoard": "ショット、テイク、プロンプト",
     "storyMixer": "映像、音声、書き出し",
-    "projects": "ストーリーボード作品: ショット、サウンド、書き出し"
+    "projects": "ストーリーボード作品: ショット、サウンド、書き出し",
+    "videoUpscale": null
   },
   "tabShortLabels": {
     "chat": "チャット",
@@ -104,7 +106,8 @@
     "musicLibrary": "ライブラリ",
     "storyProjects": "プロジェクト",
     "storyBoard": "ボード",
-    "storyMixer": "ミキサー"
+    "storyMixer": "ミキサー",
+    "videoUpscale": null
   },
   "tabGroups": {
     "chat": "チャット",

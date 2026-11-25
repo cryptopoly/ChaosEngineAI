@@ -66,6 +66,17 @@ describe("sidebarGroups", () => {
     expect(tabs.filter((t) => t.group === "voice").map((t) => t.id)).toEqual(["voice-models", "voice-studio", "voice-gallery"]);
   });
 
+  it("lists Upscale in the Video group after the Gallery (FU-617)", () => {
+    expect(tabs.filter((t) => t.group === "video").map((t) => t.id)).toEqual(["video-models", "video-studio", "video-gallery", "video-upscale"]);
+    expect(tabs.find((t) => t.id === "video-upscale")).toMatchObject({
+      label: "Upscale",
+      caption: "Make a video sharper and bigger",
+      labelKey: "tabs.videoUpscale",
+      captionKey: "tabCaptions.videoUpscale",
+      shortLabel: "Upscale",
+    });
+  });
+
   it("opens Images and Video on their Models page and Chat on the chat", () => {
     const defaults = Object.fromEntries(sidebarGroups.map((group) => [group.id, group.defaultChild]));
     expect(defaults.images).toBe("image-models");

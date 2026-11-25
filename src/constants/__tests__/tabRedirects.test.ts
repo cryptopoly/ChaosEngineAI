@@ -61,6 +61,12 @@ describe("resolveTabRequest", () => {
     }
   });
 
+  it("passes the Upscale tab through, and it is no Models page (FU-617)", () => {
+    expect(resolveTabRequest("video-upscale")).toEqual({ tab: "video-upscale" });
+    expect(modelsAreaForTab("video-upscale")).toBeNull();
+    expect(normalizeStoredTabId("video-upscale")).toBe("video-upscale");
+  });
+
   it("ignores an empty request", () => {
     expect(resolveTabRequest(null)).toBeNull();
     expect(resolveTabRequest(undefined)).toBeNull();

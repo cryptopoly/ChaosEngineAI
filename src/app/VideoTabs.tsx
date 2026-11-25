@@ -2,6 +2,7 @@ import { getVideoCatalog } from "../api";
 import { VideoModelsPage } from "../features/video/VideoModelsPage";
 import { VideoStudioTab } from "../features/video/VideoStudioTab";
 import { VideoGalleryTab } from "../features/video/VideoGalleryTab";
+import { VideoUpscaleTab } from "../features/videoupscale/VideoUpscaleTab";
 import type { AppTabContext } from "./context";
 
 export function VideoModelsView({ ctx }: { ctx: AppTabContext }) {
@@ -187,6 +188,16 @@ export function VideoGalleryView({ ctx }: { ctx: AppTabContext }) {
       onOpenVideoStudio={(modelId) => videoState.openVideoStudio(modelId)}
       onRevealPath={(path) => void handleRevealPath(path)}
       onDeleteVideoArtifact={(id) => void videoState.handleDeleteVideoOutput(id)}
+    />
+  );
+}
+
+export function VideoUpscaleView({ ctx }: { ctx: AppTabContext }) {
+  const { handleRevealPath, handleOpenFilePath } = ctx;
+  return (
+    <VideoUpscaleTab
+      onRevealPath={(path) => void handleRevealPath(path)}
+      onOpenPath={(path) => void handleOpenFilePath(path)}
     />
   );
 }

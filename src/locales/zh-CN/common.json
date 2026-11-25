@@ -41,7 +41,8 @@
     "storyProjects": "项目",
     "storyBoard": "分镜板",
     "storyMixer": "混音台",
-    "projects": "项目"
+    "projects": "项目",
+    "videoUpscale": null
   },
   "tabCaptions": {
     "dashboard": "系统概览",
@@ -77,7 +78,8 @@
     "storyProjects": "你的影片，每部一个文件夹",
     "storyBoard": "镜头、版本和提示词",
     "storyMixer": "画面、声音和导出",
-    "projects": "故事板影片：镜头、声音、导出"
+    "projects": "故事板影片：镜头、声音、导出",
+    "videoUpscale": null
   },
   "tabShortLabels": {
     "chat": "对话",
@@ -104,7 +106,8 @@
     "musicLibrary": "库",
     "storyProjects": "项目",
     "storyBoard": "分镜板",
-    "storyMixer": "混音台"
+    "storyMixer": "混音台",
+    "videoUpscale": null
   },
   "tabGroups": {
     "chat": "对话",

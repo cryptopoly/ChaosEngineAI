@@ -670,7 +670,8 @@
       "revealFile": "Datei anzeigen",
       "delete": "Löschen",
       "soundOn": "Ton einschalten",
-      "soundOff": "Stummschalten"
+      "soundOff": "Stummschalten",
+      "upscale": null
     }
   },
   "voice": {
@@ -3057,5 +3058,78 @@
     "step": "Schritt {step} von {total}",
     "elapsed": "{minutes} min {seconds} s vergangen",
     "hint": "Von einem anderen Bildschirm gestartet, etwa einem Storyboard-Stapel. Warte, bis er fertig ist, bevor du einen weiteren startest."
+  },
+  "videoUpscale": {
+    "statusFailed": null,
+    "install": {
+      "title": null,
+      "body": null,
+      "licence": null,
+      "phasePackages": null,
+      "phaseWeights": null,
+      "phaseCheck": null,
+      "step": null,
+      "button": null,
+      "retry": null,
+      "failed": null,
+      "unknownError": null
+    },
+    "source": {
+      "label": null,
+      "placeholder": null,
+      "browse": null,
+      "browseTitle": null,
+      "filterName": null,
+      "browseFailed": null,
+      "hint": null,
+      "chosenSized": null
+    },
+    "quality": {
+      "label": null,
+      "notInstalled": null,
+      "wontFit": null,
+      "downloadMissing": null
+    },
+    "size": {
+      "label": null,
+      "x2": null,
+      "x4": null,
+      "target": null,
+      "result": null,
+      "limit": null,
+      "needsSize": null,
+      "notBigger": null
+    },
+    "deinterlace": null,
+    "start": null,
+    "oneAtATime": null,
+    "job": {
+      "target": null,
+      "queued": null,
+      "running": null,
+      "done": null,
+      "failed": null,
+      "cancelled": null,
+      "interrupted": null,
+      "frames": null,
+      "speed": null,
+      "etaSeconds": null,
+      "etaMinutes": null,
+      "etaHours": null,
+      "progressLabel": null,
+      "parts": null,
+      "savedAs": null,
+      "cancel": null,
+      "resume": null,
+      "open": null,
+      "reveal": null,
+      "dismiss": null
+    },
+    "compare": {
+      "before": null,
+      "beforeMissing": null,
+      "after": null,
+      "afterOpen": null
+    }
   }
 }

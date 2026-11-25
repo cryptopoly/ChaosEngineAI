@@ -1050,7 +1050,7 @@
     },
     "stop": "停止",
     "studio": {
-      "title": "Voice Studio",
+      "title": "语音工作室",
       "openModels": "打开语音模型",
       "cloneTask": "克隆语音"
     },
@@ -2391,7 +2391,10 @@
         "cutAgain": "重新剪辑歌曲"
       },
       "cutSongIntoShots": "把歌曲剪成镜头",
-      "lipSyncRange": "{min} s 或更长的镜头可以做口型同步。它的片段时长为 {clipMin} 到 {clipMax} s：短于 {clipMin} s 的镜头会补上无声的空白来凑足时长。"
+      "lipSyncRange": "{min} s 或更长的镜头可以做口型同步。它的片段时长为 {clipMin} 到 {clipMax} s：短于 {clipMin} s 的镜头会补上无声的空白来凑足时长。",
+      "noteRough": "节奏、节拍和段落是根据起音和响度估算的；请用耳朵确认，必要时编辑段落。",
+      "noteHint": "节奏取自音乐库曲目生成时的节奏；节拍按它放置。",
+      "noteNoBeat": "没有找到稳定的节拍，因此没有节拍；剪辑只跟随段落。"
     },
     "unsaved": {
       "title": "你的文字未保存",

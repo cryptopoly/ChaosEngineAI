@@ -1050,7 +1050,7 @@
     },
     "stop": "중지",
     "studio": {
-      "title": "Voice Studio",
+      "title": "음성 스튜디오",
       "openModels": "음성 모델 열기",
       "cloneTask": "음성 복제"
     },
@@ -2391,7 +2391,10 @@
         "cutAgain": "노래를 다시 나누기"
       },
       "cutSongIntoShots": "노래를 컷으로 나누기",
-      "lipSyncRange": "{min}초 이상인 컷은 립싱크할 수 있습니다. 클립 길이는 {clipMin}~{clipMax}초이며, {clipMin}초보다 짧은 컷은 무음 여백으로 채워집니다."
+      "lipSyncRange": "{min}초 이상인 컷은 립싱크할 수 있습니다. 클립 길이는 {clipMin}~{clipMax}초이며, {clipMin}초보다 짧은 컷은 무음 여백으로 채워집니다.",
+      "noteRough": "템포, 비트, 구간은 소리의 시작점과 음량으로 추정한 값입니다. 귀로 확인하고 필요하면 구간을 수정하세요.",
+      "noteHint": "템포는 음악 라이브러리 트랙이 만들어진 템포이며, 비트는 그에 맞춰 배치됩니다.",
+      "noteNoBeat": "일정한 비트를 찾지 못해 비트가 없습니다. 컷은 구간만 따릅니다."
     },
     "unsaved": {
       "title": "입력한 텍스트가 저장되지 않았습니다",

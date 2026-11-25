@@ -1050,7 +1050,7 @@
     },
     "stop": "Detener",
     "studio": {
-      "title": "Voice Studio",
+      "title": "Estudio de voz",
       "openModels": "Abrir Modelos de voz",
       "cloneTask": "Clonar una voz"
     },
@@ -2391,7 +2391,10 @@
         "cutAgain": "Volver a cortar la canción"
       },
       "cutSongIntoShots": "Cortar la canción en planos",
-      "lipSyncRange": "Un plano de {min} s o más puede tener sincronía labial. Su clip dura de {clipMin} a {clipMax} s: a un plano de menos de {clipMin} s se le añade silencio para completarlo."
+      "lipSyncRange": "Un plano de {min} s o más puede tener sincronía labial. Su clip dura de {clipMin} a {clipMax} s: a un plano de menos de {clipMin} s se le añade silencio para completarlo.",
+      "noteRough": "El tempo, los beats y las secciones se estiman a partir de los ataques y el volumen; revísalos al oído y edita las secciones si hace falta.",
+      "noteHint": "El tempo es el del tema de la biblioteca de música con el que se creó; los beats se colocan sobre él.",
+      "noteNoBeat": "No se encontró un pulso estable, así que no hay beats; los cortes siguen solo las secciones."
     },
     "unsaved": {
       "title": "Tu texto no se guardó",

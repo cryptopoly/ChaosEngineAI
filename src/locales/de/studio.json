@@ -1050,7 +1050,7 @@
     },
     "stop": "Stoppen",
     "studio": {
-      "title": "Voice Studio",
+      "title": "Sprachstudio",
       "openModels": "Sprachmodelle öffnen",
       "cloneTask": "Eine Stimme klonen"
     },
@@ -2391,7 +2391,10 @@
         "cutAgain": "Den Song erneut schneiden"
       },
       "cutSongIntoShots": "Den Song in Shots schneiden",
-      "lipSyncRange": "Ein Shot von {min} s oder mehr kann lippensynchron sein. Sein Clip dauert {clipMin} bis {clipMax} s: Ein Shot, der kürzer als {clipMin} s ist, bekommt stille Zeit, um ihn aufzufüllen."
+      "lipSyncRange": "Ein Shot von {min} s oder mehr kann lippensynchron sein. Sein Clip dauert {clipMin} bis {clipMax} s: Ein Shot, der kürzer als {clipMin} s ist, bekommt stille Zeit, um ihn aufzufüllen.",
+      "noteRough": "Tempo, Beats und Abschnitte werden aus Einsätzen und Lautstärke geschätzt; prüfe sie nach Gehör und bearbeite die Abschnitte bei Bedarf.",
+      "noteHint": "Das Tempo ist das, mit dem der Titel aus der Musikbibliothek erstellt wurde; die Beats liegen darauf.",
+      "noteNoBeat": "Es wurde kein gleichmäßiger Beat gefunden, daher gibt es keine Beats; die Schnitte folgen nur den Abschnitten."
     },
     "unsaved": {
       "title": "Dein Text wurde nicht gespeichert",

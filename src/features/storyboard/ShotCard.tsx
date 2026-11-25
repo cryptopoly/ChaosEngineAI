@@ -479,6 +479,8 @@ export function ShotCard(props: ShotCardProps) {
           disabled={disabled}
           onPick={(takeId) => props.onPickTake(takeId)}
           onClose={() => setComparing(false)}
+          quality={guide?.takes}
+          target={guide?.target}
         />
       ) : null}
     </article>

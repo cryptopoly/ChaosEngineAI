@@ -42,10 +42,12 @@ export interface ShotEditorDrawerProps {
   /** Redo clip only / Redo still only (S11). */
   onRedo?: (what: "redo-clip" | "redo-still", shotId: string) => void;
   onClose: () => void;
+  /** A field to put the cursor in when the drawer opens (a Lengthen or Shorten fix); otherwise the drawer itself. */
+  focusField?: "length";
 }
 
 export function ShotEditorDrawer({
-  project, shot, index, imageGallery, videoGallery, busy, batchRunning, op, onMake, onRedo, onClose,
+  project, shot, index, imageGallery, videoGallery, busy, batchRunning, op, onMake, onRedo, onClose, focusField,
 }: ShotEditorDrawerProps) {
   const { t } = useTranslation("studio");
   const [draft, setDraft] = useState<ShotDraft>(() => draftFromShot(shot));
@@ -54,6 +56,7 @@ export function ShotEditorDrawer({
   const [pickingEnd, setPickingEnd] = useState(false);
   const opener = useRef<HTMLElement | null>(null);
   const root = useRef<HTMLElement>(null);
+  const lengthInput = useRef<HTMLInputElement>(null);
   const characters = project.references.characters;
   const references = [...characters, ...project.references.places];
   const inShot = castInShot(characters, draft);
@@ -89,7 +92,12 @@ export function ShotEditorDrawer({
   // Focus goes into the drawer, and back to the card that opened it when it closes.
   useEffect(() => {
     opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    root.current?.focus();
+    if (focusField === "length" && lengthInput.current) {
+      lengthInput.current.focus();
+      lengthInput.current.select();
+    } else {
+      root.current?.focus();
+    }
     return () => {
       const back = opener.current;
       if (back && back.isConnected) back.focus();
@@ -203,7 +211,7 @@ export function ShotEditorDrawer({
           </label>
           <label className="control-stack">
             <span className="eyebrow">{t("board.editor.length", { defaultValue: "Length (s)" })}</span>
-            <input type="number" min={0.5} max={60} step={0.5} value={draft.seconds} onChange={(e) => set("seconds", e.target.value)} />
+            <input ref={lengthInput} type="number" min={0.5} max={60} step={0.5} value={draft.seconds} onChange={(e) => set("seconds", e.target.value)} />
           </label>
           <label className="control-stack">
             <span className="eyebrow">{t("board.editor.seed", { defaultValue: "Seed" })}</span>

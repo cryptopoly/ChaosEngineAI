@@ -5,7 +5,7 @@
  * next-step card or checklist.
  */
 import { useTranslation } from "react-i18next";
-import type { StoryboardProject, StoryboardTimeline } from "../../types";
+import type { StoryboardProject, StoryboardQuality, StoryboardTimeline } from "../../types";
 import { clipCount, recentActivity, stillOnlyCount, type ActivityLine } from "./overviewLogic";
 import { ProjectDefaultsPanel } from "./ProjectDefaultsPanel";
 import { ProjectImage } from "./ProjectMedia";
@@ -26,9 +26,11 @@ export interface OverviewTabProps {
   onOpenShot: (shotId: string) => void;
   /** Changes when the header asks to open Project settings. */
   settingsRequest?: number;
+  /** `guide.quality`, for the Draft tag in the film player. */
+  quality?: StoryboardQuality | null;
 }
 
-export function OverviewTab({ story, project, timeline, deps, render, onOpenShot, settingsRequest }: OverviewTabProps) {
+export function OverviewTab({ story, project, timeline, deps, render, onOpenShot, settingsRequest, quality }: OverviewTabProps) {
   const { t, i18n } = useTranslation("studio");
   const shots = project.shots;
   const activity = recentActivity(project);
@@ -70,7 +72,7 @@ export function OverviewTab({ story, project, timeline, deps, render, onOpenShot
           {/* Once a clip exists the film can be watched at once, without a render (S9). */}
           {clips > 0 ? (
             <div className="overview-tab__actions">
-              <RoughCutButton project={project} timeline={timeline} />
+              <RoughCutButton project={project} timeline={timeline} quality={quality} />
             </div>
           ) : null}
           <section className="overview-tab__sheet" aria-label={t("overview.sheet", { defaultValue: "Shots" })}>

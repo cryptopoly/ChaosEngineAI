@@ -7,7 +7,7 @@ import {
   fetchStoryboardFileBlobUrl,
   generateStoryboardCaptions,
 } from "../../../api";
-import type { StoryboardProject, StoryboardTimeline } from "../../../types";
+import type { StoryboardProject, StoryboardQuality, StoryboardTimeline } from "../../../types";
 import { PathField } from "../PathField";
 import { revealProjectFile } from "../projectFiles";
 import type { UseStoryboardResult } from "../useStoryboard";
@@ -82,6 +82,8 @@ export interface MixerTabProps {
   onOpenShot: (shotId: string | null) => void;
   /** The shell's render state, shared with the Export tab; without it the tab tracks renders itself. */
   render?: UseStoryboardRenderResult;
+  /** `guide.quality`, for the Draft tag in the film player. */
+  quality?: StoryboardQuality | null;
 }
 
 type Selection = { type: "clip" | "shot"; id: string } | null;
@@ -101,7 +103,7 @@ function targetKindOf(target: EventTarget | null): TargetKind {
   return "other";
 }
 
-export function MixerTab({ story, project, timeline, dataDirectory, onOpenShot, render: shared }: MixerTabProps) {
+export function MixerTab({ story, project, timeline, dataDirectory, onOpenShot, render: shared, quality }: MixerTabProps) {
   const { t } = useTranslation("studio");
   const { busy } = story;
   const own = useStoryboardRender(project.id, !shared, () => void story.reload());
@@ -585,7 +587,7 @@ export function MixerTab({ story, project, timeline, dataDirectory, onOpenShot, 
                   )}
                 </div>
                 <div className="mixer__stage-actions">
-                  <RoughCutButton project={project} timeline={timeline} tone="primary" />
+                  <RoughCutButton project={project} timeline={timeline} tone="primary" quality={quality} />
                   <button type="button" className="secondary-button" disabled={disabled || rendering || !canRender(timeline)} onClick={() => void startRender(true)}>
                     {t("mixer.preview.render", { defaultValue: "Render preview" })}
                   </button>

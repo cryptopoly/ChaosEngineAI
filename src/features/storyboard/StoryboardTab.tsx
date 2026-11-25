@@ -5,7 +5,17 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { PlusIcon } from "../../components/icons/ActionIcons";
-import type { ImageOutputArtifact, StoryboardBatchRecord, StoryboardProject, StoryboardShot, StoryboardTimeline, VideoOutputArtifact } from "../../types";
+import type {
+  ImageOutputArtifact,
+  StoryboardBatchRecord,
+  StoryboardFailureAction,
+  StoryboardGuide,
+  StoryboardProject,
+  StoryboardShot,
+  StoryboardTimeline,
+  VideoOutputArtifact,
+} from "../../types";
+import { shotCardGuide } from "./cardGuide";
 import { RunBar } from "./RunBar";
 import { RoughCutButton } from "./preview/RoughCutButton";
 import { useProjectEstimate } from "./useProjectEstimate";
@@ -41,6 +51,13 @@ export interface StoryboardTabProps {
   /** A shot to focus on arrival (a picture block clicked in the Mixer, a thumbnail on Overview). */
   focusShotId?: string | null;
   onFocused?: () => void;
+  /** A shot whose editor another tab asked for (a Lengthen or Shorten fix), and the field to focus in it. */
+  editRequest?: { shotId: string; field?: "length" } | null;
+  onEditRequestHandled?: () => void;
+  /** The project's guide block (`story.guide`, or the shell's fallback read): quality, failures, coverage, cast. */
+  guide?: StoryboardGuide | null;
+  /** Opens one of the app's other tabs (Image Models, Video Models, Setup); without it those fixes just retry. */
+  onOpenAppTab?: (tab: "image-models" | "video-models" | "settings") => void;
 }
 
 /** The error text the last batch recorded for a shot, if that batch failed it. */
@@ -50,10 +67,13 @@ export function lastFailure(batches: StoryboardBatchRecord[], shotId: string): s
   return failed ? (failed.error ?? "") : null;
 }
 
-export function StoryboardTab({ story, project, timeline, imageGallery, videoGallery, focusShotId, onFocused }: StoryboardTabProps) {
+export function StoryboardTab({
+  story, project, timeline, imageGallery, videoGallery, focusShotId, onFocused, editRequest, onEditRequestHandled, guide, onOpenAppTab,
+}: StoryboardTabProps) {
   const { t } = useTranslation("studio");
   const { batch, busy } = story;
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editField, setEditField] = useState<"length" | undefined>(undefined);
   const [removeId, setRemoveId] = useState<string | null>(null);
   const [kept, setKept] = useState<Set<string>>(() => new Set());
   const [dragId, setDragId] = useState<string | null>(null);
@@ -95,6 +115,45 @@ export function StoryboardTab({ story, project, timeline, imageGallery, videoGal
     requestAnimationFrame(() => focusCard(focusShotId));
     onFocused?.();
   }, [focusShotId]); // once per request: the callbacks are not dependencies
+
+  // Another tab asked for one shot's editor, on one of its fields.
+  useEffect(() => {
+    if (!editRequest) return;
+    setEditField(editRequest.field);
+    setEditingId(editRequest.shotId);
+    requestAnimationFrame(() => focusCard(editRequest.shotId));
+    onEditRequestHandled?.();
+  }, [editRequest]); // once per request: the callbacks are not dependencies
+
+  function openEditor(shotId: string) {
+    setEditField(undefined);
+    setEditingId(shotId);
+  }
+
+  /** What a failed card's button does. `retry` and `edit-shot` are the card's own; the rest come here. */
+  function failureAction(shot: StoryboardShot, action: StoryboardFailureAction) {
+    const kind = guide?.failures?.find((failure) => failure.shotId === shot.id)?.kind ?? "still";
+    switch (action) {
+      case "smaller-size":
+        void story.startBatch(kind === "clip" ? "both" : "still", [shot.id], false, true);
+        break;
+      case "open-models":
+        if (onOpenAppTab) onOpenAppTab(kind === "clip" ? "video-models" : "image-models");
+        else void story.startBatch("both", [shot.id]);
+        break;
+      case "install-video-tools":
+        if (onOpenAppTab) onOpenAppTab("settings");
+        else void story.startBatch("both", [shot.id]);
+        break;
+      case "edit-shot":
+        openEditor(shot.id);
+        break;
+      case "free-disk":
+        break; // the sentence says what to free; Retry follows once it is freed
+      default:
+        void story.startBatch("both", [shot.id]);
+    }
+  }
 
   async function addShot() {
     const before = new Set(ids);
@@ -160,7 +219,7 @@ export function StoryboardTab({ story, project, timeline, imageGallery, videoGal
         break;
       case "Enter":
         event.preventDefault();
-        setEditingId(id);
+        openEditor(id);
         break;
       case "l":
       case "L":
@@ -192,7 +251,7 @@ export function StoryboardTab({ story, project, timeline, imageGallery, videoGal
           </p>
         </div>
         <div className="board-shots__actions">
-          <RoughCutButton project={project} timeline={timeline} />
+          <RoughCutButton project={project} timeline={timeline} quality={guide?.quality} />
           <button type="button" className="secondary-button" disabled={busy} onClick={() => void addShot()}>
             <PlusIcon /> {t("board.addShot", { defaultValue: "Add shot" })}
           </button>
@@ -260,6 +319,8 @@ export function StoryboardTab({ story, project, timeline, imageGallery, videoGal
                 dragOver={overId === shot.id && dragId !== shot.id}
                 disabled={busy}
                 castNames={castNamesOf(shot)}
+                guide={shotCardGuide(project, guide, shot)}
+                onFailureAction={(action) => failureAction(shot, action)}
                 onRename={(title) => story.op("edit_shot", { shotId: shot.id, title })}
                 onPickTake={(takeId) => void story.op("pick_take", { shotId: shot.id, takeId })}
                 onToggleLock={() => void story.op("lock", { shotId: shot.id, locked: !shot.locked })}
@@ -267,7 +328,7 @@ export function StoryboardTab({ story, project, timeline, imageGallery, videoGal
                 onToggleKept={() => void story.op("set_kept", { shotId: shot.id, kept: !shot.kept })}
                 onTransition={(transition) => void story.op("edit_shot", { shotId: shot.id, transition })}
                 onMove={(step) => void reorderTo(reorderByStep(ids, shot.id, step), shot.id)}
-                onEdit={() => setEditingId(shot.id)}
+                onEdit={() => openEditor(shot.id)}
                 onKeep={() => setKept((current) => new Set(current).add(shot.id))}
                 onRerun={() => rerun(shot)}
                 onRetry={() => void story.startBatch("both", [shot.id])}
@@ -318,6 +379,7 @@ export function StoryboardTab({ story, project, timeline, imageGallery, videoGal
           onMakeDrafts={(withClips) => void story.startBatch(withClips ? "both" : "still", missing, false, true)}
           onFinalPass={() => void story.startBatch("final", finalIds)}
           primary={primaryPass(shots, missing.length, estimate)}
+          quality={guide?.quality}
         />
       ) : null}
       <p className="sr-only" role="status" aria-live="polite">{announce}</p>
@@ -335,6 +397,7 @@ export function StoryboardTab({ story, project, timeline, imageGallery, videoGal
           onMake={(shotId) => void story.startBatch("both", [shotId])}
           onRedo={(what, shotId) => void story.startBatch(what, [shotId])}
           onClose={() => setEditingId(null)}
+          focusField={editField}
         />
       ) : null}
       {toRemove ? (

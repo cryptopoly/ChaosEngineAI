@@ -26,6 +26,9 @@ import { useStoryboard } from "./useStoryboard";
 import { useStoryboardRender } from "./useStoryboardRender";
 import { UnsavedTextContext } from "./unsavedText";
 
+/** The app tabs a project can send the user to: model pages, Setup (in Settings) and Upscale. */
+export type ProjectAppTab = "image-models" | "video-models" | "video-upscale" | "settings";
+
 /** What the tabs need from the rest of the app. */
 export interface ProjectWorkspaceDeps {
   imageGallery: ImageOutputArtifact[];
@@ -37,6 +40,14 @@ export interface ProjectWorkspaceDeps {
   dataDirectory?: string;
   /** The Plan tab's chat model: what is loaded and how to load one from there (S8). */
   chat?: PlanChatDeps;
+  /** Opens another tab of the app (a failed shot's "Open Image Models", the Upscale add-on). */
+  onOpenAppTab?: (tab: ProjectAppTab) => void;
+}
+
+/** A shot's editor another tab asks for, and the field to focus in it. */
+export interface ShotEditRequest {
+  shotId: string;
+  field?: "length";
 }
 
 export interface ProjectShellProps {
@@ -70,7 +81,7 @@ export function ProjectShell({ projectId, fallbackName, tab, backendOnline, deps
   const { t } = useTranslation("studio");
   const story = useStoryboard(backendOnline, projectId);
   const { project, timeline } = story;
-  const guide = useGuide(project, backendOnline);
+  const guide = useGuide(project, backendOnline, story.guide);
   const musicVideo = isMusicVideo(projectId);
   const [focusShotId, setFocusShotId] = useState<string | null>(null);
   // Bumped by the header's format chips: Overview opens Project settings and focuses it.
@@ -82,8 +93,16 @@ export function ProjectShell({ projectId, fallbackName, tab, backendOnline, deps
     if (loadedName) setProjectName(projectId, loadedName);
   }, [projectId, loadedName]);
 
-  const openShot = (shotId: string | null) => {
-    setFocusShotId(shotId);
+  // Set by a fix that wants one field of a shot (Lengthen, Shorten): the Storyboard opens that shot's editor on it.
+  const [editRequest, setEditRequest] = useState<ShotEditRequest | null>(null);
+
+  const openShot = (shotId: string | null, field?: "length") => {
+    if (shotId && field) {
+      setEditRequest({ shotId, field });
+      setFocusShotId(null);
+    } else {
+      setFocusShotId(shotId);
+    }
     onTab("storyboard");
   };
 
@@ -125,8 +144,8 @@ export function ProjectShell({ projectId, fallbackName, tab, backendOnline, deps
             <p>{story.error}</p>
           </div>
         ) : null}
-        {tab === "overview" ? <OverviewTab story={story} project={project} timeline={timeline} deps={deps} render={render} onTab={onTab} onOpenShot={openShot} settingsRequest={settingsRequest} /> : null}
-        {tab === "plan" ? <PlanTab story={story} project={project} imageGallery={deps.imageGallery} chat={deps.chat ?? {}} onTab={onTab} /> : null}
+        {tab === "overview" ? <OverviewTab story={story} project={project} timeline={timeline} deps={deps} render={render} onTab={onTab} onOpenShot={openShot} settingsRequest={settingsRequest} quality={guide?.quality} /> : null}
+        {tab === "plan" ? <PlanTab story={story} project={project} imageGallery={deps.imageGallery} chat={deps.chat ?? {}} onTab={onTab} onOpenShot={openShot} /> : null}
         {tab === "cast" ? <CastTab story={story} project={project} imageGallery={deps.imageGallery} /> : null}
         {tab === "storyboard" ? (
           <StoryboardTab
@@ -137,13 +156,29 @@ export function ProjectShell({ projectId, fallbackName, tab, backendOnline, deps
             videoGallery={deps.videoGallery}
             focusShotId={focusShotId}
             onFocused={() => setFocusShotId(null)}
+            editRequest={editRequest}
+            onEditRequestHandled={() => setEditRequest(null)}
+            guide={guide}
+            onOpenAppTab={deps.onOpenAppTab}
           />
         ) : null}
         {tab === "freestyle" ? <BoardTab story={story} project={project} chat={deps.chat ?? {}} onTab={onTab} /> : null}
         {tab === "mixer" ? (
-          <MixerTab story={story} project={project} timeline={timeline} dataDirectory={deps.dataDirectory} onOpenShot={openShot} render={render} />
+          <MixerTab story={story} project={project} timeline={timeline} dataDirectory={deps.dataDirectory} onOpenShot={openShot} render={render} quality={guide?.quality} />
         ) : null}
-        {tab === "export" ? <ExportTab story={story} project={project} timeline={timeline} dataDirectory={deps.dataDirectory} onTab={onTab} render={render} /> : null}
+        {tab === "export" ? (
+          <ExportTab
+            story={story}
+            project={project}
+            timeline={timeline}
+            dataDirectory={deps.dataDirectory}
+            onTab={onTab}
+            render={render}
+            guide={guide}
+            onOpenShot={openShot}
+            onOpenUpscaleTab={deps.onOpenAppTab ? () => deps.onOpenAppTab?.("video-upscale") : undefined}
+          />
+        ) : null}
       </>
     );
   }

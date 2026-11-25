@@ -8,8 +8,10 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { CloseIcon, PauseIcon, PlayIcon } from "../../components/icons/ActionIcons";
 import { useDialogFocus } from "../../hooks/useDialogFocus";
-import type { StoryboardShot, StoryboardTake } from "../../types";
+import type { StoryboardShot, StoryboardSize, StoryboardTake, StoryboardTakeQuality } from "../../types";
 import { ProjectImage, useProjectFileUrl } from "./ProjectMedia";
+import { QualityTag } from "./QualityTag";
+import { takeQualityOf } from "./qualityText";
 import {
   compareRows,
   compareSummary,
@@ -31,6 +33,10 @@ export interface TakeCompareProps {
   /** Makes a take the active one; resolves true when it landed. */
   onPick: (takeId: string) => Promise<boolean> | boolean | void;
   onClose: () => void;
+  /** takeId to what it was made at (`guide.quality.takes[shotId]`), for the Draft tag. */
+  quality?: Record<string, StoryboardTakeQuality>;
+  /** The film's size, named in the Draft tag's explanation. */
+  target?: StoryboardSize | null;
 }
 
 function aspectOf(take: StoryboardTake | undefined): string {
@@ -67,7 +73,7 @@ function CompareVideo({ projectId, take, videoRef, muted, label, onMeta }: {
   );
 }
 
-export function TakeCompare({ projectId, shot, number, disabled, onPick, onClose }: TakeCompareProps) {
+export function TakeCompare({ projectId, shot, number, disabled, onPick, onClose, quality, target }: TakeCompareProps) {
   const { t } = useTranslation("studio");
   const dialog = useRef<HTMLDivElement>(null);
   useDialogFocus(dialog, { onEscape: onClose });
@@ -236,7 +242,11 @@ export function TakeCompare({ projectId, shot, number, disabled, onPick, onClose
               </option>
             ))}
           </select>
-          <span className={`badge ${take.renderPass === "draft" ? "muted" : "success"}`}>{passLabel(take)}</span>
+          {take.renderPass === "draft" ? (
+            <QualityTag quality={takeQualityOf(take, quality?.[take.id])} target={target} variant="inline" />
+          ) : (
+            <span className="badge success">{passLabel(take)}</span>
+          )}
           {active ? <span className="badge accent">{t("board.compare.inUse", { defaultValue: "In use" })}</span> : null}
         </div>
         <div className="take-compare__frame" style={{ aspectRatio: aspectOf(take) }}>

@@ -50,6 +50,21 @@ describe("TakeCompare", () => {
     expect(html).toContain("Take 1 · Final · in use");
   });
 
+  it("shows the size on the Draft tag when the guide knows it", () => {
+    const sized = renderToStaticMarkup(
+      <TakeCompare
+        projectId="p"
+        shot={shot({ takes, activeTake: "t1" })}
+        number={1}
+        onPick={noop}
+        onClose={noop}
+        quality={{ t2: { pass: "draft", draft: true, still: { width: 640, height: 384 }, clip: null, stillStale: false, clipStale: false } }}
+        target={{ width: 1280, height: 768 }}
+      />,
+    );
+    expect(sized).toMatch(/<span class="quality-tag quality-tag--inline"[^>]*>Draft 640 x 384<\/span>/);
+  });
+
   it("offers Use this one only on the take not in use", () => {
     expect(html.match(/Use this one/g)?.length).toBe(1);
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>In use<\/button>/);

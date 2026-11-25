@@ -158,7 +158,7 @@ export function ExportTab({ story, project, timeline, dataDirectory, onTab, rend
       <ReadinessCheck
         project={project}
         groups={groups}
-        actions={<RoughCutButton project={project} timeline={timeline} />}
+        actions={<RoughCutButton project={project} timeline={timeline} quality={guide?.quality} />}
         onFix={openFix}
       />
       <VideoToolsPrompt

@@ -73,6 +73,7 @@ export function StoryboardView({ ctx }: { ctx: AppTabContext }) {
     videoFit,
     dataDirectory: ctx.settings.settingsDraft.dataDirectory,
     chat: planChat(ctx),
+    onOpenAppTab: (tab) => void ctx.setActiveTab(tab),
   };
   return (
     <ProjectShell

@@ -463,6 +463,7 @@ from backend_service.routes.setup.tensorfold import router as _tensorfold_router
 from backend_service.routes.setup.tensorfold_native import router as _tensorfold_native_router
 from backend_service.routes.setup.torch_upgrade import router as _torch_upgrade_router
 from backend_service.routes.setup.turbo import router as _turbo_router
+from backend_service.routes.setup.video_upscale import router as _video_upscale_router
 from backend_service.routes.setup.vllm_wsl import router as _vllm_wsl_router
 from backend_service.routes.setup.wan_install import router as _wan_install_router
 
@@ -481,5 +482,6 @@ router.include_router(_tensorfold_router)
 router.include_router(_tensorfold_native_router)
 router.include_router(_torch_upgrade_router)
 router.include_router(_turbo_router)
+router.include_router(_video_upscale_router)
 router.include_router(_vllm_wsl_router)
 router.include_router(_wan_install_router)

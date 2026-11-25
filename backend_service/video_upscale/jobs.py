@@ -46,9 +46,21 @@ _WORKER_LOCK = threading.Lock()
 
 
 def _worker_env() -> dict[str, str]:
+    from backend_service.helpers.malloc_release import ALLOCATOR_ENV_OFF, MIMALLOC_ENV  # noqa: PLC0415
     from backend_service.inference._utils import _isolated_child_env  # noqa: PLC0415
 
     env = dict(_isolated_child_env())
+    # The backend's "give freed memory back at once" mimalloc switches (they stop the backend keeping the weights of an
+    # unloaded diffusers pipeline) cost the small model about 25 % of its speed on the RTX 4090: it frees and
+    # re-allocates a batch of frames for every batch (17.1 against 22.8 frames a second, 720x576 to 1280x1024, six
+    # warm runs each; the GPU-bound x4plus row gains 4 %). The worker holds about 0.6 GB more while it idles and shows
+    # no drift over four segments and three jobs; all of it goes back to the system when the worker stops (idle stop,
+    # or another heavy job). A switch the user set to another value stays. The worker imports ``backend_service``, so
+    # it is also told not to set them again.
+    dropped = [name for name in MIMALLOC_ENV if env.get(name) == MIMALLOC_ENV[name]]
+    for name in dropped:
+        env.pop(name)
+    env[ALLOCATOR_ENV_OFF] = "1"
     root = str(Path(__file__).resolve().parents[2])
     parts = [root, *([env["PYTHONPATH"]] if env.get("PYTHONPATH") else []), str(addon.site_dir())]
     env["PYTHONPATH"] = os.pathsep.join(parts)  # the add-on last: it must never shadow the backend's own packages

@@ -14,6 +14,7 @@ from typing import Any
 
 from backend_service.catalog.video_ltx25 import LTX25_NVIDIA_FAMILY
 from backend_service.catalog.video_minimax_h3 import MINIMAX_H3_FAMILY
+from backend_service.catalog import licences
 
 
 # D-44: rows that are slow on some kinds of machine. ``slowOn`` is a list of platform entries; the app
@@ -83,6 +84,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "Lightricks/LTX-Video",
+                "licence": licences.LTXV_RAIL_M,
                 "familyId": "ltx-video",
                 "name": "LTX-Video",
                 "provider": "Lightricks",
@@ -104,6 +106,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "Lightricks/LTX-Video-gguf-q4km",
+                "licence": licences.LTXV_RAIL_M,
                 "familyId": "ltx-video",
                 "name": "LTX-Video · GGUF Q4_K_M",
                 "provider": "Lightricks · city96",
@@ -127,6 +130,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "Lightricks/LTX-Video-gguf-q6k",
+                "licence": licences.LTXV_RAIL_M,
                 "familyId": "ltx-video",
                 "name": "LTX-Video · GGUF Q6_K",
                 "provider": "Lightricks · city96",
@@ -150,6 +154,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "Lightricks/LTX-Video-gguf-q8",
+                "licence": licences.LTXV_RAIL_M,
                 "familyId": "ltx-video",
                 "name": "LTX-Video · GGUF Q8_0",
                 "provider": "Lightricks · city96",
@@ -191,6 +196,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "OzzyGT/LTX-2.3-Distilled-bnb-nf4",
+                "licence": licences.LTX_2_COMMUNITY,
                 "familyId": "ltx-2-diffusers",
                 "name": "LTX-2.3 · distilled 4-bit (diffusers)",
                 "provider": "Lightricks · OzzyGT (conversion)",
@@ -252,6 +258,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "diffusers/LTX-2.3-Distilled-Diffusers",
+                "licence": licences.LTX_2_COMMUNITY,
                 "familyId": "ltx-2-diffusers",
                 "name": "LTX-2.3 · distilled bf16 (diffusers)",
                 "provider": "Lightricks · Hugging Face diffusers",
@@ -283,6 +290,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "diffusers/LTX-2.3-Diffusers",
+                "licence": licences.LTX_2_COMMUNITY,
                 "familyId": "ltx-2-diffusers",
                 "name": "LTX-2.3 · dev bf16 (diffusers)",
                 "provider": "Lightricks · Hugging Face diffusers",
@@ -334,6 +342,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "prince-canuma/LTX-2-distilled",
+                "licence": licences.LTX_2_COMMUNITY,
                 "familyId": "ltx-2",
                 "name": "LTX-2 · distilled (MLX)",
                 "provider": "Lightricks · prince-canuma",
@@ -362,6 +371,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "prince-canuma/LTX-2-dev",
+                "licence": licences.LTX_2_COMMUNITY,
                 "familyId": "ltx-2",
                 "name": "LTX-2 · dev (MLX)",
                 "provider": "Lightricks · prince-canuma",
@@ -393,6 +403,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "prince-canuma/LTX-2.3-distilled",
+                "licence": licences.LTX_2_COMMUNITY,
                 "familyId": "ltx-2",
                 "name": "LTX-2.3 · distilled (MLX)",
                 "provider": "Lightricks · prince-canuma",
@@ -422,6 +433,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "dgrauet/ltx-2.3-mlx-q4",
+                "licence": licences.LTX_2_COMMUNITY,
                 "familyId": "ltx-2",
                 "name": "LTX-2.3 · distilled q4 (ltx-2-mlx)",
                 "provider": "Lightricks · dgrauet",
@@ -476,6 +488,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "dgrauet/ltx-2.5-mlx-q4",
+                "licence": licences.LTX_2_X_COMMUNITY,
                 "familyId": "ltx-2",
                 "name": "LTX-2.5 · distilled q4 (ltx-2-mlx)",
                 "provider": "Lightricks · dgrauet",
@@ -527,6 +540,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "prince-canuma/LTX-2.3-dev",
+                "licence": licences.LTX_2_COMMUNITY,
                 "familyId": "ltx-2",
                 "name": "LTX-2.3 · dev (MLX)",
                 "provider": "Lightricks · prince-canuma",
@@ -569,6 +583,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+                "licence": licences.APACHE_2_0,
                 "familyId": "wan-2-1",
                 "name": "Wan 2.1 T2V 1.3B",
                 "provider": "Alibaba",
@@ -599,6 +614,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "Wan-AI/Wan2.1-T2V-14B-Diffusers",
+                "licence": licences.APACHE_2_0,
                 "familyId": "wan-2-1",
                 "name": "Wan 2.1 T2V 14B",
                 "provider": "Alibaba",
@@ -624,6 +640,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "samuelchristlie/Wan2.1-T2V-1.3B-GGUF-q4km",
+                "licence": licences.APACHE_2_0,
                 "familyId": "wan-2-1",
                 "name": "Wan 2.1 T2V 1.3B · GGUF Q4_K_M",
                 "provider": "Alibaba · samuelchristlie",
@@ -649,6 +666,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "samuelchristlie/Wan2.1-T2V-1.3B-GGUF-q6k",
+                "licence": licences.APACHE_2_0,
                 "familyId": "wan-2-1",
                 "name": "Wan 2.1 T2V 1.3B · GGUF Q6_K",
                 "provider": "Alibaba · samuelchristlie",
@@ -673,6 +691,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "samuelchristlie/Wan2.1-T2V-1.3B-GGUF-q8",
+                "licence": licences.APACHE_2_0,
                 "familyId": "wan-2-1",
                 "name": "Wan 2.1 T2V 1.3B · GGUF Q8_0",
                 "provider": "Alibaba · samuelchristlie",
@@ -697,6 +716,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "city96/Wan2.1-T2V-14B-gguf-q4km",
+                "licence": licences.APACHE_2_0,
                 "familyId": "wan-2-1",
                 "name": "Wan 2.1 T2V 14B · GGUF Q4_K_M",
                 "provider": "Alibaba · city96",
@@ -723,6 +743,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "city96/Wan2.1-T2V-14B-gguf-q6k",
+                "licence": licences.APACHE_2_0,
                 "familyId": "wan-2-1",
                 "name": "Wan 2.1 T2V 14B · GGUF Q6_K",
                 "provider": "Alibaba · city96",
@@ -747,6 +768,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "city96/Wan2.1-T2V-14B-gguf-q8",
+                "licence": licences.APACHE_2_0,
                 "familyId": "wan-2-1",
                 "name": "Wan 2.1 T2V 14B · GGUF Q8_0",
                 "provider": "Alibaba · city96",
@@ -776,6 +798,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
             # users who want the un-distilled quality ceiling.
             {
                 "id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers-causvid",
+                "licence": licences.APACHE_2_0,
                 "familyId": "wan-2-1",
                 "name": "Wan 2.1 T2V 1.3B · CausVid (4-step)",
                 "provider": "Alibaba · CausVid (Kijai)",
@@ -809,6 +832,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "Wan-AI/Wan2.1-T2V-14B-Diffusers-causvid",
+                "licence": licences.APACHE_2_0,
                 "familyId": "wan-2-1",
                 "name": "Wan 2.1 T2V 14B · CausVid (4-step)",
                 "provider": "Alibaba · CausVid (Kijai)",
@@ -858,6 +882,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+                "licence": licences.APACHE_2_0,
                 "familyId": "wan-2-2",
                 "name": "Wan 2.2 TI2V 5B",
                 "provider": "Alibaba",
@@ -890,6 +915,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
+                "licence": licences.APACHE_2_0,
                 "familyId": "wan-2-2",
                 "name": "Wan 2.2 T2V A14B",
                 "provider": "Alibaba",
@@ -952,6 +978,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": KANDINSKY6_ID,
+                "licence": licences.MIT,
                 "familyId": "kandinsky-6",
                 "name": "Kandinsky 6.0 Lite · distilled",
                 "provider": "Kandinsky Lab",
@@ -1002,6 +1029,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "hunyuanvideo-community/HunyuanVideo",
+                "licence": licences.HUNYUAN_COMMUNITY,
                 "familyId": "hunyuan-video",
                 "name": "HunyuanVideo",
                 "provider": "Tencent",
@@ -1042,6 +1070,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "genmo/mochi-1-preview",
+                "licence": licences.APACHE_2_0,
                 "familyId": "mochi-1",
                 "name": "Mochi 1 Preview",
                 "provider": "Genmo",
@@ -1079,6 +1108,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "THUDM/CogVideoX-2b",
+                "licence": licences.APACHE_2_0,
                 "familyId": "cogvideox",
                 "name": "CogVideoX 2B",
                 "provider": "THUDM",
@@ -1111,6 +1141,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "THUDM/CogVideoX-5b",
+                "licence": licences.COGVIDEOX,
                 "familyId": "cogvideox",
                 "name": "CogVideoX 5B",
                 "provider": "THUDM",
@@ -1144,6 +1175,7 @@ VIDEO_MODEL_FAMILIES: list[dict[str, Any]] = [
             # repo id added.
             {
                 "id": "THUDM/CogVideoX1.5-5B",
+                "licence": licences.COGVIDEOX,
                 "familyId": "cogvideox",
                 "name": "CogVideoX 1.5 · 5B",
                 "provider": "THUDM",

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from backend_service.catalog import licences
 
 
 MODEL_FAMILIES: list[dict[str, Any]] = [
@@ -30,6 +31,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "google/gemma-4-E2B-it-qat-q4_0-gguf",
+                "licence": licences.GEMMA_4,
                 "name": "Gemma 4 E2B Official QAT GGUF",
                 "repo": "google/gemma-4-E2B-it-qat-q4_0-gguf",
                 "link": "https://huggingface.co/google/gemma-4-E2B-it-qat-q4_0-gguf",
@@ -46,6 +48,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "google/gemma-4-E2B-it",
+                "licence": licences.GEMMA_4,
                 "name": "Gemma 4 E2B (BF16)",
                 "repo": "google/gemma-4-E2B-it",
                 "link": "https://huggingface.co/google/gemma-4-E2B-it",
@@ -62,6 +65,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "google/gemma-4-E4B-it",
+                "licence": licences.GEMMA_4,
                 "name": "Gemma 4 E4B Instruct",
                 "repo": "google/gemma-4-E4B-it",
                 "link": "https://huggingface.co/google/gemma-4-E4B-it",
@@ -78,6 +82,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "google/gemma-4-12B-it",
+                "licence": licences.GEMMA_4,
                 "name": "Gemma 4 12B Instruct",
                 "repo": "google/gemma-4-12B-it",
                 "link": "https://huggingface.co/google/gemma-4-12B-it",
@@ -94,6 +99,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "mlx-community/gemma-4-26b-a4b-it-4bit",
+                "licence": licences.GEMMA_4,
                 "name": "Gemma 4 26B A4B MLX 4-bit",
                 "repo": "mlx-community/gemma-4-26b-a4b-it-4bit",
                 "link": "https://huggingface.co/mlx-community/gemma-4-26b-a4b-it-4bit",
@@ -114,6 +120,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "mlx-community/gemma-4-26b-a4b-it-5bit",
+                "licence": licences.GEMMA_4,
                 "name": "Gemma 4 26B A4B MLX 5-bit",
                 "repo": "mlx-community/gemma-4-26b-a4b-it-5bit",
                 "link": "https://huggingface.co/mlx-community/gemma-4-26b-a4b-it-5bit",
@@ -130,6 +137,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "google/gemma-4-26B-A4B-it",
+                "licence": licences.GEMMA_4,
                 "name": "Gemma 4 26B A4B Instruct",
                 "repo": "google/gemma-4-26B-A4B-it",
                 "link": "https://huggingface.co/google/gemma-4-26B-A4B-it",
@@ -146,6 +154,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "google/gemma-4-31B-it-qat-q4_0-gguf",
+                "licence": licences.GEMMA_4,
                 "name": "Gemma 4 31B Official QAT GGUF",
                 "repo": "google/gemma-4-31B-it-qat-q4_0-gguf",
                 "link": "https://huggingface.co/google/gemma-4-31B-it-qat-q4_0-gguf",
@@ -166,6 +175,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "unsloth/gemma-4-31B-it-GGUF",
+                "licence": licences.GEMMA_4,
                 "name": "Gemma 4 31B GGUF (Q4_K_M)",
                 "repo": "unsloth/gemma-4-31B-it-GGUF",
                 "link": "https://huggingface.co/unsloth/gemma-4-31B-it-GGUF",
@@ -183,6 +193,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "google/gemma-4-12B-it-qat-q4_0-gguf",
+                "licence": licences.GEMMA_4,
                 "name": "Gemma 4 12B Official QAT GGUF",
                 "repo": "google/gemma-4-12B-it-qat-q4_0-gguf",
                 "link": "https://huggingface.co/google/gemma-4-12B-it-qat-q4_0-gguf",
@@ -202,6 +213,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "google/gemma-4-26B-A4B-it-qat-q4_0-gguf",
+                "licence": licences.GEMMA_4,
                 "name": "Gemma 4 26B A4B Official QAT GGUF",
                 "repo": "google/gemma-4-26B-A4B-it-qat-q4_0-gguf",
                 "link": "https://huggingface.co/google/gemma-4-26B-A4B-it-qat-q4_0-gguf",
@@ -221,6 +233,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "unsloth/gemma-4-26B-A4B-it-GGUF",
+                "licence": licences.GEMMA_4,
                 "name": "Gemma 4 26B A4B GGUF (Q8_0)",
                 "repo": "unsloth/gemma-4-26B-A4B-it-GGUF",
                 "link": "https://huggingface.co/unsloth/gemma-4-26B-A4B-it-GGUF",
@@ -238,6 +251,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "mlx-community/gemma-4-31b-8bit",
+                "licence": licences.GEMMA_4,
                 "name": "Gemma 4 31B MLX 8-bit",
                 "repo": "mlx-community/gemma-4-31b-8bit",
                 "link": "https://huggingface.co/mlx-community/gemma-4-31b-8bit",
@@ -254,6 +268,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "google/gemma-4-31B-it",
+                "licence": licences.GEMMA_4,
                 "name": "Gemma 4 31B (BF16)",
                 "repo": "google/gemma-4-31B-it",
                 "link": "https://huggingface.co/google/gemma-4-31B-it",
@@ -310,6 +325,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "mlx-community/Qwen3.8-27B-4bit",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3.8 27B MLX 4-bit",
                 "repo": "mlx-community/Qwen3.8-27B-4bit",
                 "link": "https://huggingface.co/mlx-community/Qwen3.8-27B-4bit",
@@ -326,6 +342,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "Vontra/Qwen3.8-27B-MLX-4bit",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3.8 27B MLX 4-bit (TensorFold)",
                 "repo": "Vontra/Qwen3.8-27B-MLX-4bit",
                 "link": "https://huggingface.co/Vontra/Qwen3.8-27B-MLX-4bit",
@@ -347,6 +364,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "Youssofal/Qwen3.8-27B-MTPLX-Optimized-Speed",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3.8 27B MLX 4-bit (MTPLX)",
                 "repo": "Youssofal/Qwen3.8-27B-MTPLX-Optimized-Speed",
                 "link": "https://huggingface.co/Youssofal/Qwen3.8-27B-MTPLX-Optimized-Speed",
@@ -367,6 +385,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "Vontra/Qwen3.8-Flash-Next-MLX-4bit-MTP",
+                "licence": licences.QWEN_COMMUNITY,
                 "name": "Qwen3.8 Flash Next MLX 4-bit (TensorFold)",
                 "repo": "Vontra/Qwen3.8-Flash-Next-MLX-4bit-MTP",
                 "link": "https://huggingface.co/Vontra/Qwen3.8-Flash-Next-MLX-4bit-MTP",
@@ -388,6 +407,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "unsloth/Qwen3.8-Flash-Next-GGUF-ud-q4-k-xl",
+                "licence": licences.QWEN_COMMUNITY,
                 "name": "Qwen3.8 Flash Next GGUF UD-Q4_K_XL",
                 "repo": "unsloth/Qwen3.8-Flash-Next-GGUF",
                 "link": "https://huggingface.co/unsloth/Qwen3.8-Flash-Next-GGUF",
@@ -419,6 +439,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 # No measuredGpuGb on purpose: before download it would replace the "Fits with offload" estimate
                 # (GPU + RAM) with a GPU-only figure that is "tight" on 24 GB, whatever the RAM.
                 "id": "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF-q2-0",
+                "licence": licences.QWEN_COMMUNITY,
                 "name": "Qwen3.8 Flash Next GGUF Q2_0 (GSQ-RCO)",
                 "repo": "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF",
                 "link": "https://huggingface.co/ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF",
@@ -445,6 +466,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "mlx-community/Qwen3.8-27B-8bit",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3.8 27B MLX 8-bit",
                 "repo": "mlx-community/Qwen3.8-27B-8bit",
                 "link": "https://huggingface.co/mlx-community/Qwen3.8-27B-8bit",
@@ -461,6 +483,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "lmstudio-community/Qwen3.8-27B-GGUF",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3.8 27B GGUF",
                 "repo": "lmstudio-community/Qwen3.8-27B-GGUF",
                 "link": "https://huggingface.co/lmstudio-community/Qwen3.8-27B-GGUF",
@@ -478,6 +501,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "ggml-org/Qwen3.8-27B-GGUF",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3.8 27B GGUF Q8_0 (ggml-org)",
                 "repo": "ggml-org/Qwen3.8-27B-GGUF",
                 "link": "https://huggingface.co/ggml-org/Qwen3.8-27B-GGUF",
@@ -495,6 +519,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "Qwen/Qwen3.8-27B",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3.8 27B (BF16)",
                 "repo": "Qwen/Qwen3.8-27B",
                 "link": "https://huggingface.co/Qwen/Qwen3.8-27B",
@@ -511,6 +536,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "Qwen/Qwen3.8-27B-FP8",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3.8 27B FP8",
                 "repo": "Qwen/Qwen3.8-27B-FP8",
                 "link": "https://huggingface.co/Qwen/Qwen3.8-27B-FP8",
@@ -566,6 +592,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "prism-ml/Ternary-Bonsai-27B-mlx-2bit",
+                "licence": licences.APACHE_2_0,
                 "name": "Ternary Bonsai 27B MLX",
                 "repo": "prism-ml/Ternary-Bonsai-27B-mlx-2bit",
                 "link": "https://huggingface.co/prism-ml/Ternary-Bonsai-27B-mlx-2bit",
@@ -582,6 +609,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "prism-ml/Ternary-Bonsai-2-27B-mlx-2bit",
+                "licence": licences.APACHE_2_0,
                 "name": "Ternary Bonsai 2 27B MLX (TensorFold)",
                 "repo": "prism-ml/Ternary-Bonsai-2-27B-mlx-2bit",
                 "link": "https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-mlx-2bit",
@@ -602,6 +630,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "lmstudio-community/Bonsai-27B-GGUF",
+                "licence": licences.APACHE_2_0,
                 "name": "Bonsai 27B GGUF (1-bit)",
                 "repo": "lmstudio-community/Bonsai-27B-GGUF",
                 "link": "https://huggingface.co/lmstudio-community/Bonsai-27B-GGUF",
@@ -620,6 +649,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             {
                 # FU-269: the card says stock llama.cpp reads Q2_0 from b11556; loaded and decoded on b12441 CUDA.
                 "id": "prism-ml/Ternary-Bonsai-2-27B-gguf",
+                "licence": licences.APACHE_2_0,
                 "name": "Ternary Bonsai 2 27B GGUF (Q2_0, 24 GB card)",
                 "repo": "prism-ml/Ternary-Bonsai-2-27B-gguf",
                 "link": "https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf",
@@ -644,6 +674,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "prism-ml/Ternary-Bonsai-8B-mlx-2bit",
+                "licence": licences.APACHE_2_0,
                 "name": "Ternary Bonsai 8B MLX",
                 "repo": "prism-ml/Ternary-Bonsai-8B-mlx-2bit",
                 "link": "https://huggingface.co/prism-ml/Ternary-Bonsai-8B-mlx-2bit",
@@ -660,6 +691,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "prism-ml/Ternary-Bonsai-4B-mlx-2bit",
+                "licence": licences.APACHE_2_0,
                 "name": "Ternary Bonsai 4B MLX",
                 "repo": "prism-ml/Ternary-Bonsai-4B-mlx-2bit",
                 "link": "https://huggingface.co/prism-ml/Ternary-Bonsai-4B-mlx-2bit",
@@ -676,6 +708,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "prism-ml/Bonsai-8B-gguf",
+                "licence": licences.APACHE_2_0,
                 "name": "Bonsai 8B GGUF (1-bit)",
                 "repo": "prism-ml/Bonsai-8B-gguf",
                 "link": "https://huggingface.co/prism-ml/Bonsai-8B-gguf",
@@ -693,6 +726,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "prism-ml/Bonsai-4B-gguf",
+                "licence": licences.APACHE_2_0,
                 "name": "Bonsai 4B GGUF (1-bit)",
                 "repo": "prism-ml/Bonsai-4B-gguf",
                 "link": "https://huggingface.co/prism-ml/Bonsai-4B-gguf",
@@ -710,6 +744,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "prism-ml/Bonsai-1.7B-gguf",
+                "licence": licences.APACHE_2_0,
                 "name": "Bonsai 1.7B GGUF (1-bit)",
                 "repo": "prism-ml/Bonsai-1.7B-gguf",
                 "link": "https://huggingface.co/prism-ml/Bonsai-1.7B-gguf",
@@ -766,6 +801,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "Qwen/Qwen3.6-27B",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3.6 27B",
                 "repo": "Qwen/Qwen3.6-27B",
                 "link": "https://huggingface.co/Qwen/Qwen3.6-27B",
@@ -783,6 +819,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "Qwen/Qwen3.6-27B-FP8",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3.6 27B FP8",
                 "repo": "Qwen/Qwen3.6-27B-FP8",
                 "link": "https://huggingface.co/Qwen/Qwen3.6-27B-FP8",
@@ -800,6 +837,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "Qwen/Qwen3.6-35B-A3B",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3.6 35B A3B",
                 "repo": "Qwen/Qwen3.6-35B-A3B",
                 "link": "https://huggingface.co/Qwen/Qwen3.6-35B-A3B",
@@ -816,6 +854,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "mlx-community/Qwen3.6-27B-4bit",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3.6 27B MLX 4-bit",
                 "repo": "mlx-community/Qwen3.6-27B-4bit",
                 "link": "https://huggingface.co/mlx-community/Qwen3.6-27B-4bit",
@@ -833,6 +872,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "mlx-community/Qwen3.6-35B-A3B-4bit",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3.6 35B A3B MLX 4-bit",
                 "repo": "mlx-community/Qwen3.6-35B-A3B-4bit",
                 "link": "https://huggingface.co/mlx-community/Qwen3.6-35B-A3B-4bit",
@@ -849,6 +889,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "lmstudio-community/Qwen3.6-27B-GGUF",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3.6 27B GGUF",
                 "repo": "lmstudio-community/Qwen3.6-27B-GGUF",
                 "link": "https://huggingface.co/lmstudio-community/Qwen3.6-27B-GGUF",
@@ -866,6 +907,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "lmstudio-community/Qwen3.6-35B-A3B-GGUF",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3.6 35B A3B GGUF",
                 "repo": "lmstudio-community/Qwen3.6-35B-A3B-GGUF",
                 "link": "https://huggingface.co/lmstudio-community/Qwen3.6-35B-A3B-GGUF",
@@ -888,6 +930,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 # advertises --spec-type. Q8_0 is the recommended quant per
                 # the PR (BF16 also shipped but ~2x disk + RAM).
                 "id": "ggml-org/Qwen3.6-27B-MTP-GGUF",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3.6 27B MTP GGUF",
                 "repo": "ggml-org/Qwen3.6-27B-MTP-GGUF",
                 "link": "https://huggingface.co/ggml-org/Qwen3.6-27B-MTP-GGUF",
@@ -905,6 +948,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "ggml-org/Qwen3.6-35B-A3B-MTP-GGUF",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3.6 35B A3B MTP GGUF",
                 "repo": "ggml-org/Qwen3.6-35B-A3B-MTP-GGUF",
                 "link": "https://huggingface.co/ggml-org/Qwen3.6-35B-A3B-MTP-GGUF",
@@ -926,6 +970,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
                 # baked-in MTP heads — for users on llama.cpp builds that
                 # predate PR #22673 or who don't want speculative decoding.
                 "id": "ggml-org/Qwen3.6-27B-GGUF",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3.6 27B GGUF (ggml-org Q8_0)",
                 "repo": "ggml-org/Qwen3.6-27B-GGUF",
                 "link": "https://huggingface.co/ggml-org/Qwen3.6-27B-GGUF",
@@ -943,6 +988,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "ggml-org/Qwen3.6-35B-A3B-GGUF",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3.6 35B A3B GGUF (ggml-org Q4_K_M, 24 GB card)",
                 "repo": "ggml-org/Qwen3.6-35B-A3B-GGUF",
                 "link": "https://huggingface.co/ggml-org/Qwen3.6-35B-A3B-GGUF",
@@ -967,6 +1013,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3.6 35B A3B MTP GGUF (UD-IQ4_XS, 24 GB card)",
                 "repo": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF",
                 "link": "https://huggingface.co/unsloth/Qwen3.6-35B-A3B-MTP-GGUF",
@@ -986,6 +1033,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "TensorFold/Qwen3.6-35B-A3B-MLX-4bit-MTP",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3.6 35B-A3B MLX 4-bit MTP (TensorFold)",
                 "repo": "TensorFold/Qwen3.6-35B-A3B-MLX-4bit-MTP",
                 "link": "https://huggingface.co/TensorFold/Qwen3.6-35B-A3B-MLX-4bit-MTP",
@@ -1037,6 +1085,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "Qwen/Qwen3.5-4B",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3.5 4B",
                 "repo": "Qwen/Qwen3.5-4B",
                 "link": "https://huggingface.co/Qwen/Qwen3.5-4B",
@@ -1052,6 +1101,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "Qwen/Qwen3.5-9B",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3.5 9B",
                 "repo": "Qwen/Qwen3.5-9B",
                 "link": "https://huggingface.co/Qwen/Qwen3.5-9B",
@@ -1067,6 +1117,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "mlx-community/Qwen3.5-9B-4bit",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3.5 9B MLX 4-bit",
                 "repo": "mlx-community/Qwen3.5-9B-4bit",
                 "link": "https://huggingface.co/mlx-community/Qwen3.5-9B-4bit",
@@ -1082,6 +1133,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "lmstudio-community/Qwen3.5-9B-GGUF",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3.5 9B GGUF",
                 "repo": "lmstudio-community/Qwen3.5-9B-GGUF",
                 "link": "https://huggingface.co/lmstudio-community/Qwen3.5-9B-GGUF",
@@ -1098,6 +1150,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "Qwen/Qwen3.5-35B-A3B-FP8",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3.5 35B A3B",
                 "repo": "Qwen/Qwen3.5-35B-A3B-FP8",
                 "link": "https://huggingface.co/Qwen/Qwen3.5-35B-A3B-FP8",
@@ -1137,6 +1190,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF",
+                "licence": licences.NVIDIA_NEMOTRON_OPEN,
                 "name": "Nemotron 3 Nano 4B GGUF",
                 "repo": "nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF",
                 "link": "https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF",
@@ -1152,6 +1206,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16",
+                "licence": licences.NVIDIA_NEMOTRON_OPEN,
                 "name": "Nemotron 3 Nano 4B BF16",
                 "repo": "nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16",
                 "link": "https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16",
@@ -1167,6 +1222,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8",
+                "licence": licences.NVIDIA_NEMOTRON_OPEN,
                 "name": "Nemotron 3 Nano 30B A3B FP8",
                 "repo": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8",
                 "link": "https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-FP8",
@@ -1182,6 +1238,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "lmstudio-community/NVIDIA-Nemotron-3-Nano-30B-A3B-GGUF",
+                "licence": licences.NVIDIA_NEMOTRON_OPEN,
                 "name": "Nemotron 3 Nano 30B A3B GGUF",
                 "repo": "lmstudio-community/NVIDIA-Nemotron-3-Nano-30B-A3B-GGUF",
                 "link": "https://huggingface.co/lmstudio-community/NVIDIA-Nemotron-3-Nano-30B-A3B-GGUF",
@@ -1226,6 +1283,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "mlx-community/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-4bit",
+                "licence": licences.OPENMDW_1_1,
                 "name": "Nemotron 3.5 Lightning MLX 4-bit",
                 "repo": "mlx-community/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-4bit",
                 "link": "https://huggingface.co/mlx-community/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-4bit",
@@ -1242,6 +1300,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "Vontra/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-MLX-4bit",
+                "licence": licences.OPENMDW_1_1,
                 "name": "Nemotron 3.5 Lightning MLX 4-bit (MTP head)",
                 "repo": "Vontra/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-MLX-4bit",
                 "link": "https://huggingface.co/Vontra/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-MLX-4bit",
@@ -1262,6 +1321,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "mlx-community/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-8bit",
+                "licence": licences.OPENMDW_1_1,
                 "name": "Nemotron 3.5 Lightning MLX 8-bit",
                 "repo": "mlx-community/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-8bit",
                 "link": "https://huggingface.co/mlx-community/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-8bit",
@@ -1278,6 +1338,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "lmstudio-community/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF",
+                "licence": licences.OPENMDW_1_1,
                 "name": "Nemotron 3.5 Lightning GGUF",
                 "repo": "lmstudio-community/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF",
                 "link": "https://huggingface.co/lmstudio-community/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF",
@@ -1296,6 +1357,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "ggml-org/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF",
+                "licence": licences.OPENMDW_1_1,
                 "name": "Nemotron 3.5 Lightning GGUF Q8_0 (ggml-org)",
                 "repo": "ggml-org/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF",
                 "link": "https://huggingface.co/ggml-org/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF",
@@ -1314,6 +1376,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "bartowski/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF",
+                "licence": licences.OPENMDW_1_1,
                 "name": "Nemotron 3.5 Lightning GGUF Q4_0 (24 GB card)",
                 "repo": "bartowski/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF",
                 "link": "https://huggingface.co/bartowski/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF",
@@ -1334,6 +1397,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16",
+                "licence": licences.OPENMDW_1_1,
                 "name": "Nemotron 3.5 Lightning (BF16)",
                 "repo": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16",
                 "link": "https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16",
@@ -1374,6 +1438,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "openbmb/MiniCPM5-2B-MLX",
+                "licence": licences.APACHE_2_0,
                 "name": "MiniCPM5 2B MLX 4-bit",
                 "repo": "openbmb/MiniCPM5-2B-MLX",
                 "link": "https://huggingface.co/openbmb/MiniCPM5-2B-MLX",
@@ -1390,6 +1455,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "openbmb/MiniCPM5-2B-GGUF",
+                "licence": licences.APACHE_2_0,
                 "name": "MiniCPM5 2B GGUF",
                 "repo": "openbmb/MiniCPM5-2B-GGUF",
                 "link": "https://huggingface.co/openbmb/MiniCPM5-2B-GGUF",
@@ -1407,6 +1473,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "openbmb/MiniCPM5-2B",
+                "licence": licences.APACHE_2_0,
                 "name": "MiniCPM5 2B (BF16)",
                 "repo": "openbmb/MiniCPM5-2B",
                 "link": "https://huggingface.co/openbmb/MiniCPM5-2B",
@@ -1450,6 +1517,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "velaia/Kolibri-1-MLX-4bit",
+                "licence": licences.APACHE_2_0,
                 "name": "Kolibri 1 MLX 4-bit",
                 "repo": "velaia/Kolibri-1-MLX-4bit",
                 "link": "https://huggingface.co/velaia/Kolibri-1-MLX-4bit",
@@ -1471,6 +1539,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "velaia/Kolibri-1-MLX-3bit",
+                "licence": licences.APACHE_2_0,
                 "name": "Kolibri 1 MLX 3-bit",
                 "repo": "velaia/Kolibri-1-MLX-3bit",
                 "link": "https://huggingface.co/velaia/Kolibri-1-MLX-3bit",
@@ -1492,6 +1561,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "velaia/Kolibri-1-MLX-2bit",
+                "licence": licences.APACHE_2_0,
                 "name": "Kolibri 1 MLX 2-bit",
                 "repo": "velaia/Kolibri-1-MLX-2bit",
                 "link": "https://huggingface.co/velaia/Kolibri-1-MLX-2bit",
@@ -1509,6 +1579,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "bartowski/Kolibri-1-GGUF-q3km",
+                "licence": licences.APACHE_2_0,
                 "name": "Kolibri 1 GGUF Q3_K_M",
                 "repo": "bartowski/Kolibri-1-GGUF",
                 "link": "https://huggingface.co/bartowski/Kolibri-1-GGUF",
@@ -1559,6 +1630,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "RecursiveSI/flint-int4-gguf",
+                "licence": licences.APACHE_2_0,
                 "name": "Flint INT4 GGUF (official)",
                 "repo": "RecursiveSI/flint-int4-gguf",
                 "link": "https://huggingface.co/RecursiveSI/flint-int4-gguf",
@@ -1579,6 +1651,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "bartowski/RecursiveSI_flint-GGUF-q4km",
+                "licence": licences.APACHE_2_0,
                 "name": "Flint GGUF Q4_K_M",
                 "repo": "bartowski/RecursiveSI_flint-GGUF",
                 "link": "https://huggingface.co/bartowski/RecursiveSI_flint-GGUF",
@@ -1625,6 +1698,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "mistralai/Devstral-Small-2507_gguf",
+                "licence": licences.APACHE_2_0,
                 "name": "Devstral Small 2507 GGUF",
                 "repo": "mistralai/Devstral-Small-2507_gguf",
                 "link": "https://huggingface.co/mistralai/Devstral-Small-2507_gguf",
@@ -1642,6 +1716,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "mistralai/Devstral-Small-2507",
+                "licence": licences.APACHE_2_0,
                 "name": "Devstral Small 2507 BF16",
                 "repo": "mistralai/Devstral-Small-2507",
                 "link": "https://huggingface.co/mistralai/Devstral-Small-2507",
@@ -1682,6 +1757,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "Qwen/Qwen3-Coder-Next",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3 Coder Next BF16",
                 "repo": "Qwen/Qwen3-Coder-Next",
                 "link": "https://huggingface.co/Qwen/Qwen3-Coder-Next",
@@ -1697,6 +1773,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "Qwen/Qwen3-Coder-Next-FP8",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3 Coder Next FP8",
                 "repo": "Qwen/Qwen3-Coder-Next-FP8",
                 "link": "https://huggingface.co/Qwen/Qwen3-Coder-Next-FP8",
@@ -1725,6 +1802,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             # closest-quant-and-format match.
             {
                 "id": "lmstudio-community/Qwen3-Coder-Next-MLX-4bit",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen3 Coder Next MLX 4-bit",
                 "repo": "lmstudio-community/Qwen3-Coder-Next-MLX-4bit",
                 "link": "https://huggingface.co/lmstudio-community/Qwen3-Coder-Next-MLX-4bit",
@@ -1767,6 +1845,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "Qwen/Qwen2.5-3B-Instruct",
+                "licence": licences.QWEN_RESEARCH,
                 "name": "Qwen 2.5 3B Instruct",
                 "repo": "Qwen/Qwen2.5-3B-Instruct",
                 "link": "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct",
@@ -1783,6 +1862,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "Qwen/Qwen2.5-7B-Instruct",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen 2.5 7B Instruct",
                 "repo": "Qwen/Qwen2.5-7B-Instruct",
                 "link": "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct",
@@ -1799,6 +1879,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "Qwen/Qwen2.5-Coder-7B-Instruct",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen 2.5 Coder 7B",
                 "repo": "Qwen/Qwen2.5-Coder-7B-Instruct",
                 "link": "https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct",
@@ -1815,6 +1896,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "Qwen/Qwen2.5-32B-Instruct",
+                "licence": licences.APACHE_2_0,
                 "name": "Qwen 2.5 32B Instruct",
                 "repo": "Qwen/Qwen2.5-32B-Instruct",
                 "link": "https://huggingface.co/Qwen/Qwen2.5-32B-Instruct",
@@ -1854,6 +1936,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "meta-llama/Llama-3.3-70B-Instruct",
+                "licence": licences.as_gated(licences.LLAMA_3_3),
                 "name": "Llama 3.3 70B Instruct",
                 "repo": "meta-llama/Llama-3.3-70B-Instruct",
                 "link": "https://huggingface.co/meta-llama/Llama-3.3-70B-Instruct",
@@ -1870,6 +1953,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "mlx-community/Llama-3.3-70B-Instruct-4bit",
+                "licence": licences.LLAMA_3_3,
                 "name": "Llama 3.3 70B MLX 4-bit",
                 "repo": "mlx-community/Llama-3.3-70B-Instruct-4bit",
                 "link": "https://huggingface.co/mlx-community/Llama-3.3-70B-Instruct-4bit",
@@ -1909,6 +1993,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "microsoft/phi-4",
+                "licence": licences.MIT,
                 "name": "Phi 4 14B",
                 "repo": "microsoft/phi-4",
                 "link": "https://huggingface.co/microsoft/phi-4",
@@ -1925,6 +2010,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "mlx-community/phi-4-4bit",
+                "licence": licences.MIT,
                 "name": "Phi 4 14B MLX 4-bit",
                 "repo": "mlx-community/phi-4-4bit",
                 "link": "https://huggingface.co/mlx-community/phi-4-4bit",
@@ -1964,6 +2050,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "mistralai/Mistral-Nemo-Instruct-2407",
+                "licence": licences.APACHE_2_0,
                 "name": "Mistral Nemo 12B Instruct",
                 "repo": "mistralai/Mistral-Nemo-Instruct-2407",
                 "link": "https://huggingface.co/mistralai/Mistral-Nemo-Instruct-2407",
@@ -2009,6 +2096,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "mlx-community/DeepSeek-V4-Flash-4bit",
+                "licence": licences.MIT,
                 "name": "DeepSeek V4 Flash MLX 4-bit",
                 "repo": "mlx-community/DeepSeek-V4-Flash-4bit",
                 "link": "https://huggingface.co/mlx-community/DeepSeek-V4-Flash-4bit",
@@ -2059,6 +2147,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "unsloth/GLM-5.1-GGUF",
+                "licence": licences.MIT,
                 "name": "GLM-5.1 GGUF",
                 "repo": "unsloth/GLM-5.1-GGUF",
                 "link": "https://huggingface.co/unsloth/GLM-5.1-GGUF",
@@ -2076,6 +2165,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "mlx-community/GLM-5.1-MXFP4-Q8",
+                "licence": licences.MIT,
                 "name": "GLM-5.1 MLX MXFP4",
                 "repo": "mlx-community/GLM-5.1-MXFP4-Q8",
                 "link": "https://huggingface.co/mlx-community/GLM-5.1-MXFP4-Q8",
@@ -2092,6 +2182,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "zai-org/GLM-5.1",
+                "licence": licences.MIT,
                 "name": "GLM-5.1 (BF16)",
                 "repo": "zai-org/GLM-5.1",
                 "link": "https://huggingface.co/zai-org/GLM-5.1",
@@ -2108,6 +2199,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "zai-org/GLM-5",
+                "licence": licences.MIT,
                 "name": "GLM-5 (BF16)",
                 "repo": "zai-org/GLM-5",
                 "link": "https://huggingface.co/zai-org/GLM-5",
@@ -2158,6 +2250,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "Vontra/GLM-5.3-Flash-MLX-4bit-MTP",
+                "licence": licences.MIT,
                 "name": "GLM-5.3-Flash MLX 4-bit (TensorFold)",
                 "repo": "Vontra/GLM-5.3-Flash-MLX-4bit-MTP",
                 "link": "https://huggingface.co/Vontra/GLM-5.3-Flash-MLX-4bit-MTP",
@@ -2208,6 +2301,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "mlx-community/MiniMax-M2.7-4bit-mxfp4",
+                "licence": licences.MINIMAX_M2_7,
                 "name": "MiniMax M2.7 MLX MXFP4",
                 "repo": "mlx-community/MiniMax-M2.7-4bit-mxfp4",
                 "link": "https://huggingface.co/mlx-community/MiniMax-M2.7-4bit-mxfp4",
@@ -2224,6 +2318,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "unsloth/MiniMax-M2.7-GGUF",
+                "licence": licences.MINIMAX_M2_7,
                 "name": "MiniMax M2.7 GGUF",
                 "repo": "unsloth/MiniMax-M2.7-GGUF",
                 "link": "https://huggingface.co/unsloth/MiniMax-M2.7-GGUF",
@@ -2241,6 +2336,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "MiniMaxAI/MiniMax-M2.7",
+                "licence": licences.MINIMAX_M2_7,
                 "name": "MiniMax M2.7 (BF16)",
                 "repo": "MiniMaxAI/MiniMax-M2.7",
                 "link": "https://huggingface.co/MiniMaxAI/MiniMax-M2.7",
@@ -2287,6 +2383,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "deepreinforce-ai/Ornith-1.0-9B-GGUF",
+                "licence": licences.MIT,
                 "name": "Ornith 1.0 9B GGUF",
                 "repo": "deepreinforce-ai/Ornith-1.0-9B-GGUF",
                 "link": "https://huggingface.co/deepreinforce-ai/Ornith-1.0-9B-GGUF",
@@ -2304,6 +2401,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "deepreinforce-ai/Ornith-1.0-9B",
+                "licence": licences.MIT,
                 "name": "Ornith 1.0 9B (BF16)",
                 "repo": "deepreinforce-ai/Ornith-1.0-9B",
                 "link": "https://huggingface.co/deepreinforce-ai/Ornith-1.0-9B",
@@ -2320,6 +2418,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "deepreinforce-ai/Ornith-1.0-35B-GGUF",
+                "licence": licences.MIT,
                 "name": "Ornith 1.0 35B GGUF",
                 "repo": "deepreinforce-ai/Ornith-1.0-35B-GGUF",
                 "link": "https://huggingface.co/deepreinforce-ai/Ornith-1.0-35B-GGUF",
@@ -2337,6 +2436,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "deepreinforce-ai/Ornith-1.0-35B-FP8",
+                "licence": licences.MIT,
                 "name": "Ornith 1.0 35B (FP8)",
                 "repo": "deepreinforce-ai/Ornith-1.0-35B-FP8",
                 "link": "https://huggingface.co/deepreinforce-ai/Ornith-1.0-35B-FP8",
@@ -2353,6 +2453,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "deepreinforce-ai/Ornith-1.0-397B-FP8",
+                "licence": licences.MIT,
                 "name": "Ornith 1.0 397B (FP8)",
                 "repo": "deepreinforce-ai/Ornith-1.0-397B-FP8",
                 "link": "https://huggingface.co/deepreinforce-ai/Ornith-1.0-397B-FP8",
@@ -2372,6 +2473,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             # ornith-ai (the 1.0 ids above still 307-redirect).
             {
                 "id": "ornith-ai/Ornith-1.5-9B-MLX-4bit",
+                "licence": licences.MIT,
                 "name": "Ornith 1.5 9B MLX 4-bit",
                 "repo": "ornith-ai/Ornith-1.5-9B-MLX-4bit",
                 "link": "https://huggingface.co/ornith-ai/Ornith-1.5-9B-MLX-4bit",
@@ -2388,6 +2490,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "ornith-ai/Ornith-1.5-35B-A3B-MLX-4bit",
+                "licence": licences.MIT,
                 "name": "Ornith 1.5 35B A3B MLX 4-bit",
                 "repo": "ornith-ai/Ornith-1.5-35B-A3B-MLX-4bit",
                 "link": "https://huggingface.co/ornith-ai/Ornith-1.5-35B-A3B-MLX-4bit",
@@ -2404,6 +2507,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "ornith-ai/Ornith-1.5-9B-GGUF",
+                "licence": licences.MIT,
                 "name": "Ornith 1.5 9B GGUF",
                 "repo": "ornith-ai/Ornith-1.5-9B-GGUF",
                 "link": "https://huggingface.co/ornith-ai/Ornith-1.5-9B-GGUF",
@@ -2421,6 +2525,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "ornith-ai/Ornith-1.5-35B-A3B-GGUF",
+                "licence": licences.MIT,
                 "name": "Ornith 1.5 35B A3B GGUF",
                 "repo": "ornith-ai/Ornith-1.5-35B-A3B-GGUF",
                 "link": "https://huggingface.co/ornith-ai/Ornith-1.5-35B-A3B-GGUF",
@@ -2468,6 +2573,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "mlx-community/Kimi-K2.6-mlx-DQ3_K_M-q8",
+                "licence": licences.KIMI_MODIFIED_MIT,
                 "name": "Kimi K2.6 MLX DQ3",
                 "repo": "mlx-community/Kimi-K2.6-mlx-DQ3_K_M-q8",
                 "link": "https://huggingface.co/mlx-community/Kimi-K2.6-mlx-DQ3_K_M-q8",
@@ -2484,6 +2590,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "unsloth/Kimi-K2.6-GGUF",
+                "licence": licences.KIMI_MODIFIED_MIT,
                 "name": "Kimi K2.6 GGUF",
                 "repo": "unsloth/Kimi-K2.6-GGUF",
                 "link": "https://huggingface.co/unsloth/Kimi-K2.6-GGUF",
@@ -2501,6 +2608,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "moonshotai/Kimi-K2.6",
+                "licence": licences.KIMI_MODIFIED_MIT,
                 "name": "Kimi K2.6 (BF16)",
                 "repo": "moonshotai/Kimi-K2.6",
                 "link": "https://huggingface.co/moonshotai/Kimi-K2.6",
@@ -2545,6 +2653,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "mlx-community/Llama-4-Scout-17B-16E-Instruct-4bit",
+                "licence": licences.LLAMA_4,
                 "name": "Llama 4 Scout MLX 4-bit",
                 "repo": "mlx-community/Llama-4-Scout-17B-16E-Instruct-4bit",
                 "link": "https://huggingface.co/mlx-community/Llama-4-Scout-17B-16E-Instruct-4bit",
@@ -2561,6 +2670,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "unsloth/Llama-4-Scout-17B-16E-Instruct-GGUF",
+                "licence": licences.LLAMA_4,
                 "name": "Llama 4 Scout GGUF",
                 "repo": "unsloth/Llama-4-Scout-17B-16E-Instruct-GGUF",
                 "link": "https://huggingface.co/unsloth/Llama-4-Scout-17B-16E-Instruct-GGUF",
@@ -2578,6 +2688,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "meta-llama/Llama-4-Scout-17B-16E-Instruct",
+                "licence": licences.as_gated(licences.LLAMA_4),
                 "name": "Llama 4 Scout (BF16)",
                 "repo": "meta-llama/Llama-4-Scout-17B-16E-Instruct",
                 "link": "https://huggingface.co/meta-llama/Llama-4-Scout-17B-16E-Instruct",
@@ -2622,6 +2733,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "mlx-community/MiniMax-M3-4bit",
+                "licence": licences.MINIMAX_M3,
                 "name": "MiniMax M3 MLX 4-bit",
                 "repo": "mlx-community/MiniMax-M3-4bit",
                 "link": "https://huggingface.co/mlx-community/MiniMax-M3-4bit",
@@ -2638,6 +2750,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "unsloth/MiniMax-M3-GGUF",
+                "licence": licences.MINIMAX_M3,
                 "name": "MiniMax M3 GGUF",
                 "repo": "unsloth/MiniMax-M3-GGUF",
                 "link": "https://huggingface.co/unsloth/MiniMax-M3-GGUF",
@@ -2655,6 +2768,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "MiniMaxAI/MiniMax-M3",
+                "licence": licences.MINIMAX_M3,
                 "name": "MiniMax M3 (BF16)",
                 "repo": "MiniMaxAI/MiniMax-M3",
                 "link": "https://huggingface.co/MiniMaxAI/MiniMax-M3",
@@ -2699,6 +2813,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "unsloth/Mistral-Large-3-675B-Instruct-2512-GGUF",
+                "licence": licences.APACHE_2_0,
                 "name": "Mistral Large 3 GGUF",
                 "repo": "unsloth/Mistral-Large-3-675B-Instruct-2512-GGUF",
                 "link": "https://huggingface.co/unsloth/Mistral-Large-3-675B-Instruct-2512-GGUF",
@@ -2716,6 +2831,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "mistralai/Mistral-Large-3-675B-Instruct-2512",
+                "licence": licences.APACHE_2_0,
                 "name": "Mistral Large 3 (BF16)",
                 "repo": "mistralai/Mistral-Large-3-675B-Instruct-2512",
                 "link": "https://huggingface.co/mistralai/Mistral-Large-3-675B-Instruct-2512",
@@ -2763,6 +2879,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "LiquidAI/LFM2.5-24B-A2B-MLX-4bit",
+                "licence": licences.LFM_OPEN,
                 "name": "LFM2.5 24B-A2B MLX 4-bit",
                 "repo": "LiquidAI/LFM2.5-24B-A2B-MLX-4bit",
                 "link": "https://huggingface.co/LiquidAI/LFM2.5-24B-A2B-MLX-4bit",
@@ -2779,6 +2896,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "LiquidAI/LFM2.5-24B-A2B-MLX-8bit",
+                "licence": licences.LFM_OPEN,
                 "name": "LFM2.5 24B-A2B MLX 8-bit",
                 "repo": "LiquidAI/LFM2.5-24B-A2B-MLX-8bit",
                 "link": "https://huggingface.co/LiquidAI/LFM2.5-24B-A2B-MLX-8bit",
@@ -2795,6 +2913,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "LiquidAI/LFM2.5-24B-A2B-MLX-6bit",
+                "licence": licences.LFM_OPEN,
                 "name": "LFM2.5 24B-A2B MLX 6-bit",
                 "repo": "LiquidAI/LFM2.5-24B-A2B-MLX-6bit",
                 "link": "https://huggingface.co/LiquidAI/LFM2.5-24B-A2B-MLX-6bit",
@@ -2811,6 +2930,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "LiquidAI/LFM2.5-24B-A2B-GGUF-q4km",
+                "licence": licences.LFM_OPEN,
                 "name": "LFM2.5 24B-A2B GGUF Q4_K_M",
                 "repo": "LiquidAI/LFM2.5-24B-A2B-GGUF",
                 "link": "https://huggingface.co/LiquidAI/LFM2.5-24B-A2B-GGUF",
@@ -2855,6 +2975,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "LiquidAI/LFM3-1.7B-MLX-4bit",
+                "licence": licences.with_url(licences.LFM_OPEN, "https://huggingface.co/LiquidAI/LFM3-1.7B-GGUF"),
                 "name": "LFM3 1.7B MLX 4-bit",
                 "repo": "LiquidAI/LFM3-1.7B-MLX-4bit",
                 "link": "https://huggingface.co/LiquidAI/LFM3-1.7B-MLX-4bit",
@@ -2871,6 +2992,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "LiquidAI/LFM3-1.7B-MLX-6bit",
+                "licence": licences.with_url(licences.LFM_OPEN, "https://huggingface.co/LiquidAI/LFM3-1.7B-GGUF"),
                 "name": "LFM3 1.7B MLX 6-bit",
                 "repo": "LiquidAI/LFM3-1.7B-MLX-6bit",
                 "link": "https://huggingface.co/LiquidAI/LFM3-1.7B-MLX-6bit",
@@ -2887,6 +3009,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "LiquidAI/LFM3-1.7B-MLX-8bit",
+                "licence": licences.with_url(licences.LFM_OPEN, "https://huggingface.co/LiquidAI/LFM3-1.7B-GGUF"),
                 "name": "LFM3 1.7B MLX 8-bit",
                 "repo": "LiquidAI/LFM3-1.7B-MLX-8bit",
                 "link": "https://huggingface.co/LiquidAI/LFM3-1.7B-MLX-8bit",
@@ -2903,6 +3026,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "LiquidAI/LFM3-1.7B-GGUF-q4km",
+                "licence": licences.with_url(licences.LFM_OPEN, "https://huggingface.co/LiquidAI/LFM3-1.7B-GGUF"),
                 "name": "LFM3 1.7B GGUF Q4_K_M",
                 "repo": "LiquidAI/LFM3-1.7B-GGUF",
                 "link": "https://huggingface.co/LiquidAI/LFM3-1.7B-GGUF",
@@ -2950,6 +3074,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "Nanbeige/Nanbeige4.3-33B-INT4",
+                "licence": licences.APACHE_2_0,
                 "name": "Nanbeige4.3 33B INT4 (TensorFold)",
                 "repo": "Nanbeige/Nanbeige4.3-33B-INT4",
                 "link": "https://huggingface.co/Nanbeige/Nanbeige4.3-33B-INT4",
@@ -2969,6 +3094,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "Nanbeige/Nanbeige4.3-33B",
+                "licence": licences.APACHE_2_0,
                 "name": "Nanbeige4.3 33B (BF16)",
                 "repo": "Nanbeige/Nanbeige4.3-33B",
                 "link": "https://huggingface.co/Nanbeige/Nanbeige4.3-33B",
@@ -3016,6 +3142,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "XHToken/Spark-X2.6-4B",
+                "licence": licences.APACHE_2_0,
                 "name": "Spark-X2.6 4B (BF16)",
                 "repo": "XHToken/Spark-X2.6-4B",
                 "link": "https://huggingface.co/XHToken/Spark-X2.6-4B",
@@ -3068,6 +3195,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "BobClawblaw/MiniMax-M3.1-Flash-MLX-mix256k",
+                "licence": licences.with_url(licences.MINIMAX_M3, "https://huggingface.co/MiniMaxAI/MiniMax-M3.1-Flash"),
                 "name": "MiniMax-M3.1-Flash MLX mix 3/4-bit (long window)",
                 "repo": "BobClawblaw/MiniMax-M3.1-Flash-MLX-mix256k",
                 "link": "https://huggingface.co/BobClawblaw/MiniMax-M3.1-Flash-MLX-mix256k",
@@ -3088,6 +3216,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "BobClawblaw/MiniMax-M3.1-Flash-MLX-mix34",
+                "licence": licences.with_url(licences.MINIMAX_M3, "https://huggingface.co/MiniMaxAI/MiniMax-M3.1-Flash"),
                 "name": "MiniMax-M3.1-Flash MLX mix 3/4-bit (fidelity)",
                 "repo": "BobClawblaw/MiniMax-M3.1-Flash-MLX-mix34",
                 "link": "https://huggingface.co/BobClawblaw/MiniMax-M3.1-Flash-MLX-mix34",
@@ -3140,6 +3269,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "nvidia/NVIDIA-Nemotron-3.5-Bolt-E4B-4GB",
+                "licence": licences.OPENMDW_1_1,
                 "name": "Nemotron 3.5 Bolt E4B GGUF Q4_K_M",
                 "repo": "nvidia/NVIDIA-Nemotron-3.5-Bolt-E4B-4GB",
                 "link": "https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Bolt-E4B-4GB",
@@ -3160,6 +3290,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "ggml-org/NVIDIA-Nemotron-3.5-Bolt-E4B-GGUF",
+                "licence": licences.OPENMDW_1_1,
                 "name": "Nemotron 3.5 Bolt E4B GGUF Q8_0",
                 "repo": "ggml-org/NVIDIA-Nemotron-3.5-Bolt-E4B-GGUF",
                 "link": "https://huggingface.co/ggml-org/NVIDIA-Nemotron-3.5-Bolt-E4B-GGUF",
@@ -3209,6 +3340,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "ibm-granite/granite-switch-4.1-8b-GGUF",
+                "licence": licences.APACHE_2_0,
                 "name": "Granite Switch 4.1 8B GGUF Q4_K_M",
                 "repo": "ibm-granite/granite-switch-4.1-8b-GGUF",
                 "link": "https://huggingface.co/ibm-granite/granite-switch-4.1-8b-GGUF",
@@ -3226,6 +3358,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "ibm-granite/granite-switch-4.1-30b-GGUF",
+                "licence": licences.APACHE_2_0,
                 "name": "Granite Switch 4.1 30B GGUF Q4_K_M",
                 "repo": "ibm-granite/granite-switch-4.1-30b-GGUF",
                 "link": "https://huggingface.co/ibm-granite/granite-switch-4.1-30b-GGUF",
@@ -3269,6 +3402,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "meta-models/Muse-Glimmer-30B-GGUF-q4km",
+                "licence": licences.APACHE_2_0,
                 "name": "Muse Glimmer 30B GGUF Q4_K_M",
                 "repo": "meta-models/Muse-Glimmer-30B-GGUF",
                 "link": "https://huggingface.co/meta-models/Muse-Glimmer-30B-GGUF",
@@ -3319,6 +3453,7 @@ MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "unsloth/Inkling-2-Mini-GGUF",
+                "licence": licences.APACHE_2_0,
                 "name": "Inkling 2 Mini GGUF UD-Q4_K_M",
                 "repo": "unsloth/Inkling-2-Mini-GGUF",
                 "link": "https://huggingface.co/unsloth/Inkling-2-Mini-GGUF",

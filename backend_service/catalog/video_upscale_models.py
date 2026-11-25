@@ -17,6 +17,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from backend_service.catalog import licences
+
 _RELEASES = "https://github.com/xinntao/Real-ESRGAN/releases/download"
 _LICENCE_NOTE = ("BSD-3-Clause (xinntao/Real-ESRGAN). The weights have no separate licence statement; they are "
                  "distributed in the repo's releases under its BSD-3-Clause licence.")
@@ -32,7 +34,7 @@ VIDEO_UPSCALE_MODELS: list[dict[str, Any]] = [
         "architecture": "SRVGGNetCompact (about 1.2 M parameters)",
         "scale": 4,
         "default": True,
-        "licence": "BSD-3-Clause",
+        "licence": licences.BSD_3_CLAUSE,
         "licenceNote": _LICENCE_NOTE,
         "source": "github-release",
         "repo": "xinntao/Real-ESRGAN",
@@ -60,7 +62,7 @@ VIDEO_UPSCALE_MODELS: list[dict[str, Any]] = [
         "architecture": "RRDBNet (about 16.7 M parameters)",
         "scale": 4,
         "default": False,
-        "licence": "BSD-3-Clause",
+        "licence": licences.BSD_3_CLAUSE,
         "licenceNote": _LICENCE_NOTE,
         "source": "github-release",
         "repo": "xinntao/Real-ESRGAN",

@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from backend_service.catalog import licences
+
 LTX25_REPO = "Lightricks/LTX-2.5-Diffusers"
 LTX25_NF4_ID = f"{LTX25_REPO}~nf4"
 LTX25_BF16_ID = LTX25_REPO
@@ -58,6 +60,7 @@ _COMMON: dict[str, Any] = {
     "cudaOnly": True,
     "gated": True,
     "gatedLicenceUrl": f"https://huggingface.co/{LTX25_REPO}",
+    "licence": licences.LTX_2_X_COMMUNITY,
     "sizeGb": 71.1,
     "recommendedResolution": "768x512",
     "defaultDurationSeconds": 4.0,

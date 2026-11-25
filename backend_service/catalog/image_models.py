@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from backend_service.catalog import licences
 
 
 
@@ -17,6 +18,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "black-forest-labs/FLUX.1-schnell",
+                "licence": licences.as_gated(licences.APACHE_2_0),
                 "familyId": "flux-fast",
                 "name": "FLUX.1 Schnell",
                 "provider": "Black Forest Labs",
@@ -35,6 +37,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "black-forest-labs/FLUX.1-schnell-gguf-q4ks",
+                "licence": licences.as_gated(licences.APACHE_2_0),
                 "familyId": "flux-fast",
                 "name": "FLUX.1 Schnell · GGUF Q4_K_S",
                 "provider": "Black Forest Labs · city96",
@@ -55,6 +58,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "black-forest-labs/FLUX.1-schnell-gguf-q8",
+                "licence": licences.as_gated(licences.APACHE_2_0),
                 "familyId": "flux-fast",
                 "name": "FLUX.1 Schnell · GGUF Q8_0",
                 "provider": "Black Forest Labs · city96",
@@ -75,6 +79,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "black-forest-labs/FLUX.1-schnell-mflux",
+                "licence": licences.as_gated(licences.APACHE_2_0),
                 "familyId": "flux-fast",
                 "name": "FLUX.1 Schnell · mflux (MLX)",
                 "provider": "Black Forest Labs · mflux",
@@ -101,6 +106,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # diffusers Python overhead entirely. The GGUF repo is the
                 # variant's repo, so a download fetches the GGUF only.
                 "id": "leejet/FLUX.1-schnell-gguf-q4k",
+                "licence": licences.APACHE_2_0,
                 "familyId": "flux-fast",
                 "name": "FLUX.1 Schnell · sd.cpp Q4_K",
                 "provider": "Black Forest Labs · sd.cpp",
@@ -134,6 +140,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "black-forest-labs/FLUX.1-schnell-nunchaku-int4",
+                "licence": licences.as_gated(licences.APACHE_2_0),
                 "familyId": "flux-fast",
                 "name": "FLUX.1 Schnell · Nunchaku INT4 (CUDA)",
                 "provider": "Black Forest Labs · MIT-Han-Lab",
@@ -187,6 +194,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "black-forest-labs/FLUX.1-dev",
+                "licence": licences.FLUX_1_DEV_NC,
                 "familyId": "flux-dev",
                 "name": "FLUX.1 Dev",
                 "provider": "Black Forest Labs",
@@ -205,6 +213,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "black-forest-labs/FLUX.1-dev-gguf-q4ks",
+                "licence": licences.FLUX_1_DEV_NC,
                 "familyId": "flux-dev",
                 "name": "FLUX.1 Dev · GGUF Q4_K_S",
                 "provider": "Black Forest Labs · city96",
@@ -225,6 +234,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "black-forest-labs/FLUX.1-dev-gguf-q6k",
+                "licence": licences.FLUX_1_DEV_NC,
                 "familyId": "flux-dev",
                 "name": "FLUX.1 Dev · GGUF Q6_K",
                 "provider": "Black Forest Labs · city96",
@@ -245,6 +255,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "black-forest-labs/FLUX.1-dev-gguf-q8",
+                "licence": licences.FLUX_1_DEV_NC,
                 "familyId": "flux-dev",
                 "name": "FLUX.1 Dev · GGUF Q8_0",
                 "provider": "Black Forest Labs · city96",
@@ -265,6 +276,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "leejet/FLUX.1-dev-gguf-q4k",
+                "licence": licences.as_open(licences.FLUX_1_DEV_NC),
                 "familyId": "flux-dev",
                 "name": "FLUX.1 Dev · sd.cpp Q4_K",
                 "provider": "Black Forest Labs · sd.cpp",
@@ -299,6 +311,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "black-forest-labs/FLUX.1-dev-mflux",
+                "licence": licences.FLUX_1_DEV_NC,
                 "familyId": "flux-dev",
                 "name": "FLUX.1 Dev · mflux (MLX)",
                 "provider": "Black Forest Labs · mflux",
@@ -322,6 +335,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
             # workflow.
             {
                 "id": "black-forest-labs/FLUX.1-dev-hyper-sd-8step",
+                "licence": licences.FLUX_1_DEV_NC,
                 "familyId": "flux-dev",
                 "name": "FLUX.1 Dev · Hyper-SD 8-step",
                 "provider": "Black Forest Labs · ByteDance",
@@ -349,6 +363,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "black-forest-labs/FLUX.1-dev-turbo-alpha",
+                "licence": licences.FLUX_1_DEV_NC,
                 "familyId": "flux-dev",
                 "name": "FLUX.1 Dev · Turbo Alpha",
                 "provider": "Black Forest Labs · alimama-creative",
@@ -382,6 +397,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
             # fallback when nunchaku is unavailable.
             {
                 "id": "black-forest-labs/FLUX.1-dev-nunchaku-int4",
+                "licence": licences.FLUX_1_DEV_NC,
                 "familyId": "flux-dev",
                 "name": "FLUX.1 Dev · Nunchaku INT4 (CUDA)",
                 "provider": "Black Forest Labs · MIT-Han-Lab",
@@ -424,6 +440,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "stabilityai/stable-diffusion-3.5-medium",
+                "licence": licences.SD_3_5_COMMUNITY,
                 "familyId": "sd35-medium",
                 "name": "Stable Diffusion 3.5 Medium",
                 "provider": "Stability AI",
@@ -453,6 +470,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "stabilityai/stable-diffusion-3.5-large-turbo",
+                "licence": licences.SD_3_5_COMMUNITY,
                 "familyId": "sd35-turbo",
                 "name": "Stable Diffusion 3.5 Large Turbo",
                 "provider": "Stability AI",
@@ -482,6 +500,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "stabilityai/stable-diffusion-xl-base-1.0",
+                "licence": licences.OPENRAIL_PP_M,
                 "familyId": "sdxl-balanced",
                 "name": "Stable Diffusion XL Base 1.0",
                 "provider": "Stability AI",
@@ -511,6 +530,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "Qwen/Qwen-Image",
+                "licence": licences.APACHE_2_0,
                 "familyId": "qwen-image",
                 "name": "Qwen-Image",
                 "provider": "Alibaba Qwen",
@@ -527,6 +547,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "lightx2v/Qwen-Image-Lightning",
+                "licence": licences.APACHE_2_0,
                 "familyId": "qwen-image",
                 "name": "Qwen-Image · Lightning (8-step)",
                 "provider": "Alibaba Qwen · lightx2v",
@@ -547,6 +568,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # Qwen-Image-2.1 through mflux on MLX (Apple Silicon): the fast lane.
                 # The sd.cpp variant below is the cross-platform one.
                 "id": "Qwen/Qwen-Image-2.1-mflux",
+                "licence": licences.with_url(licences.QWEN_RESEARCH, "https://huggingface.co/Qwen/Qwen-Image-2.1"),
                 "familyId": "qwen-image",
                 "name": "Qwen-Image-2.1 · mflux (MLX)",
                 "provider": "Alibaba Qwen · mflux",
@@ -574,6 +596,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "Qwen/Qwen-Image-2.1-mflux-q8",
+                "licence": licences.with_url(licences.QWEN_RESEARCH, "https://huggingface.co/Qwen/Qwen-Image-2.1"),
                 "familyId": "qwen-image",
                 "name": "Qwen-Image-2.1 · mflux 8-bit (MLX)",
                 "provider": "Alibaba Qwen · mflux",
@@ -602,6 +625,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "Qwen/Qwen-Image-2.1-Turbo-mflux",
+                "licence": licences.with_url(licences.QWEN_RESEARCH, "https://huggingface.co/Qwen/Qwen-Image-2.1"),
                 "familyId": "qwen-image",
                 "name": "Qwen-Image-2.1 Turbo · mflux (MLX)",
                 "provider": "Alibaba Qwen · mflux",
@@ -634,6 +658,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # (QwenImage21Pipeline) is not in a released diffusers yet. The variant's
                 # repo is the GGUF repo: the 33 GB base snapshot is not needed.
                 "id": "leejet/Qwen-Image-2.1-GGUF-q4k",
+                "licence": licences.with_url(licences.QWEN_RESEARCH, "https://huggingface.co/Qwen/Qwen-Image-2.1"),
                 "familyId": "qwen-image",
                 "name": "Qwen-Image-2.1 · sd.cpp Q4_K",
                 "provider": "Alibaba Qwen · leejet",
@@ -677,6 +702,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # schedule it ships (``sample_sigmas`` in its model_index.json); sd.cpp takes it as --sigmas, which
                 # fixes the run at 8 steps whatever the steps setting says.
                 "id": "unsloth/Qwen-Image-2.1-Turbo-GGUF-q4km",
+                "licence": licences.with_url(licences.QWEN_RESEARCH, "https://huggingface.co/Qwen/Qwen-Image-2.1"),
                 "familyId": "qwen-image",
                 "name": "Qwen-Image-2.1 Turbo · sd.cpp Q4_K_M",
                 "provider": "Alibaba Qwen · unsloth",
@@ -736,6 +762,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "Tongyi-MAI/Z-Image-Turbo",
+                "licence": licences.APACHE_2_0,
                 "familyId": "z-image",
                 "name": "Z-Image Turbo",
                 "provider": "Alibaba Tongyi",
@@ -769,6 +796,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "speridlabs/iris-3b-mflux",
+                "licence": licences.APACHE_2_0,
                 "familyId": "iris-3b",
                 "name": "Iris-3B Turbo · mflux (MLX)",
                 "provider": "Sperid Labs · mflux",
@@ -820,6 +848,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "black-forest-labs/FLUX.2-klein-4B",
+                "licence": licences.APACHE_2_0,
                 "familyId": "flux-2",
                 "name": "FLUX.2 Klein 4B",
                 "provider": "Black Forest Labs",
@@ -840,6 +869,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "black-forest-labs/FLUX.2-klein-4B-mflux",
+                "licence": licences.APACHE_2_0,
                 "familyId": "flux-2",
                 "name": "FLUX.2 Klein 4B · mflux (MLX)",
                 "provider": "Black Forest Labs · mflux",
@@ -862,6 +892,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "black-forest-labs/FLUX.2-dev",
+                "licence": licences.FLUX_2_NC,
                 "familyId": "flux-2",
                 "name": "FLUX.2 Dev",
                 "provider": "Black Forest Labs",
@@ -899,6 +930,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "OpenMOSS-Team/MOSS-Image-SFT",
+                "licence": licences.APACHE_2_0,
                 "familyId": "moss-image",
                 "name": "MOSS-Image SFT",
                 "provider": "OpenMOSS",
@@ -946,6 +978,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
         "variants": [
             {
                 "id": "black-forest-labs/flux-3-image-klein-mflux",
+                "licence": licences.FLUX_KOMMUNITY,
                 "familyId": "flux-3",
                 "name": "FLUX 3 Image Klein · mflux (MLX)",
                 "provider": "Black Forest Labs · mflux",
@@ -977,6 +1010,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
             },
             {
                 "id": "black-forest-labs/flux-3-image-klein-base-mflux",
+                "licence": licences.FLUX_KOMMUNITY,
                 "familyId": "flux-3",
                 "name": "FLUX 3 Image Klein Base · mflux (MLX)",
                 "provider": "Black Forest Labs · mflux",
@@ -1006,6 +1040,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # download is the diffusers folders only (the root model.safetensors, ae.safetensors and the fp8 /
                 # nvfp4 variants are for BFL's reference code and are skipped).
                 "id": "black-forest-labs/flux-3-image-klein",
+                "licence": licences.FLUX_KOMMUNITY,
                 "familyId": "flux-3",
                 "name": "FLUX 3 Image Klein (diffusers)",
                 "provider": "Black Forest Labs",
@@ -1048,6 +1083,7 @@ IMAGE_MODEL_FAMILIES: list[dict[str, Any]] = [
                 # as ae.safetensors in the gated repo, so the licence step still applies. Takes up to 4 reference
                 # pictures through ``-r`` (``sdcpp_image_runtime._REFERENCE_IMAGE_LIMITS``, B1309).
                 "id": "leejet/flux-3-image-klein-GGUF-q8",
+                "licence": licences.FLUX_KOMMUNITY,
                 "familyId": "flux-3",
                 "name": "FLUX 3 Image Klein · sd.cpp Q8_0",
                 "provider": "Black Forest Labs · sd.cpp",
@@ -1108,6 +1144,7 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
         "recommendedResolution": "1024x1024",
         "note": "Tracked current text-to-image DiT release from Baidu.",
         "gated": False,
+        "licence": licences.APACHE_2_0,
         "pipelineTag": "text-to-image",
         "updatedLabel": "Tracked latest",
         "releaseDate": "2026-04",
@@ -1127,6 +1164,7 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
         "recommendedResolution": "1024x1024",
         "note": "Tracked faster ERNIE-Image lane for current local image generation discovery.",
         "gated": False,
+        "licence": licences.APACHE_2_0,
         "pipelineTag": "text-to-image",
         "updatedLabel": "Tracked latest",
         "releaseDate": "2026-04",
@@ -1146,6 +1184,7 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
         "recommendedResolution": "1024x1024",
         "note": "Tracked current diffusers-compatible text-to-image release.",
         "gated": False,
+        "licence": licences.APACHE_2_0,
         "pipelineTag": "text-to-image",
         "updatedLabel": "Tracked latest",
         "releaseDate": "2026-04",
@@ -1163,6 +1202,7 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
         "recommendedResolution": "1024x1024",
         "note": "Tracked FLUX.2 generation-and-editing release.",
         "gated": True,
+        "licence": licences.FLUX_2_NC,
         "pipelineTag": "image-to-image",
         "updatedLabel": "Tracked latest",
         "releaseDate": "2026-02",
@@ -1182,6 +1222,7 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
         "recommendedResolution": "1024x1024",
         "note": "Tracked smaller FLUX.2 lane.",
         "gated": False,
+        "licence": licences.with_url(licences.FLUX_2_NC, "https://huggingface.co/black-forest-labs/FLUX.2-klein-9B"),
         "pipelineTag": "image-to-image",
         "updatedLabel": "Tracked latest",
         "releaseDate": "2026-02",
@@ -1210,6 +1251,7 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
             "the 9B Klein variant."
         ),
         "gated": False,
+        "licence": licences.APACHE_2_0,
         "pipelineTag": "text-to-image",
         "updatedLabel": "Tracked latest",
         "releaseDate": "2026-01",
@@ -1233,6 +1275,7 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
             "(FU-019 catalog round)."
         ),
         "gated": False,
+        "licence": licences.with_url(licences.FLUX_2_NC, "https://huggingface.co/fal/FLUX.2-dev-Turbo"),
         "pipelineTag": "text-to-image",
         "updatedLabel": "Tracked latest",
         "releaseDate": "2025-12",
@@ -1252,6 +1295,7 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
         "recommendedResolution": "1024x1024",
         "note": "Tracked current Z-Image turbo text-to-image release.",
         "gated": False,
+        "licence": licences.APACHE_2_0,
         "pipelineTag": "text-to-image",
         "updatedLabel": "Tracked latest",
         "releaseDate": "2026-01",
@@ -1271,6 +1315,7 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
         "recommendedResolution": "1024x1024",
         "note": "Tracked current Z-Image text-to-image release.",
         "gated": False,
+        "licence": licences.APACHE_2_0,
         "pipelineTag": "text-to-image",
         "updatedLabel": "Tracked latest",
         "releaseDate": "2026-01",
@@ -1288,6 +1333,7 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
         "recommendedResolution": "1024x1024",
         "note": "Tracked newer Qwen image editing release with improved consistency.",
         "gated": False,
+        "licence": licences.APACHE_2_0,
         "pipelineTag": "image-to-image",
         "updatedLabel": "Tracked latest",
         "releaseDate": "2025-12",
@@ -1305,6 +1351,7 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
         "recommendedResolution": "1024x1024",
         "note": "Tracked diffusers-native Qwen image generation family.",
         "gated": False,
+        "licence": licences.APACHE_2_0,
         "pipelineTag": "text-to-image",
         "updatedLabel": "Tracked latest",
         "releaseDate": "2025-08",
@@ -1332,6 +1379,7 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
             "QwenImagePipeline as base Qwen-Image."
         ),
         "gated": False,
+        "licence": licences.APACHE_2_0,
         "pipelineTag": "text-to-image",
         "updatedLabel": "Tracked latest",
         "releaseDate": "2025-12",
@@ -1349,6 +1397,7 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
         "recommendedResolution": "1024x1024",
         "note": "Tracked Qwen edit lane so Image Discover can surface newer editing-capable models too.",
         "gated": False,
+        "licence": licences.APACHE_2_0,
         "pipelineTag": "image-to-image",
         "updatedLabel": "Tracked latest",
         "releaseDate": "2025-08",
@@ -1366,6 +1415,7 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
         "recommendedResolution": "1024x1024",
         "note": "Tracked larger open-image generation lane from the HiDream family.",
         "gated": False,
+        "licence": {**licences.MIT, "note": "Its pipeline also loads meta-llama/Meta-Llama-3.1-8B-Instruct (Llama 3.1 Community License, gated) and google/t5-v1_1-xxl; the model card asks you to follow their terms."},
         "pipelineTag": "text-to-image",
         "updatedLabel": "Tracked latest",
         "releaseDate": "2025-04",
@@ -1383,6 +1433,7 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
         "recommendedResolution": "1024x1024",
         "note": "Tracked unified generation-and-editing lane from the GLM image family.",
         "gated": False,
+        "licence": {**licences.MIT, "note": "It includes tokenizer and ViT weights from X-Omni: check the model card for their terms."},
         "pipelineTag": "text-to-image",
         "updatedLabel": "Tracked latest",
     },
@@ -1399,6 +1450,7 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
         "recommendedResolution": "1024x1024",
         "note": "Tracked smaller Sana Sprint lane for faster local image generation.",
         "gated": False,
+        "licence": {**licences.APACHE_2_0, "note": "The model card points to the Gemma Terms of Use and Gemma Prohibited Use Policy for its Gemma-2-2B-IT text encoder."},
         "pipelineTag": "text-to-image",
         "updatedLabel": "Tracked latest",
         "releaseDate": "2025-03",
@@ -1416,6 +1468,7 @@ LATEST_IMAGE_TRACKED_SEEDS: list[dict[str, Any]] = [
         "recommendedResolution": "1024x1024",
         "note": "Tracked larger Sana Sprint lane with a better quality-to-speed balance.",
         "gated": False,
+        "licence": {**licences.APACHE_2_0, "note": "The model card points to the Gemma Terms of Use and Gemma Prohibited Use Policy for its Gemma-2-2B-IT text encoder."},
         "pipelineTag": "text-to-image",
         "updatedLabel": "Tracked latest",
         "releaseDate": "2025-03",

@@ -545,6 +545,7 @@ def _tracked_latest_seed_payloads(library: list[dict[str, Any]]) -> list[dict[st
                 "releaseDate": release_date,
                 "releaseLabel": _format_release_label(release_date),
                 "license": seed.get("license"),
+                "licence": seed.get("licence"),
                 "gated": seed.get("gated"),
                 "pipelineTag": seed.get("pipelineTag"),
                 "repoSizeBytes": None,

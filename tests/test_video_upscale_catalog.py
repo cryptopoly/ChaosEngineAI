@@ -34,7 +34,7 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(catalog.find_model(catalog.DEFAULT_MODEL_ID)["default"], True)
         self.assertIsNone(catalog.find_model("nope"))
         for row in catalog.VIDEO_UPSCALE_MODELS:
-            self.assertEqual(row["licence"], "BSD-3-Clause")
+            self.assertEqual(row["licence"]["name"], "BSD-3-Clause")
             self.assertTrue(row["url"].startswith("https://github.com/xinntao/Real-ESRGAN/releases/download/"))
             self.assertTrue(row["url"].endswith("/" + row["file"]))
             self.assertGreater(row["sizeBytes"], 1_000_000)

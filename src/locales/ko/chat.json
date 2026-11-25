@@ -550,13 +550,13 @@
     "sameAsChat": "(채팅과 동일)",
     "title": "채팅의 음성: 읽기, 통화, 받아쓰기에 쓸 음성",
     "noFallback": "설정 안 됨",
-    "changeFor": null,
-    "openStudio": null,
-    "voicesInChat": null,
-    "readAloud": null,
-    "calls": null,
-    "backup": null,
-    "dictate": null
+    "changeFor": "{use} 변경",
+    "openStudio": "음성 스튜디오 열기",
+    "voicesInChat": "채팅의 음성",
+    "readAloud": "소리 내어 읽기",
+    "calls": "통화",
+    "backup": "백업 음성",
+    "dictate": "음성 입력"
   },
   "keepGoing": {
     "label": "계속 진행",

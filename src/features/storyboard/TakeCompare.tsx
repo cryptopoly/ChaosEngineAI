@@ -270,7 +270,7 @@ export function TakeCompare({ projectId, shot, number, disabled, onPick, onClose
           ) : (
             <span className="take-compare__none">
               {view === "clip"
-                ? t("board.compare.noClip", { defaultValue: "No clip in this take yet." })
+                ? t("board.compare.noClipYet", { defaultValue: "No clip in this take yet." })
                 : t("board.compare.noStill", { defaultValue: "No still in this take." })}
             </span>
           )}

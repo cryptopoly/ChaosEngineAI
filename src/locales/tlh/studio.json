@@ -1486,7 +1486,8 @@
       "steps": null,
       "stepsNumber": null,
       "stepsNote": null,
-      "summarySteps": null
+      "summarySteps": null,
+      "random": null
     },
     "artistWarning": "muchwI' pong DaghItlhchugh, mIwDaj velqa' chenlaH. wab yIDel.",
     "cancel": "yIqIl",
@@ -1643,7 +1644,8 @@
       "stillsThenClips": "{kind}, ghIq mIllogh vIH",
       "title": "'ay' chenmoHlI'",
       "titleDraft": null,
-      "titleFinal": null
+      "titleFinal": null,
+      "failedSoFar": null
     },
     "conflictNotice": "latlh DaqDaq choHlu'ta'; Qav cha'lu'",
     "defaults": {
@@ -1712,7 +1714,19 @@
       "castNone": null,
       "castEveryShot": null,
       "leaveOut": null,
-      "lipSyncSeparate": null
+      "lipSyncSeparate": null,
+      "clipSound": null,
+      "clipSoundOn": null,
+      "clipSoundOff": null,
+      "endFrame": null,
+      "endFrameHint": null,
+      "endFrameAlt": null,
+      "endFrameChange": null,
+      "endFramePick": null,
+      "endFrameRemove": null,
+      "endFramePickerTitle": null,
+      "vocalHintShot": null,
+      "vocalOptional": null
     },
     "empty": "wej 'ay' tu'lu'. 'ay' yIchel, ghIq QIn yInob pagh mIllogh vIH yIqem.",
     "estimate": {
@@ -1808,7 +1822,12 @@
       "draft": null,
       "draftTitle": null,
       "keepForFinal": null,
-      "keepForFinalTitle": null
+      "keepForFinalTitle": null,
+      "tagsLabel": null,
+      "hideStaleTitle": null,
+      "hideStale": null,
+      "chooseForFinalTitle": null,
+      "chooseForFinal": null
     },
     "shots": "'ay'",
     "subtitle": "{shots, plural, other {# 'ay''}} · {seconds} lup · {stale} ngo'",
@@ -1834,7 +1853,12 @@
       "label": null,
       "withClips": null,
       "keepHint": null,
-      "draftPer": null
+      "draftPer": null,
+      "draftTitleChoose": null,
+      "finalChosenTimed": null,
+      "finalChosen": null,
+      "finalChosenTitle": null,
+      "chooseHint": null
     },
     "exportDrafts": null,
     "preview": {
@@ -1866,7 +1890,8 @@
       "noSound": null,
       "titleCard": null,
       "endCard": null,
-      "legendCard": null
+      "legendCard": null,
+      "draftNoteSized": null
     },
     "captions": {
       "toggle": null,
@@ -1921,7 +1946,8 @@
       "differs": null,
       "open": null,
       "openTitle": null,
-      "short": null
+      "short": null,
+      "noClipYet": null
     },
     "remake": {
       "clip": null,
@@ -2221,7 +2247,8 @@
         "discard": null,
         "replaceNote": null,
         "title": null,
-        "use": null
+        "use": null,
+        "useSinging": null
       },
       "cutPlan": null,
       "cutting": null,
@@ -2263,8 +2290,39 @@
         "stemUse": null,
         "working": null,
         "attach": null,
-        "done": null
-      }
+        "done": null,
+        "hintEach": null,
+        "again": null,
+        "unassigned": null
+      },
+      "coverage": {
+        "title": null,
+        "source": null,
+        "counts": null,
+        "empty": null,
+        "col": {
+          "shot": null,
+          "time": null,
+          "length": null,
+          "state": null
+        },
+        "makeAll": null,
+        "batchRunning": null
+      },
+      "sing": {
+        "question": null,
+        "yes": null,
+        "yesHint": null,
+        "stemHint": null,
+        "perShot": null,
+        "no": null,
+        "noHint": null,
+        "cut": null,
+        "keepShots": null,
+        "choose": null,
+        "review": null
+      },
+      "cutSongIntoShots": null
     },
     "unsaved": {
       "title": null,
@@ -2275,6 +2333,58 @@
       "retry": null,
       "keepLatest": null,
       "discard": null
+    },
+    "chip": {
+      "noCharacterTitle": null,
+      "noCharacter": null,
+      "reasonSpeed": null,
+      "reasonLocked": null,
+      "reasonOutside": null,
+      "reasonShort": null,
+      "reasonLong": null,
+      "reasonNoSinging": null,
+      "reasonNoVocal": null,
+      "titleSpeed": null,
+      "titleLocked": null,
+      "titleOutside": null,
+      "titleShort": null,
+      "titleLong": null,
+      "titleNoSinging": null,
+      "titleNoVocal": null,
+      "sings": null,
+      "singsTitle": null,
+      "willSing": null,
+      "willSingTitle": null,
+      "noLipSync": null,
+      "plainClip": null
+    },
+    "failure": {
+      "details": null,
+      "outOfMemory": null,
+      "modelMissing": null,
+      "lipsyncModel": null,
+      "downloadBlocked": null,
+      "videoToolsMissing": null,
+      "sizeOverCap": null,
+      "referencesUnsupported": null,
+      "noPrompt": null,
+      "diskFull": null,
+      "cancelled": null,
+      "unknown": null,
+      "actionEdit": null,
+      "actionSmallerSized": null,
+      "actionSmaller": null,
+      "actionSmallerTitle": null,
+      "actionVideoModels": null,
+      "actionImageModels": null,
+      "actionVideoTools": null
+    },
+    "quality": {
+      "tag": null,
+      "tagNoSize": null,
+      "titleSized": null,
+      "titleDraftOnly": null,
+      "titleNoSize": null
     }
   },
   "storyProjects": {
@@ -2437,7 +2547,13 @@
       "upscaleSame": "tInghachvam ghaj lut pagh tIn law' lut, vaj pagh tInmoHlu'.",
       "more": "latlh",
       "whyBusy": "chenmoHlI' latlh Qu'. rInDI' pagh DaqIlDI' tagh ngeH.",
-      "whyEmpty": "wej ngeHmeH Doch tu'lu': mIllogh vIH ghaj pagh 'ay'. lut 'echlet 'echletDaq mIllogh vIH tIchenmoH."
+      "whyEmpty": "wej ngeHmeH Doch tu'lu': mIllogh vIH ghaj pagh 'ay'. lut 'echlet 'echletDaq mIllogh vIH tIchenmoH.",
+      "methodSharp": null,
+      "methodStandard": null,
+      "method": null,
+      "methodNeedsAddon": null,
+      "methodOpenUpscale": null,
+      "anyway": null
     },
     "importAudio": "wab yIqem",
     "importAudioPath": "wab nav He",
@@ -2512,6 +2628,12 @@
       "label": null,
       "cut": null,
       "render": null
+    },
+    "clipSound": {
+      "muted": null,
+      "playing": null,
+      "mixed": null,
+      "switch": null
     }
   },
   "aiLabel": {
@@ -2902,7 +3024,9 @@
       "overview": "wIy",
       "storyboard": "lut 'echlet"
     },
-    "tabsLabel": "Qu'"
+    "tabsLabel": "Qu'",
+    "more": null,
+    "boardHint": null
   },
   "templates": {
     "ad30": "30 lup mech QIn",
@@ -2985,7 +3109,9 @@
     "vertical": "'ab tIn, web",
     "metaFormat": "{aspect} · {resolution} · {fps} fps · {shots, plural, other {# 'ay''}}",
     "sets": "chen wIvta' {name}: {aspect}, {resolution}, {fps} fps. bIngDaq Hoch DachoHlaH.",
-    "sample": null
+    "sample": null,
+    "musicVideoMeta": null,
+    "musicVideoNote": null
   },
   "voicePicker": {
     "automatic": "ghogh Hutlh (De'wI' wIv)",
@@ -3016,7 +3142,17 @@
     "makeNone": "Hutlhbogh tIchenmoH",
     "makeTimed": "Hutlhbogh {n} tIchenmoH · {time} loQ",
     "needStills": "{n, plural, other {Qu' poQ # 'ay''}}: {stills, plural, other {mIllogh ghaj 'ej mIllogh vIH poQ #}}",
-    "stale": "{n} ngo'"
+    "stale": "{n} ngo'",
+    "choice": {
+      "finalPass": null,
+      "label": null,
+      "draft": null,
+      "about": null,
+      "draftWhy": null,
+      "final": null,
+      "peak": null
+    },
+    "more": null
   },
   "slowRow": {
     "label": null,
@@ -3155,5 +3291,66 @@
       "cancelled": null,
       "interrupted": null
     }
+  },
+  "guide": {
+    "stage": {
+      "song": null,
+      "look": null,
+      "shots": null,
+      "drafts": null,
+      "final": null,
+      "lipsync": null,
+      "sound": null,
+      "check": null,
+      "export": null
+    },
+    "look": {
+      "done": null,
+      "current": null,
+      "attention": null,
+      "progress": null,
+      "skipped": null,
+      "todo": null
+    },
+    "action": {
+      "attachSong": null,
+      "openCast": null,
+      "cutPlan": null,
+      "planShots": null,
+      "openStoryboard": null,
+      "watchBatch": null,
+      "resumeBatch": null,
+      "retryFailed": null,
+      "makeDrafts": null,
+      "makeMissing": null,
+      "makeFinal": null,
+      "chooseFinal": null,
+      "makeClips": null,
+      "remakeStale": null,
+      "assignVocals": null,
+      "makeLipsync": null,
+      "openCoverage": null,
+      "openMixer": null,
+      "openCheck": null,
+      "export": null
+    },
+    "label": null
+  },
+  "exportCheck": {
+    "line": {
+      "upscaleSharp": null
+    },
+    "stops": null,
+    "worthFixing": null,
+    "forInfo": null,
+    "stopsNone": null,
+    "worthFixingNone": null,
+    "fix": {
+      "plan": null,
+      "song": null,
+      "cast": null,
+      "shot": null
+    },
+    "title": null
   }
 }

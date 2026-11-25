@@ -1486,7 +1486,8 @@
       "steps": "步數",
       "stepsNumber": "步數",
       "stepsNote": "步數越少越快,但聽感可能較差。{n} 為模型作者的設定值。",
-      "summarySteps": "{n} 步"
+      "summarySteps": "{n} 步",
+      "random": null
     },
     "artistWarning": "寫出藝術家的名字可能會產生其風格的仿作。請改為描述聲音本身。",
     "cancel": "取消",
@@ -1643,7 +1644,8 @@
       "stillsThenClips": "{kind}，然後是影片片段",
       "title": "正在製作鏡頭",
       "titleDraft": "製作草稿",
-      "titleFinal": "最終輸出"
+      "titleFinal": "最終輸出",
+      "failedSoFar": null
     },
     "conflictNotice": "已在別處變更；顯示的是最新版本",
     "defaults": {
@@ -1712,7 +1714,19 @@
       "castNone": null,
       "castEveryShot": null,
       "leaveOut": null,
-      "lipSyncSeparate": null
+      "lipSyncSeparate": null,
+      "clipSound": null,
+      "clipSoundOn": null,
+      "clipSoundOff": null,
+      "endFrame": null,
+      "endFrameHint": null,
+      "endFrameAlt": null,
+      "endFrameChange": null,
+      "endFramePick": null,
+      "endFrameRemove": null,
+      "endFramePickerTitle": null,
+      "vocalHintShot": null,
+      "vocalOptional": null
     },
     "empty": "還沒有鏡頭。新增一個鏡頭，然後寫提示詞或匯入素材。",
     "estimate": {
@@ -1808,7 +1822,12 @@
       "draft": "草稿",
       "draftTitle": "快速草稿。保留此鏡頭並執行最終輸出,以取得全品質版本。",
       "keepForFinal": "保留作最終輸出",
-      "keepForFinalTitle": "對已保留的鏡頭進行最終輸出時,會以高品質模型重新製作此鏡頭。"
+      "keepForFinalTitle": "對已保留的鏡頭進行最終輸出時,會以高品質模型重新製作此鏡頭。",
+      "tagsLabel": null,
+      "hideStaleTitle": null,
+      "hideStale": null,
+      "chooseForFinalTitle": null,
+      "chooseForFinal": null
     },
     "shots": "鏡頭",
     "subtitle": "{shots, plural, other {# 個鏡頭}} · {seconds} 秒 · {stale} 個已過期",
@@ -1834,7 +1853,12 @@
       "label": "草稿與最終輸出",
       "withClips": "草稿與片段",
       "keepHint": "以「保留作最終輸出」標記鏡頭,即可將其選入最終輸出。",
-      "draftPer": "每份草稿約 {time}。"
+      "draftPer": "每份草稿約 {time}。",
+      "draftTitleChoose": null,
+      "finalChosenTimed": null,
+      "finalChosen": null,
+      "finalChosenTitle": null,
+      "chooseHint": null
     },
     "exportDrafts": "{n, plural, other {# 個鏡頭使用草稿版本。}}請保留這些鏡頭並執行最終輸出以取得全品質,或直接匯出目前的草稿。",
     "preview": {
@@ -1866,7 +1890,8 @@
       "noSound": "此視窗無法播放聲音,因此粗剪預覽將不含聲音播放。",
       "titleCard": "片頭卡",
       "endCard": "片尾卡",
-      "legendCard": "片頭或片尾卡(品牌套件)"
+      "legendCard": "片頭或片尾卡(品牌套件)",
+      "draftNoteSized": null
     },
     "captions": {
       "toggle": "顯示字幕(C)",
@@ -1921,7 +1946,8 @@
       "differs": "(不同)",
       "open": "比較版本",
       "openTitle": "並排顯示兩個版本,以及各自的製作條件。",
-      "short": "比較"
+      "short": "比較",
+      "noClipYet": null
     },
     "remake": {
       "clip": "僅重做片段",
@@ -2221,7 +2247,8 @@
         "discard": "捨棄",
         "replaceNote": "這些會取代分鏡板上的 {n, plural, one {# 個鏡頭} other {# 個鏡頭}};若勾選「保留提示詞」,第 1 個鏡頭會保留目前第 1 個鏡頭的提示詞,依此類推。復原即可帶回舊的鏡頭。",
         "title": "剪輯計畫:{time} 內 {n, plural, one {# 個鏡頭} other {# 個鏡頭}}",
-        "use": "{n, plural, one {使用此鏡頭} other {使用這 # 個鏡頭}}"
+        "use": "{n, plural, one {使用此鏡頭} other {使用這 # 個鏡頭}}",
+        "useSinging": null
       },
       "cutPlan": "製作剪輯計畫",
       "cutting": "依音樂剪輯中…",
@@ -2263,8 +2290,39 @@
         "stemUse": "使用此分軌",
         "working": "正在剪切人聲…",
         "attach": "為每個鏡頭配上人聲",
-        "done": "{attached, plural, =0 {沒有鏡頭取得人聲} other {# 個鏡頭取得人聲}}，來源：{source, select, stem {分軌} other {歌曲}}。"
-      }
+        "done": "{attached, plural, =0 {沒有鏡頭取得人聲} other {# 個鏡頭取得人聲}}，來源：{source, select, stem {分軌} other {歌曲}}。",
+        "hintEach": null,
+        "again": null,
+        "unassigned": null
+      },
+      "coverage": {
+        "title": null,
+        "source": null,
+        "counts": null,
+        "empty": null,
+        "col": {
+          "shot": null,
+          "time": null,
+          "length": null,
+          "state": null
+        },
+        "makeAll": null,
+        "batchRunning": null
+      },
+      "sing": {
+        "question": null,
+        "yes": null,
+        "yesHint": null,
+        "stemHint": null,
+        "perShot": null,
+        "no": null,
+        "noHint": null,
+        "cut": null,
+        "keepShots": null,
+        "choose": null,
+        "review": null
+      },
+      "cutSongIntoShots": null
     },
     "unsaved": {
       "title": "您的文字未儲存",
@@ -2275,6 +2333,58 @@
       "retry": "重試",
       "keepLatest": "保留最新",
       "discard": "捨棄我的文字"
+    },
+    "chip": {
+      "noCharacterTitle": null,
+      "noCharacter": null,
+      "reasonSpeed": null,
+      "reasonLocked": null,
+      "reasonOutside": null,
+      "reasonShort": null,
+      "reasonLong": null,
+      "reasonNoSinging": null,
+      "reasonNoVocal": null,
+      "titleSpeed": null,
+      "titleLocked": null,
+      "titleOutside": null,
+      "titleShort": null,
+      "titleLong": null,
+      "titleNoSinging": null,
+      "titleNoVocal": null,
+      "sings": null,
+      "singsTitle": null,
+      "willSing": null,
+      "willSingTitle": null,
+      "noLipSync": null,
+      "plainClip": null
+    },
+    "failure": {
+      "details": null,
+      "outOfMemory": null,
+      "modelMissing": null,
+      "lipsyncModel": null,
+      "downloadBlocked": null,
+      "videoToolsMissing": null,
+      "sizeOverCap": null,
+      "referencesUnsupported": null,
+      "noPrompt": null,
+      "diskFull": null,
+      "cancelled": null,
+      "unknown": null,
+      "actionEdit": null,
+      "actionSmallerSized": null,
+      "actionSmaller": null,
+      "actionSmallerTitle": null,
+      "actionVideoModels": null,
+      "actionImageModels": null,
+      "actionVideoTools": null
+    },
+    "quality": {
+      "tag": null,
+      "tagNoSize": null,
+      "titleSized": null,
+      "titleDraftOnly": null,
+      "titleNoSize": null
     }
   },
   "storyProjects": {
@@ -2437,7 +2547,13 @@
       "upscaleSame": "影片已達此尺寸或更大,因此不會放大。",
       "more": "更多",
       "whyBusy": "轉譯正在進行中。待其結束或您取消後,匯出即會開始。",
-      "whyEmpty": "尚無可匯出的內容:沒有任何鏡頭有片段。請在分鏡頁籤中製作片段。"
+      "whyEmpty": "尚無可匯出的內容:沒有任何鏡頭有片段。請在分鏡頁籤中製作片段。",
+      "methodSharp": null,
+      "methodStandard": null,
+      "method": null,
+      "methodNeedsAddon": null,
+      "methodOpenUpscale": null,
+      "anyway": null
     },
     "importAudio": "匯入音訊",
     "importAudioPath": "音訊檔案路徑",
@@ -2512,6 +2628,12 @@
       "label": "播放來源",
       "cut": "粗剪預覽",
       "render": "轉譯預覽"
+    },
+    "clipSound": {
+      "muted": null,
+      "playing": null,
+      "mixed": null,
+      "switch": null
     }
   },
   "aiLabel": {
@@ -2902,7 +3024,9 @@
       "overview": "總覽",
       "storyboard": "分鏡"
     },
-    "tabsLabel": "專案"
+    "tabsLabel": "專案",
+    "more": null,
+    "boardHint": null
   },
   "templates": {
     "ad30": "30 秒廣告",
@@ -2985,7 +3109,9 @@
     "vertical": "直式社群",
     "metaFormat": "{aspect} · {resolution} · {fps} fps · {shots, plural, one {# 個鏡頭} other {# 個鏡頭}}",
     "sets": "{name} 已將格式設為 {aspect}、{resolution}、{fps} fps。可在下方變更。",
-    "sample": "範例影片"
+    "sample": "範例影片",
+    "musicVideoMeta": null,
+    "musicVideoNote": null
   },
   "voicePicker": {
     "automatic": "無聲音（自動）",
@@ -3016,7 +3142,17 @@
     "makeNone": "產生缺少的",
     "makeTimed": "產生缺少的 {n} 個 · 約 {time}",
     "needStills": "{n, plural, one {# 個鏡頭待處理} other {# 個鏡頭待處理}}:{stills, plural, one {# 個已有靜態圖,需製作其片段} other {# 個已有靜態圖,需製作其片段}}",
-    "stale": "{n} 個已過時"
+    "stale": "{n} 個已過時",
+    "choice": {
+      "finalPass": null,
+      "label": null,
+      "draft": null,
+      "about": null,
+      "draftWhy": null,
+      "final": null,
+      "peak": null
+    },
+    "more": null
   },
   "slowRow": {
     "label": "此電腦上執行較慢",
@@ -3155,5 +3291,66 @@
       "cancelled": null,
       "interrupted": null
     }
+  },
+  "guide": {
+    "stage": {
+      "song": null,
+      "look": null,
+      "shots": null,
+      "drafts": null,
+      "final": null,
+      "lipsync": null,
+      "sound": null,
+      "check": null,
+      "export": null
+    },
+    "look": {
+      "done": null,
+      "current": null,
+      "attention": null,
+      "progress": null,
+      "skipped": null,
+      "todo": null
+    },
+    "action": {
+      "attachSong": null,
+      "openCast": null,
+      "cutPlan": null,
+      "planShots": null,
+      "openStoryboard": null,
+      "watchBatch": null,
+      "resumeBatch": null,
+      "retryFailed": null,
+      "makeDrafts": null,
+      "makeMissing": null,
+      "makeFinal": null,
+      "chooseFinal": null,
+      "makeClips": null,
+      "remakeStale": null,
+      "assignVocals": null,
+      "makeLipsync": null,
+      "openCoverage": null,
+      "openMixer": null,
+      "openCheck": null,
+      "export": null
+    },
+    "label": null
+  },
+  "exportCheck": {
+    "line": {
+      "upscaleSharp": null
+    },
+    "stops": null,
+    "worthFixing": null,
+    "forInfo": null,
+    "stopsNone": null,
+    "worthFixingNone": null,
+    "fix": {
+      "plan": null,
+      "song": null,
+      "cast": null,
+      "shot": null
+    },
+    "title": null
   }
 }

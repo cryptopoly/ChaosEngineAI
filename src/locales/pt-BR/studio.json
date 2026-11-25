@@ -1486,7 +1486,8 @@
       "steps": "Passos",
       "stepsNumber": "Número de passos",
       "stepsNote": "Menos passos é mais rápido, mas pode soar pior. {n} é a configuração do autor do modelo.",
-      "summarySteps": "{n} passos"
+      "summarySteps": "{n} passos",
+      "random": null
     },
     "artistWarning": "Citar um artista pode gerar uma cópia do estilo dele. Descreva o som.",
     "cancel": "Cancelar",
@@ -1643,7 +1644,8 @@
       "stillsThenClips": "{kind}, depois clipes",
       "title": "Criando planos",
       "titleDraft": "Gerando rascunhos",
-      "titleFinal": "Passagem final"
+      "titleFinal": "Passagem final",
+      "failedSoFar": null
     },
     "conflictNotice": "Alterado em outro lugar; mostrando a versão mais recente",
     "defaults": {
@@ -1712,7 +1714,19 @@
       "castNone": null,
       "castEveryShot": null,
       "leaveOut": null,
-      "lipSyncSeparate": null
+      "lipSyncSeparate": null,
+      "clipSound": null,
+      "clipSoundOn": null,
+      "clipSoundOff": null,
+      "endFrame": null,
+      "endFrameHint": null,
+      "endFrameAlt": null,
+      "endFrameChange": null,
+      "endFramePick": null,
+      "endFrameRemove": null,
+      "endFramePickerTitle": null,
+      "vocalHintShot": null,
+      "vocalOptional": null
     },
     "empty": "Ainda não há planos. Adicione um plano e dê a ele um prompt ou importe filmagens.",
     "estimate": {
@@ -1808,7 +1822,12 @@
       "draft": "Rascunho",
       "draftTitle": "Um rascunho rápido. Mantenha este plano e rode a passagem final para a versão em qualidade total.",
       "keepForFinal": "Manter para a final",
-      "keepForFinalTitle": "A passagem final dos planos mantidos refaz este plano com o modelo de qualidade."
+      "keepForFinalTitle": "A passagem final dos planos mantidos refaz este plano com o modelo de qualidade.",
+      "tagsLabel": null,
+      "hideStaleTitle": null,
+      "hideStale": null,
+      "chooseForFinalTitle": null,
+      "chooseForFinal": null
     },
     "shots": "Planos",
     "subtitle": "{shots, plural, one {# plano} other {# planos}} · {seconds} s · {stale} desatualizado(s)",
@@ -1834,7 +1853,12 @@
       "label": "Passagens de rascunho e final",
       "withClips": "Rascunhos com clipes",
       "keepHint": "Marque planos com Manter para a final para escolhê-los na passagem final.",
-      "draftPer": "Cerca de {time} por rascunho."
+      "draftPer": "Cerca de {time} por rascunho.",
+      "draftTitleChoose": null,
+      "finalChosenTimed": null,
+      "finalChosen": null,
+      "finalChosenTitle": null,
+      "chooseHint": null
     },
     "exportDrafts": "{n, plural, one {# plano usa uma versão de rascunho.} other {# planos usam uma versão de rascunho.}} Mantenha-os e rode a passagem final para a qualidade total, ou exporte os rascunhos como estão.",
     "preview": {
@@ -1866,7 +1890,8 @@
       "noSound": "Esta janela não pode reproduzir som, então o corte bruto roda sem ele.",
       "titleCard": "Cartão de título",
       "endCard": "Cartão final",
-      "legendCard": "Cartão de título ou final (kit de marca)"
+      "legendCard": "Cartão de título ou final (kit de marca)",
+      "draftNoteSized": null
     },
     "captions": {
       "toggle": "Mostrar legendas (C)",
@@ -1921,7 +1946,8 @@
       "differs": "(diferente)",
       "open": "Comparar versões",
       "openTitle": "Duas versões lado a lado, com o que gerou cada uma.",
-      "short": "Comparar"
+      "short": "Comparar",
+      "noClipYet": null
     },
     "remake": {
       "clip": "Refazer só o clipe",
@@ -2221,7 +2247,8 @@
         "discard": "Descartar",
         "replaceNote": "Estes substituem {n, plural, one {o # plano} other {os # planos}} do quadro; com Manter prompts, o plano 1 mantém os prompts do plano 1 de hoje, e assim por diante. Desfazer traz os planos antigos de volta.",
         "title": "Plano de corte: {n, plural, one {# plano} other {# planos}} em {time}",
-        "use": "{n, plural, one {Usar este plano} other {Usar estes # planos}}"
+        "use": "{n, plural, one {Usar este plano} other {Usar estes # planos}}",
+        "useSinging": null
       },
       "cutPlan": "Criar um plano de corte",
       "cutting": "Cortando no ritmo da música…",
@@ -2263,8 +2290,39 @@
         "stemUse": "Usar este stem",
         "working": "Cortando o vocal…",
         "attach": "Dar a cada plano o seu vocal",
-        "done": "{attached, plural, =0 {Nenhum plano recebeu vocal} one {# plano recebeu seu vocal} other {# planos receberam seu vocal}} a partir {source, select, stem {do stem} other {da música}}."
-      }
+        "done": "{attached, plural, =0 {Nenhum plano recebeu vocal} one {# plano recebeu seu vocal} other {# planos receberam seu vocal}} a partir {source, select, stem {do stem} other {da música}}.",
+        "hintEach": null,
+        "again": null,
+        "unassigned": null
+      },
+      "coverage": {
+        "title": null,
+        "source": null,
+        "counts": null,
+        "empty": null,
+        "col": {
+          "shot": null,
+          "time": null,
+          "length": null,
+          "state": null
+        },
+        "makeAll": null,
+        "batchRunning": null
+      },
+      "sing": {
+        "question": null,
+        "yes": null,
+        "yesHint": null,
+        "stemHint": null,
+        "perShot": null,
+        "no": null,
+        "noHint": null,
+        "cut": null,
+        "keepShots": null,
+        "choose": null,
+        "review": null
+      },
+      "cutSongIntoShots": null
     },
     "unsaved": {
       "title": "Seu texto não foi salvo",
@@ -2275,6 +2333,58 @@
       "retry": "Tentar de novo",
       "keepLatest": "Manter a mais recente",
       "discard": "Descartar meu texto"
+    },
+    "chip": {
+      "noCharacterTitle": null,
+      "noCharacter": null,
+      "reasonSpeed": null,
+      "reasonLocked": null,
+      "reasonOutside": null,
+      "reasonShort": null,
+      "reasonLong": null,
+      "reasonNoSinging": null,
+      "reasonNoVocal": null,
+      "titleSpeed": null,
+      "titleLocked": null,
+      "titleOutside": null,
+      "titleShort": null,
+      "titleLong": null,
+      "titleNoSinging": null,
+      "titleNoVocal": null,
+      "sings": null,
+      "singsTitle": null,
+      "willSing": null,
+      "willSingTitle": null,
+      "noLipSync": null,
+      "plainClip": null
+    },
+    "failure": {
+      "details": null,
+      "outOfMemory": null,
+      "modelMissing": null,
+      "lipsyncModel": null,
+      "downloadBlocked": null,
+      "videoToolsMissing": null,
+      "sizeOverCap": null,
+      "referencesUnsupported": null,
+      "noPrompt": null,
+      "diskFull": null,
+      "cancelled": null,
+      "unknown": null,
+      "actionEdit": null,
+      "actionSmallerSized": null,
+      "actionSmaller": null,
+      "actionSmallerTitle": null,
+      "actionVideoModels": null,
+      "actionImageModels": null,
+      "actionVideoTools": null
+    },
+    "quality": {
+      "tag": null,
+      "tagNoSize": null,
+      "titleSized": null,
+      "titleDraftOnly": null,
+      "titleNoSize": null
     }
   },
   "storyProjects": {
@@ -2437,7 +2547,13 @@
       "upscaleSame": "O filme já tem este tamanho ou maior, então nada é ampliado.",
       "more": "Mais",
       "whyBusy": "Uma renderização está em andamento. A exportação começa quando ela terminar ou você cancelá-la.",
-      "whyEmpty": "Nada para exportar ainda: nenhum plano tem clipe. Crie clipes na aba Quadro."
+      "whyEmpty": "Nada para exportar ainda: nenhum plano tem clipe. Crie clipes na aba Quadro.",
+      "methodSharp": null,
+      "methodStandard": null,
+      "method": null,
+      "methodNeedsAddon": null,
+      "methodOpenUpscale": null,
+      "anyway": null
     },
     "importAudio": "Importar áudio",
     "importAudioPath": "Caminho do arquivo de áudio",
@@ -2512,6 +2628,12 @@
       "label": "O que Reproduzir toca",
       "cut": "Corte bruto",
       "render": "Pré-visualização renderizada"
+    },
+    "clipSound": {
+      "muted": null,
+      "playing": null,
+      "mixed": null,
+      "switch": null
     }
   },
   "aiLabel": {
@@ -2902,7 +3024,9 @@
       "overview": "Visão geral",
       "storyboard": "Storyboard"
     },
-    "tabsLabel": "Projeto"
+    "tabsLabel": "Projeto",
+    "more": null,
+    "boardHint": null
   },
   "templates": {
     "ad30": "Anúncio de 30 s",
@@ -2985,7 +3109,9 @@
     "vertical": "Vertical para redes",
     "metaFormat": "{aspect} · {resolution} · {fps} fps · {shots, plural, one {# plano} other {# planos}}",
     "sets": "{name} definiu o formato como {aspect}, {resolution}, {fps} fps. Altere abaixo.",
-    "sample": "Filme de exemplo"
+    "sample": "Filme de exemplo",
+    "musicVideoMeta": null,
+    "musicVideoNote": null
   },
   "voicePicker": {
     "automatic": "Sem voz (automático)",
@@ -3016,7 +3142,17 @@
     "makeNone": "Criar faltando",
     "makeTimed": "Criar {n} faltando · cerca de {time}",
     "needStills": "{n, plural, one {# plano precisa de trabalho} other {# planos precisam de trabalho}}: {stills, plural, one {# tem imagem e precisa do clipe} other {# têm imagem e precisam do clipe}}",
-    "stale": "{n} desatualizadas"
+    "stale": "{n} desatualizadas",
+    "choice": {
+      "finalPass": null,
+      "label": null,
+      "draft": null,
+      "about": null,
+      "draftWhy": null,
+      "final": null,
+      "peak": null
+    },
+    "more": null
   },
   "slowRow": {
     "label": "Lento neste computador",
@@ -3155,5 +3291,66 @@
       "cancelled": null,
       "interrupted": null
     }
+  },
+  "guide": {
+    "stage": {
+      "song": null,
+      "look": null,
+      "shots": null,
+      "drafts": null,
+      "final": null,
+      "lipsync": null,
+      "sound": null,
+      "check": null,
+      "export": null
+    },
+    "look": {
+      "done": null,
+      "current": null,
+      "attention": null,
+      "progress": null,
+      "skipped": null,
+      "todo": null
+    },
+    "action": {
+      "attachSong": null,
+      "openCast": null,
+      "cutPlan": null,
+      "planShots": null,
+      "openStoryboard": null,
+      "watchBatch": null,
+      "resumeBatch": null,
+      "retryFailed": null,
+      "makeDrafts": null,
+      "makeMissing": null,
+      "makeFinal": null,
+      "chooseFinal": null,
+      "makeClips": null,
+      "remakeStale": null,
+      "assignVocals": null,
+      "makeLipsync": null,
+      "openCoverage": null,
+      "openMixer": null,
+      "openCheck": null,
+      "export": null
+    },
+    "label": null
+  },
+  "exportCheck": {
+    "line": {
+      "upscaleSharp": null
+    },
+    "stops": null,
+    "worthFixing": null,
+    "forInfo": null,
+    "stopsNone": null,
+    "worthFixingNone": null,
+    "fix": {
+      "plan": null,
+      "song": null,
+      "cast": null,
+      "shot": null
+    },
+    "title": null
   }
 }

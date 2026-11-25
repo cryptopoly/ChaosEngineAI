@@ -1486,7 +1486,8 @@
       "steps": "ステップ",
       "stepsNumber": "ステップ数",
       "stepsNote": "ステップを減らすと速くなりますが、品質が下がることがあります。{n} はモデル作者の設定です。",
-      "summarySteps": "{n} ステップ"
+      "summarySteps": "{n} ステップ",
+      "random": null
     },
     "artistWarning": "アーティスト名を入れると、そのスタイルのコピーになることがあります。代わりに音そのものを描写してください。",
     "cancel": "キャンセル",
@@ -1643,7 +1644,8 @@
       "stillsThenClips": "{kind}、その後クリップ",
       "title": "ショットを作成中",
       "titleDraft": "ドラフトを作成中",
-      "titleFinal": "最終パス"
+      "titleFinal": "最終パス",
+      "failedSoFar": null
     },
     "conflictNotice": "他の場所で変更されました。最新の内容を表示しています",
     "defaults": {
@@ -1712,7 +1714,19 @@
       "castNone": null,
       "castEveryShot": null,
       "leaveOut": null,
-      "lipSyncSeparate": null
+      "lipSyncSeparate": null,
+      "clipSound": null,
+      "clipSoundOn": null,
+      "clipSoundOff": null,
+      "endFrame": null,
+      "endFrameHint": null,
+      "endFrameAlt": null,
+      "endFrameChange": null,
+      "endFramePick": null,
+      "endFrameRemove": null,
+      "endFramePickerTitle": null,
+      "vocalHintShot": null,
+      "vocalOptional": null
     },
     "empty": "まだショットがありません。ショットを追加して、プロンプトを入力するか素材をインポートしてください。",
     "estimate": {
@@ -1808,7 +1822,12 @@
       "draft": "ドラフト",
       "draftTitle": "簡易ドラフトです。このショットを残して最終パスを実行すると、最高品質のテイクになります。",
       "keepForFinal": "最終用に残す",
-      "keepForFinalTitle": "残したショットの最終パスは、高品質モデルでこのショットを作り直します。"
+      "keepForFinalTitle": "残したショットの最終パスは、高品質モデルでこのショットを作り直します。",
+      "tagsLabel": null,
+      "hideStaleTitle": null,
+      "hideStale": null,
+      "chooseForFinalTitle": null,
+      "chooseForFinal": null
     },
     "shots": "ショット",
     "subtitle": "{shots, plural, other {# 件のショット}} · {seconds} 秒 · 期限切れ {stale} 件",
@@ -1834,7 +1853,12 @@
       "label": "ドラフトと最終パス",
       "withClips": "クリップ付きのドラフト",
       "keepHint": "「最終用に残す」でショットを選ぶと、最終パスの対象になります。",
-      "draftPer": "ドラフト 1 件あたり約 {time}。"
+      "draftPer": "ドラフト 1 件あたり約 {time}。",
+      "draftTitleChoose": null,
+      "finalChosenTimed": null,
+      "finalChosen": null,
+      "finalChosenTitle": null,
+      "chooseHint": null
     },
     "exportDrafts": "{n, plural, other {# 件のショット}} がドラフトのテイクを使用しています。残して最終パスを実行すると最高品質になります。または、ドラフトのまま書き出すこともできます。",
     "preview": {
@@ -1866,7 +1890,8 @@
       "noSound": "このウィンドウは音声を再生できないため、ラフカットは音声なしで再生されます。",
       "titleCard": "タイトルカード",
       "endCard": "エンドカード",
-      "legendCard": "タイトルまたはエンドカード（ブランドキット）"
+      "legendCard": "タイトルまたはエンドカード（ブランドキット）",
+      "draftNoteSized": null
     },
     "captions": {
       "toggle": "字幕を表示 (C)",
@@ -1921,7 +1946,8 @@
       "differs": "（異なる）",
       "open": "テイクを比較",
       "openTitle": "2 つのテイクを並べて、それぞれの生成設定とともに表示します。",
-      "short": "比較"
+      "short": "比較",
+      "noClipYet": null
     },
     "remake": {
       "clip": "クリップのみやり直し",
@@ -2221,7 +2247,8 @@
         "discard": "破棄",
         "replaceNote": "これらは、ボード上の {n, plural, other {# ショット}} を置き換えます。「プロンプトを保持」を選ぶと、ショット 1 は現在のショット 1 のプロンプトを保持し、以下同様です。元に戻すと古いショットが戻ります。",
         "title": "カットプラン: {time} の間に {n, plural, other {# ショット}}",
-        "use": "{n, plural, other {これら # ショットを使う}}"
+        "use": "{n, plural, other {これら # ショットを使う}}",
+        "useSinging": null
       },
       "cutPlan": "カットプランを作成",
       "cutting": "曲に合わせてカット中…",
@@ -2263,8 +2290,39 @@
         "stemUse": "このステムを使う",
         "working": "ボーカルをカット中…",
         "attach": "各ショットにボーカルを割り当てる",
-        "done": "{attached, plural, =0 {ボーカルが割り当てられたショットはありません} other {# ショットにボーカルを割り当てました}} (元: {source, select, stem {ステム} other {曲}})。"
-      }
+        "done": "{attached, plural, =0 {ボーカルが割り当てられたショットはありません} other {# ショットにボーカルを割り当てました}} (元: {source, select, stem {ステム} other {曲}})。",
+        "hintEach": null,
+        "again": null,
+        "unassigned": null
+      },
+      "coverage": {
+        "title": null,
+        "source": null,
+        "counts": null,
+        "empty": null,
+        "col": {
+          "shot": null,
+          "time": null,
+          "length": null,
+          "state": null
+        },
+        "makeAll": null,
+        "batchRunning": null
+      },
+      "sing": {
+        "question": null,
+        "yes": null,
+        "yesHint": null,
+        "stemHint": null,
+        "perShot": null,
+        "no": null,
+        "noHint": null,
+        "cut": null,
+        "keepShots": null,
+        "choose": null,
+        "review": null
+      },
+      "cutSongIntoShots": null
     },
     "unsaved": {
       "title": "テキストは保存されませんでした",
@@ -2275,6 +2333,58 @@
       "retry": "再試行",
       "keepLatest": "最新を残す",
       "discard": "自分のテキストを破棄"
+    },
+    "chip": {
+      "noCharacterTitle": null,
+      "noCharacter": null,
+      "reasonSpeed": null,
+      "reasonLocked": null,
+      "reasonOutside": null,
+      "reasonShort": null,
+      "reasonLong": null,
+      "reasonNoSinging": null,
+      "reasonNoVocal": null,
+      "titleSpeed": null,
+      "titleLocked": null,
+      "titleOutside": null,
+      "titleShort": null,
+      "titleLong": null,
+      "titleNoSinging": null,
+      "titleNoVocal": null,
+      "sings": null,
+      "singsTitle": null,
+      "willSing": null,
+      "willSingTitle": null,
+      "noLipSync": null,
+      "plainClip": null
+    },
+    "failure": {
+      "details": null,
+      "outOfMemory": null,
+      "modelMissing": null,
+      "lipsyncModel": null,
+      "downloadBlocked": null,
+      "videoToolsMissing": null,
+      "sizeOverCap": null,
+      "referencesUnsupported": null,
+      "noPrompt": null,
+      "diskFull": null,
+      "cancelled": null,
+      "unknown": null,
+      "actionEdit": null,
+      "actionSmallerSized": null,
+      "actionSmaller": null,
+      "actionSmallerTitle": null,
+      "actionVideoModels": null,
+      "actionImageModels": null,
+      "actionVideoTools": null
+    },
+    "quality": {
+      "tag": null,
+      "tagNoSize": null,
+      "titleSized": null,
+      "titleDraftOnly": null,
+      "titleNoSize": null
     }
   },
   "storyProjects": {
@@ -2437,7 +2547,13 @@
       "upscaleSame": "映画はすでにこのサイズ以上なので、拡大は行われません。",
       "more": "その他",
       "whyBusy": "生成が実行中です。終了するかキャンセルすると書き出しが始まります。",
-      "whyEmpty": "まだ書き出すものがありません: クリップがあるショットがありません。ストーリーボードタブでクリップを作成してください。"
+      "whyEmpty": "まだ書き出すものがありません: クリップがあるショットがありません。ストーリーボードタブでクリップを作成してください。",
+      "methodSharp": null,
+      "methodStandard": null,
+      "method": null,
+      "methodNeedsAddon": null,
+      "methodOpenUpscale": null,
+      "anyway": null
     },
     "importAudio": "オーディオをインポート",
     "importAudioPath": "オーディオファイルのパス",
@@ -2512,6 +2628,12 @@
       "label": "再生する内容",
       "cut": "ラフカット",
       "render": "生成済みプレビュー"
+    },
+    "clipSound": {
+      "muted": null,
+      "playing": null,
+      "mixed": null,
+      "switch": null
     }
   },
   "aiLabel": {
@@ -2902,7 +3024,9 @@
       "overview": "概要",
       "storyboard": "ストーリーボード"
     },
-    "tabsLabel": "プロジェクト"
+    "tabsLabel": "プロジェクト",
+    "more": null,
+    "boardHint": null
   },
   "templates": {
     "ad30": "30 秒広告",
@@ -2985,7 +3109,9 @@
     "vertical": "縦型ソーシャル",
     "metaFormat": "{aspect} · {resolution} · {fps} fps · {shots, plural, other {# ショット}}",
     "sets": "{name} が形式を {aspect}、{resolution}、{fps} fps に設定しました。下で変更できます。",
-    "sample": "サンプル映画"
+    "sample": "サンプル映画",
+    "musicVideoMeta": null,
+    "musicVideoNote": null
   },
   "voicePicker": {
     "automatic": "音声なし (自動)",
@@ -3016,7 +3142,17 @@
     "makeNone": "不足分を作る",
     "makeTimed": "不足分 {n} 件を作る · 約 {time}",
     "needStills": "{n, plural, other {# ショットに作業が必要です}}: {stills, plural, other {# ショットには静止画がありクリップが必要です}}",
-    "stale": "{n} 件が古い"
+    "stale": "{n} 件が古い",
+    "choice": {
+      "finalPass": null,
+      "label": null,
+      "draft": null,
+      "about": null,
+      "draftWhy": null,
+      "final": null,
+      "peak": null
+    },
+    "more": null
   },
   "slowRow": {
     "label": "このコンピューターでは低速",
@@ -3155,5 +3291,66 @@
       "cancelled": null,
       "interrupted": null
     }
+  },
+  "guide": {
+    "stage": {
+      "song": null,
+      "look": null,
+      "shots": null,
+      "drafts": null,
+      "final": null,
+      "lipsync": null,
+      "sound": null,
+      "check": null,
+      "export": null
+    },
+    "look": {
+      "done": null,
+      "current": null,
+      "attention": null,
+      "progress": null,
+      "skipped": null,
+      "todo": null
+    },
+    "action": {
+      "attachSong": null,
+      "openCast": null,
+      "cutPlan": null,
+      "planShots": null,
+      "openStoryboard": null,
+      "watchBatch": null,
+      "resumeBatch": null,
+      "retryFailed": null,
+      "makeDrafts": null,
+      "makeMissing": null,
+      "makeFinal": null,
+      "chooseFinal": null,
+      "makeClips": null,
+      "remakeStale": null,
+      "assignVocals": null,
+      "makeLipsync": null,
+      "openCoverage": null,
+      "openMixer": null,
+      "openCheck": null,
+      "export": null
+    },
+    "label": null
+  },
+  "exportCheck": {
+    "line": {
+      "upscaleSharp": null
+    },
+    "stops": null,
+    "worthFixing": null,
+    "forInfo": null,
+    "stopsNone": null,
+    "worthFixingNone": null,
+    "fix": {
+      "plan": null,
+      "song": null,
+      "cast": null,
+      "shot": null
+    },
+    "title": null
   }
 }

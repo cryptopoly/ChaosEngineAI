@@ -1486,7 +1486,8 @@
       "steps": "Schritte",
       "stepsNumber": "Anzahl der Schritte",
       "stepsNote": "Weniger Schritte sind schneller, können aber schlechter klingen. {n} ist die Einstellung des Modell-Autors.",
-      "summarySteps": "{n} Schritte"
+      "summarySteps": "{n} Schritte",
+      "random": null
     },
     "artistWarning": "Wenn du einen Künstler nennst, kann eine Kopie seines Stils entstehen. Beschreibe stattdessen den Klang.",
     "cancel": "Abbrechen",
@@ -1643,7 +1644,8 @@
       "stillsThenClips": "{kind}, danach Clips",
       "title": "Einstellungen werden erstellt",
       "titleDraft": "Entwürfe werden erstellt",
-      "titleFinal": "Finaler Durchlauf"
+      "titleFinal": "Finaler Durchlauf",
+      "failedSoFar": null
     },
     "conflictNotice": "Anderswo geändert; die neueste Version wird angezeigt",
     "defaults": {
@@ -1712,7 +1714,19 @@
       "castNone": null,
       "castEveryShot": null,
       "leaveOut": null,
-      "lipSyncSeparate": null
+      "lipSyncSeparate": null,
+      "clipSound": null,
+      "clipSoundOn": null,
+      "clipSoundOff": null,
+      "endFrame": null,
+      "endFrameHint": null,
+      "endFrameAlt": null,
+      "endFrameChange": null,
+      "endFramePick": null,
+      "endFrameRemove": null,
+      "endFramePickerTitle": null,
+      "vocalHintShot": null,
+      "vocalOptional": null
     },
     "empty": "Noch keine Einstellungen. Füge eine Einstellung hinzu und gib ihr einen Prompt oder importiere Material.",
     "estimate": {
@@ -1808,7 +1822,12 @@
       "draft": "Entwurf",
       "draftTitle": "Ein schneller Entwurf. Behalte diesen Shot und starte den finalen Durchlauf für den Take in voller Qualität.",
       "keepForFinal": "Für den Finalen behalten",
-      "keepForFinalTitle": "Der finale Durchlauf auf behaltenen Shots erzeugt diesen Shot mit dem Qualitätsmodell neu."
+      "keepForFinalTitle": "Der finale Durchlauf auf behaltenen Shots erzeugt diesen Shot mit dem Qualitätsmodell neu.",
+      "tagsLabel": null,
+      "hideStaleTitle": null,
+      "hideStale": null,
+      "chooseForFinalTitle": null,
+      "chooseForFinal": null
     },
     "shots": "Einstellungen",
     "subtitle": "{shots, plural, one {# Einstellung} other {# Einstellungen}} · {seconds} s · {stale} veraltet",
@@ -1834,7 +1853,12 @@
       "label": "Entwurfs- und Finaldurchläufe",
       "withClips": "Entwürfe mit Clips",
       "keepHint": "Markiere Shots mit „Für den Finalen behalten“, um sie für den finalen Durchlauf auszuwählen.",
-      "draftPer": "Etwa {time} pro Entwurf."
+      "draftPer": "Etwa {time} pro Entwurf.",
+      "draftTitleChoose": null,
+      "finalChosenTimed": null,
+      "finalChosen": null,
+      "finalChosenTitle": null,
+      "chooseHint": null
     },
     "exportDrafts": "{n, plural, one {# Shot verwendet einen Entwurfs-Take.} other {# Shots verwenden einen Entwurfs-Take.}} Behalte sie und starte den finalen Durchlauf für volle Qualität, oder exportiere die Entwürfe so, wie sie sind.",
     "preview": {
@@ -1866,7 +1890,8 @@
       "noSound": "Dieses Fenster kann keinen Ton abspielen, daher läuft der Grobschnitt ohne Ton.",
       "titleCard": "Titelkarte",
       "endCard": "Endkarte",
-      "legendCard": "Titel- oder Endkarte (Markenkit)"
+      "legendCard": "Titel- oder Endkarte (Markenkit)",
+      "draftNoteSized": null
     },
     "captions": {
       "toggle": "Untertitel anzeigen (C)",
@@ -1921,7 +1946,8 @@
       "differs": "(anders)",
       "open": "Takes vergleichen",
       "openTitle": "Zwei Takes nebeneinander, mit dem, was jeden erzeugt hat.",
-      "short": "Vergleichen"
+      "short": "Vergleichen",
+      "noClipYet": null
     },
     "remake": {
       "clip": "Nur Clip neu machen",
@@ -2221,7 +2247,8 @@
         "discard": "Verwerfen",
         "replaceNote": "Diese ersetzen die {n, plural, one {# Shot} other {# Shots}} auf dem Board; mit Bild-Prompts behält Shot 1 die Prompts des heutigen Shots 1 und so weiter. Rückgängig bringt die alten Shots zurück.",
         "title": "Schnittplan: {n, plural, one {# Shot} other {# Shots}} über {time}",
-        "use": "{n, plural, one {Diesen Shot verwenden} other {Diese # Shots verwenden}}"
+        "use": "{n, plural, one {Diesen Shot verwenden} other {Diese # Shots verwenden}}",
+        "useSinging": null
       },
       "cutPlan": "Schnittplan erstellen",
       "cutting": "Schnitt zur Musik …",
@@ -2263,8 +2290,39 @@
         "stemUse": "Diesen Stem verwenden",
         "working": "Gesang wird geschnitten …",
         "attach": "Jedem Shot seinen Gesang zuweisen",
-        "done": "{attached, plural, =0 {Kein Shot hat Gesang bekommen} one {# Shot hat seinen Gesang bekommen} other {# Shots haben ihren Gesang bekommen}} – aus {source, select, stem {dem Stem} other {dem Song}}."
-      }
+        "done": "{attached, plural, =0 {Kein Shot hat Gesang bekommen} one {# Shot hat seinen Gesang bekommen} other {# Shots haben ihren Gesang bekommen}} – aus {source, select, stem {dem Stem} other {dem Song}}.",
+        "hintEach": null,
+        "again": null,
+        "unassigned": null
+      },
+      "coverage": {
+        "title": null,
+        "source": null,
+        "counts": null,
+        "empty": null,
+        "col": {
+          "shot": null,
+          "time": null,
+          "length": null,
+          "state": null
+        },
+        "makeAll": null,
+        "batchRunning": null
+      },
+      "sing": {
+        "question": null,
+        "yes": null,
+        "yesHint": null,
+        "stemHint": null,
+        "perShot": null,
+        "no": null,
+        "noHint": null,
+        "cut": null,
+        "keepShots": null,
+        "choose": null,
+        "review": null
+      },
+      "cutSongIntoShots": null
     },
     "unsaved": {
       "title": "Dein Text wurde nicht gespeichert",
@@ -2275,6 +2333,58 @@
       "retry": "Erneut versuchen",
       "keepLatest": "Die neueste behalten",
       "discard": "Meinen Text verwerfen"
+    },
+    "chip": {
+      "noCharacterTitle": null,
+      "noCharacter": null,
+      "reasonSpeed": null,
+      "reasonLocked": null,
+      "reasonOutside": null,
+      "reasonShort": null,
+      "reasonLong": null,
+      "reasonNoSinging": null,
+      "reasonNoVocal": null,
+      "titleSpeed": null,
+      "titleLocked": null,
+      "titleOutside": null,
+      "titleShort": null,
+      "titleLong": null,
+      "titleNoSinging": null,
+      "titleNoVocal": null,
+      "sings": null,
+      "singsTitle": null,
+      "willSing": null,
+      "willSingTitle": null,
+      "noLipSync": null,
+      "plainClip": null
+    },
+    "failure": {
+      "details": null,
+      "outOfMemory": null,
+      "modelMissing": null,
+      "lipsyncModel": null,
+      "downloadBlocked": null,
+      "videoToolsMissing": null,
+      "sizeOverCap": null,
+      "referencesUnsupported": null,
+      "noPrompt": null,
+      "diskFull": null,
+      "cancelled": null,
+      "unknown": null,
+      "actionEdit": null,
+      "actionSmallerSized": null,
+      "actionSmaller": null,
+      "actionSmallerTitle": null,
+      "actionVideoModels": null,
+      "actionImageModels": null,
+      "actionVideoTools": null
+    },
+    "quality": {
+      "tag": null,
+      "tagNoSize": null,
+      "titleSized": null,
+      "titleDraftOnly": null,
+      "titleNoSize": null
     }
   },
   "storyProjects": {
@@ -2437,7 +2547,13 @@
       "upscaleSame": "Der Film hat schon diese Größe oder ist größer, daher wird nichts hochskaliert.",
       "more": "Mehr",
       "whyBusy": "Ein Rendering läuft. Der Export startet, sobald es endet oder du abbrichst.",
-      "whyEmpty": "Noch nichts zu exportieren: Kein Shot hat einen Clip. Erzeuge Clips auf dem Reiter Storyboard."
+      "whyEmpty": "Noch nichts zu exportieren: Kein Shot hat einen Clip. Erzeuge Clips auf dem Reiter Storyboard.",
+      "methodSharp": null,
+      "methodStandard": null,
+      "method": null,
+      "methodNeedsAddon": null,
+      "methodOpenUpscale": null,
+      "anyway": null
     },
     "importAudio": "Audio importieren",
     "importAudioPath": "Pfad der Audiodatei",
@@ -2512,6 +2628,12 @@
       "label": "Was Abspielen abspielt",
       "cut": "Grobschnitt",
       "render": "Gerenderte Vorschau"
+    },
+    "clipSound": {
+      "muted": null,
+      "playing": null,
+      "mixed": null,
+      "switch": null
     }
   },
   "aiLabel": {
@@ -2902,7 +3024,9 @@
       "overview": "Übersicht",
       "storyboard": "Storyboard"
     },
-    "tabsLabel": "Projekt"
+    "tabsLabel": "Projekt",
+    "more": null,
+    "boardHint": null
   },
   "templates": {
     "ad30": "30-s-Spot",
@@ -2985,7 +3109,9 @@
     "vertical": "Hochformat Social",
     "metaFormat": "{aspect} · {resolution} · {fps} fps · {shots, plural, one {# Shot} other {# Shots}}",
     "sets": "{name} hat das Format auf {aspect}, {resolution}, {fps} fps gesetzt. Du kannst alles unten ändern.",
-    "sample": "Beispielfilm"
+    "sample": "Beispielfilm",
+    "musicVideoMeta": null,
+    "musicVideoNote": null
   },
   "voicePicker": {
     "automatic": "Keine Stimme (automatisch)",
@@ -3016,7 +3142,17 @@
     "makeNone": "Fehlende erstellen",
     "makeTimed": "{n} fehlende erstellen · etwa {time}",
     "needStills": "{n, plural, one {# Shot braucht Arbeit} other {# Shots brauchen Arbeit}}: {stills, plural, one {# hat ein Standbild und braucht seinen Clip} other {# haben ein Standbild und brauchen ihre Clips}}",
-    "stale": "{n} veraltet"
+    "stale": "{n} veraltet",
+    "choice": {
+      "finalPass": null,
+      "label": null,
+      "draft": null,
+      "about": null,
+      "draftWhy": null,
+      "final": null,
+      "peak": null
+    },
+    "more": null
   },
   "slowRow": {
     "label": "Auf diesem Rechner langsam",
@@ -3155,5 +3291,66 @@
       "cancelled": null,
       "interrupted": null
     }
+  },
+  "guide": {
+    "stage": {
+      "song": null,
+      "look": null,
+      "shots": null,
+      "drafts": null,
+      "final": null,
+      "lipsync": null,
+      "sound": null,
+      "check": null,
+      "export": null
+    },
+    "look": {
+      "done": null,
+      "current": null,
+      "attention": null,
+      "progress": null,
+      "skipped": null,
+      "todo": null
+    },
+    "action": {
+      "attachSong": null,
+      "openCast": null,
+      "cutPlan": null,
+      "planShots": null,
+      "openStoryboard": null,
+      "watchBatch": null,
+      "resumeBatch": null,
+      "retryFailed": null,
+      "makeDrafts": null,
+      "makeMissing": null,
+      "makeFinal": null,
+      "chooseFinal": null,
+      "makeClips": null,
+      "remakeStale": null,
+      "assignVocals": null,
+      "makeLipsync": null,
+      "openCoverage": null,
+      "openMixer": null,
+      "openCheck": null,
+      "export": null
+    },
+    "label": null
+  },
+  "exportCheck": {
+    "line": {
+      "upscaleSharp": null
+    },
+    "stops": null,
+    "worthFixing": null,
+    "forInfo": null,
+    "stopsNone": null,
+    "worthFixingNone": null,
+    "fix": {
+      "plan": null,
+      "song": null,
+      "cast": null,
+      "shot": null
+    },
+    "title": null
   }
 }

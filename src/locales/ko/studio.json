@@ -1486,7 +1486,8 @@
       "steps": "단계",
       "stepsNumber": "단계 수",
       "stepsNote": "단계가 적으면 빠르지만 품질이 떨어질 수 있습니다. {n}은(는) 모델 제작자가 설정한 값입니다.",
-      "summarySteps": "{n}단계"
+      "summarySteps": "{n}단계",
+      "random": null
     },
     "artistWarning": "아티스트 이름을 넣으면 그 스타일을 베낀 결과가 나올 수 있습니다. 대신 소리를 묘사하세요.",
     "cancel": "취소",
@@ -1643,7 +1644,8 @@
       "stillsThenClips": "{kind}, 그다음 클립",
       "title": "샷 만드는 중",
       "titleDraft": "초안 만들기",
-      "titleFinal": "최종 패스"
+      "titleFinal": "최종 패스",
+      "failedSoFar": null
     },
     "conflictNotice": "다른 곳에서 변경됨. 최신 내용을 표시합니다",
     "defaults": {
@@ -1712,7 +1714,19 @@
       "castNone": null,
       "castEveryShot": null,
       "leaveOut": null,
-      "lipSyncSeparate": null
+      "lipSyncSeparate": null,
+      "clipSound": null,
+      "clipSoundOn": null,
+      "clipSoundOff": null,
+      "endFrame": null,
+      "endFrameHint": null,
+      "endFrameAlt": null,
+      "endFrameChange": null,
+      "endFramePick": null,
+      "endFrameRemove": null,
+      "endFramePickerTitle": null,
+      "vocalHintShot": null,
+      "vocalOptional": null
     },
     "empty": "아직 샷이 없습니다. 샷을 추가한 뒤 프롬프트를 입력하거나 영상을 가져오세요.",
     "estimate": {
@@ -1808,7 +1822,12 @@
       "draft": "초안",
       "draftTitle": "빠른 초안입니다. 이 컷을 유지하고 최종 패스를 실행하면 최고 품질 테이크가 만들어집니다.",
       "keepForFinal": "최종용으로 유지",
-      "keepForFinalTitle": "유지한 컷에 대한 최종 패스는 고품질 모델로 이 컷을 다시 만듭니다."
+      "keepForFinalTitle": "유지한 컷에 대한 최종 패스는 고품질 모델로 이 컷을 다시 만듭니다.",
+      "tagsLabel": null,
+      "hideStaleTitle": null,
+      "hideStale": null,
+      "chooseForFinalTitle": null,
+      "chooseForFinal": null
     },
     "shots": "샷",
     "subtitle": "{shots, plural, other {샷 #개}} · {seconds}초 · 오래됨 {stale}개",
@@ -1834,7 +1853,12 @@
       "label": "초안 및 최종 패스",
       "withClips": "클립이 있는 초안",
       "keepHint": "최종 패스에 쓸 컷은 최종용으로 유지를 표시하세요.",
-      "draftPer": "초안 1개당 약 {time}."
+      "draftPer": "초안 1개당 약 {time}.",
+      "draftTitleChoose": null,
+      "finalChosenTimed": null,
+      "finalChosen": null,
+      "finalChosenTitle": null,
+      "chooseHint": null
     },
     "exportDrafts": "{n, plural, other {컷 #개}}가 초안 테이크를 사용합니다. 최고 품질을 위해 유지하고 최종 패스를 실행하거나, 초안을 그대로 내보내세요.",
     "preview": {
@@ -1866,7 +1890,8 @@
       "noSound": "이 창에서는 소리를 재생할 수 없어 러프 컷은 소리 없이 재생됩니다.",
       "titleCard": "타이틀 카드",
       "endCard": "엔드 카드",
-      "legendCard": "타이틀 또는 엔드 카드 (브랜드 킷)"
+      "legendCard": "타이틀 또는 엔드 카드 (브랜드 킷)",
+      "draftNoteSized": null
     },
     "captions": {
       "toggle": "자막 표시 (C)",
@@ -1921,7 +1946,8 @@
       "differs": "(다름)",
       "open": "테이크 비교",
       "openTitle": "두 테이크를 나란히 보고, 각각을 만든 설정을 확인합니다.",
-      "short": "비교"
+      "short": "비교",
+      "noClipYet": null
     },
     "remake": {
       "clip": "클립만 다시 만들기",
@@ -2221,7 +2247,8 @@
         "discard": "버리기",
         "replaceNote": "이 항목은 보드의 {n, plural, other {컷 #개}}를 대체합니다. 프롬프트 유지를 선택하면 1번 컷은 현재 1번 컷의 프롬프트를 유지하는 식으로 이어집니다. 실행 취소하면 이전 컷이 돌아옵니다.",
         "title": "컷 계획: {time} 동안 {n, plural, other {컷 #개}}",
-        "use": "{n, plural, other {컷 #개 사용}}"
+        "use": "{n, plural, other {컷 #개 사용}}",
+        "useSinging": null
       },
       "cutPlan": "컷 계획 만들기",
       "cutting": "음악에 맞춰 컷을 나누는 중…",
@@ -2263,8 +2290,39 @@
         "stemUse": "이 스템 사용",
         "working": "보컬을 자르는 중…",
         "attach": "각 컷에 보컬 지정",
-        "done": "{attached, plural, =0 {보컬을 받은 컷이 없습니다} other {컷 #개에 보컬을 지정했습니다}}({source, select, stem {스템} other {노래}} 기준)."
-      }
+        "done": "{attached, plural, =0 {보컬을 받은 컷이 없습니다} other {컷 #개에 보컬을 지정했습니다}}({source, select, stem {스템} other {노래}} 기준).",
+        "hintEach": null,
+        "again": null,
+        "unassigned": null
+      },
+      "coverage": {
+        "title": null,
+        "source": null,
+        "counts": null,
+        "empty": null,
+        "col": {
+          "shot": null,
+          "time": null,
+          "length": null,
+          "state": null
+        },
+        "makeAll": null,
+        "batchRunning": null
+      },
+      "sing": {
+        "question": null,
+        "yes": null,
+        "yesHint": null,
+        "stemHint": null,
+        "perShot": null,
+        "no": null,
+        "noHint": null,
+        "cut": null,
+        "keepShots": null,
+        "choose": null,
+        "review": null
+      },
+      "cutSongIntoShots": null
     },
     "unsaved": {
       "title": "입력한 텍스트가 저장되지 않았습니다",
@@ -2275,6 +2333,58 @@
       "retry": "다시 시도",
       "keepLatest": "최신 내용 유지",
       "discard": "입력한 텍스트 버리기"
+    },
+    "chip": {
+      "noCharacterTitle": null,
+      "noCharacter": null,
+      "reasonSpeed": null,
+      "reasonLocked": null,
+      "reasonOutside": null,
+      "reasonShort": null,
+      "reasonLong": null,
+      "reasonNoSinging": null,
+      "reasonNoVocal": null,
+      "titleSpeed": null,
+      "titleLocked": null,
+      "titleOutside": null,
+      "titleShort": null,
+      "titleLong": null,
+      "titleNoSinging": null,
+      "titleNoVocal": null,
+      "sings": null,
+      "singsTitle": null,
+      "willSing": null,
+      "willSingTitle": null,
+      "noLipSync": null,
+      "plainClip": null
+    },
+    "failure": {
+      "details": null,
+      "outOfMemory": null,
+      "modelMissing": null,
+      "lipsyncModel": null,
+      "downloadBlocked": null,
+      "videoToolsMissing": null,
+      "sizeOverCap": null,
+      "referencesUnsupported": null,
+      "noPrompt": null,
+      "diskFull": null,
+      "cancelled": null,
+      "unknown": null,
+      "actionEdit": null,
+      "actionSmallerSized": null,
+      "actionSmaller": null,
+      "actionSmallerTitle": null,
+      "actionVideoModels": null,
+      "actionImageModels": null,
+      "actionVideoTools": null
+    },
+    "quality": {
+      "tag": null,
+      "tagNoSize": null,
+      "titleSized": null,
+      "titleDraftOnly": null,
+      "titleNoSize": null
     }
   },
   "storyProjects": {
@@ -2437,7 +2547,13 @@
       "upscaleSame": "영상이 이미 이 크기 이상이므로 확대하지 않습니다.",
       "more": "더 보기",
       "whyBusy": "렌더링이 진행 중입니다. 끝나거나 취소하면 내보내기가 시작됩니다.",
-      "whyEmpty": "아직 내보낼 항목이 없습니다. 클립이 있는 컷이 없습니다. 스토리보드 탭에서 클립을 만드세요."
+      "whyEmpty": "아직 내보낼 항목이 없습니다. 클립이 있는 컷이 없습니다. 스토리보드 탭에서 클립을 만드세요.",
+      "methodSharp": null,
+      "methodStandard": null,
+      "method": null,
+      "methodNeedsAddon": null,
+      "methodOpenUpscale": null,
+      "anyway": null
     },
     "importAudio": "오디오 가져오기",
     "importAudioPath": "오디오 파일 경로",
@@ -2512,6 +2628,12 @@
       "label": "재생 대상",
       "cut": "러프 컷",
       "render": "렌더링 미리보기"
+    },
+    "clipSound": {
+      "muted": null,
+      "playing": null,
+      "mixed": null,
+      "switch": null
     }
   },
   "aiLabel": {
@@ -2902,7 +3024,9 @@
       "overview": "개요",
       "storyboard": "스토리보드"
     },
-    "tabsLabel": "프로젝트"
+    "tabsLabel": "프로젝트",
+    "more": null,
+    "boardHint": null
   },
   "templates": {
     "ad30": "30초 광고",
@@ -2985,7 +3109,9 @@
     "vertical": "세로 소셜",
     "metaFormat": "{aspect} · {resolution} · {fps} fps · {shots, plural, other {컷 #개}}",
     "sets": "{name}이(가) 형식을 {aspect}, {resolution}, {fps}fps로 설정했습니다. 아래에서 바꿀 수 있습니다.",
-    "sample": "샘플 영상"
+    "sample": "샘플 영상",
+    "musicVideoMeta": null,
+    "musicVideoNote": null
   },
   "voicePicker": {
     "automatic": "음성 없음(자동)",
@@ -3016,7 +3142,17 @@
     "makeNone": "빠진 것 만들기",
     "makeTimed": "빠진 {n}개 만들기 · 약 {time}",
     "needStills": "{n, plural, other {컷 #개 작업 필요}}: {stills, plural, other {#개는 정지 이미지가 있고 클립이 필요합니다}}",
-    "stale": "{n}개 오래됨"
+    "stale": "{n}개 오래됨",
+    "choice": {
+      "finalPass": null,
+      "label": null,
+      "draft": null,
+      "about": null,
+      "draftWhy": null,
+      "final": null,
+      "peak": null
+    },
+    "more": null
   },
   "slowRow": {
     "label": "이 컴퓨터에서 느림",
@@ -3155,5 +3291,66 @@
       "cancelled": null,
       "interrupted": null
     }
+  },
+  "guide": {
+    "stage": {
+      "song": null,
+      "look": null,
+      "shots": null,
+      "drafts": null,
+      "final": null,
+      "lipsync": null,
+      "sound": null,
+      "check": null,
+      "export": null
+    },
+    "look": {
+      "done": null,
+      "current": null,
+      "attention": null,
+      "progress": null,
+      "skipped": null,
+      "todo": null
+    },
+    "action": {
+      "attachSong": null,
+      "openCast": null,
+      "cutPlan": null,
+      "planShots": null,
+      "openStoryboard": null,
+      "watchBatch": null,
+      "resumeBatch": null,
+      "retryFailed": null,
+      "makeDrafts": null,
+      "makeMissing": null,
+      "makeFinal": null,
+      "chooseFinal": null,
+      "makeClips": null,
+      "remakeStale": null,
+      "assignVocals": null,
+      "makeLipsync": null,
+      "openCoverage": null,
+      "openMixer": null,
+      "openCheck": null,
+      "export": null
+    },
+    "label": null
+  },
+  "exportCheck": {
+    "line": {
+      "upscaleSharp": null
+    },
+    "stops": null,
+    "worthFixing": null,
+    "forInfo": null,
+    "stopsNone": null,
+    "worthFixingNone": null,
+    "fix": {
+      "plan": null,
+      "song": null,
+      "cast": null,
+      "shot": null
+    },
+    "title": null
   }
 }

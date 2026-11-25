@@ -1486,7 +1486,8 @@
       "steps": "Steps",
       "stepsNumber": "Number of steps",
       "stepsNote": "Fewer steps are faster but can sound worse. {n} is the model author's setting.",
-      "summarySteps": "{n} steps"
+      "summarySteps": "{n} steps",
+      "random": "Random"
     },
     "artistWarning": "Naming an artist can produce a copy of their style. Describe the sound instead.",
     "cancel": "Cancel",
@@ -1643,7 +1644,8 @@
       "stillsThenClips": "{kind}, then clips",
       "title": "Making shots",
       "titleDraft": "Making drafts",
-      "titleFinal": "Final pass"
+      "titleFinal": "Final pass",
+      "failedSoFar": "{n, plural, one {# shot did not render. Its card says why and what to do.} other {# shots did not render. Their cards say why and what to do.}}"
     },
     "conflictNotice": "Changed elsewhere; showing the latest",
     "defaults": {
@@ -1712,7 +1714,19 @@
       "castNone": "No character in this shot.",
       "castEveryShot": "In every shot",
       "leaveOut": "Leave out of this shot",
-      "lipSyncSeparate": "A character in the shot does not have to sing. Lip sync is set for each shot on its own, under Vocal for lip sync."
+      "lipSyncSeparate": "A character in the shot does not have to sing. Lip sync is set for each shot on its own, under Vocal for lip sync.",
+      "clipSound": "Let clip sound play",
+      "clipSoundOn": "This clip's own sound plays over the song.",
+      "clipSoundOff": "Muted under the song.",
+      "endFrame": "End frame",
+      "endFrameHint": "The picture the clip should finish on. Only LTX-2 video models use it; the others will ask you to remove it.",
+      "endFrameAlt": "End frame of shot {number}",
+      "endFrameChange": "Change end frame",
+      "endFramePick": "Choose end frame",
+      "endFrameRemove": "Remove end frame",
+      "endFramePickerTitle": "End frame for shot {number}",
+      "vocalHintShot": "A WAV or FLAC the mouth follows: the clip starts from this shot's still and keeps this sound. Needs LTX-2.3 as the video model (the 4-bit NVIDIA model wants a 24 GB card).",
+      "vocalOptional": "A shot does not have to sing: remove its vocal and it plays as an ordinary clip."
     },
     "empty": "No shots yet. Add a shot, then give it a prompt or import footage.",
     "estimate": {
@@ -1808,7 +1822,12 @@
       "draft": "Draft",
       "draftTitle": "A quick draft. Keep this shot and run the final pass for the full-quality take.",
       "keepForFinal": "Keep for final",
-      "keepForFinalTitle": "Final pass on kept shots makes this shot again with the quality model."
+      "keepForFinalTitle": "Final pass on kept shots makes this shot again with the quality model.",
+      "tagsLabel": "Lip sync and cast",
+      "hideStaleTitle": "Hides this warning. The shot stays as it is and nothing is made again.",
+      "hideStale": "Hide this warning",
+      "chooseForFinalTitle": "The final pass makes the shots you choose again with the quality model, at the film's full size.",
+      "chooseForFinal": "Choose for final"
     },
     "shots": "Shots",
     "subtitle": "{shots, plural, one {# shot} other {# shots}} · {seconds} s · {stale} stale",
@@ -1834,7 +1853,12 @@
       "label": "Draft and final passes",
       "withClips": "Drafts with clips",
       "keepHint": "Mark shots with Keep for final to choose them for the final pass.",
-      "draftPer": "About {time} per draft."
+      "draftPer": "About {time} per draft.",
+      "draftTitleChoose": "Quick stills with {model} at {width} x {height}. Choose the shots you like for final, then run the final pass.",
+      "finalChosenTimed": "Final pass on {n, plural, one {# chosen shot} other {# chosen shots}} · about {time}",
+      "finalChosen": "Final pass on {n, plural, one {# chosen shot} other {# chosen shots}}",
+      "finalChosenTitle": "Makes each chosen shot again with {model} at {width} x {height}, then its clip from the new still.",
+      "chooseHint": "Use Choose for final on a shot to put it in the final pass."
     },
     "exportDrafts": "{n, plural, one {# shot uses a draft take.} other {# shots use a draft take.}} Keep them and run the final pass for full quality, or export the drafts as they are.",
     "preview": {
@@ -1866,7 +1890,8 @@
       "noSound": "This window cannot play sound, so the rough cut plays without it.",
       "titleCard": "Title card",
       "endCard": "End card",
-      "legendCard": "Title or end card (brand kit)"
+      "legendCard": "Title or end card (brand kit)",
+      "draftNoteSized": "{n, plural, one {# shot plays a draft take.} other {# shots play a draft take.}} Drafts are smaller than the film. Choose them for final and run the final pass for the full size."
     },
     "captions": {
       "toggle": "Show captions (C)",
@@ -1921,7 +1946,8 @@
       "differs": "(differs)",
       "open": "Compare takes",
       "openTitle": "Two takes side by side, with what made each one.",
-      "short": "Compare"
+      "short": "Compare",
+      "noClipYet": "No clip in this take yet."
     },
     "remake": {
       "clip": "Redo clip only",
@@ -2221,7 +2247,8 @@
         "discard": "Discard",
         "replaceNote": "These replace the {n, plural, one {# shot} other {# shots}} on the board; with Keep prompts, shot 1 keeps the prompts of today's shot 1 and so on. Undo brings the old shots back.",
         "title": "Cut plan: {n, plural, one {# shot} other {# shots}} over {time}",
-        "use": "{n, plural, one {Use this shot} other {Use these # shots}}"
+        "use": "{n, plural, one {Use this shot} other {Use these # shots}}",
+        "useSinging": "{n, plural, one {Use this shot and give it its vocal} other {Use these # shots and give each its vocal}}"
       },
       "cutPlan": "Make a cut plan",
       "cutting": "Cutting to the music…",
@@ -2263,8 +2290,39 @@
         "stemUse": "Use this stem",
         "working": "Cutting the vocal…",
         "attach": "Give each shot its vocal",
-        "done": "{attached, plural, =0 {No shot got a vocal} one {# shot got its vocal} other {# shots got their vocal}} from the {source, select, stem {stem} other {song}}."
-      }
+        "done": "{attached, plural, =0 {No shot got a vocal} one {# shot got its vocal} other {# shots got their vocal}} from the {source, select, stem {stem} other {song}}.",
+        "hintEach": "Each shot gets its part of the vocal: it starts 0.4 s before the shot, is marked sung and makes 3 takes.",
+        "again": "Runs again for every shot, including shots you took the vocal off.",
+        "unassigned": "{n, plural, one {# shot has no vocal yet.} other {# shots have no vocal yet.}}"
+      },
+      "coverage": {
+        "title": "Lip sync: {sings} of {total, plural, one {# shot sings} other {# shots sing}}",
+        "source": "{source, select, stem {Vocal from the stem} other {Vocal from the song}}",
+        "counts": "{synced} synced · {waiting} waiting for a clip · {skipped} not lip-synced · {unassigned} without a vocal",
+        "empty": "No shots yet.",
+        "col": {
+          "shot": "Shot",
+          "time": "Song time",
+          "length": "Length",
+          "state": "Lip sync"
+        },
+        "makeAll": "{n, plural, one {Make # lip-sync clip} other {Make # lip-sync clips}}",
+        "batchRunning": "Waits for the shots being made now."
+      },
+      "sing": {
+        "question": "Does someone sing on screen?",
+        "yes": "Yes, lip-sync the singing",
+        "yesHint": "Cuts the song into shots of {min} to {max} s, then gives each shot its part of the vocal.",
+        "stemHint": "A vocal stem (the voice alone) follows best; without one the song itself is used.",
+        "perShot": "Not every shot has to sing: a shot without singing plays as an ordinary clip, and any shot can drop its vocal in its editor.",
+        "no": "No, pictures only",
+        "noHint": "Cuts to the beat, with no lip sync.",
+        "cut": "Cut the song into shots",
+        "keepShots": "Keep my shots and give each its vocal",
+        "choose": "Choose an answer first.",
+        "review": "You review the cut first; nothing is made yet."
+      },
+      "cutSongIntoShots": "Cut the song into shots"
     },
     "unsaved": {
       "title": "Your text was not saved",
@@ -2275,6 +2333,58 @@
       "retry": "Retry",
       "keepLatest": "Keep the latest",
       "discard": "Discard my text"
+    },
+    "chip": {
+      "noCharacterTitle": "No character is in this shot, so its picture is made without one. Open the shot to add one.",
+      "noCharacter": "No character",
+      "reasonSpeed": "other speed",
+      "reasonLocked": "locked",
+      "reasonOutside": "outside the song",
+      "reasonShort": "too short",
+      "reasonLong": "too long",
+      "reasonNoSinging": "no singing here",
+      "reasonNoVocal": "no vocal yet",
+      "titleSpeed": "This shot plays at another speed. Lip sync needs real time.",
+      "titleLocked": "This shot is locked, so lip sync leaves it alone.",
+      "titleOutside": "This shot is outside the song, so there is nothing to sing.",
+      "titleShort": "This shot is too short to lip-sync. It needs at least {min} s.",
+      "titleLong": "This shot is too long to lip-sync. It can last at most {max} s.",
+      "titleNoSinging": "There is no singing in the vocal for this part of the song.",
+      "titleNoVocal": "This shot has no vocal yet. Give each shot its vocal to lip-sync it.",
+      "sings": "Sings",
+      "singsTitle": "This shot's clip is lip-synced to the song.",
+      "willSing": "Will sing",
+      "willSingTitle": "This shot has its vocal. Make its lip-sync clip to see it sing.",
+      "noLipSync": "No lip sync: {reason}",
+      "plainClip": "It plays as an ordinary clip."
+    },
+    "failure": {
+      "details": "Details",
+      "outOfMemory": "There was not enough free memory to make this shot at this size.",
+      "modelMissing": "The model this shot needs is not installed.",
+      "lipsyncModel": "The video model in this project cannot lip-sync this shot's vocal.",
+      "downloadBlocked": "The model could not be downloaded. It may need its licence accepted, or the connection is down.",
+      "videoToolsMissing": "The video tools are not installed.",
+      "sizeOverCap": "This shot is larger than the model can make.",
+      "referencesUnsupported": "The model cannot take this shot's pictures (a start, end or reference picture).",
+      "noPrompt": "This shot has nothing to make it from. Write its prompt first.",
+      "diskFull": "The disk is full, so the shot could not be saved. Free some space, then try again.",
+      "cancelled": "The shot was stopped before it finished.",
+      "unknown": "The shot did not render.",
+      "actionEdit": "Edit the prompts",
+      "actionSmallerSized": "Make it at draft size ({size})",
+      "actionSmaller": "Make it at draft size",
+      "actionSmallerTitle": "Makes this shot again at a smaller size that needs less memory. It becomes a draft; choose it for final later.",
+      "actionVideoModels": "Open Video Models",
+      "actionImageModels": "Open Image Models",
+      "actionVideoTools": "Install video tools"
+    },
+    "quality": {
+      "tag": "Draft {size}",
+      "tagNoSize": "Draft",
+      "titleSized": "A draft, made at {size}, about half the film's size, so you can choose shots fast. The film is {film}: choose this shot for final to make it that size.",
+      "titleDraftOnly": "A draft, made at {size}, smaller than the film, so you can choose shots fast. Choose this shot for final to make it full size.",
+      "titleNoSize": "A draft, made smaller than the film, so you can choose shots fast. Choose this shot for final to make it full size."
     }
   },
   "storyProjects": {
@@ -2437,7 +2547,13 @@
       "upscaleSame": "The film is already this size or larger, so nothing is upscaled.",
       "more": "More",
       "whyBusy": "A render is running. Export starts once it ends or you cancel it.",
-      "whyEmpty": "Nothing to export yet: no shot has a clip. Make clips on the Storyboard tab."
+      "whyEmpty": "Nothing to export yet: no shot has a clip. Make clips on the Storyboard tab.",
+      "methodSharp": "Sharper (AI, needs the Upscale add-on)",
+      "methodStandard": "Standard stretch",
+      "method": "How to scale up",
+      "methodNeedsAddon": "The Upscale add-on is not installed, so the export will not start with this choice. Install it, or pick Standard stretch.",
+      "methodOpenUpscale": "Open the Upscale tab",
+      "anyway": "Export anyway"
     },
     "importAudio": "Import audio",
     "importAudioPath": "Path of the audio file",
@@ -2512,6 +2628,12 @@
       "label": "What Play plays",
       "cut": "Rough cut",
       "render": "Rendered preview"
+    },
+    "clipSound": {
+      "muted": "Muted under the song",
+      "playing": "Plays over the song",
+      "mixed": "Plays in some shots",
+      "switch": "Let clip sound play"
     }
   },
   "aiLabel": {
@@ -2902,7 +3024,9 @@
       "overview": "Overview",
       "storyboard": "Storyboard"
     },
-    "tabsLabel": "Project"
+    "tabsLabel": "Project",
+    "more": "More",
+    "boardHint": "Lay the shots and the cast out freely"
   },
   "templates": {
     "ad30": "30 s ad",
@@ -2985,7 +3109,9 @@
     "vertical": "Vertical social",
     "metaFormat": "{aspect} · {resolution} · {fps} fps · {shots, plural, one {# shot} other {# shots}}",
     "sets": "{name} set the format to {aspect}, {resolution}, {fps} fps. Change any of them below.",
-    "sample": "Sample film"
+    "sample": "Sample film",
+    "musicVideoMeta": "Starts with the song",
+    "musicVideoNote": "Opens on the Song stage: add the song, then cut it into shots. Format {aspect}, {resolution}, {fps} fps; change it below."
   },
   "voicePicker": {
     "automatic": "No voice (automatic)",
@@ -3016,7 +3142,17 @@
     "makeNone": "Make missing",
     "makeTimed": "Make {n} missing · about {time}",
     "needStills": "{n, plural, one {# shot needs work} other {# shots need work}}: {stills, plural, one {# has a still and needs its clip} other {# have a still and need their clip}}",
-    "stale": "{n} stale"
+    "stale": "{n} stale",
+    "choice": {
+      "finalPass": "The final pass makes the chosen shots again at {size}, then their clips.",
+      "label": "Drafts or final",
+      "draft": "Drafts first: {size}",
+      "about": "about {time}",
+      "draftWhy": "half size, to choose the shots you like. You then make those full size.",
+      "final": "Straight to final: {size}",
+      "peak": "peak {peak} of {total}"
+    },
+    "more": "More ways to make"
   },
   "slowRow": {
     "label": "Slow on this computer",
@@ -3155,5 +3291,66 @@
       "cancelled": "Cancelled",
       "interrupted": "Stopped"
     }
+  },
+  "guide": {
+    "stage": {
+      "song": "Song",
+      "look": "Look",
+      "shots": "Shots",
+      "drafts": "Drafts",
+      "final": "Final",
+      "lipsync": "Lip sync",
+      "sound": "Sound",
+      "check": "Check",
+      "export": "Export"
+    },
+    "look": {
+      "done": "Done",
+      "current": "Now",
+      "attention": "Needs a look",
+      "progress": "Under way",
+      "skipped": "Skipped",
+      "todo": "To do"
+    },
+    "action": {
+      "attachSong": "Add the song",
+      "openCast": "Open Cast",
+      "cutPlan": "Cut the song into shots",
+      "planShots": "Plan the shots",
+      "openStoryboard": "Open the Storyboard",
+      "watchBatch": "Watch the progress",
+      "resumeBatch": "Resume",
+      "retryFailed": "Try them again",
+      "makeDrafts": "Make drafts",
+      "makeMissing": "Make the missing shots",
+      "makeFinal": "Make them full size",
+      "chooseFinal": "Choose the shots",
+      "makeClips": "Make the clips",
+      "remakeStale": "Make them again",
+      "assignVocals": "Give each shot its vocal",
+      "makeLipsync": "Make the lip-sync clips",
+      "openCoverage": "See which shots sing",
+      "openMixer": "Open the Mixer",
+      "openCheck": "Check before export",
+      "export": "Open Export"
+    },
+    "label": "Stages of the film"
+  },
+  "exportCheck": {
+    "line": {
+      "upscaleSharp": "It is scaled up to {size} at the end with the AI upscaler."
+    },
+    "stops": "Stops the export",
+    "worthFixing": "Worth fixing",
+    "forInfo": "For your information",
+    "stopsNone": "Nothing stops the export.",
+    "worthFixingNone": "Nothing to fix.",
+    "fix": {
+      "plan": "Open Plan",
+      "song": "Open the song step",
+      "cast": "Open Cast",
+      "shot": "Open shot {n}"
+    },
+    "title": "Ready to export?"
   }
 }

@@ -2,7 +2,8 @@
  * Voice > Models > Speech models on the shared Models shell (D-73 M3b): Kokoro as the pinned first row (an add-on of
  * the voice runtime since D-75, "Not installed" when left out), then every speech model grouped by family, with Makes, Size, Fit,
  * Status and the shared actions (Use in Speak or Browse voices, Download, Delete with a confirm, Licence). The full
- * measured cost sits in the row's detail. A first-run callout offers a natural voice while none is downloaded.
+ * measured cost sits in the row's detail. The page opens with the one model recommended for this machine (the natural
+ * voice model that runs here, else Kokoro), the full table below it under "All models".
  */
 import { Fragment, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -26,6 +27,7 @@ import {
   buildVoiceEntries,
   isKokoro,
   kokoroEntry,
+  voiceRowToEntry,
   voiceDownloadStatus,
   voiceEntryMatchesQuery,
   type VoiceMakes,
@@ -33,16 +35,24 @@ import {
 } from "../../../components/models/adapters/voice";
 import type { VoiceModelRow, VoiceRuntime } from "../../../types";
 import { getSpeechModelDeletePlan } from "../clone/cloneApi";
-import { InstallVoiceCard } from "../speak/InstallVoiceCard";
 import { useCostText } from "../speak/costText";
-import { costLabel, recommendedNaturalModel, showInstallCard } from "../speak/speakLogic";
+import { costLabel } from "../speak/speakLogic";
 import type { VoiceCatalog } from "../speak/useVoiceCatalog";
+import { describeVoiceError, describeVoiceErrorInfo } from "../voiceErrorText";
 import { quickVoiceSummary } from "../voicePackState";
 import type { StudioTarget } from "../VoiceModelsTab";
+import { SpeechPickCard } from "./SpeechPickCard";
+import { VoiceErrorLine } from "./VoiceErrorLine";
 import {
   collapsedFamilyRows,
   familyHeadingTracker,
+  makesSentence,
+  pickSizeText,
+  recommendedSpeechPick,
   speechDeleteConfirmText,
+  speechGpuAddonMissing,
+  speechGpuAddonText,
+  speechGpuMemoryText,
   studioTargetFor,
   unsupportedModelText,
   voiceSortOptions,
@@ -152,7 +162,7 @@ export function SpeechModelsPanel({ catalog, runtime, availability, onAvailabili
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [openFamilies, setOpenFamilies] = useState<Set<string>>(() => new Set());
   const [busyKey, setBusyKey] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ReturnType<typeof describeVoiceError> | null>(null);
   const tf = t as unknown as (key: string, options?: Record<string, unknown>) => string;
 
   const quick = quickVoiceSummary(runtime.ttsVoices);
@@ -173,7 +183,8 @@ export function SpeechModelsPanel({ catalog, runtime, availability, onAvailabili
       : null;
     return buildVoiceEntries(catalog.models, kokoro);
   }, [catalog.models, catalog.kokoro, runtime.installed, runtime.ttsModelInstalled, quick.count, quick.languages, kokoroPart]);
-  const preferredKey = recommendedNaturalModel(catalog.models)?.key ?? null;
+  const pick = recommendedSpeechPick(catalog.models);
+  const preferredKey = pick.kind === "model" ? pick.row.key : null;
   const collapsible = useMemo(() => collapsedFamilyRows(entries, preferredKey), [entries, preferredKey]);
   // A search, a filter or another sort lists every matching row; the collapse is for the plain family view.
   const plainView = search.trim() === "" && makesFilter === "all" && availability === "all" && sortId === "family";
@@ -232,7 +243,7 @@ export function SpeechModelsPanel({ catalog, runtime, availability, onAvailabili
       setBusyKey(entry.id);
       await catalog.remove(entry.deleteTarget);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(describeVoiceError(err));
     } finally {
       setBusyKey(null);
     }
@@ -418,7 +429,7 @@ export function SpeechModelsPanel({ catalog, runtime, availability, onAvailabili
           callouts={
             row.download.error ? (
               <div className="media-model-row-detail callout error">
-                <p className="voice-error" role="alert">{row.download.error}</p>
+                <VoiceErrorLine view={describeVoiceErrorInfo(row.download.errorInfo ?? null, row.download.error)} />
               </div>
             ) : null
           }
@@ -427,7 +438,78 @@ export function SpeechModelsPanel({ catalog, runtime, availability, onAvailabili
     );
   }
 
-  const installModel = showInstallCard(catalog.models, catalog.modelsAvailable) ? recommendedNaturalModel(catalog.models) : null;
+  function pickCard() {
+    if (!catalog.loaded) return null;
+    if (pick.kind === "model") {
+      const row = pick.row;
+      const size = row.downloadGb ?? row.sizeGb;
+      const downloading = row.download.state === "downloading";
+      const target = studioTargetFor(row, catalog.voices, i18n.language);
+      return (
+        <SpeechPickCard
+          name={row.name}
+          does={makesSentence((voiceRowToEntry(row).capabilities ?? []).map((kind) => makesLabels[kind as VoiceMakes] ?? kind), i18n.language)}
+          sizeGb={pickSizeText(size)}
+          memory={speechGpuMemoryText(row.estimates?.peakGb, tf)}
+          actions={
+            downloading ? (
+              <>
+                <span className="muted-text" aria-live="polite">
+                  {row.download.phase === "watermark"
+                    ? t("voice.clone.installingWatermark", { defaultValue: "Installing the watermark component…" })
+                    : t("voice.clone.downloading", { defaultValue: "Downloading…" })}
+                </span>
+                {catalog.cancelDownload ? (
+                  <button type="button" className="secondary-button" onClick={() => void catalog.cancelDownload?.(row.key)}>
+                    {t("voice.models.cancelDownload", { defaultValue: "Cancel" })}
+                  </button>
+                ) : null}
+              </>
+            ) : row.installed ? (
+              <>
+                <span className="badge success">{t("voice.models.downloaded", { defaultValue: "Downloaded" })}</span>
+                {onOpenStudio ? (
+                  <button type="button" className="secondary-button" onClick={() => onOpenStudio(target)}>
+                    {target.mode === "voices"
+                      ? t("voice.models.browseVoices", { defaultValue: "Browse voices" })
+                      : t("voice.models.useInSpeak", { defaultValue: "Use in Speak" })}
+                  </button>
+                ) : null}
+              </>
+            ) : (
+              <button type="button" className="primary-button" onClick={() => void catalog.download(row.key)}>
+                {t("voice.cost.download", { defaultValue: "Download {gb} GB", gb: size.toFixed(2) })}
+              </button>
+            )
+          }
+          error={row.download.error ? <VoiceErrorLine view={describeVoiceErrorInfo(row.download.errorInfo ?? null, row.download.error)} /> : null}
+        />
+      );
+    }
+    // No natural voice model runs here (yet): the quick voices that come with the runtime are the pick.
+    return (
+      <SpeechPickCard
+        name="Kokoro"
+        does={t("voice.models.pick.kokoro", {
+          defaultValue: "{count} quick voices in {languages} languages, fast on any machine",
+          count: quick.count,
+          languages: quick.languages,
+        })}
+        sizeGb={null}
+        memory={speechGpuMemoryText(catalog.kokoro?.peakGb, tf)}
+        notice={speechGpuAddonMissing(runtime) ? speechGpuAddonText(tf) : null}
+        actions={
+          !runtime.ttsModelInstalled ? (
+            <span className="muted-text">{t("voice.models.kokoroAddHint", { defaultValue: "Tick it under Voice runtime > Add-ons." })}</span>
+          ) : onOpenStudio ? (
+            <button type="button" className="secondary-button" onClick={() => onOpenStudio({ mode: "voices" })}>
+              {t("voice.quickVoices.browse", { defaultValue: "Browse voices" })}
+            </button>
+          ) : null
+        }
+      />
+    );
+  }
 
   return (
     <div className="span-2 voice-models__speech">
@@ -441,9 +523,10 @@ export function SpeechModelsPanel({ catalog, runtime, availability, onAvailabili
         }
         beforeList={
           <>
-            {installModel ? <InstallVoiceCard model={installModel} onDownload={() => void catalog.download(installModel.key)} /> : null}
-            {catalog.error ? <p className="voice-error" role="alert">{catalog.error}</p> : null}
-            {error ? <p className="voice-error" role="alert">{error}</p> : null}
+            {pickCard()}
+            {catalog.error ? <VoiceErrorLine view={describeVoiceError(catalog.error)} /> : null}
+            {error ? <VoiceErrorLine view={error} /> : null}
+            <h4 className="voice-models__pick-title">{t("voice.models.pick.all", { defaultValue: "All models" })}</h4>
           </>
         }
         afterList={<MacOnlyModels models={catalog.macOnly ?? []} hiddenVoices={catalog.hiddenVoices} />}

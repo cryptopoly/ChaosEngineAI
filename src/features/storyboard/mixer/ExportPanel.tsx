@@ -34,6 +34,8 @@ import {
 } from "./mixerLogic";
 import { formatTimecode } from "./timelineGeometry";
 import { FilmList } from "../FilmList";
+import { UPSCALE_METHODS, upscaleMethodNote, type UpscaleMethod } from "./upscaleMethod";
+import "../exportCheck.css";
 import type { SaveResult } from "../unsavedText";
 import { useUnsavedText } from "../useUnsavedText";
 
@@ -225,6 +227,17 @@ export interface ExportPanelProps {
   copied: boolean;
   onPreset: (preset: StoryboardExportPreset) => void;
   onUpscale: (upscale: StoryboardUpscale) => void;
+  /** How the film is scaled up: "fast" is the AI upscaler (the Upscale add-on), "lanczos" the standard stretch. */
+  upscaleMethod?: UpscaleMethod;
+  onUpscaleMethod?: (method: UpscaleMethod) => void;
+  /** Whether the Upscale add-on is installed; null while unknown. */
+  upscaleAddonInstalled?: boolean | null;
+  /** Opens the Upscale tab (where the add-on is installed). */
+  onOpenUpscaleTab?: () => void;
+  /** Worth-fixing items are open: the Export button says "Export anyway". */
+  exportAnyway?: boolean;
+  /** The reason shown under a disabled Export button when the check stops it (the backend's sentence). */
+  emptyReason?: string | null;
   onAiLabel: (change: { metadata?: boolean }) => void;
   onLoudness: (lufs: number | null) => SaveResult;
   onExport: () => void;
@@ -255,6 +268,12 @@ export function ExportPanel(props: ExportPanelProps) {
     "2160p": t("mixer.export.upscale2160", { defaultValue: "2160p (4K)" }),
   };
   const running = exportJob?.state === "running";
+  const method = props.upscaleMethod ?? "lanczos";
+  const methodNote = upscaleMethodNote(upscale, method, props.upscaleAddonInstalled ?? null);
+  const methodNames: Record<UpscaleMethod, string> = {
+    fast: t("mixer.export.methodSharp", { defaultValue: "Sharper (AI, needs the Upscale add-on)" }),
+    lanczos: t("mixer.export.methodStandard", { defaultValue: "Standard stretch" }),
+  };
 
   return (
     <section className="export-panel" aria-label={t("mixer.export.title", { defaultValue: "Export" })}>
@@ -296,6 +315,40 @@ export function ExportPanel(props: ExportPanelProps) {
               </button>
             ))}
           </div>
+          {upscale !== "none" && props.onUpscaleMethod ? (
+            <>
+              <span className="eyebrow">{t("mixer.export.method", { defaultValue: "How to scale up" })}</span>
+              <div className="preset-row" role="radiogroup" aria-label={t("mixer.export.method", { defaultValue: "How to scale up" })}>
+                {UPSCALE_METHODS.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="radio"
+                    aria-checked={method === id}
+                    className={`preset-pill${method === id ? " active" : ""}`}
+                    disabled={disabled || rendering}
+                    onClick={() => method !== id && props.onUpscaleMethod?.(id)}
+                  >
+                    {methodNames[id]}
+                  </button>
+                ))}
+              </div>
+              {methodNote === "needs-addon" ? (
+                <p className="muted-text export-method__note" role="status">
+                  <span>
+                    {t("mixer.export.methodNeedsAddon", {
+                      defaultValue: "The Upscale add-on is not installed, so the export will not start with this choice. Install it, or pick Standard stretch.",
+                    })}
+                  </span>
+                  {props.onOpenUpscaleTab ? (
+                    <button type="button" className="secondary-button" onClick={props.onOpenUpscaleTab}>
+                      {t("mixer.export.methodOpenUpscale", { defaultValue: "Open the Upscale tab" })}
+                    </button>
+                  ) : null}
+                </p>
+              ) : null}
+            </>
+          ) : null}
           {upscale !== "none" ? (
             <p className="muted-text export-panel__hint">
               {target
@@ -370,7 +423,9 @@ export function ExportPanel(props: ExportPanelProps) {
               aria-describedby={empty || rendering ? "export-why" : undefined}
               onClick={props.onExport}
             >
-              {t("mixer.export.button", { defaultValue: "Export MP4" })}
+              {props.exportAnyway
+                ? t("mixer.export.anyway", { defaultValue: "Export anyway" })
+                : t("mixer.export.button", { defaultValue: "Export MP4" })}
             </button>
           )
         }
@@ -378,7 +433,7 @@ export function ExportPanel(props: ExportPanelProps) {
       {!running && (empty || rendering) ? (
         <p id="export-why" className="muted-text export-panel__why">
           {empty
-            ? t("mixer.export.whyEmpty", { defaultValue: "Nothing to export yet: no shot has a clip. Make clips on the Storyboard tab." })
+            ? (props.emptyReason ?? t("mixer.export.whyEmpty", { defaultValue: "Nothing to export yet: no shot has a clip. Make clips on the Storyboard tab." }))
             : t("mixer.export.whyBusy", { defaultValue: "A render is running. Export starts once it ends or you cancel it." })}
         </p>
       ) : null}

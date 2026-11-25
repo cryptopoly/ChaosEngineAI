@@ -1,13 +1,13 @@
 /**
  * The Export tab of a project (D-65): the export settings and render, the result, the export for an editor,
- * the films list, and the project bundle. The panel itself is the one the Mixer used to hold; the preflight
- * and the estimate on the button come in a later phase.
+ * the films list, and the project bundle. The panel itself is the one the Mixer used to hold. Above it sits
+ * "Ready to export?" (audit change 6): the guide's three groups, from `exportReadiness.ts`.
  */
 import { isTauri } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { exportStoryboardOtio, fetchStoryboardFileSize } from "../../api";
-import type { StoryboardExportPreset, StoryboardProject, StoryboardTimeline } from "../../types";
+import type { StoryboardExportPreset, StoryboardGuide, StoryboardProject, StoryboardTimeline } from "../../types";
 import { ExportPanel, type EditorExportState, type ExportResult } from "./mixer/ExportPanel";
 import {
   aiLabelPatch,
@@ -15,7 +15,6 @@ import {
   captionsExportPatch,
   hasClonedVoice,
   isRenderRunning,
-  leftOutShotCount,
   presetPatch,
   exportSize,
   exportedSeconds,
@@ -24,7 +23,17 @@ import {
   readRenderedRevision,
 } from "./mixer/mixerLogic";
 import { upscaleSize } from "./formatLogic";
-import { preflight, type PreflightLine } from "./overviewLogic";
+import {
+  exportAllowed,
+  exportAnyway,
+  localLines,
+  readinessGroups,
+  stopReason,
+  type ReadinessFix,
+} from "./exportReadiness";
+import { ReadinessCheck } from "./ReadinessCheck";
+import { useExportGuide, useUpscaleAddon } from "./useExportChecks";
+import { upscaleMethodOf, upscaleMethodPatch } from "./mixer/upscaleMethod";
 import { copyProjectFilePath, downloadProjectBundle, formatBundleBytes, revealProjectFile } from "./projectFiles";
 import type { ProjectTabId } from "./projectRoute";
 import type { UseStoryboardResult } from "./useStoryboard";
@@ -43,9 +52,15 @@ export interface ExportTabProps {
   onTab: (tab: ProjectTabId) => void;
   /** The shell's render state, shared with the Mixer, so the last export and a running clock survive tab switches. */
   render?: UseStoryboardRenderResult;
+  /** The payload's guide block, when the shell holds it; otherwise the tab reads it (`GET .../guide`) itself. */
+  guide?: StoryboardGuide | null;
+  /** Opens one shot's editor on the Storyboard tab; without it a shot fix opens the Storyboard. */
+  onOpenShot?: (shotId: string) => void;
+  /** Opens the app's Upscale tab (the add-on's install lives there); without it the note has no button. */
+  onOpenUpscaleTab?: () => void;
 }
 
-export function ExportTab({ story, project, timeline, dataDirectory, onTab, render: shared }: ExportTabProps) {
+export function ExportTab({ story, project, timeline, dataDirectory, onTab, render: shared, guide: givenGuide, onOpenShot, onOpenUpscaleTab }: ExportTabProps) {
   const { t } = useTranslation("studio");
   const own = useStoryboardRender(project.id, !shared, () => void story.reload());
   const render = shared ?? own;
@@ -117,94 +132,35 @@ export function ExportTab({ story, project, timeline, dataDirectory, onTab, rend
   const rendered = readRenderedRevision(project.id);
   const film = exportSize(project.defaults, project.defaults.exportPreset);
   const scaled = upscaleSize(project.defaults.exportPreset, project.export.upscale, film);
-  const lines = preflight(project, {
-    leftOut: leftOutShotCount(timeline),
-    previewStale: previewIsStale(rendered, project.revision),
-    clonedVoice: hasClonedVoice(project),
-    format: `${film.width} × ${film.height} · ${project.defaults.fps} fps`,
-    upscaledTo: scaled ? `${scaled.width} × ${scaled.height}` : null,
-    captions: filmCaptionCount(project, timeline),
-  });
-  const lineText = (line: PreflightLine): string => {
-    switch (line.id) {
-      case "clips":
-        return line.ok
-          ? t("exportTab.line.clipsAll", { defaultValue: "{n, plural, one {The shot has a clip.} other {All # shots have a clip.}}", n: line.total })
-          : line.n === 0
-            ? t("exportTab.line.clipsNone", { defaultValue: "No shot has a clip yet, so there is nothing to export." })
-            : t("exportTab.line.clipsSome", {
-                defaultValue: "{n} of {total} shots have a clip; the others are left out.",
-                n: line.n,
-                total: line.total,
-              });
-      case "stale":
-        return t("exportTab.stale", {
-          defaultValue: "{n, plural, one {# shot is stale.} other {# shots are stale.}} The export uses the takes you have.",
-          n: line.n,
-        });
-      case "drafts":
-        return t("board.exportDrafts", {
-          defaultValue: "{n, plural, one {# shot uses a draft take.} other {# shots use a draft take.}} Keep them and run the final pass for full quality, or export the drafts as they are.",
-          n: line.n,
-        });
-      case "captions":
-        if (line.n === 0) return t("exportTab.line.noCaptions", { defaultValue: "No captions." });
-        return line.detail === "srt+burn"
-          ? t("exportTab.line.captionsBoth", { defaultValue: "{n, plural, one {# caption} other {# captions}}, burnt in and written as an SRT file.", n: line.n })
-          : line.detail === "srt"
-            ? t("exportTab.line.captionsSrt", { defaultValue: "{n, plural, one {# caption} other {# captions}}, written as an SRT file.", n: line.n })
-            : line.detail === "burn"
-              ? t("exportTab.line.captionsBurn", { defaultValue: "{n, plural, one {# caption} other {# captions}}, burnt into the picture.", n: line.n })
-              : t("exportTab.line.captionsUnused", { defaultValue: "{n, plural, one {# caption} other {# captions}} not exported: tick SRT file or Burn in below.", n: line.n });
-      case "preview":
-        return t("exportTab.line.preview", { defaultValue: "The preview is out of date (that does not stop an export)." });
-      case "format":
-        return t("exportTab.line.format", { defaultValue: "The film is {format}.", format: line.detail });
-      case "upscale":
-        return t("exportTab.line.upscale", { defaultValue: "It is scaled up to {size} at the end: more pixels, not more detail.", size: line.detail });
-      case "loudness":
-        return line.detail
-          ? t("exportTab.line.loudness", { defaultValue: "The sound is levelled to {lufs} LUFS.", lufs: line.detail })
-          : t("exportTab.line.loudnessOff", { defaultValue: "The sound is left as mixed (no loudness target)." });
-      case "aiTag":
-        return line.n
-          ? t("exportTab.line.aiTagOn", { defaultValue: "A machine-readable AI tag is written into the file." })
-          : t("exportTab.line.aiTagOff", { defaultValue: "No AI tag is written." });
-      default:
-        return t("exportTab.line.cloned", { defaultValue: "A cloned voice is used, so the AI tag is always written." });
-    }
-  };
+  const guide = useExportGuide(project.id, project.revision, givenGuide);
+  const readiness = guide?.readiness ?? null;
+  const method = upscaleMethodOf(project);
+  const addonInstalled = useUpscaleAddon(project.export.upscale !== "none");
+  const groups = readinessGroups(
+    readiness,
+    localLines(project, {
+      upscaledTo: scaled ? `${scaled.width} × ${scaled.height}` : null,
+      method,
+      previewStale: previewIsStale(rendered, project.revision),
+      clonedVoice: hasClonedVoice(project),
+      captions: filmCaptionCount(project, timeline),
+    }),
+  );
+  const allowed = exportAllowed(readiness, canRender(timeline));
+  function openFix(fix: ReadinessFix) {
+    if (fix.kind === "shot" && fix.shotId && onOpenShot) onOpenShot(fix.shotId);
+    else onTab(fix.tab);
+  }
   const revealLabel = isTauri() ? t("mixer.export.reveal", { defaultValue: "Reveal file" }) : t("mixer.export.download", { defaultValue: "Download" });
 
   return (
     <div className="export-tab">
-      <section className="export-preflight" aria-labelledby="export-preflight-title">
-        <div className="export-preflight__head">
-          <h4 id="export-preflight-title">{t("exportTab.before", { defaultValue: "Before you export" })}</h4>
-          <RoughCutButton project={project} timeline={timeline} />
-        </div>
-        <ul>
-          {lines.map((line) => (
-            <li key={line.id} className={`export-preflight__line${line.ok ? " is-ok" : " is-warn"}`}>
-              <span className="export-preflight__mark" aria-hidden="true">
-                {line.ok ? (
-                  <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="5 12 10 17 19 7" /></svg>
-                ) : (
-                  "!"
-                )}
-              </span>
-              <span>{lineText(line)}</span>
-              {line.tab && !line.ok ? (
-                <button type="button" className="mixer__link" onClick={() => onTab(line.tab as ProjectTabId)}>
-                  {line.tab === "storyboard"
-                    ? t("exportTab.openStoryboard", { defaultValue: "Open in Storyboard" })
-                    : t("exportTab.openMixer", { defaultValue: "Open the Mixer" })}
-                </button>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      </section>
+      <ReadinessCheck
+        project={project}
+        groups={groups}
+        actions={<RoughCutButton project={project} timeline={timeline} />}
+        onFix={openFix}
+      />
       <VideoToolsPrompt
         status={videoTools.status}
         busy={videoTools.busy}
@@ -232,7 +188,13 @@ export function ExportTab({ story, project, timeline, dataDirectory, onTab, rend
       <ExportPanel
         project={project}
         filmSeconds={exportedSeconds(timeline) + (canRender(timeline) ? brandSeconds(project) : 0)}
-        empty={!canRender(timeline)}
+        empty={!allowed}
+        emptyReason={stopReason(readiness)}
+        exportAnyway={exportAnyway(readiness)}
+        upscaleMethod={method}
+        onUpscaleMethod={(next) => void story.op("edit_project", upscaleMethodPatch(next))}
+        upscaleAddonInstalled={addonInstalled}
+        onOpenUpscaleTab={onOpenUpscaleTab}
         rendering={rendering}
         exportJob={exportJob}
         startedAt={render.startedAt}

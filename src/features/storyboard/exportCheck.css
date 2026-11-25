@@ -1,0 +1,81 @@
+/* The Export tab's "Ready to export?" check: three groups, each line a sentence with one button. */
+.export-check {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.export-check__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.export-check__head h4,
+.export-check__group-title {
+  margin: 0;
+}
+.export-check__group-title {
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted-strong);
+}
+.export-check__group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.export-check__group ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.export-check__none {
+  margin: 0;
+  font-size: 0.9rem;
+}
+.export-check__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  font-size: 0.9rem;
+}
+.export-check__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--muted-strong);
+}
+.export-check__group--stops .export-check__mark {
+  border-color: var(--danger, var(--warning));
+  color: var(--danger, var(--warning));
+}
+.export-check__group--worthFixing .export-check__mark {
+  border-color: var(--warning);
+  color: var(--warning);
+}
+.export-check__text {
+  min-width: 0;
+}
+
+/* The upscale method choice and the add-on note next to it. */
+.export-method__note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+}

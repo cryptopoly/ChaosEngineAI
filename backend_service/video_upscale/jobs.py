@@ -6,7 +6,9 @@ video, music or voice job, and while it waits it can be cancelled. Its id is ``J
 always finds the same work folder (``~/.chaosengine/cache/video-upscale/<id>/``), so starting it again, or
 ``resume`` after a cancel, a failure or a backend restart, skips every finished segment. The work folder is removed
 once the film is written. Segments run in ``worker.py`` through a ``WarmWorker`` (kind ``upscale``: a video, image or
-music job starting stops it when it idles, and an upscale job stops their idle workers).
+music job starting stops it when it idles, and an upscale job stops their idle workers). A quality-tier row
+(FlashVSR+ Turbo) runs its segments in ``quality.py``'s worker instead, from that add-on's own venv; ``runner_for``
+picks the worker by the job's model.
 """
 
 from __future__ import annotations

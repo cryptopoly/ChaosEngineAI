@@ -3290,6 +3290,33 @@
       "failed": null,
       "cancelled": null,
       "interrupted": null
+    },
+    "qualityTier": {
+      "label": null,
+      "fast": null,
+      "fastHint": null,
+      "quality": null,
+      "qualityHint": null,
+      "smallCard": null,
+      "notCuda": null,
+      "warningTitle": null,
+      "warningBody": null,
+      "speed": null,
+      "maxOutput": null,
+      "installTitle": null,
+      "installBody": null,
+      "installButton": null,
+      "cancelInstall": null,
+      "cancelled": null,
+      "step": null,
+      "phasePreflight": null,
+      "phaseVenv": null,
+      "phasePackages": null,
+      "phaseCode": null,
+      "phaseWeights": null,
+      "phaseCheck": null,
+      "sizeTooBig": null,
+      "sizeNeedsMore": null
     }
   },
   "guide": {

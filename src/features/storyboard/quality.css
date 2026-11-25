@@ -1,0 +1,92 @@
+/* Quality tags, the shot-card chips for lip sync and cast, the failure box and the run bar's size lines (Storyboard UX audit). Tokens only. */
+.quality-tag {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--warning);
+  color: #1d1505;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.quality-tag--corner {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 1;
+  pointer-events: auto;
+}
+.quality-tag--mini {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  padding: 0 4px;
+  font-size: 0.62rem;
+}
+
+.shot-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.shot-card__chip--sings {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.shot-card__chip--quiet {
+  border-style: dashed;
+  color: var(--muted);
+}
+
+.shot-card__failed-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.shot-card__failed .debug-details {
+  align-self: stretch;
+}
+
+.run-bar__choice {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+}
+.run-bar__choice li.is-primary {
+  font-weight: 600;
+}
+.run-bar__more {
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+.run-bar__more > summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--muted-strong);
+}
+.run-bar__more-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+}
+.run-bar__primary {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.batch-bar__failed {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.85rem;
+}

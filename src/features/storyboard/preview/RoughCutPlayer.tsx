@@ -7,7 +7,8 @@ import { useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, ty
 import { useTranslation } from "react-i18next";
 import { CloseIcon, PauseIcon, PlayIcon } from "../../../components/icons/ActionIcons";
 import { useDialogFocus } from "../../../hooks/useDialogFocus";
-import type { StoryboardProject, StoryboardTimeline } from "../../../types";
+import type { StoryboardProject, StoryboardQuality, StoryboardTimeline } from "../../../types";
+import { draftTag, type TFn } from "../qualityText";
 import { exportSize } from "../mixer/mixerLogic";
 import { formatTimecode } from "../mixer/timelineGeometry";
 import {
@@ -26,6 +27,8 @@ import { useRoughCut } from "./useRoughCut";
 export interface RoughCutPlayerProps {
   project: StoryboardProject;
   timeline: StoryboardTimeline;
+  /** `guide.quality`: the sizes the takes were made at, for the Draft tags. Left out, they are read from the takes. */
+  quality?: StoryboardQuality | null;
   onClose: () => void;
 }
 
@@ -34,10 +37,10 @@ function isButton(target: EventTarget | null): boolean {
   return !!el?.closest?.("button, input, select, textarea, a");
 }
 
-export function RoughCutPlayer({ project, timeline, onClose }: RoughCutPlayerProps) {
+export function RoughCutPlayer({ project, timeline, quality, onClose }: RoughCutPlayerProps) {
   const { t } = useTranslation("studio");
   // A snapshot: the film as it was when the player opened.
-  const [cut] = useState(() => buildRoughCut(project, timeline));
+  const [cut] = useState(() => buildRoughCut(project, timeline, { quality }));
   const player = useRoughCut(project.id, cut);
   const [captionsOn, setCaptionsOn] = useState(cut.captions.length > 0);
   const dialog = useRef<HTMLDivElement>(null);
@@ -69,6 +72,14 @@ export function RoughCutPlayer({ project, timeline, onClose }: RoughCutPlayerPro
             ? t("board.preview.legendCard", { defaultValue: "Title or end card (brand kit)" })
           : t("board.preview.legendClip", { defaultValue: "Clip" });
   const states = [...new Set(markers.map((m) => m.state))];
+  const target = quality?.target ?? null;
+  // A draft marker names the size the take was made at: "Shot 2 · Draft take · 640 x 384".
+  const markerTitle = (shotId: string, state: MarkerState) => {
+    const piece = cut.pieces.find((p) => p.shotId === shotId) as CutPiece;
+    const base = `${shotLabel(piece)} · ${stateLabel(state)}`;
+    const size = state === "draft" ? draftTag(t as unknown as TFn, piece.quality, target)?.size : null;
+    return size ? `${base} · ${size.width} x ${size.height}` : base;
+  };
 
   function seekFromPointer(event: ReactPointerEvent<HTMLDivElement>) {
     const rect = track.current?.getBoundingClientRect();
@@ -160,6 +171,7 @@ export function RoughCutPlayer({ project, timeline, onClose }: RoughCutPlayerPro
           captionLook={project.brand?.captions ?? null}
           current={current}
           shotLabel={shotLabel}
+          target={quality?.target ?? null}
         />
 
         <div className="rough-cut__transport">
@@ -201,7 +213,7 @@ export function RoughCutPlayer({ project, timeline, onClose }: RoughCutPlayerPro
                 key={marker.shotId}
                 className={`rough-cut__marker rough-cut__marker--${marker.state}${current?.shotId === marker.shotId ? " is-current" : ""}`}
                 style={{ left: `${marker.left}%`, width: `${marker.width}%` }}
-                title={`${shotLabel(cut.pieces.find((p) => p.shotId === marker.shotId) as CutPiece)} · ${stateLabel(marker.state)}`}
+                title={markerTitle(marker.shotId, marker.state)}
               >
                 {marker.state === "card" ? null : <span className="rough-cut__marker-n" aria-hidden="true">{marker.index + 1}</span>}
               </span>
@@ -250,8 +262,8 @@ export function RoughCutPlayer({ project, timeline, onClose }: RoughCutPlayerPro
         ) : null}
         {cut.drafts > 0 ? (
           <p className="muted-text rough-cut__note">
-            {t("board.preview.draftNote", {
-              defaultValue: "{n, plural, one {# shot plays a draft take.} other {# shots play a draft take.}} Run the final pass on kept shots for full quality.",
+            {t("board.preview.draftNoteSized", {
+              defaultValue: "{n, plural, one {# shot plays a draft take.} other {# shots play a draft take.}} Drafts are smaller than the film. Choose them for final and run the final pass for the full size.",
               n: cut.drafts,
             })}
           </p>

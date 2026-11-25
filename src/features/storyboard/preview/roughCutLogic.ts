@@ -9,8 +9,9 @@
  * the shot before it, and sound anchored to a shot starts with that shot. The export leaves shots
  * with no clip out, so a film with such shots is shorter there; the player says so.
  */
-import type { StoryboardProject, StoryboardTimeline } from "../../../types";
+import type { StoryboardProject, StoryboardQuality, StoryboardTakeQuality, StoryboardTimeline } from "../../../types";
 import { captionRows } from "../mixer/mixerLogic";
+import { takeQualityOf } from "../qualityText";
 import { brandOnFilm, type BrandOnFilm, type CardWhich } from "./brandCards";
 
 export type PieceMedia =
@@ -35,6 +36,8 @@ export interface CutPiece {
   media: PieceMedia;
   /** The active take is a draft (S6): it plays, with a label. */
   draft: boolean;
+  /** What the active take was made at (null for a card or a shot with no take); a draft's tag reads its size here. */
+  quality: StoryboardTakeQuality | null;
 }
 
 export type SoundKind = "music" | "sfx" | "voice" | "import" | "native";
@@ -87,6 +90,8 @@ export interface RoughCutOptions {
   /** Add the title and end cards and the corner logo, as the export does (default true). The Mixer leaves them
    * out, so its playhead stays on the timeline it draws. */
   brand?: boolean;
+  /** `guide.quality`: the sizes the takes were made at. Left out, they are read from each take's settings. */
+  quality?: StoryboardQuality | null;
 }
 
 function cardPiece(which: CardWhich, text: string, start: number, seconds: number): CutPiece {
@@ -102,6 +107,7 @@ function cardPiece(which: CardWhich, text: string, start: number, seconds: numbe
     fadeIn: 0,
     media: { kind: "card", which, text },
     draft: false,
+    quality: null,
   };
 }
 
@@ -146,6 +152,7 @@ export function buildRoughCut(project: StoryboardProject, timeline: StoryboardTi
       fadeIn: span.transition_type === "crossfade" ? span.transition_seconds : 0,
       media,
       draft: media.kind !== "none" && take?.renderPass === "draft",
+      quality: take ? takeQualityOf(take, options.quality?.takes?.[shot.id]?.[take.id]) : null,
     });
   }
   pieces.forEach((piece, i) => {

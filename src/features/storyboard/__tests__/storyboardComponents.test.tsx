@@ -37,16 +37,16 @@ function card(overrides: Partial<ShotCardProps> = {}) {
 }
 
 describe("ShotCard", () => {
-  it("marks a draft take and toggles Keep for final", () => {
+  it("marks a draft take and toggles Choose for final", () => {
     const draft = { ...take("t1"), clip: "media/c.mp4", renderPass: "draft" as const };
     const html = card({ status: "done", shot: shot({ takes: [draft], activeTake: "t1", kept: true }), onToggleKept: noop });
     expect(html).toContain(">Draft</span>");
-    expect(html).toMatch(/aria-pressed="true"[^>]*>Keep for final/);
+    expect(html).toMatch(/aria-pressed="true"[^>]*>Choose for final/);
     const plain = card({ status: "done", shot: shot({ takes: [{ ...take("t1"), clip: "media/c.mp4" }], activeTake: "t1" }), onToggleKept: noop });
     expect(plain).not.toContain(">Draft</span>");
-    expect(plain).toMatch(/aria-pressed="false"[^>]*>Keep for final/);
+    expect(plain).toMatch(/aria-pressed="false"[^>]*>Choose for final/);
     // Nothing to keep before the first take.
-    expect(card({ shot: shot(), onToggleKept: noop })).not.toContain("Keep for final");
+    expect(card({ shot: shot(), onToggleKept: noop })).not.toContain("Choose for final");
   });
 
   it("carries the state class and the status sentence for each state", () => {
@@ -73,7 +73,7 @@ describe("ShotCard", () => {
     expect(html).toContain("A lighthouse at dusk");
     expect(html).toContain("Mara");
     expect(card()).toContain("No prompt yet.");
-    // Making a new take lives in the menu with the other remakes; the card row keeps Keep for final.
+    // Making a new take lives in the menu with the other remakes; the card row keeps Choose for final.
     expect(card()).not.toContain(">New take<");
   });
 
@@ -82,7 +82,7 @@ describe("ShotCard", () => {
     const html = card({ status: "stale", shot: stale, staleAfter: 0 });
     expect(html).toContain("Stale · after shot 1");
     expect(html).toContain("Re-run");
-    expect(html).toContain("Keep as is");
+    expect(html).toContain("Hide this warning");
     expect(card({ status: "stale", shot: stale, staleAfter: 0, kept: true })).not.toContain("Re-run");
   });
 
@@ -101,7 +101,7 @@ describe("ShotCard", () => {
   it("shows technical details and Retry on a failed shot", () => {
     const html = card({ status: "failed", failure: "out of memory" });
     expect(html).toContain("shot-card--failed");
-    expect(html).toContain("Technical details");
+    expect(html).toContain("Details");
     expect(html).toContain("out of memory");
     expect(html).toContain("Retry");
   });

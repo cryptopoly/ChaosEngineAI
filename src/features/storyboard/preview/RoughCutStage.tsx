@@ -6,7 +6,8 @@
  */
 import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
-import type { StoryboardCaptionLook } from "../../../types";
+import type { StoryboardCaptionLook, StoryboardSize } from "../../../types";
+import { draftTag, type TFn } from "../qualityText";
 import { logoVisibleAt, type CutPiece, type RoughCut } from "./roughCutLogic";
 import type { UseRoughCutResult } from "./useRoughCut";
 import "./brand.css";
@@ -24,6 +25,8 @@ export interface RoughCutStageProps {
   current?: CutPiece;
   shotLabel: (piece: CutPiece) => string;
   className?: string;
+  /** The film's size (`guide.quality.target`), named in the Draft tag's explanation. */
+  target?: StoryboardSize | null;
 }
 
 /** Inline style for a family name the user picked: quoted, and only the characters a family name has. */
@@ -32,13 +35,16 @@ export function fontStack(family: string | null | undefined): string | undefined
   return clean ? `"${clean}", var(--font-latin)` : undefined;
 }
 
-export function RoughCutStage({ cut, player, width, height, caption, captionLook, current, shotLabel, className }: RoughCutStageProps) {
+export function RoughCutStage({ cut, player, width, height, caption, captionLook, current, shotLabel, className, target }: RoughCutStageProps) {
   const { t } = useTranslation("studio");
   const { timeS, ready } = player;
   const brand = cut.brand;
   const short = Math.min(width, height);
   const stageStyle = { "--cut-w": width, "--cut-h": height } as CSSProperties; // stage shape: the export frame
   const margin = { x: `${(4 * short) / width}%`, y: `${(4 * short) / height}%` };
+  // The Draft chip carries the size the take was made at, with a plain explanation as its tooltip.
+  const draft = current?.draft ? draftTag(t as unknown as TFn, current.quality, target) : null;
+  const draftTitle = draft?.title;
   const logoUrl = brand?.logo ? player.urlOf(brand.logo) : null;
   const cardLogoUrl = brand?.cardLogo ? player.urlOf(brand.cardLogo) : null;
   const corner = brand?.corner ?? "bottom-right";
@@ -106,7 +112,11 @@ export function RoughCutStage({ cut, player, width, height, caption, captionLook
       {current ? (
         <div className="rough-cut__badges">
           <span className="rough-cut__chip">{shotLabel(current)}</span>
-          {current.draft ? <span className="rough-cut__chip rough-cut__chip--draft">{t("board.preview.draft", { defaultValue: "Draft" })}</span> : null}
+          {current.draft ? (
+            <span className="rough-cut__chip rough-cut__chip--draft" title={draftTitle}>
+              {draft?.label ?? t("board.preview.draft", { defaultValue: "Draft" })}
+            </span>
+          ) : null}
         </div>
       ) : null}
       {caption ? (

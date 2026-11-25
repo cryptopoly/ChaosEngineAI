@@ -1,11 +1,14 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { StoryboardProject, StoryboardShot, StoryboardTimeline } from "../../../../types";
+import type { StoryboardProject, StoryboardQuality, StoryboardShot, StoryboardTimeline } from "../../../../types";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(), isTauri: vi.fn(() => false) }));
 
 import { RoughCutButton } from "../RoughCutButton";
 import { RoughCutPlayer } from "../RoughCutPlayer";
+import { RoughCutStage } from "../RoughCutStage";
+import { buildRoughCut } from "../roughCutLogic";
+import type { UseRoughCutResult } from "../useRoughCut";
 
 function shot(id: string, title: string, take: Partial<StoryboardShot["takes"][number]> | null): StoryboardShot {
   return {
@@ -75,5 +78,46 @@ describe("RoughCutButton", () => {
     const ready = renderToStaticMarkup(<RoughCutButton project={project} timeline={timeline} />);
     expect(ready).toContain("Play film");
     expect(ready).not.toContain("disabled");
+  });
+});
+
+describe("Draft size on the rough cut (audit change 2)", () => {
+  const sized: StoryboardProject = {
+    ...project,
+    shots: project.shots.map((s) =>
+      s.id === "b" ? { ...s, takes: [{ ...s.takes[0], settings: { clipWidth: 640, clipHeight: 384, stillWidth: 640, stillHeight: 384 } }] } : s,
+    ),
+  };
+  const target = { width: 1280, height: 720, fps: 24 };
+
+  it("names the size in the draft marker, read from the take's settings", () => {
+    const html = renderToStaticMarkup(<RoughCutPlayer project={sized} timeline={timeline} onClose={() => undefined} />);
+    expect(html).toContain("Shot 2 · Draft take · 640 x 384");
+    expect(html).toContain("Drafts are smaller than the film. Choose them for final");
+  });
+
+  it("prefers the guide's sizes", () => {
+    const quality: StoryboardQuality = {
+      target, draftSize: { width: 640, height: 384 }, draftShots: ["b"], staleShots: [],
+      takes: { b: { t: { pass: "draft", draft: true, still: null, clip: { width: 704, height: 416 }, stillStale: false, clipStale: false } } },
+    };
+    const html = renderToStaticMarkup(<RoughCutPlayer project={sized} timeline={timeline} quality={quality} onClose={() => undefined} />);
+    expect(html).toContain("Shot 2 · Draft take · 704 x 416");
+  });
+
+  it("puts the size on the draft chip over the picture, with a plain explanation", () => {
+    const cut = buildRoughCut(sized, timeline);
+    const player = {
+      timeS: 4, ready: true, urlOf: () => null, registerLayer: () => undefined, load: { done: 0, total: 0, failed: [] },
+    } as unknown as UseRoughCutResult;
+    const stage = (current: (typeof cut.pieces)[number]) =>
+      renderToStaticMarkup(
+        <RoughCutStage cut={cut} player={player} width={1280} height={720} caption={null} current={current}
+          shotLabel={(p) => `Shot ${p.index + 1}`} target={target} />,
+      );
+    const html = stage(cut.pieces[1]);
+    expect(html).toContain(">Draft 640 x 384</span>");
+    expect(html).toContain("The film is 1280 x 720");
+    expect(stage(cut.pieces[0])).not.toContain("rough-cut__chip--draft");
   });
 });

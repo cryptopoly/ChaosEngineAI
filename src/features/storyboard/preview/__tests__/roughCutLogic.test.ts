@@ -239,3 +239,22 @@ describe("controls", () => {
     expect(videoCorrection(1.0, 1.2, 2)).toEqual({ rate: 2, seek: true });
   });
 });
+
+describe("buildRoughCut take quality (audit change 2)", () => {
+  const one = (id: string) => ({ ...timeline, total: 4, shots: [{ ...timeline.shots[0], id }], audio: [] });
+
+  it("reads each piece's size from the take's settings, and prefers the guide's", () => {
+    const sized = shot("q1", {}, { renderPass: "draft", settings: { clipWidth: 640, clipHeight: 384 } });
+    expect(buildRoughCut(project([sized]), one("q1")).pieces[0].quality?.clip).toEqual({ width: 640, height: 384 });
+    const guide = {
+      target: { width: 1280, height: 720, fps: 24 }, draftSize: { width: 640, height: 384 }, draftShots: [], staleShots: [],
+      takes: { q1: { t: { pass: "draft", draft: true, still: null, clip: { width: 704, height: 416 }, stillStale: false, clipStale: false } } },
+    } as const;
+    const fromGuide = buildRoughCut(project([sized]), one("q1"), { quality: guide as never });
+    expect(fromGuide.pieces[0].quality?.clip).toEqual({ width: 704, height: 416 });
+  });
+
+  it("has no quality for a shot with no take", () => {
+    expect(buildRoughCut(project([shot("x", {}, null)]), one("x")).pieces[0].quality).toBeNull();
+  });
+});

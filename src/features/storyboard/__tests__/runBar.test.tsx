@@ -56,7 +56,7 @@ describe("Storyboard run bar", () => {
     expect(html).not.toContain("unknown until the first run");
     expect(html).not.toContain("Make drafts");
     expect(html).toContain("Make all unlocked");
-    expect(html).toContain("Final pass on 0 kept shots");
+    expect(html).toContain("Final pass on 0 chosen shots");
   });
 });
 
@@ -71,17 +71,17 @@ describe("Storyboard run bar: draft and final passes", () => {
   it("shows both passes with their times and models", () => {
     const html = bar({ estimate: estimate({ passes }), kept: 1, finalShots: 1, onMakeDrafts: noop, onFinalPass: noop });
     expect(html).toContain("Make drafts · about 45 s");
-    expect(html).toContain("Final pass on 1 kept shot · about 8 min 20 s");
+    expect(html).toContain("Final pass on 1 chosen shot · about 8 min 20 s");
     expect(html).toContain("Quick stills with Iris-3B Turbo at 1280 x 720");
     expect(html).toContain("again with Qwen-Image 2.1");
-    expect(html).not.toContain("Mark shots with Keep");
+    expect(html).not.toContain("Use Choose for final");
   });
 
   it("holds the final pass until a shot is kept, and says how", () => {
     const html = bar({ estimate: estimate({ passes: { ...passes, final: { ...passes.final, assumedAllKept: true } } }),
       kept: 0, finalShots: 0, onMakeDrafts: noop, onFinalPass: noop });
-    expect(html).toMatch(/disabled="" title="[^"]*">Final pass on 0 kept shots</);
-    expect(html).toContain("Mark shots with Keep for final to choose them for the final pass.");
+    expect(html).toMatch(/disabled="" title="[^"]*">Final pass on 0 chosen shots</);
+    expect(html).toContain("Use Choose for final on a shot to put it in the final pass.");
   });
 
   it("has exactly one primary: Make drafts when told so, else Make missing", () => {

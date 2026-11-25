@@ -62,7 +62,7 @@ describe("take compare", () => {
       renderPass: "draft",
       settings: { stillModel: "Iris", stillSeed: 11, clipModel: "LTX", clipSeed: 22, width: 854, height: 480, steps: 4 },
     }));
-    expect(facts).toMatchObject({ pass: "draft", stillModel: "Iris", stillSeed: "11", clipModel: "LTX", clipSeed: "22", size: "854 x 480", length: "2" });
+    expect(facts).toMatchObject({ pass: "draft", stillModel: "Iris", stillSeed: "11", clipModel: "LTX", clipSeed: "22", size: "854 x 480", length: "2.0" });
     const old = takeFacts(take("t2", { settings: { model: "LTX", seed: 5 } }));
     expect(old).toMatchObject({ pass: "final", stillSeed: null, clipSeed: "5", clipModel: "LTX" });
     const stillOnly = takeFacts(take("t3", { clip: null, settings: { model: "Iris", seed: 9 } }));

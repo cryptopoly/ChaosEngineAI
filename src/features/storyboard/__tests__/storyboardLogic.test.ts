@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { StoryboardApiError, StoryboardRevisionConflict } from "../../../api/storyboard";
 import type { StoryboardBatchRecord, StoryboardProject, StoryboardShot, StoryboardTake } from "../../../types";
+import { shotSeconds } from "../planLogic";
 import {
   batchProgress,
   classifyFailure,
@@ -229,6 +230,17 @@ describe("shot editor draft", () => {
     const draft = { ...draftFromShot(s), stillPrompt: "a lighthouse at dusk", seed: "" };
     expect(shotPatchFromDraft(s, draft)).toEqual({ stillPrompt: "a lighthouse at dusk", seed: null });
     expect(shotPatchFromDraft(s, draftFromShot(s))).toEqual({});
+  });
+
+  it("shows a length to one decimal and does not call an untouched length a change", () => {
+    const s = shot("a", { seconds: 4.453 });
+    expect(draftFromShot(s).seconds).toBe("4.5");
+    expect(shotPatchFromDraft(s, draftFromShot(s))).toEqual({});
+    expect(shotPatchFromDraft(s, { ...draftFromShot(s), seconds: "6" })).toEqual({ seconds: 6 });
+    expect(shotSeconds(4)).toBe("4.0");
+    expect(shotSeconds(3.431)).toBe("3.4");
+    expect(shotSeconds(3.38)).toBe("3.4");
+    expect(shotSeconds(Number.NaN)).toBe("0.0");
   });
 
   it("reads numbers and clears an empty trim-out", () => {

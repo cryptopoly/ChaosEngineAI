@@ -110,7 +110,7 @@ describe("Lip-sync coverage table (audit change 3)", () => {
     );
     expect(html).toContain("Too short: 1.6 s, a lip-sync shot needs at least 2 s.");
     expect(html).toContain("Lengthen to 2 s or more");
-    expect(html).toContain("Too long: 9 s, a lip-sync shot here lasts at most 7.6 s.");
+    expect(html).toContain("Too long: 9.0 s, a lip-sync shot here lasts at most 7.6 s.");
     expect(html).toContain("Shorten to 7.6 s or less");
     expect(html).toContain("The shot is locked.");
     expect(html).toContain(">Unlock</button>");
@@ -172,9 +172,18 @@ describe("Does someone sing on screen? (audit change 8)", () => {
     expect(html).not.toContain("Vocal stem");
   });
 
+  it("makes the cut a secondary button, worded as a re-cut, once the shots have takes", () => {
+    const html = renderToStaticMarkup(
+      <SingQuestion answer="yes" onAnswer={noop} stem={null} onStem={noop} disabled={false} working={null} hasShots hasTakes onCut={noop} onVocalsOnly={noop} />,
+    );
+    expect(html).toContain('<button type="button" class="secondary-button">Cut the song again</button>');
+    expect(html).not.toContain("primary-button\">Cut the song");
+    expect(ask("yes", true)).toContain('<button type="button" class="primary-button">Cut the song into shots</button>');
+  });
+
   it("Yes shows the stem field, the length rule and that not every shot has to sing", () => {
     const html = ask("yes", true);
-    expect(html).toContain("Cuts the song into shots of 3 to 5 s, then gives each shot its part of the vocal.");
+    expect(html).toContain("Cuts the song into shots of 2 to 5 s, then gives each shot its part of the vocal.");
     expect(html).toContain("Vocal stem (optional, WAV or FLAC)");
     expect(html).toContain("A shot of 2 s or more can lip-sync.");
     expect(html).toContain("Not every shot has to sing");

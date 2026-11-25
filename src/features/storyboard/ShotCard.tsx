@@ -22,6 +22,7 @@ import { TakesStrip } from "./TakesStrip";
 import { useCardTabStops } from "./useCardTabStops";
 import type { SaveResult } from "./unsavedText";
 import { useUnsavedText } from "./useUnsavedText";
+import { shotSeconds } from "./planLogic";
 import { canRedoClip, canRedoStill, clipOutdated } from "./remakeLogic";
 import { activeTakeOf, shotCardClassName, thumbnailOf } from "./storyboardLogic";
 
@@ -144,7 +145,7 @@ export function ShotCard(props: ShotCardProps) {
         // A take with a still and no clip is not finished: the film leaves it out.
         if (take && !take.clip) return t("board.shot.status.stillOnly", { defaultValue: "Still only" });
         return take?.measuredSeconds
-          ? t("board.shot.status.done", { defaultValue: "Done · {seconds} s", seconds: Math.round(take.measuredSeconds * 100) / 100 })
+          ? t("board.shot.status.done", { defaultValue: "Done · {seconds} s", seconds: shotSeconds(take.measuredSeconds) })
           : t("board.shot.status.doneNoLength", { defaultValue: "Done" });
       case "failed":
         return t("board.shot.status.failed", { defaultValue: "Failed" });
@@ -440,8 +441,9 @@ export function ShotCard(props: ShotCardProps) {
         >
           {shot.locked ? <LockIcon /> : <UnlockIcon />}
         </button>
-        {/* Choose for final picks a take worth redoing at full quality: nothing to choose before the first take. */}
-        {props.onToggleKept && (take || shot.kept) ? (
+        {/* Choose for final picks a take worth redoing at full quality: nothing to choose before the first take, or
+            when the active take is already a final one (unless the shot is marked, so the mark can be taken off). */}
+        {props.onToggleKept && (take || shot.kept) && !(takeQuality && !takeQuality.draft && !shot.kept) ? (
           <button
             type="button"
             className={`secondary-button${shot.kept ? " is-active" : ""}`}

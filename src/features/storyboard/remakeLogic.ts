@@ -4,6 +4,7 @@
  * which belongs to the clip when the take has one (the clip ran last) and to the still otherwise.
  */
 import type { StoryboardShot, StoryboardTake } from "../../types";
+import { shotSeconds } from "./planLogic";
 
 /** The active take's clip came from another still than the one the take holds now (after Redo still only). */
 export function clipOutdated(shot: StoryboardShot): boolean {
@@ -51,7 +52,7 @@ export function takeFacts(take: StoryboardTake): TakeFacts {
     clipModel: take.clip ? text(s.clipModel) ?? text(s.model) : null,
     clipSeed: take.clip ? text(s.clipSeed) ?? seed : null,
     size: width && height ? `${width} x ${height}` : null,
-    length: take.measuredSeconds ? `${Math.round(take.measuredSeconds * 10) / 10}` : null,
+    length: take.measuredSeconds ? shotSeconds(take.measuredSeconds) : null,
   };
 }
 

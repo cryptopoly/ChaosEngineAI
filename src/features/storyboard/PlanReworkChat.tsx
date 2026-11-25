@@ -7,7 +7,7 @@ import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { SendIcon } from "../../components/icons/ActionIcons";
 import type { StoryboardShot } from "../../types";
-import { changedFields, type ShotField } from "./planLogic";
+import { changedFields, shotSeconds, type ShotField } from "./planLogic";
 import type { ReworkState } from "./useRework";
 
 export interface PlanReworkChatProps {
@@ -55,7 +55,7 @@ export function PlanReworkChat({ id, shot, number, rework, busy, onClose, autoFo
                     {(turn.applied ? (["stillPrompt"] as ShotField[]) : changedFields(shot, turn.suggestion.shot)).map((key) => (
                       <div key={key}>
                         <dt>{fieldLabel[key]}</dt>
-                        <dd>{key === "seconds" ? t("board.plan.seconds", { defaultValue: "{n} s", n: turn.suggestion!.shot.seconds }) : turn.suggestion!.shot[key]}</dd>
+                        <dd>{key === "seconds" ? t("board.plan.seconds", { defaultValue: "{n} s", n: shotSeconds(turn.suggestion!.shot.seconds) }) : turn.suggestion!.shot[key]}</dd>
                       </div>
                     ))}
                   </dl>

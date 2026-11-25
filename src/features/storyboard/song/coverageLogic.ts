@@ -11,14 +11,15 @@ import type {
   StoryboardLipSyncState,
   StoryboardProject,
 } from "../../../types";
+import { shotSeconds } from "../planLogic";
 
 /** The shortest shot that can lip-sync (`coverage.py` `MIN_SHOT_SECONDS`). */
 export const LIP_SYNC_MIN_SHOT_SECONDS = 2;
 /** A lip-sync clip lasts 3 to 8 s; a 2 to 3 s shot gets silent room up to 3 s (`lipsync_runtime`). */
 export const LIP_SYNC_CLIP_MIN_SECONDS = 3;
 export const LIP_SYNC_CLIP_MAX_SECONDS = 8;
-/** The shot lengths "Yes, lip-sync" cuts the song into. */
-export const SUNG_SHOT_MIN_SECONDS = 3;
+/** The shot lengths "Yes, lip-sync" cuts the song into: from the shortest shot that can lip-sync. */
+export const SUNG_SHOT_MIN_SECONDS = LIP_SYNC_MIN_SHOT_SECONDS;
 export const SUNG_SHOT_MAX_SECONDS = 5;
 
 /** A translatable sentence: the key, its English, and the values it takes. */
@@ -132,13 +133,13 @@ export function reasonText(code: StoryboardLipSyncReason, row: Pick<StoryboardLi
       return {
         key: "board.song.coverage.reason.tooShort",
         defaultValue: "Too short: {seconds} s, a lip-sync shot needs at least {min} s.",
-        values: { seconds: round1(row.seconds), min: round1(row.minSeconds) },
+        values: { seconds: shotSeconds(row.seconds), min: round1(row.minSeconds) },
       };
     case "too-long":
       return {
         key: "board.song.coverage.reason.tooLong",
         defaultValue: "Too long: {seconds} s, a lip-sync shot here lasts at most {max} s.",
-        values: { seconds: round1(row.seconds), max: round1(row.maxSeconds) },
+        values: { seconds: shotSeconds(row.seconds), max: round1(row.maxSeconds) },
       };
     case "no-singing":
       return { key: "board.song.coverage.reason.noSinging", defaultValue: "No singing here; it plays as an ordinary clip." };

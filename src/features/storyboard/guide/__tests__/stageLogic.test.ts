@@ -10,7 +10,7 @@ import type {
 } from "../../../../types";
 import { isMusicVideo, isProjectTab, markMusicVideo, MUSIC_VIDEO_KEY, PROJECT_TABS, visibleTabs } from "../../projectRoute";
 import { PROJECT_TEMPLATES, templateById, templateShotArgs } from "../../projectTemplates";
-import { batchArgs, currentStage, destinationOf, railStages, shownStage, visibleStages } from "../stageLogic";
+import { batchArgs, currentStage, destinationOf, focusSongSection, opensSongSection, railStages, shownStage, visibleStages } from "../stageLogic";
 
 /** Every action code the backend sends (`StoryboardGuideAction`). */
 const ACTIONS: StoryboardGuideAction[] = [
@@ -221,5 +221,35 @@ describe("Music video start (audit change 9)", () => {
     window.localStorage.setItem(MUSIC_VIDEO_KEY, "{bad");
     expect(isMusicVideo("p1")).toBe(false);
     expect(isMusicVideo(null)).toBe(false);
+  });
+});
+
+describe("the Song section (audit item: Add the song lands at the top of Plan)", () => {
+  it("names the song actions whose work is in the Song section", () => {
+    const song = ACTIONS.filter(opensSongSection);
+    expect(song).toEqual(["attach-song", "cut-plan", "assign-vocals", "make-lipsync", "open-coverage"]);
+    for (const action of song) expect(destinationOf(action)).toEqual({ kind: "tab", tab: "plan" });
+  });
+
+  it("focuses and scrolls to the Song heading once the Plan tab has drawn it", () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => frames.push(cb));
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    try {
+      const heading = { focus: vi.fn(), scrollIntoView: vi.fn() };
+      let drawn = false;
+      const doc = { getElementById: (id: string) => (drawn && id === "song-panel-title" ? heading : null) } as unknown as Document;
+      focusSongSection(doc);
+      frames.shift()?.(0); // the tab has not rendered yet: it looks again
+      expect(frames).toHaveLength(1);
+      expect(heading.focus).not.toHaveBeenCalled();
+      drawn = true;
+      frames.shift()?.(0);
+      expect(heading.focus).toHaveBeenCalled();
+      expect(heading.scrollIntoView).toHaveBeenCalled();
+      expect(frames).toHaveLength(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

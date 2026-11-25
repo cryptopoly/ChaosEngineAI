@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 import type { StoryboardProposal } from "../../api/storyboardPlan";
 import type { StoryboardProject } from "../../types";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { lengthVerdict, lockedCount, replaceLosesTakes, totalSeconds } from "./planLogic";
+import { lengthVerdict, lockedCount, replaceLosesTakes, shotSeconds, totalSeconds } from "./planLogic";
 
 export interface PlanProposalProps {
   proposal: StoryboardProposal;
@@ -68,7 +68,7 @@ export function PlanProposal({ proposal, project, target, busy, onUse, onAgain, 
             <div className="plan-proposal__body">
               <p className="plan-proposal__title">
                 <strong>{shot.title || t("board.shot.untitled", { defaultValue: "Shot {n}", n: index + 1 })}</strong>
-                <span className="muted-text"> · {t("board.plan.seconds", { defaultValue: "{n} s", n: shot.seconds })}</span>
+                <span className="muted-text"> · {t("board.plan.seconds", { defaultValue: "{n} s", n: shotSeconds(shot.seconds) })}</span>
               </p>
               <p className="plan-proposal__prompt">{shot.stillPrompt}</p>
               {shot.motionPrompt ? (

@@ -9,7 +9,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { StoryboardCutPlan, StoryboardProject } from "../../../types";
 import { ConfirmDialog } from "../ConfirmDialog";
-import { lockedCount } from "../planLogic";
+import { lockedCount, shotSeconds } from "../planLogic";
 import { clock, cutPlanGroups, shotsWithTakes } from "./songLogic";
 
 export interface CutPlanReviewProps {
@@ -59,7 +59,7 @@ export function CutPlanReview({ plan, project, busy, singing = false, onUse, onD
                 <li key={number} className="cut-plan__shot">
                   <span className="plan-number" aria-hidden="true">{number}</span>
                   <span className="cut-plan__shot-title">{shot.title || t("board.shot.untitled", { defaultValue: "Shot {n}", n: number })}</span>
-                  <span className="muted-text">{t("board.plan.seconds", { defaultValue: "{n} s", n: Math.round(shot.seconds * 100) / 100 })}</span>
+                  <span className="muted-text">{t("board.plan.seconds", { defaultValue: "{n} s", n: shotSeconds(shot.seconds) })}</span>
                   {shot.stillPrompt ? <span className="cut-plan__prompt muted-text">{shot.stillPrompt}</span> : null}
                 </li>
               ))}

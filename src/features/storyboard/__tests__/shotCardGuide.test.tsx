@@ -196,13 +196,21 @@ describe("shotCardGuide", () => {
     expect(shotCardGuide(project, guide(), project.shots[1]).failure?.code).toBe("cancelled");
   });
 
-  it("calls a shot without a character only when the project has one and the effective cast has none", () => {
+  it("calls a shot without a character only when a character is locked in every shot and the shot left it out", () => {
+    // No lock: a shot with no character is normal (the prompt can describe the singer in words), so no chip.
     expect(shotCardGuide(project, guide(), project.shots[0]).noCharacter).toBe(false);
-    expect(shotCardGuide(project, guide(), project.shots[1]).noCharacter).toBe(true); // only a place
+    expect(shotCardGuide(project, guide(), project.shots[1]).noCharacter).toBe(false); // only a place, no lock
+    const locked = {
+      ...project,
+      references: { characters: [{ id: "c1", name: "Mara", inEveryShot: true }], places: project.references.places },
+      shots: [shot({ id: "s_1" }), shot({ id: "s_2", castOut: ["c1"] })],
+    } as unknown as StoryboardProject;
+    expect(shotCardGuide(locked, guide(), locked.shots[0]).noCharacter).toBe(false); // the lock puts Mara in it
+    expect(shotCardGuide(locked, guide(), locked.shots[1]).noCharacter).toBe(true); // it left the locked one out
+    // An older payload without cast: unknown, so no chip.
+    expect(shotCardGuide(locked, guide({ cast: undefined as never }), locked.shots[1]).noCharacter).toBe(false);
     const none = { ...project, references: { characters: [], places: [] } } as unknown as StoryboardProject;
     expect(shotCardGuide(none, guide({ cast: { s_1: [], s_2: [] } }), none.shots[0]).noCharacter).toBe(false);
-    // An older payload without cast: unknown, so no chip.
-    expect(shotCardGuide(project, guide({ cast: undefined as never }), project.shots[0]).noCharacter).toBe(false);
   });
 
   it("shows lip sync chips only when lip sync is in use", () => {

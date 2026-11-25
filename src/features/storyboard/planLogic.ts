@@ -57,6 +57,16 @@ export function projectPalette(project: Pick<StoryboardProject, "references">, l
   return out.slice(0, limit);
 }
 
+/** A shot length to one decimal ("4.0"): the one formatter for every place a shot's length is shown. */
+export function shotSeconds(seconds: number): string {
+  return roundSeconds(seconds).toFixed(1);
+}
+
+/** A shot length rounded to 0.1 s, the precision it is shown at. */
+export function roundSeconds(seconds: number): number {
+  return Math.round((Number.isFinite(seconds) ? seconds : 0) * 10) / 10;
+}
+
 /** The sum of the shots' seconds, to one decimal. */
 export function totalSeconds(shots: readonly Pick<StoryboardPlannedShot, "seconds">[]): number {
   return Math.round(shots.reduce((sum, shot) => sum + (Number.isFinite(shot.seconds) ? shot.seconds : 0), 0) * 10) / 10;

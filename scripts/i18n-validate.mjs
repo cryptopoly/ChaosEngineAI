@@ -20,6 +20,12 @@
  *      truth; any other-locale extra is a translator error or a
  *      stale leftover).
  *
+ *   4. **Source keys** — every literal ``t("key", ...)`` call under
+ *      ``src/`` must name a key that ``en/<ns>.json`` has.  The namespace
+ *      comes from the code itself (see ``i18n-source-keys.mjs``), so a key
+ *      that only exists as an inline ``defaultValue`` fails the gate
+ *      instead of silently showing English in every other locale.
+ *
  * Exit codes:
  *   0   all checks pass
  *   1   structural error (malformed JSON, ICU parse fail, missing file)
@@ -30,12 +36,22 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
+import { collectSourceKeys, inferNamespaces, loadTypeScript } from "./i18n-source-keys.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 // I18N_LOCALES_DIR lets the unit test point the validator at a fixture tree.
 const LOCALES = process.env.I18N_LOCALES_DIR
   ? path.resolve(process.env.I18N_LOCALES_DIR)
   : path.join(ROOT, "src", "locales");
+
+// The source check reads ``src/`` next to the real catalogs.  A test that
+// points I18N_LOCALES_DIR at a fixture tree has no matching source, so it
+// opts in with I18N_SRC_DIR.
+const SRC_DIR = process.env.I18N_SRC_DIR
+  ? path.resolve(process.env.I18N_SRC_DIR)
+  : process.env.I18N_LOCALES_DIR
+    ? null
+    : path.join(ROOT, "src");
 
 const ARGS = new Set(process.argv.slice(2));
 const STRICT = ARGS.has("--strict");
@@ -130,6 +146,64 @@ function validateIcu(value, locale, fullKey) {
   return null;
 }
 
+/**
+ * Source keys with no English catalog entry.  Returns the error lines.
+ *
+ * ``dynamic`` calls (``t(`voice.x.${id}`)``) cannot be enumerated, so only
+ * their static prefix is checked: some English key must start with it.
+ */
+async function checkSourceKeys(enEntries) {
+  if (!SRC_DIR) return { errors: [], note: "source check skipped (fixture catalogs)" };
+  if (!loadTypeScript()) {
+    return { errors: [], note: "typescript not installed - source check skipped (run npm install)" };
+  }
+  const { calls, dynamic, hints } = await collectSourceKeys(SRC_DIR, path.dirname(SRC_DIR));
+  inferNamespaces(calls, enEntries);
+  const errors = [];
+  const missing = new Map(); // "ns: key" -> first "file:line" (+ count)
+  for (const c of calls) {
+    const where = `${c.file}:${c.line}`;
+    if (c.ns === null) {
+      errors.push(`source ${where} - t("${c.key}") has no namespace; write t("<ns>:${c.key}")`);
+      continue;
+    }
+    if (!enEntries[c.ns]) {
+      errors.push(`source ${where} - t("${c.key}") names the unknown namespace "${c.ns}"`);
+      continue;
+    }
+    if (!enEntries[c.ns].has(c.key)) {
+      const id = `${c.ns}: ${c.key}`;
+      const prev = missing.get(id);
+      if (prev) prev.count++;
+      else missing.set(id, { where, count: 1, defaultValue: c.defaultValue });
+    }
+  }
+  for (const [id, m] of missing) {
+    const text = m.defaultValue === null ? "" : `  = ${JSON.stringify(m.defaultValue.length > 70 ? m.defaultValue.slice(0, 67) + "..." : m.defaultValue)}`;
+    errors.push(`missing from en catalog: ${id}${text}  (${m.where}${m.count > 1 ? `, +${m.count - 1} more` : ""})`);
+  }
+  for (const d of dynamic) {
+    if (!d.ns || !enEntries[d.ns] || !d.prefix.endsWith(".")) continue;
+    let found = false;
+    for (const leaf of enEntries[d.ns].keys()) {
+      if (leaf.startsWith(d.prefix)) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) errors.push(`source ${d.file}:${d.line} - no en key starts with ${d.ns}:${d.prefix} (dynamic key)`);
+  }
+  for (const h of hints) {
+    const bare = h.key.includes(":") ? h.key.split(":").slice(1).join(":") : h.key;
+    const ns = h.key.includes(":") ? h.key.split(":")[0] : null;
+    const spaces = ns ? [ns] : NAMESPACES;
+    if (!spaces.some((n) => enEntries[n]?.has(bare))) {
+      errors.push(`source ${h.file}:${h.line} - i18n-extract hint ${h.key} is not in the en catalog`);
+    }
+  }
+  return { errors, note: null };
+}
+
 async function main() {
   console.log(`[i18n-validate] mode = ${STRICT ? "strict (CI gate)" : "warn-only"}`);
   if (!IntlMessageFormat) {
@@ -176,6 +250,11 @@ async function main() {
     const pct = totalKeys === 0 ? 100 : Math.round((presentKeys / totalKeys) * 1000) / 10;
     coverage[locale] = { presentKeys, totalKeys, pct };
   }
+
+  // Source keys
+  const source = await checkSourceKeys(enEntries);
+  if (source.note) console.log(`[i18n-validate] ${source.note}`);
+  errors.push(...source.errors);
 
   // Print coverage table
   console.log("[i18n-validate] coverage:");
